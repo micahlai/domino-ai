@@ -81,8 +81,12 @@ function PreviewSection({
 
 export function Playground() {
   const [showFixes, setShowFixes] = useState(false);
+  const [selectedFutureKey, setSelectedFutureKey] = useState<string>();
   const [selectedRiskId, setSelectedRiskId] = useState(fixtures.risks[0]?.id);
   const report = showFixes ? fixtures.resilienceWithFixes : fixtures.resilience;
+  const selectedFuture = report.universes.find(
+    (future) => [...future.riskIds].sort().join("|") === selectedFutureKey,
+  );
   const eventBranch = fixtures.branches.find((branch) => branch.id === "br_acme_late");
   const limit =
     fixtures.constraints.find((constraint) => constraint.kind === "min_cash")?.limit ?? 0;
@@ -158,6 +162,18 @@ export function Playground() {
           pastEvents={fixtures.pastEvents}
           today={fixtures.snapshot.asOf}
           report={report}
+          comparisonReport={showFixes ? fixtures.resilience : fixtures.resilienceWithFixes}
+          selectedUniverseId={selectedFuture?.id}
+          onSelectUniverse={(id) =>
+            setSelectedFutureKey(
+              report.universes
+                .find((future) => future.id === id)
+                ?.riskIds.slice()
+                .sort()
+                .join("|"),
+            )
+          }
+          showFixes={showFixes}
           limit={limit}
         />
       </PreviewSection>
