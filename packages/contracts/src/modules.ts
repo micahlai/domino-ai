@@ -20,6 +20,7 @@ import type {
   Snapshot,
   SourceKind,
 } from "./core";
+import type { GradeContext, LearnContext } from "./learning";
 import type { AnswerKey, CompanyProfile, FieldMapping, WorldState } from "./sim";
 
 /**
@@ -61,10 +62,28 @@ export interface Engine {
     constraints: Constraint[],
     context?: FixScoreContext,
   ): Branch;
-  /** Compares last week's forecast with what the bank actually shows. */
-  grade(previous: Forecast, actualBank: BankTxn[]): { errorPct: number; misses: Evidence[] };
-  /** Updates the company model. Keeps a change only if past forecast error goes down. */
-  learn(snapshot: Snapshot, model: CompanyModel, history: Forecast[]): CompanyModel;
+  /**
+   * Compares last week's forecast with what the bank actually shows. context fixes the
+   * observation window (bank transactions strictly after forecastAsOf through asOf);
+   * without it there is no known window to grade, and no 0% error may be fabricated.
+   */
+  grade(
+    previous: Forecast,
+    actualBank: BankTxn[],
+    context?: GradeContext,
+  ): { errorPct: number; misses: Evidence[] };
+  /**
+   * Updates the company model. Keeps a change only if retrospective replay error goes down.
+   * With context, only context.examples define replay origins; history is kept for source
+   * compatibility and is never authoritative replay input. Without context, the model is
+   * returned unchanged.
+   */
+  learn(
+    snapshot: Snapshot,
+    model: CompanyModel,
+    history: Forecast[],
+    context?: LearnContext,
+  ): CompanyModel;
   /** Real weekly cash for the past side of the timeline. */
   history(snapshot: Snapshot, weeks: number): HistoryWeek[];
   /** Notable real events for markers on the past side of the timeline. */
