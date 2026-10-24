@@ -588,3 +588,6 @@ export const fixtures = {
   resilience,
   resilienceWithFixes,
 };
+
+/** Synthetic historical case fixture; see ./historical.ts. */
+export * as historicalFixtures from "./historical";
