@@ -8,4 +8,8 @@
 - **Acceptance:** typecheck/touched lint and focused meaningful route/navigation checks. No fullsuite/build/browser; Codex serializes those. Existing direct developer/demo routes still compile, primary CTA is working route, keyboard/mobile navigation readable. Commit Result and changes, then stop. No main/push/provider calls or children.
 
 ## Result
-- Pending.
+- Landing (`app/page.tsx`): main CTA "Start investigating" goes to /investigate; secondary "View the cash chart" goes to /historical. Five-step journey (ask, inspect sourced data, saved forecast, reveal actuals, costed alternative). States public 2U, retrospective scope and that connecting your own company is not available yet. No claim about specialists or learning.
+- Shell (`AppShell.tsx`): removed theme selector, Playground link, "Connect a company" and the Kestrel links from primary nav. Nav is now Investigate and Cash chart (2U); header has an Investigate link and "Public 2U case study". Kestrel sub-links appear only inside /c/* routes. StyleSync kept so ?style= still works on direct routes. /investigate stays full-window. Brand links to /.
+- All routes and components kept (/playground, /connect, /c/*). AppShell now imports StyleSync and cn by relative path so a vitest render test can load it.
+- Added `AppShell.test.tsx` (3 tests): nav targets, removed links, demo sub-nav scoped, /investigate has no header. Verified: that test passes, `tsc --noEmit` and biome on touched files clean. Not run: full suite, build, browser, so mobile wrapping of the nav is unchecked visually.
+- Counterargument: the header "Investigate" link duplicates the landing CTA on `/`; kept for consistency on other pages.

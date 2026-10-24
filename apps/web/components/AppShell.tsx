@@ -1,27 +1,29 @@
 "use client";
 
-import { StyleSelector } from "@/components/StyleSelector";
-import { StyleSync } from "@/components/StyleSync";
-import { cn } from "@/lib/utils";
-import { ArrowUpRight, CircleHelp, PanelLeftClose } from "lucide-react";
+import { PanelLeftClose } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
+import { cn } from "../lib/utils";
+import { StyleSync } from "./StyleSync";
 
 const links = [
+  { href: "/investigate", label: "Investigate" },
+  { href: "/historical", label: "Cash chart (2U)" },
+];
+
+// Old Kestrel demo pages stay reachable by URL; their own sub-navigation shows only inside them.
+const demoLinks = [
   { href: "/c/kestrel", label: "Cash forecast" },
   { href: "/c/kestrel/learning", label: "What we learned" },
   { href: "/c/kestrel/record", label: "Decision record" },
-  { href: "/historical", label: "Historical case (2U)" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const companyId =
-    pathname.split("/")[1] === "c"
-      ? pathname.split("/")[2]
-      : (process.env.NEXT_PUBLIC_DEMO_COMPANY_ID ?? "kestrel");
+  const inDemo = pathname.startsWith("/c/");
+  const companyId = inDemo ? pathname.split("/")[2] : "";
   // The agent canvas owns the whole window and pins Original tokens, so it skips the shared header.
   if (pathname.startsWith("/investigate")) {
     return (
@@ -34,9 +36,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   // The historical page is real 2U history, not the Kestrel demo company.
   const sidebarTitle = pathname.startsWith("/historical")
     ? "2U / historical"
-    : companyId === "kestrel"
-      ? "Kestrel Data"
-      : "Company workspace";
+    : inDemo
+      ? "Demo company"
+      : "Domino";
+  const navLinks = inDemo
+    ? [
+        ...links,
+        ...demoLinks.map((l) => ({ ...l, href: l.href.replace("/c/kestrel", `/c/${companyId}`) })),
+      ]
+    : links;
   return (
     <div className="min-h-screen">
       <Suspense fallback={null}>
@@ -60,14 +68,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-4 text-sm text-muted-foreground">
-          <span className="hidden xl:inline">Plan cash needs before you act.</span>
-          <StyleSelector />
+          <span className="hidden md:inline">Public 2U case study</span>
           <Link
-            href="/playground"
-            className="flex min-h-11 items-center gap-2 rounded px-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            href="/investigate"
+            className="flex min-h-11 items-center gap-2 rounded px-2 font-medium text-foreground hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           >
-            Playground
-            <ArrowUpRight className="size-4" aria-hidden="true" />
+            Investigate
           </Link>
         </div>
       </header>
@@ -84,31 +90,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               <PanelLeftClose className="size-4 text-muted-foreground" aria-hidden="true" />
             </div>
             <nav aria-label="Main navigation" className="flex flex-wrap gap-1 lg:flex-col">
-              {links.map(({ href, label }) => (
+              {navLinks.map(({ href, label }) => (
                 <Link
                   key={href}
-                  href={href.replace("/c/kestrel", `/c/${companyId}`)}
-                  aria-current={
-                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) ? "page" : undefined
-                  }
+                  href={href}
+                  aria-current={pathname === href ? "page" : undefined}
                   className={cn(
                     "flex min-h-11 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) &&
-                      "bg-background font-medium text-primary",
+                    pathname === href && "bg-background font-medium text-primary",
                   )}
                 >
                   {label}
                 </Link>
               ))}
-              <div className="my-4 hidden border-t lg:block" />
-              <Link
-                href="/connect"
-                aria-current={pathname === "/connect" ? "page" : undefined}
-                className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <CircleHelp className="size-4" aria-hidden="true" />
-                Connect a company
-              </Link>
             </nav>
             <p className="mt-10 hidden px-3 text-xs leading-5 text-muted-foreground lg:block">
               Your judgment comes first.
