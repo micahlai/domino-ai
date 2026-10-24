@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 07:46 Codex heartbeat
+- Done: full historical backend accepted and pushed4795d51. Activity code6498b75 independently approved;734tests and live parallel sequencing/retry/isolation checks passed.
+- Next: collect H4c core UI, audit/build/browser, then adopt accepted activity at a clean checkpoint. Only UI worker remains active.
+- Watch out: activity reducer must reset by baselineRunId but filter by caseId, so alternative events remain visible. Initial historical batch is not new live work.
+
 ## 2026-10-24 07:42 Codex heartbeat
 - Done: H2c8389326 independently approved, full726tests and local concurrency/snapshot checks passed, acceptance66b2d2a pushed. H4 dependency integration passed772tests.
 - Next: two verified Claude workers build real activity and core live UI in separate worktrees. Core UI uses only accepted H2c; later activity wiring follows tested H2d.
