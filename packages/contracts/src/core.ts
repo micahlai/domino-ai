@@ -104,35 +104,98 @@ export const DealSchema = z.object({
   expectedClose: ISODateSchema,
   /** A "won" deal with signed=false is a planted-error pattern: do not count it as cash */
   signed: z.boolean(),
+  /** Missing = unknown legacy mapping; null = not invoiced; string = the full invoice. */
+  invoiceId: IdSchema.nullable().optional(),
+  /** Missing means unknown, not new business. */
+  kind: z.enum(["new_business", "renewal", "expansion"]).optional(),
 });
 export type Deal = z.infer<typeof DealSchema>;
 
 /** All canonical records for one company at one date. */
-export const SnapshotSchema = z.object({
-  companyId: IdSchema,
-  asOf: ISODateSchema,
-  cashOnHand: CentsSchema,
-  /** Cash the company holds but cannot use (for example, lease collateral) */
-  restrictedCash: CentsSchema,
-  customers: z.array(CustomerSchema),
-  invoices: z.array(InvoiceSchema),
-  bankTxns: z.array(BankTxnSchema),
-  bills: z.array(BillSchema),
-  cardTxns: z.array(CardTxnSchema),
-  payroll: z.array(PayrollRunSchema),
-  deals: z.array(DealSchema),
-});
+export const SnapshotSchema = z
+  .object({
+    companyId: IdSchema,
+    asOf: ISODateSchema,
+    cashOnHand: CentsSchema,
+    /** Cash the company holds but cannot use (for example, lease collateral) */
+    restrictedCash: CentsSchema,
+    customers: z.array(CustomerSchema),
+    invoices: z.array(InvoiceSchema),
+    bankTxns: z.array(BankTxnSchema),
+    bills: z.array(BillSchema),
+    cardTxns: z.array(CardTxnSchema),
+    payroll: z.array(PayrollRunSchema),
+    deals: z.array(DealSchema),
+  })
+  .superRefine((snapshot, ctx) => {
+    const invoices = new Map<string, Invoice[]>();
+    for (const invoice of snapshot.invoices) {
+      const matches = invoices.get(invoice.id) ?? [];
+      matches.push(invoice);
+      invoices.set(invoice.id, matches);
+    }
+    const claimed = new Set<string>();
+    for (const [index, deal] of snapshot.deals.entries()) {
+      if (deal.invoiceId == null) continue;
+      const matches = invoices.get(deal.invoiceId) ?? [];
+      const invoice = matches[0];
+      let message: string | undefined;
+      if (matches.length !== 1) message = "linked invoice must exist exactly once";
+      else if (invoice?.customerId !== deal.customerId)
+        message = "linked invoice customer must match";
+      else if (invoice.amount !== deal.amount)
+        message = "linked invoice must cover the full deal amount";
+      if (message) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["deals", index, "invoiceId"], message });
+      }
+      if (claimed.has(deal.invoiceId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["deals", index, "invoiceId"],
+          message: "an invoice may only be linked to one deal",
+        });
+      }
+      claimed.add(deal.invoiceId);
+    }
+  });
 export type Snapshot = z.infer<typeof SnapshotSchema>;
 
-export const ConstraintSchema = z.object({
-  id: IdSchema,
-  /** Plain words, for example "Lender's minimum" */
+export const ConstraintConsequenceSchema = z.object({
   label: z.string().min(1),
-  kind: z.enum(["min_cash", "pay_by_date", "min_runway_months"]),
-  /** Cents for min_cash; days for pay_by_date; months for min_runway_months */
-  limit: z.number(),
   evidence: EvidenceSchema,
 });
+export type ConstraintConsequence = z.infer<typeof ConstraintConsequenceSchema>;
+
+export const ConstraintSchema = z
+  .object({
+    id: IdSchema,
+    /** Plain words, for example "Lender's minimum" */
+    label: z.string().min(1),
+    kind: z.enum(["min_cash", "pay_by_date", "min_runway_months"]),
+    /** Cents for min_cash; allowed late days after the original bill due date for pay_by_date; months for min_runway_months */
+    limit: z.number(),
+    evidence: EvidenceSchema,
+    /** Only pay_by_date uses a bill target. Missing legacy targets cannot be evaluated. */
+    billId: IdSchema.optional(),
+    consequence: ConstraintConsequenceSchema.optional(),
+  })
+  .superRefine((constraint, ctx) => {
+    if (constraint.kind === "pay_by_date") {
+      if (!Number.isInteger(constraint.limit) || constraint.limit < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["limit"],
+          message: "pay_by_date limit must be a nonnegative integer number of late days",
+        });
+      }
+    } else if (constraint.billId !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["billId"],
+        message: "billId is only meaningful for pay_by_date",
+      });
+    }
+  });
 export type Constraint = z.infer<typeof ConstraintSchema>;
 
 // ---------- What Domino learned (self-learning output) ----------
