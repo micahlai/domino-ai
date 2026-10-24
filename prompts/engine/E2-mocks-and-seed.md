@@ -1,12 +1,12 @@
 # E2 · Mock servers + Stripe/Nessie seeding + `pnpm seed` (Jayden)
 
 Tool: Claude Code. Branch: `E2-mocks-seed`. Folders: `apps/mocks`, `packages/sim/src/seed`. Depends on: E1.
-Skills: kb-sync.
+Skill files (in skills/): kb-sync.
 
 ## Prompt
 
 ```
-Load the kb-sync skill. Read AGENTS.md and kb/spec/build-spec.md §8.
+Read and follow these skill files: skills/kb-sync/SKILL.md. Read AGENTS.md and kb/spec/build-spec.md §8.
 
 Part A: apps/mocks (Hono, TypeScript, port 4010, require header x-api-key = MOCKS_API_KEY).
 Serve the simulated company's data in each real tool's own style, on purpose different from our canonical format:

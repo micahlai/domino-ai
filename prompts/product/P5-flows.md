@@ -1,12 +1,12 @@
 # P5 · Branch detail, connect screen, add event, next week (Micah)
 
 Tool: Claude Code. Branch: `P5-flows`. Folder: `apps/web/app`, `apps/web/components/`. Depends on: P4.
-Skills: kb-sync, ui-build, taste.
+Skill files (in skills/): kb-sync, ui-build, taste.
 
 ## Prompt
 
 ```
-Load the kb-sync, ui-build and taste skills. Read design-spec §1, §4 and build-spec §3 (user flow).
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/ui-build/SKILL.md, skills/taste/SKILL.md. Read design-spec §1, §4 and build-spec §3 (user flow).
 
 1. /connect: company create form (name, profile kestrel/tally/orbit) -> companies.create, then a live ConnectChecklist from
    sources.list showing each step text as it changes (found -> reading docs -> mapped -> tie-out ok / needs review).

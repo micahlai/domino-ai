@@ -40,7 +40,7 @@ Before you push: `pnpm check` (typecheck, tests, lint).
 | --- | --- | --- |
 | `kb/` | Knowledge base: spec, status board, decisions, handoffs. Read `kb/README.md` first. | Both |
 | `prompts/` | Ready-to-run prompts for coding agents, in order. Start at `prompts/README.md`. | Both |
-| `.claude/skills/` | Development skills for agents (orchestrator, ui-build, taste, ...) | Both |
+| `skills/` | Development skills, plain markdown, work with any coding agent (orchestrator, ui-build, taste, ...) | Both |
 | `packages/contracts` | Shared types, Zod schemas, fixtures. The contract between all modules. | Both, by PR |
 | `packages/sim` | Simulated companies, events, planted errors, answer key | Jayden |
 | `packages/engine` | Forecast, dominoes, risk scan, fix scoring, learning. Pure functions. | Jayden |

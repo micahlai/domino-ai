@@ -1,12 +1,12 @@
 # E3 · Engine: changes, forecast, dominoes (Jayden)
 
 Tool: Claude Code or Codex ("Codex OK"). Branch: `E3-forecast`. Folder: `packages/engine`. Depends on: S0.
-Skills: kb-sync, engine-tdd.
+Skill files (in skills/): kb-sync, engine-tdd.
 
 ## Prompt
 
 ```
-Load the kb-sync and engine-tdd skills. Read AGENTS.md, kb/spec/build-spec.md §6.1, §6.2, §6.7 and packages/contracts/src.
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/engine-tdd/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §6.1, §6.2, §6.7 and packages/contracts/src.
 
 In packages/engine, implement (test first, pure functions, integer cents, UTC dates):
 1. src/dates.ts: weekStarts(asOf, n), addDays, weekIndexOf(date, weeks).

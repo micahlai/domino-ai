@@ -1,12 +1,12 @@
 # P1 · Web shell + playground (Micah)
 
 Tool: Claude Code. Branch: `P1-web-shell`. Folder: `apps/web`. Depends on: S0.
-Skills: kb-sync, ui-build.
+Skill files (in skills/): kb-sync, ui-build.
 
 ## Prompt
 
 ```
-Load the kb-sync and ui-build skills. Read AGENTS.md and kb/spec/design-spec.md §1, §5.
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/ui-build/SKILL.md. Read AGENTS.md and kb/spec/design-spec.md §1, §5.
 
 Create apps/web:
 1. Next.js (App Router, TypeScript, Tailwind) in apps/web with package name "@domino/web". Use pnpm.

@@ -14,9 +14,9 @@ Full spec: `kb/spec/build-spec.md`. Read the section for your task before you st
 
 ## 2. Before you start any task
 
-1. Load the `kb-sync` skill (`.claude/skills/kb-sync/SKILL.md`) and follow its "start" steps.
+1. Open `skills/kb-sync/SKILL.md` and follow its "start" steps.
 2. Read your task card in `kb/tasks/`. If there is no card, ask the human for one, or
-   write one with the `task-card` skill and show it before coding.
+   write one with `skills/task-card/SKILL.md` and show it before coding.
 3. Read `packages/contracts/src/` for every type you will touch.
 
 ## 3. Hard rules
@@ -43,7 +43,7 @@ Full spec: `kb/spec/build-spec.md`. Read the section for your task before you st
 - `pnpm check` passes (typecheck, tests, lint).
 - New engine or sim code has Vitest tests with fixtures.
 - New UI has a playground entry at `/playground`.
-- You followed the `kb-sync` skill "finish" steps (board, handoff note, decisions).
+- You followed the "finish" steps in `skills/kb-sync/SKILL.md` (board, handoff note, decisions).
 
 ## 5. Style
 
@@ -52,9 +52,12 @@ Full spec: `kb/spec/build-spec.md`. Read the section for your task before you st
 - Plain words in all UI text: "lender's limit", not "covenant".
 - Commit messages: `area: what changed` (for example `engine: add domino rules for min cash`).
 
-## 6. Skills
+## 6. Skills (tool-independent)
 
-Skills live in `.claude/skills/<name>/SKILL.md`. Any agent can read them as plain files.
+Skills live in `skills/<name>/SKILL.md`. They are plain markdown checklists, not tied to any one tool.
+Any agent (Claude Code, Codex, Cursor, Gemini, CREAO, or a person) uses a skill the same way: open the file and follow it.
+`.claude/skills` is only a link to `skills/` so Claude Code also finds them automatically.
+When a prompt or task card names a skill, read that file before you start.
 
 | Skill | Use it when |
 | --- | --- |

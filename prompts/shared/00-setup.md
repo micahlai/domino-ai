@@ -16,7 +16,7 @@ Run by: you, by hand (about 20 minutes). Then optionally ask an agent to verify.
 ## Prompt (optional check, Claude Code)
 
 ```
-Load the kb-sync skill. Verify my setup: run pnpm install and pnpm check, confirm .env.local has every key name
+Read and follow these skill files: skills/kb-sync/SKILL.md. Verify my setup: run pnpm install and pnpm check, confirm .env.local has every key name
 from .env.example (do not print values), and list anything missing. Then set my S0 row in kb/status/board.md to done
 and add a one-line handoff. Do not change any other files.
 ```

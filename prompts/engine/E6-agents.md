@@ -1,12 +1,12 @@
 # E6 · Agents: CREAO + Claude adapters (Jayden)
 
 Tool: Claude Code. Branch: `E6-agents`. Folder: `packages/agents`. Depends on: S0.
-Skills: kb-sync.
+Skill files (in skills/): kb-sync.
 
 ## Prompt
 
 ```
-Load the kb-sync skill. Read AGENTS.md, kb/spec/build-spec.md §9, and the Agents interface in packages/contracts/src/modules.ts.
+Read and follow these skill files: skills/kb-sync/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §9, and the Agents interface in packages/contracts/src/modules.ts.
 
 Implement packages/agents:
 1. src/claude.ts: all five jobs with the Anthropic TypeScript SDK (ANTHROPIC_API_KEY, ANTHROPIC_MODEL).

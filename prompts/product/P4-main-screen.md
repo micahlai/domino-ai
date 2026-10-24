@@ -1,12 +1,12 @@
 # P4 · Main screen assembly (Micah)
 
 Tool: Claude Code (Cursor for live tweaks). Branch: `P4-main-screen`. Folder: `apps/web/app/c/[companyId]`, `apps/web/components/`. Depends on: P2, P3.
-Skills: kb-sync, ui-build, taste.
+Skill files (in skills/): kb-sync, ui-build, taste.
 
 ## Prompt
 
 ```
-Load the kb-sync, ui-build and taste skills. Read kb/spec/design-spec.md §2, §4, §6 and kb/spec/convex-api.md.
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/ui-build/SKILL.md, skills/taste/SKILL.md. Read kb/spec/design-spec.md §2, §4, §6 and kb/spec/convex-api.md.
 
 Build /c/[companyId] per the layout in design-spec §2:
 1. Top bar (company, week, Add event and Next week buttons wired to mutations; disabled with a tooltip until actions exist).

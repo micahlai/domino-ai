@@ -1,7 +1,7 @@
 # P7 · Usability test, Figma stage log and slides (Micah)
 
 Run by: Micah, with Claude Code for fixes. Depends on: P6.
-Skills: taste, figma-stage-log, demo-check.
+Skill files (in skills/): taste, figma-stage-log, demo-check.
 
 ## Steps
 1. Find 3 people outside the team. Give no explanation. Task: "Find the worst risk for this company and make it safer." Time each one (goal: 2 minutes).
@@ -13,7 +13,7 @@ Skills: taste, figma-stage-log, demo-check.
 ## Prompt (fixes)
 
 ```
-Load the kb-sync, ui-build and taste skills. Read the latest handoff in kb/handoffs.md (usability test results).
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/ui-build/SKILL.md, skills/taste/SKILL.md. Read the latest handoff in kb/handoffs.md (usability test results).
 Fix the top 3 confusions in apps/web without changing contracts or Convex schema. Show me before/after screenshots.
 Then run the demo-check skill. Update board row P7 and add a handoff.
 ```

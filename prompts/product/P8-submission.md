@@ -1,6 +1,6 @@
 # P8 · Demo video and submission (Micah, with Jayden)
 
-Depends on: E8, P7. Skills: demo-check.
+Depends on: E8, P7. Skill files (in skills/): demo-check.
 
 ## Steps
 1. Run the gate check (`prompts/shared/99-gate-check.md`). Code freeze after it.

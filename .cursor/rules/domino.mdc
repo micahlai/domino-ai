@@ -4,5 +4,5 @@ alwaysApply: true
 ---
 
 Read and follow `AGENTS.md` at the repo root before any change.
-Skills are plain markdown files in `.claude/skills/<name>/SKILL.md`; open the one that matches the task.
+Skills are plain markdown files in `skills/<name>/SKILL.md`; open the one the task names and follow it.
 Money is integer cents. Stay in the folder named on the task card. Never edit `packages/contracts` unless asked.

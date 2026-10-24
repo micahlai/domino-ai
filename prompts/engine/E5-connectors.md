@@ -1,12 +1,12 @@
 # E5 · Connectors + tie-out (Jayden)
 
 Tool: Claude Code. Branch: `E5-connectors`. Folder: `apps/web/convex/connectors/`. Depends on: E2, P2.
-Skills: kb-sync.
+Skill files (in skills/): kb-sync.
 
 ## Prompt
 
 ```
-Load the kb-sync skill. Read AGENTS.md, kb/spec/build-spec.md §8, kb/spec/convex-api.md.
+Read and follow these skill files: skills/kb-sync/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §8, kb/spec/convex-api.md.
 
 In apps/web/convex/connectors/ (Convex actions; do not edit schema.ts, ask Micah via kb/requests.md if needed):
 1. One module per source: stripe.ts (Stripe API, test key), nessie.ts (Nessie API), crm.ts, cards.ts, books.ts,

@@ -1,12 +1,12 @@
 # E1 · Simulator: Kestrel + calibration + print CLI (Jayden)
 
 Tool: Claude Code. Worktree branch: `E1-simulator`. Folder: `packages/sim`. Depends on: S0.
-Skills: kb-sync, engine-tdd.
+Skill files (in skills/): kb-sync, engine-tdd.
 
 ## Prompt
 
 ```
-Load the kb-sync and engine-tdd skills. Read AGENTS.md, kb/spec/build-spec.md §7, and packages/contracts/src (sim.ts, core.ts, branches.ts).
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/engine-tdd/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §7, and packages/contracts/src (sim.ts, core.ts, branches.ts).
 
 Build packages/sim so it implements the Simulator interface from @domino/contracts.
 

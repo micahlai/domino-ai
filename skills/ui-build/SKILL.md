@@ -11,7 +11,7 @@ description: Build Domino screens and components fast and consistently with Next
 2. Build the component in `apps/web/components/<Name>.tsx` with props only (no data fetching).
 3. Add a section to `/playground` that renders it with `@domino/contracts/fixtures`. Check it there first.
 4. Then wire it into the page with Convex `useQuery` (functions in `kb/spec/convex-api.md`).
-5. Run the `taste` skill on a screenshot before you call it done.
+5. Run the checklist in `skills/taste/SKILL.md` on a screenshot before you call it done.
 
 ## Rules
 

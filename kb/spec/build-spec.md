@@ -143,7 +143,7 @@ Rules:
 
 - Every type has a Zod schema. Parse every outside input.
 - Money: integer cents. Dates: `YYYY-MM-DD`. Weeks start on Monday.
-- To change a contract, use the `contract-change` skill.
+- To change a contract, use `skills/contract-change/SKILL.md`.
 
 ---
 

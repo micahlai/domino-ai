@@ -1,12 +1,12 @@
 # E7 · Wire the actions + grading and learning (Jayden)
 
 Tool: Claude Code. Branch: `E7-wiring`. Folders: `apps/web/convex/actions/`, `packages/engine` (grade, learn). Depends on: E4, E5, E6.
-Skills: kb-sync, engine-tdd, demo-check.
+Skill files (in skills/): kb-sync, engine-tdd, demo-check.
 
 ## Prompt
 
 ```
-Load the kb-sync, engine-tdd and demo-check skills. Read kb/spec/convex-api.md (Actions), build-spec §6.5 and §3.
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/engine-tdd/SKILL.md, skills/demo-check/SKILL.md. Read kb/spec/convex-api.md (Actions), build-spec §6.5 and §3.
 
 1. packages/engine: grade(previous, actualBank) and learn(snapshot, model, history) per §6.5, test first.
    learn keeps a change only if mean error on past weeks goes down; it records errorBefore and errorAfter.

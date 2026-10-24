@@ -1,12 +1,12 @@
 # E4 · Engine: risks, fix scoring, history, stress test (Jayden)
 
 Tool: Claude Code. Branch: `E4-multiverse`. Folder: `packages/engine`. Depends on: E3.
-Skills: kb-sync, engine-tdd.
+Skill files (in skills/): kb-sync, engine-tdd.
 
 ## Prompt
 
 ```
-Load the kb-sync and engine-tdd skills. Read AGENTS.md, kb/spec/build-spec.md §2.1, §6.3, §6.4, §6.6, and the
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/engine-tdd/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §2.1, §6.3, §6.4, §6.6, and the
 multiverse types at the end of packages/contracts/src/branches.ts.
 
 In packages/engine implement, test first:

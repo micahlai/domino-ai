@@ -9,13 +9,13 @@ You split work into small, parallel tasks and keep `main` green.
 
 ## Steps
 
-1. Run the `kb-sync` start steps. Read `kb/status/board.md`, the last 3 entries of `kb/handoffs.md`, and `kb/requests.md`.
+1. Follow the start steps in `skills/kb-sync/SKILL.md`. Read `kb/status/board.md`, the last 3 entries of `kb/handoffs.md`, and `kb/requests.md`.
 2. Find the current gate in `kb/spec/build-spec.md` §11. List what is left before that gate.
 3. Pick at most 3 tasks per human that:
    - touch different folders (no two agents in the same folder),
    - have their dependencies done (board "Depends on"),
    - move the gate forward. Cut anything that does not.
-4. For each task, write a card with the `task-card` skill in `kb/tasks/`.
+4. For each task, write a card using `skills/task-card/SKILL.md` in `kb/tasks/`.
 5. Give each agent its own worktree and branch:
    ```bash
    git worktree add ../domino-<id> -b <id>-<short-name>

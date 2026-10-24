@@ -1,7 +1,7 @@
 # P3 · The multiverse timeline (hero) (Micah)
 
 Tools: Figma Make first (20 min), then Claude Code. Branch: `P3-multiverse`. Folder: `apps/web/components/multiverse/`. Depends on: P1.
-Skills: kb-sync, ui-build, taste, figma-stage-log.
+Skill files (in skills/): kb-sync, ui-build, taste, figma-stage-log.
 
 ## Before coding (Figma)
 1. In Figma Make, prompt: "A wide timeline chart. Left: 26 weeks of past cash as a solid line with event dots. A dashed vertical
@@ -13,7 +13,7 @@ Skills: kb-sync, ui-build, taste, figma-stage-log.
 ## Prompt (Claude Code)
 
 ```
-Load the kb-sync, ui-build and taste skills. Read kb/spec/design-spec.md §2 and §3 fully, and the multiverse types in
+Read and follow these skill files: skills/kb-sync/SKILL.md, skills/ui-build/SKILL.md, skills/taste/SKILL.md. Read kb/spec/design-spec.md §2 and §3 fully, and the multiverse types in
 packages/contracts/src/branches.ts. If the Figma Dev Mode MCP server is available, read the Figma Make frame I link: <paste link>.
 
 Build MultiverseTimeline exactly per design-spec §3 in apps/web/components/multiverse/:

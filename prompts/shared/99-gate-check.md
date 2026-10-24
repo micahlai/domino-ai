@@ -5,7 +5,7 @@ Run by: one agent (Claude Code) on `main`, with both people watching.
 ## Prompt
 
 ```
-Load the orchestrator and demo-check skills. We are at a gate (see kb/spec/build-spec.md §11).
+Read and follow these skill files: skills/orchestrator/SKILL.md, skills/demo-check/SKILL.md. We are at a gate (see kb/spec/build-spec.md §11).
 1. Pull main. Run pnpm check and report.
 2. Run the demo-check skill against kb/product/demo-script.md. Report each step: works / slow / broken.
 3. Compare the board (kb/status/board.md) with the gate. List what is missing.

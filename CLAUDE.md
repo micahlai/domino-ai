@@ -1,3 +1,3 @@
 @AGENTS.md
 
-Claude Code note: skills for this repo are in `.claude/skills/`. Start every session with the `kb-sync` skill.
+Skills are in `skills/` (also linked at `.claude/skills/`). Start every session with `skills/kb-sync/SKILL.md`.

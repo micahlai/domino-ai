@@ -23,7 +23,7 @@ in its own worktree, and paste the block under "Prompt".
 1. `git pull` on `main`.
 2. `git worktree add ../domino-<ID> -b <ID>-<name>` and open that folder in the agent tool.
 3. Paste the prompt. Let the agent work. Answer its questions.
-4. When it says done: run `pnpm check` yourself, open a PR, ask another agent to review with the `review` skill.
+4. When it says done: run `pnpm check` yourself, open a PR, ask another agent to review it with `skills/review/SKILL.md`.
 5. Merge. Update the board (the agent should have done this already).
 
 ## Agent tools

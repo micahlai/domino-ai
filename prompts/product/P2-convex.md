@@ -1,12 +1,12 @@
 # P2 · Convex schema, queries, mutations (Micah)
 
 Tool: Claude Code or Codex ("Codex OK"). Branch: `P2-convex`. Folder: `apps/web/convex` (not connectors/ or actions/). Depends on: P1.
-Skills: kb-sync.
+Skill files (in skills/): kb-sync.
 
 ## Prompt
 
 ```
-Load the kb-sync skill. Read AGENTS.md and kb/spec/convex-api.md (this is the contract).
+Read and follow these skill files: skills/kb-sync/SKILL.md. Read AGENTS.md and kb/spec/convex-api.md (this is the contract).
 
 1. apps/web/convex/schema.ts: every table and index in convex-api.md. Large objects (Snapshot, Branch, ResilienceReport...) as v.any()
    and parse with the Zod schemas from @domino/contracts in a small helper (convex/lib/parse.ts) when read or written.
