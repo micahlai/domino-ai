@@ -339,6 +339,13 @@ describe("scheduled work", () => {
 
   it("keeps unbuilt internal actions visibly unbuilt", async () => {
     const { t, companyId } = await setup();
-    await expect(t.action(internal.engine.recompute, { companyId })).rejects.toThrow("not built");
+    await expect(t.action(internal.connect.run, { companyId })).rejects.toThrow("not built");
+    await expect(t.action(internal.week.advance, { companyId })).rejects.toThrow("not built");
+  });
+
+  it("refuses to compute over the illustrative fixture company", async () => {
+    const { t, companyId } = await setup();
+    await expect(t.action(internal.engine.recompute, { companyId })).rejects.toThrow("LEGACY_DATA");
+    expect(await t.query(api.branches.list, { companyId })).toEqual(fixtures.branches);
   });
 });

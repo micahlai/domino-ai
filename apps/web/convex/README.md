@@ -24,6 +24,27 @@ stay empty until results exist. Source tie-outs stay pending and `lastPull` stay
 because this seed does not connect to a tool. The `fixtures.seed` log identifies the
 fixture company; repeat runs return its ID without resetting any decisions.
 
+## Computed prototype (I2)
+
+`dev/seedComputed:seed` creates a separate "Kestrel Data (computed prototype)" company once
+(marker log `computed.seed`) and never reads or changes the fixture company. It copies only the
+fixture snapshot, model and constraints as synthetic inputs, plus two labelled demo proposals
+built from fixture change instructions (log `demo.proposals`). Every forecast, risk, branch,
+gain, report and history row comes from `@domino/engine`.
+
+```sh
+pnpm --filter @domino/web exec convex run dev/seedComputed:seed
+```
+
+`engine.recompute`, `engine.addEvent` and `engine.simulateFix` are internal actions that each
+run one transactional internal mutation in `computed.ts` (logic in `lib/computed.ts` and
+`lib/publish.ts`). Computed IDs start with `c_<companyId>_`; `fixes.forBranch` returns those
+rows in engine rank order. Decided futures are fixed to their snapshot: a run that would change
+one is refused with `DECIDED_CHANGED`. Companies with illustrative branches are refused with
+`LEGACY_DATA` until a reviewed backfill exists. Offline `convex codegen` needs a deployment, so
+`lib/refs.ts` holds typed references to the new internal functions until `_generated` is
+regenerated.
+
 ## Approvals and scheduling
 
 `approvals.decide` requires a simulated fix branch and the candidate that generated
@@ -33,7 +54,7 @@ never schedules an action or moves money. Identity comes from Convex Auth when
 available; anonymous demo clicks are recorded as `demo-user (unverified)`.
 This demo does not implement company access controls or a sign-in flow.
 
-The `connect`, `engine`, `agents` and `week.advance` internal actions are deliberate
+The `connect`, `agents` and `week.advance` internal actions are deliberate
 P2 placeholders for Jayden's E5/E7 work. They throw `not built`; scheduled jobs will
 show failure rather than report invented results. Queries and fixture seeding work
 without running any placeholder.
