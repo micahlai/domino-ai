@@ -6,7 +6,20 @@ Important: the site was rebuilt. The old host `api.reimaginebanking.com` no long
 
 Money note for the team: our app stores integer cents. The current Nessie spec types `amount` and `balance` as plain integers and never says dollars or cents. Unit is unknown. Treat Nessie numbers as opaque integers and send cents consistently, or confirm with one test call once you have a key. Do not send decimals: the spec says integer.
 
-## Answers
+## Live probe results (2026-10-24, overrides the spec where they differ)
+
+Ran with Jayden's key against `https://prod-api.nessieisreal.com`: created a probe customer and a $0 checking account, one deposit and one withdrawal, read them back, then deleted the transactions and account (customer remains: Nessie has no customer delete).
+- Key works: `GET /customers` returned 200. The key's sandbox already holds customers from an earlier project; filter by our own ids.
+- Back-dating works: `transaction_date: "2026-05-04"` was stored and returned unchanged; the server adds `creation_date` (today) separately. YYYY-MM-DD accepted.
+- `balance` does not move: after a 12345 deposit and a 2345 withdrawal (both `status: "completed"`), the account balance stayed 0. Set the opening balance at account creation and compute running balances in our code.
+- Create calls return 201 with `{code, message, objectCreated}`, and `objectCreated._id` is the new id. No re-list needed.
+- Ids are UUIDs (36 chars), not 24-char Mongo ids as the spec implies.
+- Withdrawal create body is the same as deposit: `medium`, `transaction_date`, `status`, `amount`, `description`. Response adds `type: "withdrawal"` and `payer_id`.
+- `amount` is stored as the integer sent. Dollars vs cents is still not stated; we send cents.
+- Deletes return 200 (deposit and account return an empty body; withdrawal returns "Withdrawal deleted").
+- Not tested: purchase/transfer creation, rate limits, data retention.
+
+## Answers (from the spec, before the probe)
 
 1. Signup and API key.
    - Sign in with GitHub (OAuth) on `https://nessieisreal.com` (Login button), then open `https://nessieisreal.com/profile` to copy the key. Profile also lists the customers you can access. Source: Getting Started page JS above and Profile page JS `https://nessieisreal.com/assets/Profile-Ds7eLmSw.js`. Checked 2026-10-24.
