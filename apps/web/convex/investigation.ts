@@ -7,10 +7,14 @@ import {
   checkHistoricalSpecialistOutput,
 } from "@domino/contracts";
 import { ConvexError, type Infer, v } from "convex/values";
+import { creaoDefaults } from "../../../packages/agents/src/creao";
 import { ProviderError } from "../../../packages/agents/src/errors";
 import { hashInput } from "../../../packages/agents/src/hash";
 import {
+  buildHistoricalCreaoPrompt,
+  historicalCreaoOutputFormat,
   historicalSystemPrompt,
+  runCreaoHistoricalSpecialist,
   runHistoricalSpecialist,
 } from "../../../packages/agents/src/historical";
 import { internal } from "./_generated/api";
@@ -56,11 +60,18 @@ const HISTORY_CHARS = HISTORICAL_SPECIALIST_LIMITS.historyTurnChars;
 const MAX_SPECIALIST_CALLS = 2;
 const MAX_STEPS = 8;
 const LIST_LIMIT = 50;
-// One deadline per turn. The provider times out at 60 s, so this only fires if the action died.
+// One deadline per turn. Claude times out at 60 s and a CREAO run's deadline ends inside this
+// lease, so this only fires if the action died.
 const TURN_DEADLINE_MS = 180_000;
 const REVIEWER_QUESTION = "Review the costed alternative against its saved baseline.";
+// CREAO runs inside the lease: its whole-run deadline ends this long before the lease does, so
+// the result can still commit. Below the minimum budget nothing is created.
+const FINISH_MARGIN_MS = 10_000;
+const MIN_CREAO_BUDGET_MS = 30_000;
 
 const now = () => new Date().toISOString();
+const modeOf = (): ProviderMode =>
+  process.env.DOMINO_SPECIALIST_PROVIDER === "claude-dev" ? "claude-dev" : "creao";
 
 const WORKING_STYLE: Record<Role, string> = {
   evidence_analyst:
@@ -70,19 +81,50 @@ const WORKING_STYLE: Record<Role, string> = {
 };
 
 /**
- * Safe, versioned profile snapshot stored on the operation. instructions is the exact
- * app-authored system prompt the specialist entry sends; the version is its hash, so a later
- * prompt edit gets a new version while stored operations keep theirs.
+ * The rules and output format Domino puts in every CREAO run's prompt. Rebuilt from the Claude
+ * prompt (same rules, different data location and wrapper); dispatch checks it equals the
+ * prompt actually sent, so a wording drift fails closed instead of mislabelling the profile.
  */
-async function profileOf(role: Role) {
-  const instructions = historicalSystemPrompt(role);
+const creaoRules = (role: Role) =>
+  [
+    ...historicalSystemPrompt(role)
+      .replace("inside <domino_input>", "in the data field")
+      .split("\n")
+      .slice(0, -1),
+    historicalCreaoOutputFormat,
+  ].join("\n");
+
+const sentCreaoRules = (packet: HistoricalSpecialistInput) => {
+  const sent = JSON.parse(buildHistoricalCreaoPrompt(packet)) as {
+    rules: string[];
+    outputFormat: string;
+  };
+  return [...sent.rules, sent.outputFormat].join("\n");
+};
+
+/**
+ * Safe, versioned profile snapshot stored on the operation for its frozen provider mode.
+ * claude-dev: instructions is the exact app-authored system prompt. creao: instructions is only
+ * the per-run rules Domino sends; the remote app's own instructions and memory are unknown here.
+ * The version is a hash, so a later edit gets a new version while stored operations keep theirs.
+ */
+async function profileOf(role: Role, mode: ProviderMode) {
+  const creao = mode === "creao";
+  const instructions = creao ? creaoRules(role) : historicalSystemPrompt(role);
   return {
     role,
     workingStyle: WORKING_STYLE[role],
     instructions,
-    version: `${role}@${(await hashInput(instructions)).slice(0, 12)}`,
+    version: `${role}@${creao ? "creao-" : ""}${(await hashInput(instructions)).slice(0, 12)}`,
     tools: [] as string[],
     knowledgeCutoff: CUTOFF,
+    ...(creao
+      ? {
+          provider: "creao",
+          instructionsScope:
+            "Rules Domino sends with each run. The CREAO app's own instructions, skills and memory also apply and are not visible to Domino.",
+        }
+      : {}),
   };
 }
 
@@ -146,6 +188,8 @@ async function addOp(
     .first();
   const sequence = (last?.sequence ?? 0) + 1;
   const operationId = `${conversationId}-${sequence}`;
+  // A specialist's provider mode and profile freeze here; dispatch rejects any later drift.
+  const mode = modeOf();
   await ctx.db.insert("investigationOperations", {
     ...fields,
     operationId,
@@ -154,7 +198,7 @@ async function addOp(
     status: "queued",
     createdAt: now(),
     leaseUntil: Date.now() + TURN_DEADLINE_MS,
-    ...(fields.role ? { profile: await profileOf(fields.role) } : {}),
+    ...(fields.role ? { providerMode: mode, profile: await profileOf(fields.role, mode) } : {}),
   });
   return operationId;
 }
@@ -358,8 +402,19 @@ export const getConversation = query({
         operationId: m.operationId,
         createdAt: m.createdAt,
       })),
-      // The stored specialist packet stays server-side; input carries its ids and hash.
-      operations: ops.map(({ _id, _creationTime, packet: _p, conversationId: _c, ...op }) => op),
+      // The stored specialist packet and remote run identity stay server-side; input carries
+      // its ids and hash, and status is the coarse lifecycle.
+      operations: ops.map(
+        ({
+          _id,
+          _creationTime,
+          packet: _p,
+          conversationId: _c,
+          remoteRunId: _r,
+          remoteStatus: _s,
+          ...op
+        }) => op,
+      ),
       busy: active(ops),
       canReveal: open("reveal"),
       canAlternative: open("alternative"),
@@ -375,6 +430,8 @@ type Step = {
   packet?: HistoricalSpecialistInput;
   profile?: Profile;
   leaseUntil?: number;
+  /** The claim's startedAt; only this claim may record the remote run. */
+  claimedAt?: string;
 } | null;
 
 // Fails closed: an operation without a lease is treated as expired.
@@ -421,6 +478,14 @@ export const step = internalMutation({
         return { operationId: op.operationId };
       }
       const calls = ops.filter((o) => o.kind === "specialist" && o.startedAt).length;
+      if (op.providerMode !== providerMode) {
+        await settle(ctx, op, "failed", {
+          code: "provider_changed",
+          message: "The provider setting changed after this step was queued. No call was made.",
+        });
+        op.status = "failed";
+        continue;
+      }
       if (calls >= MAX_SPECIALIST_CALLS) {
         await settle(ctx, op, "failed", {
           code: "budget",
@@ -439,10 +504,10 @@ export const step = internalMutation({
         continue;
       }
       const packet = built.data;
+      const startedAt = now();
       await ctx.db.patch(op._id, {
         status: "running",
-        startedAt: now(),
-        providerMode,
+        startedAt,
         packet,
         input: {
           visibleThrough: packet.visibleThrough,
@@ -461,6 +526,7 @@ export const step = internalMutation({
         packet,
         profile: op.profile as Profile,
         leaseUntil: op.leaseUntil,
+        claimedAt: startedAt,
       };
     }
     return null;
@@ -621,8 +687,10 @@ const outcome = v.union(
     ok: v.literal(true),
     output: v.any(),
     provider: v.string(),
-    model: v.string(),
-    usage: v.object({ inputTokens: v.number(), outputTokens: v.number() }),
+    // CREAO reports no validated model or usage; absent means unknown, never invented.
+    model: v.optional(v.string()),
+    usage: v.optional(v.object({ inputTokens: v.number(), outputTokens: v.number() })),
+    runId: v.optional(v.string()),
   }),
   v.object({
     ok: v.literal(false),
@@ -648,6 +716,14 @@ export const finishSpecialist = internalMutation({
       return false;
     }
     if (result.ok) {
+      // A CREAO answer counts only for the remote run recorded before polling began.
+      if (op.providerMode === "creao" && (!op.remoteRunId || result.runId !== op.remoteRunId)) {
+        await settle(ctx, op, "unknown", {
+          code: "run_unrecorded",
+          message: "The reply did not match the recorded CREAO run. It was not used or retried.",
+        });
+        return false;
+      }
       const packet = HistoricalSpecialistInputSchema.parse(op.packet);
       const out = HistoricalSpecialistOutputSchema.safeParse(result.output);
       if (out.success && checkHistoricalSpecialistOutput(packet, out.data).length === 0) {
@@ -677,6 +753,30 @@ export const finishSpecialist = internalMutation({
     }
     await settle(ctx, op, result.status, { code: result.code, message: result.message });
     return false;
+  },
+});
+
+/**
+ * CREAO onRunCreated: persist the remote run before any poll. Internal only. Accepted once, for
+ * the live claim of a running CREAO operation inside its lease; anything else returns false, so
+ * the adapter stops with run_record_failed and never polls.
+ */
+export const recordRemoteRun = internalMutation({
+  args: { operationId: v.string(), claimedAt: v.string(), runId: v.string(), status: v.string() },
+  handler: async (ctx, { operationId, claimedAt, runId, status }) => {
+    const op = await opById(ctx, operationId);
+    if (
+      !op ||
+      op.kind !== "specialist" ||
+      op.status !== "running" ||
+      op.providerMode !== "creao" ||
+      op.startedAt !== claimedAt ||
+      op.remoteRunId !== undefined ||
+      expired(op)
+    )
+      return false;
+    await ctx.db.patch(op._id, { provider: "creao", remoteRunId: runId, remoteStatus: status });
+    return true;
   },
 });
 
@@ -718,58 +818,107 @@ export const expireTurn = internalMutation({
   },
 });
 
-class ProviderUnavailable extends Error {}
+class ProviderUnverified extends Error {}
 class ProfileMismatch extends Error {}
+class NoBudget extends Error {}
 
 /**
- * The one provider dispatch point. CREAO is the target coordinator and has no verified adapter
- * yet (G2c), so the default fails honestly with no call. claude-dev is the accepted Claude
- * specialist entry, used only when explicitly configured; it is never a fallback. The frozen
- * profile must equal what this code would send, or nothing is sent.
+ * Server-side gate, default off: the CREAO profile versions Codex has verified against the
+ * dedicated remote apps' own instructions and memory. A version not listed sends nothing.
+ */
+const verifiedCreaoProfiles = () =>
+  (process.env.DOMINO_CREAO_VERIFIED_PROFILES ?? "").split(",").map((s) => s.trim());
+
+/**
+ * The one provider dispatch point, called once per claim. The frozen profile must equal what
+ * this code would send, or nothing is sent. creao (default): the app-scoped historical adapter,
+ * only for a verified profile and inside the lease; it records the remote run before polling.
+ * claude-dev is the accepted Claude entry, only when explicitly configured; never a fallback.
  */
 async function dispatchSpecialist(
   mode: ProviderMode,
   packet: HistoricalSpecialistInput,
   profile: Profile | undefined,
+  leaseUntil: number | undefined,
+  onRunCreated: (run: { runId: string; status: string }) => Promise<void>,
 ) {
-  const current = await profileOf(packet.role);
+  const current = await profileOf(packet.role, mode);
   if (
     profile?.role !== current.role ||
     profile.instructions !== current.instructions ||
     profile.version !== current.version
   )
     throw new ProfileMismatch();
-  if (mode === "claude-dev") return runHistoricalSpecialist(process.env, packet);
-  throw new ProviderUnavailable();
+  if (mode === "claude-dev") {
+    const { output, provider, model, usage } = await runHistoricalSpecialist(process.env, packet);
+    return { output, provider, model, usage };
+  }
+  if (sentCreaoRules(packet) !== profile.instructions) throw new ProfileMismatch();
+  if (!verifiedCreaoProfiles().includes(profile.version)) throw new ProviderUnverified();
+  const budget = Math.min(
+    creaoDefaults.runDeadlineMs,
+    (leaseUntil ?? 0) - Date.now() - FINISH_MARGIN_MS,
+  );
+  if (budget < MIN_CREAO_BUDGET_MS) throw new NoBudget();
+  // Only the role's app id and app key are read; no account key and no fallback.
+  const { output, provider, runId } = await runCreaoHistoricalSpecialist(process.env, packet, {
+    runDeadlineMs: budget,
+    onRunCreated,
+  });
+  return { output, provider, runId };
 }
 
 // Transport outcomes where the request may have reached the provider.
 const MAYBE_SENT = new Set(["timeout", "network"]);
+// CREAO outcomes that are settled: nothing was created, or the run ended without a usable
+// answer. Anything else (deadline, poll limit, unrecorded run, odd status) may still bill.
+const CREAO_SETTLED = new Set([
+  "config",
+  "invalid_input",
+  "input_too_large",
+  "run_failed",
+  "run_cancelled",
+  "no_result",
+  "invalid_output",
+  "ambiguous_result",
+  "too_many_artifacts",
+  "untrusted_artifact",
+]);
+
+const failed = (code: string, message: string) => ({
+  ok: false as const,
+  status: "failed" as const,
+  code,
+  message,
+});
 
 function failureOf(e: unknown) {
   if (e instanceof ProfileMismatch)
+    return failed(
+      "profile_mismatch",
+      "The saved specialist profile no longer matches the deployed instructions. No model call was made.",
+    );
+  if (e instanceof ProviderUnverified)
+    return failed(
+      "provider_unverified",
+      "The CREAO historical agents' own instructions and memory are not verified yet. No call was made.",
+    );
+  if (e instanceof NoBudget)
+    return failed(
+      "deadline",
+      "Too little time was left in this turn to start a CREAO run. No call was made.",
+    );
+  if (e instanceof ProviderError) {
+    const uncertain =
+      e.provider === "creao" ? !CREAO_SETTLED.has(e.category) : MAYBE_SENT.has(e.category);
     return {
       ok: false as const,
-      status: "failed" as const,
-      code: "profile_mismatch",
-      message:
-        "The saved specialist profile no longer matches the deployed instructions. No model call was made.",
-    };
-  if (e instanceof ProviderUnavailable)
-    return {
-      ok: false as const,
-      status: "failed" as const,
-      code: "provider_unavailable",
-      message: "The CREAO coordinator is not connected yet. No model call was made.",
-    };
-  if (e instanceof ProviderError)
-    return {
-      ok: false as const,
-      status: MAYBE_SENT.has(e.category) ? ("unknown" as const) : ("failed" as const),
+      status: uncertain ? ("unknown" as const) : ("failed" as const),
       code: e.category,
       // ProviderError messages carry only provider, job, category and HTTP status.
       message: e.message,
     };
+  }
   return {
     ok: false as const,
     status: "unknown" as const,
@@ -782,8 +931,7 @@ function failureOf(e: unknown) {
 export const runTurn = internalAction({
   args: { conversationId: v.string() },
   handler: async (ctx, { conversationId }): Promise<void> => {
-    const mode: ProviderMode =
-      process.env.DOMINO_SPECIALIST_PROVIDER === "claude-dev" ? "claude-dev" : "creao";
+    const mode = modeOf();
     for (let i = 0; i < MAX_STEPS; i++) {
       let next: Step;
       try {
@@ -798,26 +946,35 @@ export const runTurn = internalAction({
       }
       if (!next) return;
       if (!next.packet) continue;
+      const { operationId, claimedAt = "" } = next;
       let result: Infer<typeof outcome>;
       if (expired(next)) {
         // Claimed but the lease ran out before the call: send nothing; commit records unknown.
         result = { ok: false, status: "unknown", ...OUTCOME_UNKNOWN };
       } else {
         try {
-          const { output, provider, model, usage } = await dispatchSpecialist(
+          const sent = await dispatchSpecialist(
             mode,
             next.packet,
             next.profile,
+            next.leaseUntil,
+            async ({ runId, status }) => {
+              const recorded = await ctx.runMutation(internal.investigation.recordRemoteRun, {
+                operationId,
+                claimedAt,
+                runId,
+                status,
+              });
+              // Throwing makes the adapter stop with run_record_failed: no poll, no repost.
+              if (!recorded) throw new Error("remote run not recorded");
+            },
           );
-          result = { ok: true, output, provider, model, usage };
+          result = { ok: true, ...sent };
         } catch (e) {
           result = failureOf(e);
         }
       }
-      await ctx.runMutation(internal.investigation.finishSpecialist, {
-        operationId: next.operationId,
-        result,
-      });
+      await ctx.runMutation(internal.investigation.finishSpecialist, { operationId, result });
     }
   },
 });

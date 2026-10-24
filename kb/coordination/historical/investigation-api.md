@@ -38,7 +38,7 @@ Backend records for the canvas. Module `apps/web/convex/investigation.ts`; table
 
 - Dependencies: forecast on source; analyst on source + forecast; reveal on forecast; alternative on forecast; reviewer on alternative. Edges = `dependsOn`. The Domino node is the conversation itself: a fixed, disclosed workflow, not autonomous planning.
 - Both specialists read only the saved run's frozen snapshot at the cutoff (`visibleThrough = knowledgeCutoff`, no comparisons, no excerpts). The analyst gets no history. The reviewer gets the user question and the analyst's cutoff assessment only, even after a reveal, so no S8 values or reveal messages reach it. Revealed-view specialist input is not built.
-- `profile`: `{role, workingStyle, instructions, version, tools: [], knowledgeCutoff}`, stored when the operation is created. `instructions` is the exact app-authored system prompt of the accepted Claude specialist entry; `version` = `role@` + first 12 hex of its sha256. A later prompt change gives new operations a new version; stored ones keep theirs, and a stored profile whose role, instructions or version differs from what dispatch would send fails `profile_mismatch` with no call. Label it "Instructions and working style".
+- `profile`: `{role, workingStyle, instructions, version, tools: [], knowledgeCutoff}`, stored when the operation is created, for its frozen provider mode (CREAO adds fields; see Provider seam). For claude-dev, `instructions` is the exact app-authored system prompt of the accepted Claude specialist entry; `version` = `role@` + first 12 hex of its sha256. A later prompt change gives new operations a new version; stored ones keep theirs, and a stored profile whose role, instructions or version differs from what dispatch would send fails `profile_mismatch` with no call. Label it "Instructions and working style".
 
 ## Execution and failure
 
@@ -47,12 +47,21 @@ Backend records for the canvas. Module `apps/web/convex/investigation.ts`; table
 - Deadline: each operation's `leaseUntil` is creation + 180 s, and each turn schedules `expireTurn` then for its own operation ids. Queued becomes `failed/deadline`; running becomes `unknown/outcome_unknown`. The lease is also enforced without cleanup: `step` fails an expired queued operation instead of claiming it, `runTurn` sends nothing for a claim whose lease ran out, and `finishSpecialist` turns any result for an expired running operation into `unknown/outcome_unknown` (a missing lease counts as expired). Nothing is retried anywhere, and reload or reconnect never redispatches (claims happen once).
 - Budget: at most 2 specialist calls per conversation (analyst + reviewer), one reveal, one alternative, one turn at a time. Follow-up questions are not supported.
 
-## Provider seam (live versus unavailable)
+## Provider seam (G2d)
 
-`dispatchSpecialist` is the single provider point.
-- Default (`DOMINO_SPECIALIST_PROVIDER` unset or anything except `claude-dev`): `providerMode: "creao"`, the agent operation fails `provider_unavailable` ("The CREAO coordinator is not connected yet. No model call was made."). No call, no fallback. CREAO adapter is G2c.
-- `DOMINO_SPECIALIST_PROVIDER=claude-dev`: explicit development mode, calls the accepted `runHistoricalSpecialist` (needs `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` in the Convex deployment env). `provider: "claude"`, reported `model` and `usage` are stored. This is not CREAO.
-- Error mapping: `ProviderError` `timeout`/`network` -> `unknown`; other categories -> `failed` with the sanitized ProviderError message; any other throw -> `unknown/internal`. No raw provider text, reasoning or keys are stored.
+`dispatchSpecialist` is the single provider point, called once per claim. No fallback between modes.
+- Mode freezes when the specialist operation is created (`providerMode` = `claude-dev` if `DOMINO_SPECIALIST_PROVIDER=claude-dev`, else `creao`), with a profile for that mode. If `runTurn`'s mode differs at claim: `failed/provider_changed`, no call.
+- Default `creao`: the G2c app-scoped adapter `runCreaoHistoricalSpecialist` with the role's own app id and app key (see creao-historical-api.md). No account or developer key. Order, all zero-call failures first:
+  1. Stored profile must equal the current one and its `instructions` must equal the rules plus output format parsed from the exact prompt being sent: else `failed/profile_mismatch`.
+  2. Gate (default off): `DOMINO_CREAO_VERIFIED_PROFILES`, a comma list of CREAO profile versions Codex verified against the dedicated remote apps' instructions and memory. Version not listed: `failed/provider_unverified`. A rules edit gives a new version, so verification must be redone.
+  3. Budget: run deadline = min(150 s, `leaseUntil` - now - 10 s). Under 30 s: `failed/deadline`, nothing created.
+  4. Missing or shared app config: adapter `failed/config`.
+  5. One create. `onRunCreated` calls `internal.investigation.recordRemoteRun({operationId, claimedAt, runId, status})`, which writes `provider: "creao"`, `remoteRunId`, `remoteStatus` only for a running CREAO operation with the same claim (`startedAt`), no recorded run yet and an unexpired lease. Otherwise it returns false, the adapter fails `run_record_failed` and never polls.
+  6. Success needs validated output and `runId` equal to the recorded `remoteRunId` (else `unknown/run_unrecorded`). `model` and `usage` are not stored (CREAO reports neither).
+- CREAO profile: `instructions` = the per-run rules and output format Domino sends; `version` = `role@creao-` + 12 hex; `provider: "creao"`; `instructionsScope` says the remote app's own instructions, skills and memory also apply and are not visible to Domino.
+- `remoteRunId` and `remoteStatus` are server-only: `getConversation` omits them. The UI sees coarse `status` and `provider`.
+- `DOMINO_SPECIALIST_PROVIDER=claude-dev`: unchanged. Explicit development mode, calls `runHistoricalSpecialist` (needs `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`). `provider: "claude"`, reported `model` and `usage` stored. This is not CREAO.
+- Error mapping: Claude `timeout`/`network` -> `unknown`, other categories -> `failed`. CREAO: `config`, `invalid_input`, `input_too_large`, `run_failed`, `run_cancelled`, `no_result`, `invalid_output`, `ambiguous_result`, `too_many_artifacts`, `untrusted_artifact` -> `failed`; everything else (timeout, network, deadline, poll_limit, run_record_failed, http_status, malformed_response, unknown_status, ...) -> `unknown` because a remote run may exist and bill. Any other throw -> `unknown/internal`. Messages are the sanitized ProviderError text only. Nothing is retried.
 
 ## Source wake (internal)
 
