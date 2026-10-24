@@ -172,6 +172,16 @@ Dark mode uses a near-black brown base per Micah's revised direction. Charts use
 
 ## 7. Frontend workflow
 
+1. Sketch and prototype directly in `/playground` with contract fixtures.
+2. Review desktop and mobile screenshots against `skills/taste/SKILL.md`.
+3. Build reusable props-only components from the tokens and behavior in this spec.
+4. Wire reviewed components to Convex in the task that owns that screen.
+
+Use Next.js on Vercel. Figma accounts, files, prototypes, and stage logs are outside the frontend scope.
+
+
+## 8. Product screens
+
 ### Company flows (P5)
 
 The connect form creates a mock-profile company and keeps its ID in the connection URL so progress survives reloads. Read source step text live; redirect only when the saved company status is ready. Pending source processing must stay visible.
@@ -180,9 +190,10 @@ Scenario detail compares the selected branch with its parent, siblings and saved
 
 Add event supports configured unpaid invoice delays, lost renewals, added cloud cost and early cash. Review the fields before submission; decimal dollar inputs become integer cents exactly. A lower credit line needs contract support and cannot submit. Next week requires a confirmation and waits for an actual new week. Service readiness comes from the backend; unavailable actions never claim a computed result.
 
-1. Sketch and prototype directly in `/playground` with contract fixtures.
-2. Review desktop and mobile screenshots against `skills/taste/SKILL.md`.
-3. Build reusable props-only components from the tokens and behavior in this spec.
-4. Wire reviewed components to Convex in the task that owns that screen.
+### Learning and decision records (P6)
 
-Use Next.js on Vercel. Figma accounts, files, prototypes, and stage logs are outside the frontend scope.
+Read measured grades and saved model rules, with chart/table alternatives and source proof. Keep missing grades and weekly briefs empty; never draw a manufactured improvement curve. A saved brief has one company/week and cited evidence. Show a weekly notification only when a new brief arrives after the page has loaded.
+
+Decision tables show saved approvals and activity newest first, with actor, timestamp, notes, references and company-scoped scenario links. Label unverified demo decisions. Timestamps use Pacific time for this demo. Narrow tables scroll within the page and include a swipe hint.
+
+R and Reload saved results reload the main screen from saved company results; they do not request a forecast recomputation. Ignore the shortcut in forms and dialogs. Dialogs keep phone margins and scroll within the viewport.

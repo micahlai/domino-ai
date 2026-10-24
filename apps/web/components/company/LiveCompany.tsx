@@ -9,6 +9,7 @@ import type { Branch } from "@domino/contracts";
 import { useConvexConnectionState, useMutation, useQuery } from "convex/react";
 import { LiveConnection } from "../flows/ConnectScreen";
 import { NextWeekDialog } from "../flows/NextWeekDialog";
+import { WeeklyBriefNotice } from "../learning/WeeklyBriefNotice";
 import { CompanyWorkspace } from "./CompanyWorkspace";
 import { matchingFixBranch } from "./selection";
 
@@ -84,6 +85,7 @@ export function LiveFixes({ branch, branches }: { branch: Branch; branches: Bran
 
 export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
   const company = useQuery(api.companies.get, { companyId });
+  const brief = useQuery(api.briefs.latest, { companyId });
   const report = useQuery(api.resilience.get, { companyId, withFixes: false });
   const reportWithFixes = useQuery(api.resilience.get, { companyId, withFixes: true });
   const history = useQuery(api.history.get, { companyId });
@@ -124,6 +126,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
     );
   return (
     <div className="space-y-4">
+      <WeeklyBriefNotice brief={brief} companyPath={`/c/${companyId}`} />
       <CompanyWorkspace
         data={{ company, history, report, reportWithFixes, constraints, risks, branches }}
         companyPath={`/c/${companyId}`}
@@ -155,7 +158,13 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
               />
             </div>
             <p className="max-w-xs text-xs text-muted-foreground">
-              New events and weeks are not available yet. Review the saved forecasts below.
+              {!capabilities.addEvent && !capabilities.nextWeek
+                ? "New events and weeks are not available yet. Review the saved forecasts below."
+                : !capabilities.addEvent
+                  ? "New event processing is not available yet."
+                  : !capabilities.nextWeek
+                    ? "New weeks cannot be prepared yet."
+                    : "Review new events and confirm each new week before preparing it."}
             </p>
           </div>
         }

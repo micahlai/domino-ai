@@ -83,6 +83,13 @@ export default defineSchema({
     inputHash: v.string(),
     text: v.string(),
   }).index("by_branch", ["branchId"]),
+  briefs: defineTable({
+    companyId,
+    week: v.string(),
+    text: v.string(),
+    evidence: v.any(),
+    at: v.string(),
+  }).index("by_company_week", ["companyId", "week"]),
   log: defineTable({
     companyId,
     actor: v.union(

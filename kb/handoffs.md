@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:57 Micah (Codex, P6)
+- Done: live/sample learning and decision-record routes, measured accuracy Recharts/table, saved rules/proof, validated weekly brief storage with one-per-company/week upsert, and new-brief notification. Added the landing sentence/connect action and R/Reload saved results fallback; shortcut ignores forms and dialogs. Browser verified rule proof, saved approval appearing after reload, reference links, weekly notification, R resetting a fix preview without affecting form typing, and 390 px dialogs/tables without page overflow. All 82 tests, typecheck, lint and production build pass.
+- Next: integrate the independently committed timeline controls into this preview, then review P7 usability/demo materials once E5/E7 processing is ready.
+- Watch out: actual company grades/briefs stay empty until E7 supplies them. Illustrative playground rows/accuracy chart and notification are explicitly labeled. One unverified demo approval was saved in the isolated port-3220 Kestrel database for verification; nothing was executed. P5 remains review because scheduled services and credit-line contract support are missing.
+
 ## 2026-10-24 03:49 Micah (Codex, P5)
 - Done: separate managed worktree codex/p5-p6-flows from the current timeline branch. Added company create/progress/resume, company-scoped branch comparison with Recharts and weekly table, saved explanations/fixes/proof, configured event review with exact cent parsing, and next-week confirmation/pending states. Added backend readiness and validated event choices plus a scoped explanation request bridge. Browser checked creation/reload, scenario data, supported/unsupported event review and confirmation. All 80 tests, typecheck, lint and production build pass.
 - Next: P6 learning/record screens and weekly brief storage; E5/E7 must implement the scheduled actions before the full P5 demo can run.

@@ -1,11 +1,6 @@
-import { PageStub } from "@/components/PageStub";
-
-export default function Page() {
-  return (
-    <PageStub
-      label="Decision record"
-      title="Every decision has a record."
-      description="Review who approved or rejected a fix, when they decided, and the reason behind the change."
-    />
-  );
+import { RecordScreen } from "@/components/records/RecordScreen";
+export const metadata = { title: "Decision record" };
+export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
+  const { companyId } = await params;
+  return <RecordScreen key={companyId} companyId={companyId} />;
 }

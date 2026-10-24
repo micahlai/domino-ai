@@ -1,11 +1,6 @@
-import { PageStub } from "@/components/PageStub";
-
-export default function Page() {
-  return (
-    <PageStub
-      label="What we learned"
-      title="See how each week makes the forecast better."
-      description="Review forecast accuracy and the payment patterns Domino learns from your company\u2019s records."
-    />
-  );
+import { LearningScreen } from "@/components/learning/LearningScreen";
+export const metadata = { title: "What we learned" };
+export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
+  const { companyId } = await params;
+  return <LearningScreen key={companyId} companyId={companyId} />;
 }

@@ -25,6 +25,7 @@ and parsed with the Zod schema when read in actions.
 | `grades` | `companyId`, `week`, `errorPct`, `misses` (Evidence[]) | `by_company` |
 | `explanations` | `branchId`, `inputHash`, `text` | `by_branch` |
 | `log` | `companyId`, `actor` ("person" \| "engine" \| "agent:creao" \| "agent:claude" \| "connector"), `action`, `refs`, `at` | `by_company` |
+| `briefs` | `companyId`, `week` (Monday ISO), `text`, `evidence` (Evidence[]), `at` | `by_company_week` |
 
 ## Identifier and demo rules
 
@@ -43,6 +44,8 @@ and parsed with the Zod schema when read in actions.
 P5 adds `capabilities.get({})` returning readiness booleans (`connect`, `addEvent`, `nextWeek`, `simulate`, `explain`). These remain false while the corresponding E5/E7 actions are placeholders. `eventInputs.get({companyId})` returns the latest validated snapshot's invoice/customer choices and its as-of date, or null.
 
 P5 adds `explanations.request({companyId, branchId})`: validate the branch belongs to the company, reuse an existing explanation, otherwise schedule `agents.explain` only when that capability is ready. Returns `{requested}`. It does not claim an explanation was generated.
+
+P6 adds `briefs.latest({companyId})`, returning the newest saved weekly brief or null. E7 writes through `internal.briefs.save({companyId,week,text,evidence})` after advancing the company week. This validates the company, real Monday date, nonempty text and contract evidence, and upserts one brief per company/week. It never generates a brief in the query or seed.
 
 | Function | Args | Returns |
 | --- | --- | --- |

@@ -27,7 +27,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | done | codex/p3-multiverse | SVG fan, stable fix morph, selection and keyboard access; desktop/mobile verified |
 | P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | done | codex/p4-main-screen | Live subscriptions, exact branch selection, proof and confirmed approval; 67 tests/check and browser pass |
 | P5 | Branch detail, connect screen, add event, next week | `prompts/product/P5-flows.md` | P4 | review | codex/p5-p6-flows | UI/data flows verified; E5/E7 services and credit-limit Change still required for complete demo |
-| P6 | Learning + record screens; taste pass | `prompts/product/P6-learning-record-polish.md` | P5 | todo | | |
+| P6 | Learning + record screens; taste pass | `prompts/product/P6-learning-record-polish.md` | P5 | done | codex/p5-p6-flows | Learning/records, validated brief storage/toast, R fallback, phone polish; 82 tests/build pass |
 | P7 | Usability test and demo materials | `prompts/product/P7-user-test.md` | P6 | todo | | |
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
 | T1 | Dark palette and original Domino logo | User request | P1 | done | codex/dark-theme | Shared tokens, header mark and favicon; checks/build/screenshot pass |

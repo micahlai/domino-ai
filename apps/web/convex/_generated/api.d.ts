@@ -11,6 +11,7 @@
 import type * as agents from "../agents.js";
 import type * as approvals from "../approvals.js";
 import type * as branches from "../branches.js";
+import type * as briefs from "../briefs.js";
 import type * as capabilities from "../capabilities.js";
 import type * as companies from "../companies.js";
 import type * as connect from "../connect.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   approvals: typeof approvals;
   branches: typeof branches;
+  briefs: typeof briefs;
   capabilities: typeof capabilities;
   companies: typeof companies;
   connect: typeof connect;

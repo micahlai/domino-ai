@@ -26,6 +26,9 @@ import { type ReactNode, useState } from "react";
 import { BranchDetail } from "./flows/BranchDetail";
 import { ConnectForm, ConnectionProgress } from "./flows/ConnectScreen";
 import { NextWeekDialog } from "./flows/NextWeekDialog";
+import { LearningPreview } from "./learning/LearningPreview";
+import { LearningView } from "./learning/LearningScreen";
+import { RecordView } from "./records/RecordScreen";
 
 const sections = [
   "CompanyWorkspace",
@@ -45,6 +48,9 @@ const sections = [
   "ConnectionFlow",
   "BranchDetail",
   "NextWeek",
+  "LearningScreen",
+  "WeeklyBrief",
+  "DecisionRecord",
 ];
 const sources: SourcePreview[] = [
   ...fixtures.risks.flatMap((risk) => risk.evidence),
@@ -247,9 +253,15 @@ export function Playground() {
         </PreviewSection>
         <PreviewSection
           name="LearningChart"
-          description="The empty state before weekly results are available."
+          description="Illustrative chart values for reviewing the layout; these are not measured company results."
         >
-          <LearningChart grades={[]} />
+          <LearningChart
+            grades={[
+              { week: "2026-10-12", errorPct: 6.1 },
+              { week: "2026-10-19", errorPct: 6.8 },
+              { week: "2026-10-26", errorPct: 3.4 },
+            ]}
+          />
         </PreviewSection>
         <PreviewSection
           name="RuleCard"
@@ -330,8 +342,49 @@ export function Playground() {
       >
         <NextWeekDialog currentWeek={0} />
       </PreviewSection>
+      <PreviewSection
+        name="LearningScreen"
+        description="Saved payment rules and honest empty accuracy results for the sample company."
+      >
+        <LearningView name="Kestrel Data" model={fixtures.model} grades={[]} brief={null} sample />
+      </PreviewSection>
+      <PreviewSection
+        name="WeeklyBrief"
+        description="Illustrative weekly notification preview; no generated company brief is saved."
+      >
+        <LearningPreview />
+      </PreviewSection>
+      <PreviewSection
+        name="DecisionRecord"
+        description="Illustrative decision and activity rows, for layout and reference navigation only."
+      >
+        <RecordView
+          name="Illustrative company"
+          sample
+          companyPath="/c/kestrel"
+          branches={fixtures.branches}
+          approvals={[
+            {
+              fixId: "fix_early_pay",
+              branchId: "br_fix_early_pay",
+              decision: "approved",
+              by: "Sample reviewer",
+              at: "2026-10-30T17:00:00Z",
+              note: "Illustrative decision; no company approval was recorded.",
+            },
+          ]}
+          activity={[
+            {
+              actor: "person",
+              action: "fix.approved",
+              refs: ["fix_early_pay", "br_fix_early_pay"],
+              at: "2026-10-30T17:00:00Z",
+            },
+          ]}
+        />
+      </PreviewSection>
       <p className="pb-4 text-sm text-muted-foreground">
-        Component previews only. The next product tasks connect live data and approval flows.
+        Component previews only. Sample actions do not change company records.
       </p>
     </div>
   );

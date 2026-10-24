@@ -5,13 +5,19 @@ import { IdSchema } from "@domino/contracts";
 import Link from "next/link";
 import { FixtureCompany } from "./FixtureCompany";
 import { CompanyConnectionStatus, LiveCompany } from "./LiveCompany";
+import { ReloadSavedResults } from "./ReloadSavedResults";
 
 const CompanyId = IdSchema.regex(/^[a-z0-9]{32}$/).transform((value) => value as Id<"companies">);
 
 export function CompanyScreen({ companyId }: { companyId: string }) {
   const demoId = process.env.NEXT_PUBLIC_DEMO_COMPANY_ID;
   if (companyId === "kestrel" && (!demoId || !process.env.NEXT_PUBLIC_CONVEX_URL))
-    return <FixtureCompany />;
+    return (
+      <>
+        <ReloadSavedResults />
+        <FixtureCompany />
+      </>
+    );
   const id = CompanyId.safeParse(companyId === "kestrel" ? demoId : companyId);
   if (!id.success)
     return (
@@ -34,6 +40,7 @@ export function CompanyScreen({ companyId }: { companyId: string }) {
   return (
     <>
       <CompanyConnectionStatus />
+      <ReloadSavedResults />
       <LiveCompany companyId={id.data} />
     </>
   );
