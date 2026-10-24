@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 00:55 Codex brain (E1a/E6a dispatch)
+- Done: user authorized launch; synchronized the two clean worktrees to 9830b93 and dispatched build_e1a and build_e6a on GPT-6 Sol/high. E3a remains with Claude.
+- Next: workers implement their cards, verify, fill their own Results and commit locally; brain reviews and records outcomes.
+- Watch out: no duplicate writers, no root manifests/lockfile/shared contracts, no live paid provider calls, no merge or push. Thirty-minute headless checkpoint.
+
 ## 2026-10-24 00:55 Codex brain (E3a review)
 - Done: reconciled Claude's E3a f9b5ad2 with the prepared worktree; fresh Node 24 pnpm check passed 26 engine and 13 contract tests plus typechecks/lint. Independent GPT-6 Astra review found two valid-input defects; review and repair card saved. No feature code, merge or push.
 - Next: Claude continues E3a-r1 in existing domino-E3a: exclude historical hiring savings and fix exact cent rounding. New Result belongs in that worktree's card. Re-review before merge; E1a/E6a remain prepared.

@@ -8,25 +8,25 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | S0 | Machine setup | `prompts/shared/00-setup.md` | — | doing | main | Offline check gate verified with Node 24; credentials/accounts remain unverified |
-| E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | todo | | |
+| E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | doing | E1a-kestrel | E1a worker launched; later E1 slices remain open |
 | E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
 | E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | doing | E3a-forecast | Claude built E3a at f9b5ad2; two review fixes required, E3b/contracts still open |
 | E4 | Engine: risks, fix scoring, history, stress test | `prompts/engine/E4-multiverse.md` | E3 | todo | | Powers the hero visual |
 | E5 | Connectors + tie-out (Convex actions) | `prompts/engine/E5-connectors.md` | E2, P2 | todo | | |
-| E6 | Agents: CREAO + Claude adapters | `prompts/engine/E6-agents.md` | S0 | todo | | Can run in parallel |
+| E6 | Agents: CREAO + Claude adapters | `prompts/engine/E6-agents.md` | S0 | doing | E6a-agent-feasibility | E6a worker launched; live adapters remain open |
 | E7 | Wire actions: connect.run, recompute, week.advance; grade + learn | `prompts/engine/E7-wiring-learning.md` | E4, E5, E6 | todo | | |
 | E8 | Held-out companies + proof numbers | `prompts/engine/E8-proof.md` | E7 | todo | | |
 
 ### First slices
 
 Plan: `kb/tasks/launch-plan-2026-10-24.md`. These slices need the verified offline S0 gate, not live credentials.
-Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; review blocks merge on historical savings and cent-rounding bugs. Repair card: `kb/tasks/E3a-r1-money-dates.md`. Do not launch another engine worker. E1a/E6a remain prepared.
+Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; review blocks merge on historical savings and cent-rounding bugs. Repair card: `kb/tasks/E3a-r1-money-dates.md`. Do not launch another engine worker. E1a/E6a were launched by the brain at the user's request.
 
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
 | E3a | `kb/tasks/E3a-forecast.md` | S0 offline checks | review | E3a-forecast | ../domino-E3a |
-| E1a | `kb/tasks/E1a-kestrel.md` | S0 offline checks | todo | E1a-kestrel | ../domino-E1a |
-| E6a | `kb/tasks/E6a-agent-feasibility.md` | S0 offline checks; public docs | todo | E6a-agent-feasibility | ../domino-E6a |
+| E1a | `kb/tasks/E1a-kestrel.md` | S0 offline checks | doing | E1a-kestrel | ../domino-E1a |
+| E6a | `kb/tasks/E6a-agent-feasibility.md` | S0 offline checks; public docs | doing | E6a-agent-feasibility | ../domino-E6a |
 
 ## Product (Micah)
 
