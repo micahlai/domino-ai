@@ -32,4 +32,10 @@ describe("AppShell navigation", () => {
   it("leaves /investigate full-window", () => {
     expect(render("/investigate")).not.toContain("<header");
   });
+
+  it("leaves the case workspace full-window", () => {
+    const html = render("/case/2u/company");
+    expect(html).not.toContain("<header");
+    expect(html).not.toContain("Main navigation");
+  });
 });

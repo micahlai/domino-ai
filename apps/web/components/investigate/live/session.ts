@@ -84,18 +84,21 @@ export function conversationFromSearch(search: string) {
   return new URLSearchParams(search).get("c") || undefined;
 }
 
-/** A finished call may touch the page only if it is still mounted on /investigate for the
- * conversation it started from (none = a new investigation). */
+/** A finished call may touch the page only if it is still mounted on its own route for the
+ * conversation it started from (none = a new investigation). A route that fixes the conversation
+ * in its path (`pinned`) has no `c` to compare. */
 export function mayApplyCompletion(args: {
   alive: boolean;
   pathname: string;
   search: string;
   originId?: string;
+  path?: string;
+  pinned?: boolean;
 }) {
   return (
     args.alive &&
-    args.pathname === "/investigate" &&
-    conversationFromSearch(args.search) === (args.originId || undefined)
+    args.pathname === (args.path ?? "/investigate") &&
+    (args.pinned || conversationFromSearch(args.search) === (args.originId || undefined))
   );
 }
 

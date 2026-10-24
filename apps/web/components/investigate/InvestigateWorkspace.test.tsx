@@ -722,6 +722,15 @@ describe("graph", () => {
     });
   });
 
+  it("drops its own brand and title when embedded in a page that has them", () => {
+    const html = renderToStaticMarkup(
+      createElement(InvestigateWorkspace, { nodes: [], connection: "live", embedded: true }),
+    );
+    expect(html).not.toContain("Domino home");
+    expect(html).not.toContain("<h1");
+    expect(html).toContain("Connected");
+  });
+
   it("rejects non-http evidence links", () => {
     expect(safeHref("https://example.com/x")).toBe("https://example.com/x");
     expect(safeHref("http://example.com/x")).toBe("http://example.com/x");
