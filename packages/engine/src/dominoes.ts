@@ -29,10 +29,15 @@ type Draft = {
   cause?: (earlier: Draft[]) => Draft | undefined;
   /** Indices into context.changes behind this event or drop; removing them is its counterfactual */
   own?: number[];
+  /** Record keys (`kind:id`) whose cash change this event or drop represents */
+  shows?: string[];
 };
 
-/** The forecast with the given changes removed from the context's ordered scenario. */
-type Without = (own: number[]) => Forecast;
+/**
+ * The scenario with the given changes removed: its forecast, and the record keys whose cash
+ * that removal moves (null when it also moves non-record cash).
+ */
+type Without = (own: number[]) => { forecast: Forecast; moved: string[] | null };
 
 /** A snapshot record whose scheduled cash differs between the base and the scenario. */
 type RecordChange = {
@@ -50,8 +55,9 @@ type RecordChange = {
  * cash-drop markers only for real effective changes with schedule evidence. causedBy needs a
  * baseline (the caller asking for causal comparison) and is then proven per candidate: the
  * candidate's own changes are removed and the scenario re-forecast; the link is kept only if
- * that removes the drop, or removes or delays the breach, and exactly one candidate does so.
- * Chronology alone never assigns blame. A consequence follows its own breach because the
+ * that removes the drop, or removes or delays the breach, exactly one candidate does so, and that
+ * removal moves no cash beyond the records the candidate shows. Chronology alone never assigns
+ * blame. A consequence follows its own breach because the
  * constraint's metadata says so.
  */
 export function dominoes(
@@ -71,7 +77,8 @@ export function dominoes(
           context.changes,
         )
       : [];
-  const without = context?.baseline ? counterfactuals(snapshot, context) : undefined;
+  const without =
+    context?.baseline && schedule ? counterfactuals(snapshot, context, schedule) : undefined;
   const drafts = [
     ...changed.map((c) => c.draft),
     ...dropDrafts(snapshot, forecast, changed, without),
@@ -82,29 +89,72 @@ export function dominoes(
   return finalize(drafts);
 }
 
-function counterfactuals(snapshot: Snapshot, context: DominoContext): Without {
-  const memo = new Map<string, Forecast>();
+function counterfactuals(
+  snapshot: Snapshot,
+  context: DominoContext,
+  scenario: CashSchedule,
+): Without {
+  const memo = new Map<string, ReturnType<Without>>();
+  const now = itemCounts(scenario.items);
   return (own) => {
     const key = own.join(",");
     const known = memo.get(key);
     if (known) return known;
     const removed = new Set(own);
     const changes = context.changes.filter((_, i) => !removed.has(i));
-    const f = forecastFromSchedule(snapshot, cashSchedule(snapshot, context.model, changes));
-    memo.set(key, f);
-    return f;
+    const schedule = cashSchedule(snapshot, context.model, changes);
+    const result = {
+      forecast: forecastFromSchedule(snapshot, schedule),
+      moved: movedRecords(now, itemCounts(schedule.items)),
+    };
+    memo.set(key, result);
+    return result;
   };
 }
 
-/** The single earlier candidate of `rank` whose counterfactual removes the effect, if unique. */
+const itemCounts = (items: CashItem[]) => {
+  const counts = new Map<string, { item: CashItem; n: number }>();
+  for (const i of items) {
+    const k = JSON.stringify([i.kind, i.id, i.date, i.amount]);
+    counts.set(k, { item: i, n: (counts.get(k)?.n ?? 0) + 1 });
+  }
+  return counts;
+};
+
+/** Record keys of items that differ between two schedules; null if any non-record item does. */
+function movedRecords(
+  a: ReturnType<typeof itemCounts>,
+  b: ReturnType<typeof itemCounts>,
+): string[] | null {
+  const moved = new Set<string>();
+  for (const [k, { item, n }] of [...a, ...b]) {
+    if ((a.get(k)?.n ?? 0) === (b.get(k)?.n ?? 0)) continue;
+    if (!isRecord(item)) return null;
+    moved.add(recordKey(item));
+  }
+  return [...moved];
+}
+
+/**
+ * The single earlier candidate of `rank` whose counterfactual removes the effect, if unique.
+ * The proof only counts when removing the candidate's changes moves no cash beyond the records
+ * it represents: a customer-wide churn also restores the customer's other receipts, so it
+ * cannot prove one record's effect. Such an unscoped success still makes the cause ambiguous.
+ */
 function provenCause(
   earlier: Draft[],
   rank: 0 | 1,
   gone: (f: Forecast) => boolean,
   without: Without,
 ) {
-  const proven = earlier.filter((d) => d.rank === rank && d.own?.length && gone(without(d.own)));
-  return proven.length === 1 ? proven[0] : proven.length > 1 ? null : undefined;
+  const removing = earlier.flatMap((d) => {
+    if (d.rank !== rank || !d.own?.length) return [];
+    const { forecast, moved } = without(d.own);
+    return gone(forecast) ? [{ d, scoped: !!moved?.every((k) => d.shows?.includes(k)) }] : [];
+  });
+  const [only] = removing;
+  if (!only) return undefined;
+  return removing.length === 1 && only.scoped ? only.d : null;
 }
 
 function finalize(drafts: Draft[]): Domino[] {
@@ -164,6 +214,7 @@ function recordChanges(
     const lessCashWeeks = lessCash(b, a, first, scenario.weeks);
     const draft = eventDraft(kind, item.id, b, a, date, snapshot, scenario.weeks);
     draft.own = changes.flatMap((c, i) => (touches(c, kind, item) ? [i] : []));
+    draft.shows = [recordKey(item)];
     return [
       {
         kind,
@@ -193,8 +244,9 @@ function touches(change: Change, kind: RecordChange["kind"], item: CashItem): bo
   }
 }
 
+const recordKey = (i: CashItem) => `${i.kind}:${i.id}`;
 const recordItems = (items: CashItem[]) =>
-  new Map(items.filter(isRecord).map((i) => [`${i.kind}:${i.id}`, i]));
+  new Map(items.filter(isRecord).map((i) => [recordKey(i), i]));
 
 const clampDay = (date: ISODate, first: ISODate) => (date < first ? first : date);
 
@@ -297,6 +349,7 @@ function dropDrafts(
         note: "Less cash this week than in the schedule before changes",
       })),
       own: [...new Set(causes.flatMap((c) => c.draft.own ?? []))].sort((a, b) => a - b),
+      shows: causes.flatMap((c) => c.draft.shows ?? []),
     };
     if (without) draft.cause = (earlier) => provenCause(earlier, 0, gone, without) ?? undefined;
     return [draft];

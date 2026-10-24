@@ -1,6 +1,7 @@
 import {
   type Bill,
   type Change,
+  ChangeSchema,
   type CompanyModel,
   type Constraint,
   type Domino,
@@ -8,6 +9,7 @@ import {
   type Forecast,
   type Invoice,
   type Snapshot,
+  SnapshotSchema,
 } from "@domino/contracts";
 import { WEEK_STARTS, fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
@@ -587,5 +589,69 @@ describe("E3b-r1 regressions (review e77474d)", () => {
     );
     expect(() => dominoes(f, [minCash("floor", 0)], dup)).toThrow(/ambiguous bill id b/);
     expect(() => dominoes(f, [payBy("b", 0)], dup, ctx)).toThrow(/ambiguous bill id b/);
+  });
+});
+
+describe("E3b-r2 regressions (review 565c3fa): churn proof stays scoped to the record", () => {
+  // Review cases A/B: one customer c, i1 10,000 cents due Nov 10, i2 200,000 cents due Dec 15,
+  // payroll 40,000 on Nov 13 and 300,000 on Jan 8, runway limit 2 months.
+  const churnSnap = (cashOnHand: number) =>
+    SnapshotSchema.parse({
+      ...snap(cashOnHand),
+      customers: [{ id: "c", name: "Cobalt", paymentTermsDays: 30 }],
+      invoices: [
+        { ...inv("i1", 10_000, "2026-11-10"), customerId: "c" },
+        { ...inv("i2", 200_000, "2026-12-15"), customerId: "c" },
+      ],
+      payroll: [run("p1", 40_000, "2026-11-13"), run("p2", 300_000, "2027-01-08")],
+    });
+  const parse = (changes: unknown[]) => changes.map((c) => ChangeSchema.parse(c));
+  const view = (out: Domino[]) =>
+    out.map((d) => [d.order, d.weekStart, d.constraintId, d.causedBy, d.evidence[0]?.ref]);
+
+  it("r2 A: a churn that never reaches i1 does not make i1's early payment the cause", () => {
+    const changes = parse([
+      { kind: "delay_invoice", invoiceId: "i1", days: -1 },
+      { kind: "churn", customerId: "c", fromDate: "2026-12-01" },
+    ]);
+    const s = churnSnap(220_000);
+    // Removing only the early payment leaves the forecast unchanged: it cannot be the cause.
+    expect(forecast(s, noModel, changes.slice(1))).toEqual(forecast(s, noModel, changes));
+    const out = domino(s, [runway(2)], changes, { baseline: true });
+    expect(view(out)).toEqual([
+      [1, W[1], undefined, undefined, "i1"],
+      [2, W[1], "con_runway", undefined, "board.pdf#2"],
+      [3, W[6], undefined, undefined, "i2"],
+    ]);
+    expect(out[0]?.label).toBe("$100 payment from Cobalt moves from 2026-11-10 to 2026-11-09");
+  });
+
+  it("r2 B: removing a whole churn is not the counterfactual for i1's lost receipt alone", () => {
+    const changes = parse([{ kind: "churn", customerId: "c", fromDate: "2026-11-01" }]);
+    const s = churnSnap(240_000);
+    // Restoring only i1's receipt leaves the runway breach in the same week.
+    const i1Restored = parse([{ kind: "lose_invoice", invoiceId: "i2" }]);
+    const breachWeek = (c: Change[]) => status(s, runway(2), c)?.breach?.weekStart;
+    expect(breachWeek(i1Restored)).toBe(W[1]);
+    expect(breachWeek(changes)).toBe(W[1]);
+    const out = domino(s, [runway(2)], changes, { baseline: true });
+    const breach = out.find((d) => d.constraintId === "con_runway");
+    expect(breach?.weekStart).toBe(W[1]);
+    expect(breach?.causedBy).toBeUndefined();
+    // Markers and evidence stay; only the unproven arrows go.
+    expect(out.every((d) => d.causedBy === undefined)).toBe(true);
+    expect(out.some((d) => d.evidence.some((e) => e.ref === "i1"))).toBe(true);
+    expect(out.some((d) => d.evidence.some((e) => e.ref === "i2"))).toBe(true);
+  });
+
+  it("r2: a churn that removes only one record still chains like a lost receipt", () => {
+    const changes = parse([{ kind: "churn", customerId: "c", fromDate: "2026-12-01" }]);
+    const s = churnSnap(220_000);
+    // Only i2 (Dec 15) is on or after fromDate. Base Jan 4 week: 90,000; with the churn -110,000.
+    const out = domino(s, [minCash("floor", 50_000)], changes, { baseline: true });
+    expect(view(out)).toEqual([
+      [1, W[6], undefined, undefined, "i2"],
+      [2, W[9], "floor", 1, "loan.pdf#7"],
+    ]);
   });
 });
