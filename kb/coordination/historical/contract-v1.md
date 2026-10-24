@@ -113,3 +113,10 @@ Shape change vs `8bdea82`: `oneTimeCost.unit` narrows to `"cents"`; case assumpt
 - Isolation: a feed holds only its baseline's save, its alternatives and its own reveal. Before that baseline reveals, its feed has only cutoff source IDs, even if another baseline revealed.
 - Consumer note (H4): an alternative event's `runId` is the alternative run, not the baseline. The H4 `ingestActivity` scope `{caseId, runId: baselineRunId}` would drop it. Scope by `caseId` only for this feed (it is already scoped server-side), or include the alternative run IDs.
 - Verification: focused Convex tests `apps/web/convex/tests` 73/73 (8 new in `activity.test.ts`), convex and web `tsc --noEmit`, `biome check apps/web/convex` clean. Not run: full `pnpm check`, build. Live probe on the existing local watcher (127.0.0.1:3210, fresh run): save + retry, alternative, reveal under two keys gave sequences 1, 2, 3 and one event per outcome. Concurrency tests run under convex-test, which serializes mutations; the true parallel conflict is Convex OCC, not separately probed live.
+
+## C0 acceptance: H2d, 2026-10-24 07:46 PDT
+
+- **Activity-ready.** Code6498b75, complete candidate55c5ae9 on accepted H2c66b2d2a. Independent Astra review approved. Full734tests/typechecks/lint passed, /tmp/domino-H2d-check.log.
+- Independent local HTTP probe used separate concurrent clients: six distinct alternatives received unique ordered sequences; duplicate saves/alternatives and six reveal receipt keys emitted one event per outcome; failed requests emitted no event. A different baseline never received the revealed source. Reconnect queries were identical.
+- Actual query: historical:getActivity({caseId, baselineRunId}) returns the latest50 ActivityEvent objects oldest first. No afterSequence. Feed identity/reset key is baselineRunId. Client filtering must be by caseId, because alternatives correctly carry their own runId. Do not drop them by filtering to baseline runId.
+- Initial history load must not animate as new operations. Events describe successful app saves/reveals/computations only. No live product agent/tool work exists. UI activity adoption/browser checks remain pending.
