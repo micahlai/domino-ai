@@ -2,6 +2,8 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest06:02: three verifiedworkers now H1cash-subsetnormalization, H2bsyntheticperiodmodel, H4astylerepair1. H2acontracts accepted682tests. H3presentationaccepted656tests/build/desktop. H4initialbuildfailed despite664tests, repairrunning. See compactactive-run.md forcurrentownership; oldnotesbelowarehistory.
+
 - Latest heartbeat05:43: H3repair97925fd presentation accepted after656tests/check/build and desktopbrowser; pushedH3branch. H1source repair and H4astyles now running in isolated worktrees. H2arepair442d23b/packet2ae6e9b now independently approved and fullcheck passed, contracts-only. Exact processes and nextgates in active-run.md. Core live journey is not done.
 
 - Latest user asked Codex to run needed Claude prompts, audit/monitor until return, minimize bloat and reuse existing UI. C0 is the current supervisor entry point; H0 manual coordinator is inactive. Do not launch duplicate orchestration.

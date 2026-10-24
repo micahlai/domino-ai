@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 06:02 Codex heartbeat
+- Done: approved H2acontract repair and H3presentation; raw-backed2Ucashsubset independentlyverified. H4foundation buildfailure andURLbugs routedtoClaude.
+- Next: normalizecashsubset, auditpureperiodmodel, repairfourstyles; three boundedworkersverified. Fullstate in active-run.md.
+- Watch out: retrospectivecashforecastmiss, notbankruptcywarning; unverifieddebt andheldoutresearchnotes excluded. CoreAPI/persistence/liveUI notdone.
+
 ## 2026-10-24 05:20 Codex (overnight workers verified)
 - Done: pushed d5b2c94, created H1/H2/H3 worktrees, launched bounded Claude Sonnet/Opus/Sonnet phases; verified live processes and file changes. Codex heartbeat domino-overnight-audit ACTIVE every 20 minutes. Standalone bounded awake guard covers idle gaps.
 - Next: audit completed checkpoints and advance evidence/contracts -> model/persistence -> UI wiring -> styles -> isolated preview checks. See kb/coordination/historical/active-run.md for exact ownership and recovery.
