@@ -7,3 +7,10 @@
 - **Done:** focused engine tests/typecheck/lint, parent independent financial/date audit and full suite. Commit then stop; no main/push/providers. Use orchestrator/ponytail/engine-tdd.
 ## Result
 - Pending.
+
+## Dispatch clarification after S1 acceptance
+- S1 repaired83e2052 is accepted. Use HistoricalScenarioInput/ResultSchema; both event.postHoc and overall postHoc are required. Overall taint is event or response. Input selectedAfterReveal applies to event-only scenarios too. Never erase A1's existing selectedAfterReveal or hindsight status.
+- Public function `quarterScenario` takes the existing QuarterBridgeInput, a saved baseline HistoricalRun, and HistoricalScenarioInput (one object parameter is fine). Validate baseline ID/method/cutoff/currency/origin/inputs and predictions against the supplied frozen bridge inputs before attaching lineage; a caller-supplied label is not enough. Preserve saved baseline and all inputs byte-for-byte. Result nowcast equals baseline nowcast; branch prediction IDs can be prefixed to avoid cross-branch collisions without altering saved records.
+- Reuse exact rational/money/date helpers and quarterAlternative. Do not implement a second forecasting algorithm or duplicate contract shape validators. Assumption/fact/rule refs must exist in supplied cutoff-safe context. Reject unsupported metrics/periods, response dependencies missing from context, or result graph references that are not justified. Contract parsing alone does not validate contextual causality.
+- Current target offers only aggregate quarter-end outcomes, no invented daily/week history. Restrict output cash metrics appropriately: event cash movement cannot reduce restricted cash by accident. Treat effect midpoint/range rounding consistently with existing engine helpers; hand-compute expected examples independently.
+- Explicitly represent the event amount as an assumption in prose and the available typed event reference. Do not invent historical assumption IDs to satisfy an edge. No risk threshold is supplied by this demo, so no rule crossing/default/bankruptcy chain.

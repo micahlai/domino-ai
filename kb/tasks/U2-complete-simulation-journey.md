@@ -6,3 +6,6 @@
 - **Acceptance:** Codex actual browser full journey, reload without dispatch, failed/offline/unknown states, desktop/mobile/keyboard/reduced motion, focused/full checks and build. Do not call complete while CREAO/coordinator gate is unresolved.
 ## Result
 - Pending.
+
+## Early visual follow-up
+- U1 browser review found the reused HistoricalReplay still shows method/hash/run and assumption IDs in its main chart description. Before U2 dispatch explicitly authorize a small presentation-only HistoricalReplay change to move those into accessible details. Keep methodological uncertainty and retrospective caveats readable, reuse chart math/view building unchanged.
