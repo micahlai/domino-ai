@@ -1,0 +1,1003 @@
+[
+  {
+    "ticker": "AMPL",
+    "cik": 1866692,
+    "entity": "AMPLITUDE, INC.",
+    "form": "10-K",
+    "accn": "0001193125-26-057847",
+    "filed": "2026-02-19",
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "days": 365,
+    "revenue": {
+      "start": "2025-01-01",
+      "end": "2025-12-31",
+      "val": 343214000,
+      "accn": "0001193125-26-057847",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-19",
+      "frame": "CY2025"
+    },
+    "prior_revenue": {
+      "start": "2024-01-01",
+      "end": "2024-12-31",
+      "val": 299272000,
+      "accn": "0001193125-26-057847",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-19",
+      "frame": "CY2024"
+    },
+    "duration": {
+      "GrossProfit": {
+        "tag": "us-gaap:GrossProfit",
+        "unit": "USD",
+        "values": [
+          253928000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 253928000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "SellingAndMarketingExpense": {
+        "tag": "us-gaap:SellingAndMarketingExpense",
+        "unit": "USD",
+        "values": [
+          188033000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 188033000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "ResearchAndDevelopmentExpense": {
+        "tag": "us-gaap:ResearchAndDevelopmentExpense",
+        "unit": "USD",
+        "values": [
+          97582000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 97582000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "GeneralAndAdministrativeExpense": {
+        "tag": "us-gaap:GeneralAndAdministrativeExpense",
+        "unit": "USD",
+        "values": [
+          64318000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 64318000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19",
+            "frame": "CY2025"
+          }
+        ]
+      }
+    },
+    "instant": {
+      "AccountsReceivableNetCurrent": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "unit": "USD",
+        "values": [
+          23423000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 23423000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19"
+          }
+        ]
+      },
+      "ContractWithCustomerLiability": {
+        "tag": "us-gaap:ContractWithCustomerLiability",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "ContractWithCustomerLiabilityCurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "unit": "USD",
+        "values": [
+          121888000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 121888000,
+            "accn": "0001193125-26-057847",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-19"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityNoncurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenue": {
+        "tag": "us-gaap:DeferredRevenue",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueCurrent": {
+        "tag": "us-gaap:DeferredRevenueCurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueNoncurrent": {
+        "tag": "us-gaap:DeferredRevenueNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      }
+    }
+  },
+  {
+    "ticker": "PD",
+    "cik": 1568100,
+    "entity": "PAGERDUTY, INC.",
+    "form": "10-K",
+    "accn": "0001568100-26-000012",
+    "filed": "2026-03-12",
+    "start": "2025-02-01",
+    "end": "2026-01-31",
+    "days": 365,
+    "revenue": {
+      "start": "2025-02-01",
+      "end": "2026-01-31",
+      "val": 492546000,
+      "accn": "0001568100-26-000012",
+      "fy": 2026,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-03-12",
+      "frame": "CY2025"
+    },
+    "prior_revenue": {
+      "start": "2024-02-01",
+      "end": "2025-01-31",
+      "val": 467499000,
+      "accn": "0001568100-26-000012",
+      "fy": 2026,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-03-12",
+      "frame": "CY2024"
+    },
+    "duration": {
+      "GrossProfit": {
+        "tag": "us-gaap:GrossProfit",
+        "unit": "USD",
+        "values": [
+          418404000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 418404000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "SellingAndMarketingExpense": {
+        "tag": "us-gaap:SellingAndMarketingExpense",
+        "unit": "USD",
+        "values": [
+          184040000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 184040000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "ResearchAndDevelopmentExpense": {
+        "tag": "us-gaap:ResearchAndDevelopmentExpense",
+        "unit": "USD",
+        "values": [
+          126937000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 126937000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "GeneralAndAdministrativeExpense": {
+        "tag": "us-gaap:GeneralAndAdministrativeExpense",
+        "unit": "USD",
+        "values": [
+          101587000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 101587000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12",
+            "frame": "CY2025"
+          }
+        ]
+      }
+    },
+    "instant": {
+      "AccountsReceivableNetCurrent": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "unit": "USD",
+        "values": [
+          108430000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 108430000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12"
+          }
+        ]
+      },
+      "ContractWithCustomerLiability": {
+        "tag": "us-gaap:ContractWithCustomerLiability",
+        "unit": "USD",
+        "values": [
+          248934000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 248934000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityCurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "unit": "USD",
+        "values": [
+          246451000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 246451000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityNoncurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "unit": "USD",
+        "values": [
+          2483000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 2483000,
+            "accn": "0001568100-26-000012",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-12"
+          }
+        ]
+      },
+      "DeferredRevenue": {
+        "tag": "us-gaap:DeferredRevenue",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueCurrent": {
+        "tag": "us-gaap:DeferredRevenueCurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueNoncurrent": {
+        "tag": "us-gaap:DeferredRevenueNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      }
+    }
+  },
+  {
+    "ticker": "SPT",
+    "cik": 1517375,
+    "entity": "Sprout Social, Inc.",
+    "form": "10-K",
+    "accn": "0001517375-26-000015",
+    "filed": "2026-02-27",
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "days": 365,
+    "revenue": {
+      "start": "2025-01-01",
+      "end": "2025-12-31",
+      "val": 457547000,
+      "accn": "0001517375-26-000015",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-27",
+      "frame": "CY2025"
+    },
+    "prior_revenue": {
+      "start": "2024-01-01",
+      "end": "2024-12-31",
+      "val": 405908000,
+      "accn": "0001517375-26-000015",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-27",
+      "frame": "CY2024"
+    },
+    "duration": {
+      "GrossProfit": {
+        "tag": "us-gaap:GrossProfit",
+        "unit": "USD",
+        "values": [
+          354852000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 354852000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "SellingAndMarketingExpense": {
+        "tag": "us-gaap:SellingAndMarketingExpense",
+        "unit": "USD",
+        "values": [
+          190559000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 190559000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "ResearchAndDevelopmentExpense": {
+        "tag": "us-gaap:ResearchAndDevelopmentExpense",
+        "unit": "USD",
+        "values": [
+          101279000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 101279000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "GeneralAndAdministrativeExpense": {
+        "tag": "us-gaap:GeneralAndAdministrativeExpense",
+        "unit": "USD",
+        "values": [
+          106467000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 106467000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27",
+            "frame": "CY2025"
+          }
+        ]
+      }
+    },
+    "instant": {
+      "AccountsReceivableNetCurrent": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "unit": "USD",
+        "values": [
+          100996000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 100996000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27"
+          }
+        ]
+      },
+      "ContractWithCustomerLiability": {
+        "tag": "us-gaap:ContractWithCustomerLiability",
+        "unit": "USD",
+        "values": [
+          206400000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 206400000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27",
+            "frame": "CY2025Q4I"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityCurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "unit": "USD",
+        "values": [
+          205639000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 205639000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityNoncurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "unit": "USD",
+        "values": [
+          752000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 752000,
+            "accn": "0001517375-26-000015",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-27"
+          }
+        ]
+      },
+      "DeferredRevenue": {
+        "tag": "us-gaap:DeferredRevenue",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueCurrent": {
+        "tag": "us-gaap:DeferredRevenueCurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueNoncurrent": {
+        "tag": "us-gaap:DeferredRevenueNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      }
+    }
+  },
+  {
+    "ticker": "FRSH",
+    "cik": 1544522,
+    "entity": "Freshworks Inc.",
+    "form": "10-K",
+    "accn": "0001544522-26-000036",
+    "filed": "2026-02-26",
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "days": 365,
+    "revenue": {
+      "start": "2025-01-01",
+      "end": "2025-12-31",
+      "val": 838809000,
+      "accn": "0001544522-26-000036",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-26",
+      "frame": "CY2025"
+    },
+    "prior_revenue": {
+      "start": "2024-01-01",
+      "end": "2024-12-31",
+      "val": 720420000,
+      "accn": "0001544522-26-000036",
+      "fy": 2025,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-02-26",
+      "frame": "CY2024"
+    },
+    "duration": {
+      "GrossProfit": {
+        "tag": "us-gaap:GrossProfit",
+        "unit": "USD",
+        "values": [
+          712664000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 712664000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "SellingAndMarketingExpense": {
+        "tag": "us-gaap:SellingAndMarketingExpense",
+        "unit": "USD",
+        "values": [
+          394753000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 394753000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "ResearchAndDevelopmentExpense": {
+        "tag": "us-gaap:ResearchAndDevelopmentExpense",
+        "unit": "USD",
+        "values": [
+          163208000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 163208000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "GeneralAndAdministrativeExpense": {
+        "tag": "us-gaap:GeneralAndAdministrativeExpense",
+        "unit": "USD",
+        "values": [
+          141093000
+        ],
+        "facts": [
+          {
+            "start": "2025-01-01",
+            "end": "2025-12-31",
+            "val": 141093000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26",
+            "frame": "CY2025"
+          }
+        ]
+      }
+    },
+    "instant": {
+      "AccountsReceivableNetCurrent": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "unit": "USD",
+        "values": [
+          150817000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 150817000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26"
+          }
+        ]
+      },
+      "ContractWithCustomerLiability": {
+        "tag": "us-gaap:ContractWithCustomerLiability",
+        "unit": "USD",
+        "values": [
+          388467000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 388467000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26",
+            "frame": "CY2025Q4I"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityCurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "unit": "USD",
+        "values": [
+          385320000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 385320000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityNoncurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "unit": "USD",
+        "values": [
+          3100000
+        ],
+        "facts": [
+          {
+            "end": "2025-12-31",
+            "val": 3100000,
+            "accn": "0001544522-26-000036",
+            "fy": 2025,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-02-26"
+          }
+        ]
+      },
+      "DeferredRevenue": {
+        "tag": "us-gaap:DeferredRevenue",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueCurrent": {
+        "tag": "us-gaap:DeferredRevenueCurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueNoncurrent": {
+        "tag": "us-gaap:DeferredRevenueNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      }
+    }
+  },
+  {
+    "ticker": "BOX",
+    "cik": 1372612,
+    "entity": "BOX INC",
+    "form": "10-K",
+    "accn": "0001193125-26-098466",
+    "filed": "2026-03-09",
+    "start": "2025-02-01",
+    "end": "2026-01-31",
+    "days": 365,
+    "revenue": {
+      "start": "2025-02-01",
+      "end": "2026-01-31",
+      "val": 1177253000,
+      "accn": "0001193125-26-098466",
+      "fy": 2026,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-03-09",
+      "frame": "CY2025"
+    },
+    "prior_revenue": {
+      "start": "2024-02-01",
+      "end": "2025-01-31",
+      "val": 1090130000,
+      "accn": "0001193125-26-098466",
+      "fy": 2026,
+      "fp": "FY",
+      "form": "10-K",
+      "filed": "2026-03-09",
+      "frame": "CY2024"
+    },
+    "duration": {
+      "GrossProfit": {
+        "tag": "us-gaap:GrossProfit",
+        "unit": "USD",
+        "values": [
+          932606000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 932606000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "SellingAndMarketingExpense": {
+        "tag": "us-gaap:SellingAndMarketingExpense",
+        "unit": "USD",
+        "values": [
+          403992000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 403992000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "ResearchAndDevelopmentExpense": {
+        "tag": "us-gaap:ResearchAndDevelopmentExpense",
+        "unit": "USD",
+        "values": [
+          294542000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 294542000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09",
+            "frame": "CY2025"
+          }
+        ]
+      },
+      "GeneralAndAdministrativeExpense": {
+        "tag": "us-gaap:GeneralAndAdministrativeExpense",
+        "unit": "USD",
+        "values": [
+          150883000
+        ],
+        "facts": [
+          {
+            "start": "2025-02-01",
+            "end": "2026-01-31",
+            "val": 150883000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09",
+            "frame": "CY2025"
+          }
+        ]
+      }
+    },
+    "instant": {
+      "AccountsReceivableNetCurrent": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "unit": "USD",
+        "values": [
+          325136000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 325136000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09"
+          }
+        ]
+      },
+      "ContractWithCustomerLiability": {
+        "tag": "us-gaap:ContractWithCustomerLiability",
+        "unit": "USD",
+        "values": [
+          656700000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 656700000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityCurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "unit": "USD",
+        "values": [
+          647893000
+        ],
+        "facts": [
+          {
+            "end": "2026-01-31",
+            "val": 647893000,
+            "accn": "0001193125-26-098466",
+            "fy": 2026,
+            "fp": "FY",
+            "form": "10-K",
+            "filed": "2026-03-09"
+          }
+        ]
+      },
+      "ContractWithCustomerLiabilityNoncurrent": {
+        "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenue": {
+        "tag": "us-gaap:DeferredRevenue",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueCurrent": {
+        "tag": "us-gaap:DeferredRevenueCurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      },
+      "DeferredRevenueNoncurrent": {
+        "tag": "us-gaap:DeferredRevenueNoncurrent",
+        "unit": "USD",
+        "values": [],
+        "facts": []
+      }
+    }
+  }
+]
