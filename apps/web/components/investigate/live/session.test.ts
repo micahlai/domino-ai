@@ -126,6 +126,111 @@ describe("sendRequest", () => {
   });
 });
 
+describe("compare-and-clear", () => {
+  // A starts and its answer is slow, the user leaves, B (another question) starts and its answer
+  // is lost, then A settles. B's saved identity must survive so B's retry is the same request.
+  async function aThenLostB(
+    settleA: (done: (v: unknown) => void, fail: (e: unknown) => void) => void,
+  ) {
+    const store = memoryStore();
+    const bIds: string[] = [];
+    let done: (v: unknown) => void = () => {};
+    let fail: (e: unknown) => void = () => {};
+    const a = sendRequest({
+      scope: "x",
+      payload: "Question A",
+      stillHere: () => false,
+      store,
+      call: () =>
+        new Promise((resolve, reject) => {
+          done = resolve;
+          fail = reject;
+        }),
+    });
+    const b = await sendRequest({
+      scope: "x",
+      payload: "Question B",
+      stillHere: () => true,
+      store,
+      call: async (id) => {
+        bIds.push(id);
+        throw new Error("response lost");
+      },
+    });
+    expect(b.kind).toBe("failed");
+    settleA(done, fail);
+    expect(await a).toEqual({ kind: "stale" });
+    const retry = await sendRequest({
+      scope: "x",
+      payload: "Question B",
+      stillHere: () => true,
+      store,
+      call: async (id) => {
+        bIds.push(id);
+        return { conversationId: "conv-B" };
+      },
+    });
+    return { store, bIds, retry };
+  }
+
+  it("keeps a newer pending intent when an older request succeeds late", async () => {
+    const { bIds, retry, store } = await aThenLostB((done) => done({ conversationId: "conv-A" }));
+    expect(bIds).toHaveLength(2);
+    expect(bIds[1]).toBe(bIds[0]);
+    expect(retry).toEqual({ kind: "done", conversationId: "conv-B" });
+    expect(pendingPayload("x", store)).toBeUndefined();
+  });
+
+  it("keeps a newer pending intent when an older request is definitely rejected late", async () => {
+    const { bIds, retry } = await aThenLostB((_, fail) => fail(reject("BUSY")));
+    expect(bIds[1]).toBe(bIds[0]);
+    expect(retry.kind).toBe("done");
+  });
+
+  it("still clears its own record on success and on definite rejection", async () => {
+    const store = memoryStore();
+    const base = { scope: "own", payload: "q", stillHere: () => false, store };
+    await sendRequest({ ...base, call: async () => ({ conversationId: "c" }) });
+    expect(pendingPayload("own", store)).toBeUndefined();
+    await sendRequest({
+      ...base,
+      call: async () => {
+        throw reject("NOT_FOUND");
+      },
+    });
+    expect(pendingPayload("own", store)).toBeUndefined();
+  });
+
+  it("keeps an uncertain request across a reload and retries it with the same id", async () => {
+    const store = memoryStore();
+    const seen: string[] = [];
+    const lost = () =>
+      sendRequest({
+        scope: "r",
+        payload: "q",
+        stillHere: () => true,
+        store,
+        call: async (id) => {
+          seen.push(id);
+          throw new Error("offline");
+        },
+      });
+    await lost();
+    await lost();
+    expect(seen[1]).toBe(seen[0]);
+    expect(pendingPayload("r", store)).toBe("q");
+  });
+
+  it("clearRequestId with an id leaves a different saved request alone", () => {
+    const store = memoryStore();
+    const id = requestIdFor("c1", "q", store);
+    clearRequestId("c1", store, "someone-else");
+    expect(pendingPayload("c1", store)).toBe("q");
+    clearRequestId("c1", store, id);
+    expect(pendingPayload("c1", store)).toBeUndefined();
+  });
+});
+
 describe("navigation guard", () => {
   const here = { alive: true, pathname: "/investigate" };
   it("reads the conversation from the address", () => {

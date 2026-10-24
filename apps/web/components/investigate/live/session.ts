@@ -63,8 +63,14 @@ export function pendingPayload(scope: string, store: Store | undefined = browser
   return saved(PREFIX + scope, store)?.payload;
 }
 
-export function clearRequestId(scope: string, store: Store | undefined = browser()) {
+/** With `onlyId`, clears only if that exact request still owns the scope: a newer intent stays. */
+export function clearRequestId(
+  scope: string,
+  store: Store | undefined = browser(),
+  onlyId?: string,
+) {
   const key = PREFIX + scope;
+  if (onlyId !== undefined && saved(key, store)?.id !== onlyId) return;
   memory.delete(key);
   try {
     store?.removeItem(key);
@@ -146,14 +152,16 @@ export async function sendRequest(args: {
   store?: Store;
 }): Promise<Outcome> {
   const { scope, payload, call, stillHere, store = browser() } = args;
+  const requestId = requestIdFor(scope, payload, store);
   try {
-    const conversationId = receiptConversation(await call(requestIdFor(scope, payload, store)));
-    // Recorded: the saved request is spent whether or not this page is still showing it.
-    clearRequestId(scope, store);
+    const conversationId = receiptConversation(await call(requestId));
+    // Recorded: this request is spent whether or not this page is still showing it. Only its own
+    // record is dropped: a late settle must not erase a newer, possibly unconfirmed, intent.
+    clearRequestId(scope, store, requestId);
     return stillHere() ? { kind: "done", conversationId } : { kind: "stale" };
   } catch (error) {
     // A definite answer rejected the request; anything else may have been applied, so keep its id.
-    if (isDefinite(error)) clearRequestId(scope, store);
+    if (isDefinite(error)) clearRequestId(scope, store, requestId);
     return stillHere() ? { kind: "failed", message: describeError(error) } : { kind: "stale" };
   }
 }

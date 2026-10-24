@@ -7,8 +7,10 @@ import { HistoricalReplay } from "../../historical/HistoricalReplay";
 import {
   type AlternativeData,
   AlternativeDataSchema,
+  type BaselineData,
   BaselineDataSchema,
   CASE_ID,
+  type CaseData,
   CaseDataSchema,
   RevealDataSchema,
   alternativeIssue,
@@ -31,7 +33,7 @@ function Note({ title, children }: { title: string; children?: ReactNode }) {
 }
 
 /** The map must keep its identity between renders: useQueries resubscribes on a new one. */
-export function useOutputQueries({ stage, baselineRunId, altRunId }: OutputTarget) {
+export function useOutputQueries({ stage, baselineRunId, altRunId, revealed }: OutputTarget) {
   return useMemo(
     () => ({
       case: {
@@ -39,31 +41,52 @@ export function useOutputQueries({ stage, baselineRunId, altRunId }: OutputTarge
         args: { caseId: CASE_ID, runId: baselineRunId },
       },
       run: { query: api.historical.getRun, args: { caseId: CASE_ID, runId: baselineRunId } },
-      // The forecast view never reads the reveal, so nothing later can reach it.
-      ...(stage !== "forecast"
+      // The forecast view, and an alternative drawn before any reveal, never read the reveal,
+      // so nothing later can reach them.
+      ...(stage === "reveal" || (stage === "alternative" && revealed)
         ? { reveal: { query: api.historical.getReveal, args: { runId: baselineRunId } } }
         : {}),
       ...(stage === "alternative" && altRunId
         ? { alt: { query: api.historical.getRun, args: { caseId: CASE_ID, runId: altRunId } } }
         : {}),
     }),
-    [stage, baselineRunId, altRunId],
+    [stage, baselineRunId, altRunId, revealed],
   );
 }
 
 const loading = <HistoricalReplay status="loading" />;
 
+/**
+ * buildView only attaches an alternative once a reveal agrees, so give it an empty one (no
+ * comparisons, so no observed value or evidence can enter) and strip what that implies: the
+ * revealed stage, the reveal date and the comparison rows. Nothing is computed here.
+ */
+function savedAlternativeView(
+  caseData: CaseData,
+  baseline: BaselineData,
+  alternative: AlternativeData,
+) {
+  const shown = buildView({
+    caseData: { ...caseData, revealed: true },
+    baseline,
+    reveal: {
+      runId: baseline.run.id,
+      revealedThrough: caseData.knowledgeCutoff,
+      revealedAt: "",
+      comparisons: [],
+    },
+    alternative,
+  });
+  const { revealedOn: _, ...dates } = shown.dates;
+  return { ...shown, stage: "baseline" as const, dates, comparison: [] };
+}
+
 /** From already-fetched results, so it renders without hooks. Unknown is never drawn as empty. */
 export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw: Raw }) {
-  if (target.stage === "alternative" && !target.revealed)
-    return (
-      <Note title="The alternative is saved, but not shown yet.">
-        It was chosen with the outcome known, so it is drawn together with the reveal. Show what
-        happened first.
-      </Note>
-    );
-  const wanted =
-    target.stage === "forecast" ? [raw.case, raw.run] : [raw.case, raw.run, raw.reveal];
+  // The API allows an alternative before the reveal: it is saved, so draw it, but with no outcome.
+  const early = target.stage === "alternative" && !target.revealed;
+  const noReveal = target.stage === "forecast" || early;
+  const wanted = noReveal ? [raw.case, raw.run] : [raw.case, raw.run, raw.reveal];
   if (wanted.some((r) => r instanceof Error))
     return (
       <Note title="Could not load this result.">
@@ -74,7 +97,7 @@ export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw
 
   const caseData = CaseDataSchema.safeParse(raw.case);
   const baseline = BaselineDataSchema.safeParse(raw.run);
-  const reveal = target.stage === "forecast" ? undefined : RevealDataSchema.safeParse(raw.reveal);
+  const reveal = noReveal ? undefined : RevealDataSchema.safeParse(raw.reveal);
   if (!caseData.success || !baseline.success || (reveal && !reveal.success))
     return (
       <Note title="The saved data was not in the expected shape.">
@@ -89,7 +112,7 @@ export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw
     );
 
   const revealData = reveal?.success ? reveal.data : null;
-  if (target.stage !== "forecast") {
+  if (!noReveal) {
     // The reveal step succeeded, so its record must exist and agree with the frozen case view.
     if (!revealData)
       return (
@@ -122,12 +145,15 @@ export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw
     alternative = parsed.data;
   }
 
-  const view = buildView({
-    caseData: caseData.data,
-    baseline: baseline.data,
-    reveal: revealData,
-    alternative,
-  });
+  const view =
+    early && alternative
+      ? savedAlternativeView(caseData.data, baseline.data, alternative)
+      : buildView({
+          caseData: caseData.data,
+          baseline: baseline.data,
+          reveal: revealData,
+          alternative,
+        });
   // A hidden element replaces the replay's default "activity not connected" panel, which does
   // not apply to a conversation.
   return <HistoricalReplay view={view} activity={<span hidden />} />;
