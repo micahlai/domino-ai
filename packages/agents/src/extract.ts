@@ -49,10 +49,18 @@ export function selectOne(
   candidates: Candidate[],
   options: { bareArray: boolean },
 ): Selection {
+  return selectDistinct(candidates, (candidate) => acceptCandidate(job, input, candidate, options));
+}
+
+/** selectOne with a caller-supplied validator, for answers outside the five jobs. */
+export function selectDistinct(
+  candidates: Candidate[],
+  accept: (candidate: Candidate) => { value: unknown } | undefined,
+): Selection {
   const distinct = new Map<string, unknown>();
   let validated = 0;
   for (const candidate of candidates) {
-    const accepted = acceptCandidate(job, input, candidate, options);
+    const accepted = accept(candidate);
     if (!accepted) continue;
     validated++;
     distinct.set(canonicalJson(accepted.value), accepted.value);

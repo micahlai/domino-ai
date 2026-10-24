@@ -6,11 +6,19 @@ export type { AgentsOptions } from "./agents";
 export { ProviderError, failureCategories } from "./errors";
 export type { FailureCategory, ProviderJob } from "./errors";
 export {
+  buildHistoricalCreaoPrompt,
   buildHistoricalRequest,
+  creaoHistoricalEnv,
   historicalSpecialistDefaults,
+  runCreaoHistoricalSpecialist,
   runHistoricalSpecialist,
 } from "./historical";
-export type { HistoricalSpecialistOptions, HistoricalSpecialistResult } from "./historical";
+export type {
+  CreaoHistoricalOptions,
+  CreaoHistoricalSpecialistResult,
+  HistoricalSpecialistOptions,
+  HistoricalSpecialistResult,
+} from "./historical";
 export {
   ANTHROPIC_VERSION,
   CLAUDE_MESSAGES_URL,

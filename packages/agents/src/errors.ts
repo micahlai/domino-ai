@@ -18,6 +18,7 @@ export const failureCategories = [
   "refusal",
   "truncated",
   "unexpected_stop",
+  "run_record_failed",
   "run_failed",
   "run_cancelled",
   "unknown_status",
