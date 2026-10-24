@@ -31,4 +31,30 @@ Plain markdown checklists for building Domino. They work with any coding agent a
 | ideate | Trying an idea in 15 minutes |
 | review | Reviewing a diff before merge |
 | demo-check | Running the demo end to end |
-| figma-stage-log | Writing a Figma stage log entry |
+
+## Codex installation
+
+From the repository root, copy each project skill into your Codex skills folder.
+Skip `figma-stage-log`; frontend prototypes and reviews use `/playground`.
+Existing installations are preserved. Run again after project skills change, removing
+only the specific old Domino skill you intend to update. New skills load on the next turn.
+
+```sh
+python3 - <<'PYTHON'
+from pathlib import Path
+import os
+import shutil
+
+destination = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "skills"
+destination.mkdir(parents=True, exist_ok=True)
+for source in sorted(Path("skills").iterdir()):
+    if not (source / "SKILL.md").is_file() or source.name == "figma-stage-log":
+        continue
+    target = destination / source.name
+    if target.exists():
+        print(f"Already installed: {source.name}")
+        continue
+    shutil.copytree(source, target)
+    print(f"Installed: {source.name}")
+PYTHON
+```

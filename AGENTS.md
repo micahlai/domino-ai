@@ -71,7 +71,6 @@ When a prompt or task card names a skill, read that file before you start.
 | `ideate` | Trying a new idea fast (15-minute loop) |
 | `review` | Reviewing another agent's diff before merge |
 | `demo-check` | Running the demo script end to end |
-| `figma-stage-log` | Writing a Figma stage log entry |
 
 ## 7. Owners
 
