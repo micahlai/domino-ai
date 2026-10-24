@@ -369,7 +369,24 @@ export const getConversation = query({
 
 // ---------- execution ----------
 
-type Step = { operationId: string; packet?: HistoricalSpecialistInput } | null;
+type Profile = Awaited<ReturnType<typeof profileOf>>;
+type Step = {
+  operationId: string;
+  packet?: HistoricalSpecialistInput;
+  profile?: Profile;
+  leaseUntil?: number;
+} | null;
+
+// Fails closed: an operation without a lease is treated as expired.
+const expired = (op: Pick<Op, "leaseUntil">) => !(Date.now() < (op.leaseUntil ?? 0));
+const DEADLINE = {
+  code: "deadline",
+  message: "The turn reached its deadline before this step started.",
+};
+const OUTCOME_UNKNOWN = {
+  code: "outcome_unknown",
+  message: "No result arrived before the deadline. It may have been billed and was not retried.",
+};
 
 /**
  * Run or claim the next ready operation. Tool operations run and commit here, one per
@@ -383,6 +400,12 @@ export const step = internalMutation({
     const byId = new Map(ops.map((o) => [o.operationId, o]));
     for (const op of ops) {
       if (op.status !== "queued") continue;
+      // The deadline holds even if its scheduled cleanup has not run yet.
+      if (expired(op)) {
+        await settle(ctx, op, "failed", DEADLINE);
+        op.status = "failed";
+        continue;
+      }
       const deps = op.dependsOn.map((id) => byId.get(id));
       if (deps.some((d) => !d || d.status === "failed" || d.status === "unknown")) {
         await settle(ctx, op, "failed", {
@@ -433,7 +456,12 @@ export const step = internalMutation({
           hash: await hashInput(packet),
         },
       });
-      return { operationId: op.operationId, packet };
+      return {
+        operationId: op.operationId,
+        packet,
+        profile: op.profile as Profile,
+        leaseUntil: op.leaseUntil,
+      };
     }
     return null;
   },
@@ -442,6 +470,9 @@ export const step = internalMutation({
 /** Deterministic tool operations. They run inside one transaction, so a throw rolls back. */
 async function runTool(ctx: MutationCtx, op: Op, byId: Map<string, Op>) {
   const dep = (kind: Kind) => [...byId.values()].find((o) => o.kind === kind)!;
+  // Owned rows use a key the public requestId shape rejects; see historical requireKey.
+  const key = `inv:${op.operationId}`;
+  const owner = op.conversationId;
   const done = (fields: Partial<Op>) =>
     ctx.db.patch(op._id, { status: "succeeded", startedAt: now(), finishedAt: now(), ...fields });
   if (op.kind === "source_load") {
@@ -472,9 +503,16 @@ async function runTool(ctx: MutationCtx, op: Op, byId: Map<string, Op>) {
     return;
   }
   if (op.kind === "forecast") {
-    const loaded = dep("source_load").input as { sourceIds: string[]; factIds: string[] };
-    const { runId, run } = await saveBaselineIn(ctx, `inv-${op.operationId}`, CASE.id);
-    // The forecast may read only what the source step loaded.
+    const loaded = dep("source_load").input as {
+      sourceIds: string[];
+      factIds: string[];
+      hash: string;
+    };
+    // The forecast may read only what the source step loaded: the same full case version
+    // (titles, content hashes, facts), checked before anything is saved, and only those ids.
+    if ((await hashInput(visibleCase(CUTOFF))) !== loaded.hash)
+      fail("CASE_CHANGED", "The evidence changed after it was loaded; no forecast was saved");
+    const { runId, run } = await saveBaselineIn(ctx, key, CASE.id, owner);
     if (
       !run.inputs.sourceIds.every((id: string) => loaded.sourceIds.includes(id)) ||
       !run.inputs.factIds.every((id: string) => loaded.factIds.includes(id))
@@ -493,7 +531,7 @@ async function runTool(ctx: MutationCtx, op: Op, byId: Map<string, Op>) {
   }
   const baselineRunId = dep("forecast").outputRef!.id;
   if (op.kind === "reveal") {
-    const r = await revealIn(ctx, `inv-${op.operationId}`, baselineRunId);
+    const r = await revealIn(ctx, key, baselineRunId, owner);
     await done({
       input: { runId: baselineRunId },
       output: {
@@ -513,7 +551,7 @@ async function runTool(ctx: MutationCtx, op: Op, byId: Map<string, Op>) {
     return;
   }
   // alternative: the existing mutation is the money authority; this stores only its run id.
-  const { runId } = await computeAlternativeIn(ctx, `inv-${op.operationId}`, baselineRunId);
+  const { runId } = await computeAlternativeIn(ctx, key, baselineRunId, owner);
   await done({ input: { baselineRunId }, outputRef: { kind: "run", id: runId } });
 }
 
@@ -604,6 +642,11 @@ export const finishSpecialist = internalMutation({
   handler: async (ctx, { operationId, result }) => {
     const op = await opById(ctx, operationId);
     if (!op || op.kind !== "specialist" || op.status !== "running") return false;
+    // Past the deadline the result is not accepted even if cleanup has not run yet.
+    if (expired(op)) {
+      await settle(ctx, op, "unknown", OUTCOME_UNKNOWN);
+      return false;
+    }
     if (result.ok) {
       const packet = HistoricalSpecialistInputSchema.parse(op.packet);
       const out = HistoricalSpecialistOutputSchema.safeParse(result.output);
@@ -669,29 +712,33 @@ export const expireTurn = internalMutation({
   handler: async (ctx, { operationIds }) => {
     for (const id of operationIds) {
       const op = await opById(ctx, id);
-      if (op?.status === "queued")
-        await settle(ctx, op, "failed", {
-          code: "deadline",
-          message: "The turn reached its deadline before this step started.",
-        });
-      else if (op?.status === "running")
-        await settle(ctx, op, "unknown", {
-          code: "outcome_unknown",
-          message:
-            "No result arrived before the deadline. It may have been billed and was not retried.",
-        });
+      if (op?.status === "queued") await settle(ctx, op, "failed", DEADLINE);
+      else if (op?.status === "running") await settle(ctx, op, "unknown", OUTCOME_UNKNOWN);
     }
   },
 });
 
 class ProviderUnavailable extends Error {}
+class ProfileMismatch extends Error {}
 
 /**
  * The one provider dispatch point. CREAO is the target coordinator and has no verified adapter
  * yet (G2c), so the default fails honestly with no call. claude-dev is the accepted Claude
- * specialist entry, used only when explicitly configured; it is never a fallback.
+ * specialist entry, used only when explicitly configured; it is never a fallback. The frozen
+ * profile must equal what this code would send, or nothing is sent.
  */
-async function dispatchSpecialist(mode: ProviderMode, packet: HistoricalSpecialistInput) {
+async function dispatchSpecialist(
+  mode: ProviderMode,
+  packet: HistoricalSpecialistInput,
+  profile: Profile | undefined,
+) {
+  const current = await profileOf(packet.role);
+  if (
+    profile?.role !== current.role ||
+    profile.instructions !== current.instructions ||
+    profile.version !== current.version
+  )
+    throw new ProfileMismatch();
   if (mode === "claude-dev") return runHistoricalSpecialist(process.env, packet);
   throw new ProviderUnavailable();
 }
@@ -700,6 +747,14 @@ async function dispatchSpecialist(mode: ProviderMode, packet: HistoricalSpeciali
 const MAYBE_SENT = new Set(["timeout", "network"]);
 
 function failureOf(e: unknown) {
+  if (e instanceof ProfileMismatch)
+    return {
+      ok: false as const,
+      status: "failed" as const,
+      code: "profile_mismatch",
+      message:
+        "The saved specialist profile no longer matches the deployed instructions. No model call was made.",
+    };
   if (e instanceof ProviderUnavailable)
     return {
       ok: false as const,
@@ -744,11 +799,20 @@ export const runTurn = internalAction({
       if (!next) return;
       if (!next.packet) continue;
       let result: Infer<typeof outcome>;
-      try {
-        const { output, provider, model, usage } = await dispatchSpecialist(mode, next.packet);
-        result = { ok: true, output, provider, model, usage };
-      } catch (e) {
-        result = failureOf(e);
+      if (expired(next)) {
+        // Claimed but the lease ran out before the call: send nothing; commit records unknown.
+        result = { ok: false, status: "unknown", ...OUTCOME_UNKNOWN };
+      } else {
+        try {
+          const { output, provider, model, usage } = await dispatchSpecialist(
+            mode,
+            next.packet,
+            next.profile,
+          );
+          result = { ok: true, output, provider, model, usage };
+        } catch (e) {
+          result = failureOf(e);
+        }
       }
       await ctx.runMutation(internal.investigation.finishSpecialist, {
         operationId: next.operationId,

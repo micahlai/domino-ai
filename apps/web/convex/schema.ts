@@ -103,6 +103,8 @@ export default defineSchema({
     caseId: v.string(),
     kind: v.union(v.literal("baseline"), v.literal("alternative")),
     baselineRunId: v.optional(v.string()),
+    // G2b: the investigation conversation that owns this run. Public writes never touch it.
+    owner: v.optional(v.string()),
     run: v.any(),
     snapshot: v.any(),
     summary: v.any(),

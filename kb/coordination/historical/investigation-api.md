@@ -13,6 +13,7 @@ Backend records for the canvas. Module `apps/web/convex/investigation.ts`; table
 
 - Unknown args (caseId, predictions, instructions, status) are rejected by the validators. The case is always the curated 2U case `twou-2023-cash-v1`.
 - Same requestId and same payload returns the first result and schedules nothing. A different payload or kind conflicts. Each accepted mutation saves its receipt, messages and queued operations, then schedules `runTurn` in the same transaction.
+- Ownership (repair1): runs an investigation creates carry `owner = conversationId` and an internal key `inv:<operationId>`, which the public requestId shape cannot express. Public `historical.saveBaseline`/`reveal`/`computeAlternative` never claim, prepopulate, reveal or branch an owned run: `reveal` and `computeAlternative` on an owned run fail `OWNED`. Reads (`getRun`, `getReveal`, `getCase`, `getActivity`) are unchanged. Legacy public runs behave as before.
 - Money and evidence come from the existing calls: `api.historical.getRun({caseId, runId})` for a forecast or alternative `outputRef.id` (`inputSnapshot` is the authority for its inputs), `api.historical.getReveal({runId})` for a reveal, and `api.historical.getCase({caseId, runId})` for the frozen post-reveal view. Specialist text never carries amounts.
 
 ## State (`getConversation`)
@@ -29,7 +30,7 @@ Backend records for the canvas. Module `apps/web/convex/investigation.ts`; table
 | kind | Node | input (frozen when it starts) | output |
 | --- | --- | --- | --- |
 | `source_load` | source | `{visibleThrough, knowledgeCutoff, sourceIds, factIds, assumptionIds, hash}` (cutoff view) | `{origin: "curated_archive", note, sources[{id,title,url,publishedAt,retrievedOn,contentHash}]}`. Bundled archived copy, not live retrieval. |
-| `forecast` | tool | run inputs + `{visibleThrough, knowledgeCutoff, hash: run.inputHash}` | `outputRef {kind:"run", id}`: the baseline saved by the existing `saveBaseline` logic |
+| `forecast` | tool | run inputs + `{visibleThrough, knowledgeCutoff, hash: run.inputHash}` | `outputRef {kind:"run", id}`: the baseline saved by the existing `saveBaseline` logic. Before saving, the current cutoff case must hash to the `source_load` input hash (full sources incl. title/contentHash, facts, assumptions); any drift fails `CASE_CHANGED` with no run saved. |
 | `specialist` role `evidence_analyst` | agent | `{visibleThrough, knowledgeCutoff, sourceIds, factIds, assumptionIds, runIds, comparisonIds, historyTurns, hash}` | `{assessment, citations[{kind,id}], uncertainties[]}` + `provider`, `model`, `usage` |
 | `reveal` | tool | `{runId}` | `{revealedThrough, comparisonIds}`, `outputRef {kind:"reveal", id: baselineRunId}` |
 | `alternative` | tool | `{baselineRunId}` | `outputRef {kind:"run", id}`: the A1 alternative from existing `computeAlternative` logic |
@@ -37,13 +38,13 @@ Backend records for the canvas. Module `apps/web/convex/investigation.ts`; table
 
 - Dependencies: forecast on source; analyst on source + forecast; reveal on forecast; alternative on forecast; reviewer on alternative. Edges = `dependsOn`. The Domino node is the conversation itself: a fixed, disclosed workflow, not autonomous planning.
 - Both specialists read only the saved run's frozen snapshot at the cutoff (`visibleThrough = knowledgeCutoff`, no comparisons, no excerpts). The analyst gets no history. The reviewer gets the user question and the analyst's cutoff assessment only, even after a reveal, so no S8 values or reveal messages reach it. Revealed-view specialist input is not built.
-- `profile`: `{role, workingStyle, instructions, version, tools: [], knowledgeCutoff}`, stored when the operation is created. `instructions` is the exact app-authored system prompt of the accepted Claude specialist entry; `version` = `role@` + first 12 hex of its sha256. A later prompt change gives new operations a new version; stored ones keep theirs. Label it "Instructions and working style".
+- `profile`: `{role, workingStyle, instructions, version, tools: [], knowledgeCutoff}`, stored when the operation is created. `instructions` is the exact app-authored system prompt of the accepted Claude specialist entry; `version` = `role@` + first 12 hex of its sha256. A later prompt change gives new operations a new version; stored ones keep theirs, and a stored profile whose role, instructions or version differs from what dispatch would send fails `profile_mismatch` with no call. Label it "Instructions and working style".
 
 ## Execution and failure
 
 - `internal.investigation.runTurn` (action) loops up to 8 times over `step` (mutation). A tool operation runs and commits in one transaction. A specialist is claimed queued -> running with its packet and input hash frozen, then dispatched once, then `finishSpecialist` commits. Only a `running` operation accepts a result, so a late or duplicate result is dropped. Success needs output that passes `HistoricalSpecialistOutputSchema` and `checkHistoricalSpecialistOutput` against the stored packet.
 - A step that throws rolls back; `abandon` fails the queued operations (`error.code` = the ConvexError code, then `dependency_failed`). Operations behind a failed or unknown step fail with `dependency_failed`. Existing tool outputs stay readable.
-- Deadline: each turn schedules `expireTurn` at 180 s for its own operation ids. Queued becomes `failed/deadline`; running becomes `unknown/outcome_unknown`. Nothing is retried anywhere, and reload or reconnect never redispatches (claims happen once).
+- Deadline: each operation's `leaseUntil` is creation + 180 s, and each turn schedules `expireTurn` then for its own operation ids. Queued becomes `failed/deadline`; running becomes `unknown/outcome_unknown`. The lease is also enforced without cleanup: `step` fails an expired queued operation instead of claiming it, `runTurn` sends nothing for a claim whose lease ran out, and `finishSpecialist` turns any result for an expired running operation into `unknown/outcome_unknown` (a missing lease counts as expired). Nothing is retried anywhere, and reload or reconnect never redispatches (claims happen once).
 - Budget: at most 2 specialist calls per conversation (analyst + reviewer), one reveal, one alternative, one turn at a time. Follow-up questions are not supported.
 
 ## Provider seam (live versus unavailable)

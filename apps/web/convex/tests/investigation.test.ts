@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashInput } from "../../../../packages/agents/src/hash";
 import { historicalSystemPrompt } from "../../../../packages/agents/src/historical";
 import { api, internal } from "../_generated/api";
+import { CASE, CUTOFF } from "../historical";
 import schema from "../schema";
 
 const modules = import.meta.glob(["../**/*.ts", "../_generated/*.js", "!./**"]);
@@ -419,6 +420,134 @@ describe("durable investigation (2U)", () => {
     expect((await opOf(t, conversationId, "specialist")).profile).toMatchObject({
       version: "evidence_analyst@old",
     });
+  });
+
+  it("public historical writes cannot prepopulate, reveal or branch a conversation-owned run", async () => {
+    const t = setup();
+    const { conversationId, operationIds } = await ask(t);
+    // The old internal key was public-shaped; claiming it now only makes an unrelated public run.
+    const squatted = await t.mutation(h.saveBaseline, {
+      requestId: `inv-${operationIds[1]}`,
+      caseId,
+    });
+    await expect(
+      t.mutation(h.saveBaseline, { requestId: `inv:${operationIds[1]}`, caseId }),
+    ).rejects.toThrow(/requestId/);
+    await drain(t);
+    const owned = (await opOf(t, conversationId, "forecast")).outputRef!.id;
+    expect(owned).not.toBe(squatted.runId);
+    await expect(
+      t.mutation(h.reveal, { requestId: "outside-reveal", runId: owned }),
+    ).rejects.toThrow(/OWNED|conversation/);
+    await expect(
+      t.mutation(h.computeAlternative, { requestId: "outside-alt-1", baselineRunId: owned }),
+    ).rejects.toThrow(/OWNED|conversation/);
+    expect((await t.query(h.getCase, { caseId, runId: owned })).revealed).toBe(false);
+    expect(await t.query(h.getReveal, { runId: owned })).toBeNull();
+    // Legacy public runs keep working, and the conversation's own reveal still does.
+    await t.mutation(h.reveal, { requestId: "outside-reveal", runId: squatted.runId });
+    await t.mutation(inv.revealInvestigation, { requestId: "req-rev-1", conversationId });
+    await drain(t);
+    expect((await opOf(t, conversationId, "reveal")).status).toBe("succeeded");
+    expect((await t.query(h.getCase, { caseId, runId: owned })).revealed).toBe(true);
+  });
+
+  it("a stored profile that differs from the dispatched prompt fails with no call", async () => {
+    devMode();
+    for (const patch of [
+      { instructions: "Prior deployed instructions." },
+      { version: "evidence_analyst@old" },
+    ]) {
+      const t = setup();
+      const { fetch } = claude();
+      const { conversationId } = await ask(t);
+      await t.run(async (ctx) => {
+        const row = (await ctx.db.query("investigationOperations").collect()).find(
+          (r) => r.role === "evidence_analyst",
+        )!;
+        const old = { ...row.profile, ...patch };
+        if (patch.instructions)
+          old.version = `evidence_analyst@${(await hashInput(old.instructions)).slice(0, 12)}`;
+        await ctx.db.patch(row._id, { profile: old });
+      });
+      await drain(t);
+      const analyst = await opOf(t, conversationId, "specialist");
+      expect([analyst.status, analyst.error?.code]).toEqual(["failed", "profile_mismatch"]);
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  });
+
+  it("an expired lease never claims or bills, and an expired running call ends unknown", async () => {
+    devMode();
+    const t = setup();
+    const { fetch } = claude();
+    const { conversationId } = await ask(t);
+    // Deadline cleanup has not run: the claim itself must refuse.
+    vi.setSystemTime(Date.now() + 181_000);
+    await t.action(internal.investigation.runTurn, { conversationId });
+    expect(fetch).not.toHaveBeenCalled();
+    const s = await state(t, conversationId);
+    expect(s.operations.map((o) => [o.status, o.error?.code])).toEqual([
+      ["failed", "deadline"],
+      ["failed", "deadline"],
+      ["failed", "deadline"],
+    ]);
+
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    const step = () =>
+      t2.mutation(internal.investigation.step, { conversationId: c2, providerMode: "claude-dev" });
+    await step();
+    await step();
+    const claimed = (await step())!;
+    vi.setSystemTime(Date.now() + 181_000);
+    expect(
+      await t2.mutation(internal.investigation.finishSpecialist, {
+        operationId: claimed.operationId,
+        result: {
+          ok: true,
+          output: {
+            assessment: "a",
+            citations: [{ kind: "source", id: "S7" }],
+            uncertainties: ["u"],
+          },
+          provider: "claude",
+          model: "m",
+          usage: { inputTokens: 1, outputTokens: 1 },
+        },
+      }),
+    ).toBe(false);
+    const late = await opOf(t2, c2, "specialist");
+    expect([late.status, late.error?.code, late.output]).toEqual([
+      "unknown",
+      "outcome_unknown",
+      undefined,
+    ]);
+  });
+
+  it("source drift between load and forecast fails before any forecast is saved", async () => {
+    devMode();
+    const t = setup();
+    const { fetch } = claude();
+    const { conversationId } = await ask(t);
+    await t.mutation(internal.investigation.step, { conversationId, providerMode: "claude-dev" });
+    const visible = CASE.sources.find((s) => s.publishedAt <= CUTOFF)!;
+    const before = structuredClone(visible);
+    try {
+      visible.title = "Revised disclosure version";
+      visible.contentHash = "b".repeat(64);
+      await t.action(internal.investigation.runTurn, { conversationId });
+    } finally {
+      Object.assign(visible, before);
+    }
+    const s = await state(t, conversationId);
+    expect(s.operations.map((o) => [o.status, o.error?.code])).toEqual([
+      ["succeeded", undefined],
+      ["failed", "CASE_CHANGED"],
+      ["failed", "dependency_failed"],
+    ]);
+    expect(await t.run((ctx) => ctx.db.query("historicalRuns").collect())).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("source wake: same version and unknown inputs do zero work", async () => {

@@ -15,3 +15,13 @@
 ## Repair1 required
 
 Candidate c185500 is blocked by kb/reviews/G2b-durable-audit.md. Repair its four findings within original ownership; no agents package changes or live calls. Fill a separate repair Result, retain initial checkpoint history. Codex owns shared board/HANDOFF.
+
+## Repair1 Result
+- Done (Opus lead alone, one process, no child): all four audit findings reproduced as failing regressions first (4 new tests failed on c185500), then fixed.
+  1. P1 ownership: `historicalRuns.owner` (optional, additive). Investigation runs use owner = conversationId and key `inv:<operationId>`; the `:` is outside the public requestId shape, so public calls cannot claim or prepopulate it. `saveBaselineIn`/`computeAlternativeIn`/`revealIn` take an optional owner; a prior row with another owner conflicts, and `reveal`/`computeAlternative` on a run with a different owner fail `OWNED` before writing any receipt. Public bodies and legacy public runs are unchanged.
+  2. P2 profile: `dispatchSpecialist` recomputes the profile from `historicalSystemPrompt` (the prompt `runHistoricalSpecialist` sends) and refuses `profile_mismatch` with no call on any role/instructions/version difference. Agents package untouched.
+  3. P2 lease: `step` fails an expired queued op (`deadline`) instead of claiming; `runTurn` sends nothing if the claim's lease is out; `finishSpecialist` marks an expired running op `unknown/outcome_unknown` and rejects its result. Missing lease counts as expired.
+  4. P2 drift: forecast checks the current cutoff case hashes to the `source_load` input hash (full sources incl. title/contentHash, facts, assumptions) before saving; drift fails `CASE_CHANGED` with no run, and the analyst fails `dependency_failed` with no call.
+- Evidence: `vitest run convex/tests` 88/88 (84 prior + 4 regressions). Independent probes `/tmp/g2b-independent.test.ts`: the 5 defect probes now fail on their defect assertions and the once-only concurrent-dispatch probe still passes. `tsc -p convex/tsconfig.json`, `pnpm --filter @domino/web typecheck`, biome on the 4 changed files pass. Not run: full `pnpm check`, build, codegen, live backend, any provider call.
+- Files: `apps/web/convex/{investigation.ts,historical.ts,schema.ts,tests/investigation.test.ts}`, this card, `kb/coordination/historical/investigation-api.md`.
+- Limits: the pre-call lease check has no dedicated test (claim and commit checks do). A claim just before the lease can still bill a call whose result lands late as `unknown`; a minimum remaining lease at claim would avoid that. Pre-repair local runs keyed `inv-...` have no owner and stay public. Default provider is still the CREAO-unavailable seam.

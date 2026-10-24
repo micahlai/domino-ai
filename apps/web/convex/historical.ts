@@ -99,6 +99,21 @@ export function requireRequestId(requestId: string) {
     fail("INVALID_REQUEST", "requestId must be 8-64 letters, digits, _ or -");
 }
 
+/**
+ * Public calls (owner undefined) use public-shaped requestIds. Server-owned work passes its
+ * conversation as owner and a key containing ":", which the public shape rejects, so neither
+ * side can claim or prepopulate the other's rows.
+ */
+function requireKey(requestId: string, owner: string | undefined) {
+  if (owner === undefined) requireRequestId(requestId);
+  else if (!requestId.includes(":")) fail("INVALID_REQUEST", "Internal key has a public shape");
+}
+
+/** A run is written only by its owner: public calls cannot reveal or branch an owned run. */
+function requireOwner(row: Doc<"historicalRuns">, owner: string | undefined) {
+  if (row.owner !== owner) fail("OWNED", "This run belongs to a different conversation");
+}
+
 function requireCase(caseId: string) {
   if (caseId !== CASE.id) fail("NOT_FOUND", "Unknown case");
 }
@@ -262,12 +277,17 @@ export const saveBaseline = mutation({
 });
 
 /** saveBaseline's body, shared with server-owned investigation operations. */
-export async function saveBaselineIn(ctx: MutationCtx, requestId: string, caseId: string) {
-  requireRequestId(requestId);
+export async function saveBaselineIn(
+  ctx: MutationCtx,
+  requestId: string,
+  caseId: string,
+  owner?: string,
+) {
+  requireKey(requestId, owner);
   requireCase(caseId);
   const prior = await priorRun(ctx, requestId);
   if (prior) {
-    if (prior.kind !== "baseline" || prior.caseId !== caseId)
+    if (prior.kind !== "baseline" || prior.caseId !== caseId || prior.owner !== owner)
       fail("CONFLICT", "requestId already used for a different request");
     return (await loadRun(ctx, prior.runId)).row.summary;
   }
@@ -288,6 +308,7 @@ export async function saveBaselineIn(ctx: MutationCtx, requestId: string, caseId
     requestId,
     caseId,
     kind: "baseline",
+    ...(owner === undefined ? {} : { owner }),
     run,
     snapshot,
     summary,
@@ -317,15 +338,21 @@ export async function computeAlternativeIn(
   ctx: MutationCtx,
   requestId: string,
   baselineRunId: string,
+  owner?: string,
 ) {
-  requireRequestId(requestId);
+  requireKey(requestId, owner);
   const prior = await priorRun(ctx, requestId);
   if (prior) {
-    if (prior.kind !== "alternative" || prior.baselineRunId !== baselineRunId)
+    if (
+      prior.kind !== "alternative" ||
+      prior.baselineRunId !== baselineRunId ||
+      prior.owner !== owner
+    )
       fail("CONFLICT", "requestId already used for a different request");
     return (await loadRun(ctx, prior.runId)).row.summary;
   }
-  const { run: baseline, snapshot: frozen } = await loadRun(ctx, baselineRunId);
+  const { row: baseRow, run: baseline, snapshot: frozen } = await loadRun(ctx, baselineRunId);
+  requireOwner(baseRow, owner);
   if (baseline.branch.kind !== "baseline")
     fail("INVALID_BRANCH", "An alternative must start from a baseline run");
   // A new alternative is computed from the current cutoff view, so it needs the baseline's
@@ -365,6 +392,7 @@ export async function computeAlternativeIn(
     caseId: CASE.id,
     kind: "alternative",
     baselineRunId,
+    ...(owner === undefined ? {} : { owner }),
     run,
     snapshot,
     summary,
@@ -493,8 +521,8 @@ export const reveal = mutation({
 });
 
 /** reveal's body, shared with the explicit investigation reveal. */
-export async function revealIn(ctx: MutationCtx, requestId: string, runId: string) {
-  requireRequestId(requestId);
+export async function revealIn(ctx: MutationCtx, requestId: string, runId: string, owner?: string) {
+  requireKey(requestId, owner);
   // Pre-receipt rows recorded only the first requestId on the reveal itself.
   const bound =
     (await revealReceipt(ctx, requestId)) ??
@@ -504,7 +532,8 @@ export async function revealIn(ctx: MutationCtx, requestId: string, runId: strin
       .unique());
   if (bound && bound.runId !== runId)
     fail("CONFLICT", "requestId already used for a different request");
-  const { run } = await loadRun(ctx, runId);
+  const { row, run } = await loadRun(ctx, runId);
+  requireOwner(row, owner);
   if (run.branch.kind !== "baseline")
     fail("INVALID_BRANCH", "Only a baseline run is compared with disclosures");
   const existing = await loadReveal(ctx, run);
