@@ -1,5 +1,7 @@
 # Domino handoff
 
+Latest scheduled audit13:33 PDT: all three recorded workers active; UI/provider file progress verified, backend repair still inspecting. No new accepted checkpoint or integration. Next collect completed commits for independent re-review.
+
 ## Latest checkpoint: old CREAO selected, repairs active
 
 Use existing app-scoped CREAO only. New developer key remains unused; no top-up or new paid fallback. G2b candidatec185500 and R1 candidate2d57610 each pass930tests but independent audits block acceptance. Three isolated Claude workers verified: G2b repair14827/exec47892, R1 Sonnet repair15437/exec90404, G2c app adapter7172/exec88483. No children. Read active-run for exact findings, logs and next audit gates. Current preview remains early visual; no full journey claim. Scheduled reports after every20minute audit. Main unchanged.
