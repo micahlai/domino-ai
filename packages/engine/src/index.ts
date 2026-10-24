@@ -1,4 +1,5 @@
 import type { Engine } from "@domino/contracts";
+import { forecast } from "./forecast";
 
 /** Placeholder. Built by prompts E4 to E6 (prompts/engine/). Pure functions only. */
 const notBuilt = (name: string) => () => {
@@ -6,7 +7,7 @@ const notBuilt = (name: string) => () => {
 };
 
 export const engine: Engine = {
-  forecast: notBuilt("forecast"),
+  forecast,
   dominoes: notBuilt("dominoes"),
   scanRisks: notBuilt("scanRisks"),
   scoreFix: notBuilt("scoreFix"),
