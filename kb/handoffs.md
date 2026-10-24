@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 12:31 Codex canvas reprioritization
+- Done: user corrected centerpiece; inspected backend/provider/UI reuse, prepared G1 scope and C1 supervisor, created isolated domino-G1 frombc1d21f. Claude Opus worker verifiedPID4552 with requested /orchestrator and /ponytail. Existing monitor reactivated with revised scope.
+- Next: review/show G1 actual browser visual before full-flow implementation; then narrow real specialist and persisted conversation/graph APIs, then live UI wiring.
+- Watch out: old dashboard completion is not canvas completion. No fake agent activity, no theme expansion, no main merge. Details/process ownership in active-run.md.
+
 ## 2026-10-24 08:49 Codex final overnight checkpoint
 - Done: H4d code5db5f21 independently accepted at3570989. Final preview assembled in its own worktree, fresh offline install,815tests/typechecks/lint/build and real save/reveal/alternative/reload/activity journey pass. Four desktop/mobile styles captured. All Claude workers finished; monitor paused.
 - Next: review `preview/historical-overnight` at http://127.0.0.1:3102/historical and `kb/coordination/historical/overnight-result.md` before main integration. Preserve isolated backend3210/3211 and all worktrees.

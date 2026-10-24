@@ -1,37 +1,27 @@
-# Active overnight run: complete
+# Active run: agent canvas centerpiece
 
-Updated October 24, 2026 at 08:49 PDT. The reviewable preview is complete. Automation `domino-overnight-audit` is PAUSED. All owned Claude workers finished. Do not dispatch another phase or restart monitoring without new user direction. Earlier audit history remains in Git and kb/reviews.
+Updated October24 12:31 PDT. New user direction supersedes old dashboard completion and11:15 deadline. Automation domino-overnight-audit ACTIVE every20minutes with C1 prompt. No main merge. Entry prompts/shared/C1-canvas-supervisor.md; scope kb/spec/agent-canvas-2026-10-24.md.
 
-## Result and next exact step
+## Current worker and next exact step
 
-- Read [overnight-result.md](overnight-result.md) for accepted SHAs, all four styles, screenshots, financial limitations and restart commands.
-- Review branch `preview/historical-overnight`, checkout `../domino-preview`, runtime code `5db5f21`, acceptance `3570989`, final documentation above that checkpoint. Fresh offline install, 815 tests, typechecks, lint, production build and actual browser journey passed.
-- Open http://127.0.0.1:3102/historical. Save forecast, reveal, compute alternative, inspect evidence and three real events. Reload and style switches preserve state. Initial historical event announcements stay quiet.
-- Next: user reviews the completed journey and chooses the demo framing before main integration. This accepted 2U case demonstrates a retrospective cash forecast miss. Warning accuracy, debt constraints and bankruptcy prevention are unvalidated. Counterargument: a debt-aware case better fits the original pitch, but needs additional verified evidence.
-- Main remains `694ab2a`. No main merge/push, production deployment, shared cloud writes or paid Apify calls. Preserve existing worktrees and P5 dependencies. Agent canvas and broader implementation remain deferred.
+- G1 visual checkpoint: ../domino-G1, branch G1-agent-canvas-visual, basebc1d21f. Claude Opus/high lead instructed to use /orchestrator and /ponytail full with one Sonnet builder, at most two processes in this phase. Exec47940 / verifiedPID4552, launched12:29 PDT, /tmp/domino-G1-claude.log, prompt/tmp/domino-G1-prompt.txt. Cwd verified. No duplicate launch.
+- G1 owns only /investigate, investigate components, minimal AppShell/playground changes and one graph dependency if needed, plus card Result. No backend/provider calls/full flow/server/full suite. Uses installed Claude skills /Users/jaydenl/.claude/skills/orchestrator/SKILL.md and /Users/jaydenl/.claude/plugins/cache/ponytail/ponytail/4.7.0/skills/ponytail/SKILL.md. User explicitly requested these skills.
+- Offline dependency install missed cached Biome. Locked install retry exec97169, /tmp/domino-G1-install.log. Inspect completion before full checks. No package versions changed by coordinator.
+- Next: collect local G1 commit, independently review, serialized full check/build and start owned temporary preview. Browser verify first Domino node, pan/zoom/drag, fixed conversation panel, node details and mobile; show screenshot to user BEFORE dispatching full execution. Then implement G2 real durable operations and G3 wiring in isolated worktrees, using exact reviewed dependency commits.
+- No other Domino implementation worker authorized yet. Other running Claude processes may belong to user/unrelated projects; do not touch them. Three maximum implementation processes including lead and children; one UI writer.
 
-## Accepted work and ownership
+## Inspection and decisions
 
-| Work | Checked checkpoint | State |
-| --- | --- | --- |
-| H1 evidence | a4e49e0 | Accepted, pushed, no worker |
-| H2 backend | 4795d51 | Accepted, pushed, no worker |
-| H3 presentation | 97925fd | Accepted, pushed, no worker |
-| H4 final UI/activity | 3570989, code 5db5f21 | Accepted, pushed, no worker |
-| Final preview | preview/historical-overnight | Same checked ancestry, final docs/screenshots; no writer |
+Historical getCase/getRun/saveBaseline/reveal/computeAlternative and frozen input snapshots are reusable. HistoricalLive has memoized queries and race guards; HistoricalChart/Replay and proof components stay readable inside an output detail. Current activity records only successful deterministic financial operations. apps/web/convex/agents.ts is still placeholders. No durable conversation or specialist DAG exists.
 
-Independent reviewers approved evidence, financial contracts/engine, immutable persistence, actual activity and final UI. Full checks/build ran serially. Final logs: `/tmp/domino-preview-install.log`, `/tmp/domino-preview-check.log`, `/tmp/domino-preview-build.log`. Browser checked save/reveal/alternative/reload, source gates, selection, all four desktop/mobile styles, three actual events and no console errors. Forced network outage and runtime reduced-motion emulation remain unverified; source/component coverage is documented.
+packages/agents has actual Claude/CREAO transports, but existing operational jobs require weekly Branch/Snapshot models and must not be filled with invented historical data. Add a narrow historical specialist contract, permitted frozen evidence and engine output references, bounded conversation and citation validation. Durable task records with dependency IDs can supply graph nodes/edges without a general workflow engine. Real starts/results/errors only; no fake agent labels for mutation calls. Deterministic computation nodes are tools. Old theme work is finished and no more themes are queued.
 
-## Owned runtime
+Call: bounded curated2U investigation with actual specialist jobs and existing engine tools. Counterargument: arbitrary autonomous planning is more flexible, but creates cost and evidence-control risks without improving the single requested journey.
 
-- Final preview3102: exec29397/PID54500, cwd domino-preview/apps/web, `/tmp/domino-final-preview.log`. Older owned3100/3101 stopped after cwd verification. Unrelated main3000 untouched.
-- Isolated anonymous Convex3210/site3211: exec80763/backendPID38093, cwd domino-H2/apps/web, `/tmp/domino-H2-local-convex.log`. Local database retains demo runs. No second watcher; no cloud deployment; never print local env/auth.
-- Bounded awake guard exec88844/PID14212 expires around11:13 PDT. No power settings changed. Preview requires computer awake.
-- Monitor PAUSED on completion, before11:15 PDT deadline. No implementation process remains. Verify recorded process/cwd before any restart or stop.
-- CUA deliverable tab6 shows final3102. Screenshots saved under `screenshots/`. Current URLs and run IDs are in the result report. Browser variables are session-specific; read CUA documentation before reuse.
+## Existing checkpoints and runtime
 
-## Remaining limitations
-
-- Only raw-backed S7/S8 cash evidence is accepted. Baseline$23.109M, actual$60.689M, miss+$37.580M; alternative$18.8465M is a cost-range midpoint with unknown feasibility, no in-window benefit and explicit unmodeled downside.
-- Pending mutation request IDs do not survive reload; an unknown save followed by reload can create another immutable run.
-- Public Ramp/Hyphenate colors were checked; private layout/font fidelity is inferred. No fake agent/tool execution.
+- Preserved final dashboard preview4f5432e, current planningbc1d21f in ../domino-preview on preview/historical-overnight. Prior815tests/typechecks/lint/build/browser pass covers dashboard only, NOT new canvas. Main694ab2a frozen. H1a4e49e0, H24795d51, H397925fd and H43570989; see overnight-result.md for exact accepted ancestry; no changes there.
+- Prior preview3102 exec29397/PID54500 and isolated Convex3210/site3211 exec80763/backendPID38093 were recorded earlier; reverify before relying on PIDs after laptop reconnect. Local logs/tmp/domino-final-preview.log and/tmp/domino-H2-local-convex.log. Do not launch duplicate backend or touch shared cloud/main3000.
+- Old bounded awake guard expired around11:13; new Claude wrapped with caffeinate -i for its own lifetime. App/computer must remain available, AC/lid open recommended; no power settings changed.
+- Automation ACTIVE, same thread and20minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
+- All scopes require exact statuses/output evidence and frozen publication boundaries. Existing2U case remains retrospective cash miss, not validated bankruptcy warning. Preserve explicit costs, unknown benefit/downside. Agent graph execution does not make financial conclusions more validated.

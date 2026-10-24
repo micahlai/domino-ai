@@ -1,12 +1,15 @@
 # Status board
 
-## Current scope: historical case study, supervised overnight execution
+## Current scope: agent canvas centerpiece, supervised Claude implementation
 
 Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
+| G1 agent canvas visual | doing | Claude Opus /orchestrator + /ponytail, bounded Sonnet implementation; isolated domino-G1; show early browser checkpoint before full flow |
+| G2 actual specialist operations | todo | Narrow historical jobs + durable conversation/task graph, reuse existing provider/financial APIs; waits on early visual |
+| G3 complete canvas journey | todo | Real operations drive graph, node details open chart/proof; no fake execution; waits on accepted G2 |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
 | H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
 | H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass; final UI wiring accepted5db5f21 |
@@ -15,7 +18,7 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |
 | P1-P4, I1/I3, particles/crosshair | preserved | Reuse timeline, selection, proof, risk/fix presentation |
 | P5 | rescope | Connect/detail are stubs; preserve interfaces and E5/E7 dependencies; reveal disclosure replaces simulated Next week |
-| I4, E2b, broad E5/E7, E8, agent canvas | deferred | No implementation launch under the old plan |
+| I4, E2b, broad E5/E7, E8 | deferred | No implementation launch under the old plan |
 
 
 Update your rows at the start and end of every task. Status: `todo`, `doing`, `review`, `done`, `blocked`.
