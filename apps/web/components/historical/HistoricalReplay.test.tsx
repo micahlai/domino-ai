@@ -15,7 +15,7 @@ const render = (stage: "baseline" | "observed" | "response") =>
 describe("historical replay", () => {
   it("keeps later observations out before reveal", () => {
     const html = render("baseline");
-    expect(html).not.toContain("Reported after forecast");
+    expect(html).not.toContain("Revealed reported outcome");
     expect(html).not.toContain("Disclosure published");
     expect(html).not.toContain("Saved forecast versus what was reported");
     expect(html).toContain("Knowledge cutoff");
@@ -24,10 +24,11 @@ describe("historical replay", () => {
 
   it("shows observed results beside the saved forecast, keeping the miss", () => {
     const html = render("observed");
-    expect(html).toContain("Reported after forecast, Mar 31, 2024: $28M");
+    expect(html).toContain("Revealed reported outcome, Mar 31, 2024: $28M");
     expect(html).toContain("Saved forecast, Mar 31, 2024: $34M");
     expect(html).toContain("Missed the saved range");
     expect(html).toContain("Not scored");
+    expect(html).not.toContain("Not reported yet");
     expect(html).not.toContain("Post-hoc");
   });
 

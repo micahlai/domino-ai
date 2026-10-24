@@ -19,6 +19,7 @@ import {
   RevealDataSchema,
   alternativeIssue,
   buildView,
+  mayApplyCompletion,
 } from "./live";
 
 const codeText: Record<string, string> = {
@@ -305,6 +306,16 @@ function Session({ runId, altId }: { runId?: string; altId?: string }) {
     };
   }, []);
 
+  // alive only flips in effect cleanup, after the address may already have changed, so also
+  // compare the live address with the one this session started from.
+  const stillHere = () =>
+    mayApplyCompletion({
+      alive: alive.current,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      originRunId: runId,
+    });
+
   // Read the live address, not the one captured when the call started, so a style chosen
   // while the call was in flight is kept.
   function setParam(name: string, value: string) {
@@ -324,11 +335,11 @@ function Session({ runId, altId }: { runId?: string; altId?: string }) {
     setActs((a) => ({ ...a, [key]: { pending: true } }));
     try {
       const result = await call(requestIds.current[key]);
-      if (!alive.current) return;
+      if (!stillHere()) return;
       setActs((a) => ({ ...a, [key]: { done: true } }));
       after?.(result);
     } catch (error) {
-      if (alive.current) setActs((a) => ({ ...a, [key]: { error: describeError(error) } }));
+      if (stillHere()) setActs((a) => ({ ...a, [key]: { error: describeError(error) } }));
     } finally {
       inFlight.current.delete(key);
     }

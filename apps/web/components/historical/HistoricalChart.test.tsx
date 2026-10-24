@@ -32,3 +32,19 @@ describe("HistoricalChart forecast line", () => {
     expect(render()).toMatch(/<clipPath[^>]*><rect[^>]*width="720"/);
   });
 });
+
+describe("HistoricalChart edge labels", () => {
+  it("right-aligns a label at the right edge and keeps an inner label left-aligned", () => {
+    reduced.on = false;
+    const view = previewView("observed");
+    const html = renderToStaticMarkup(
+      createElement(HistoricalChart, {
+        view: { ...view, dates: { ...view.dates, revealedOn: "2024-09-30" } },
+        onSelect: () => {},
+      }),
+    );
+    expect(html).toMatch(/x="692"[^>]*text-anchor="end"[^>]*>Disclosure published</);
+    expect(html).toMatch(/text-anchor="start"[^>]*>Knowledge cutoff</);
+    expect(html).toContain("min-w-[720px]");
+  });
+});

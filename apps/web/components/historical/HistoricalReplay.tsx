@@ -190,7 +190,7 @@ function Comparison({ rows }: { rows: ComparisonRow[] }) {
                 <TableCell>{formatReportDate(row.period)}</TableCell>
                 <TableCell>{formatCents(row.projected)}</TableCell>
                 <TableCell>
-                  {row.observed !== undefined ? formatCents(row.observed) : "Not reported yet"}
+                  {row.observed !== undefined ? formatCents(row.observed) : "No reported value"}
                 </TableCell>
                 <TableCell>
                   {row.difference !== undefined
@@ -308,7 +308,7 @@ function RunNotes({ view }: { view: HistoricalView }) {
         {view.metricLabel ? (
           <p>
             <span className="font-medium">Measure: </span>
-            {view.metricLabel}. Every figure on this page uses it.
+            {view.metricLabel}. Every figure in the chart and comparison uses it.
           </p>
         ) : null}
         {view.disclosure ? <p>{view.disclosure}</p> : null}

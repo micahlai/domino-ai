@@ -18,7 +18,7 @@ const kindLabel: Record<Kind, string> = {
   reported: "Reported",
   nowcast: "Modeled estimate at cutoff",
   projected: "Saved forecast",
-  observed: "Reported after forecast",
+  observed: "Revealed reported outcome",
   alternative: "Alternative (projected)",
 };
 
@@ -103,7 +103,7 @@ export function HistoricalChart({
     <div className="overflow-x-auto">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="h-auto min-w-[560px] w-full"
+        className="h-auto min-w-[720px] w-full"
         // biome-ignore lint/a11y/useSemanticElements: an SVG cannot be a fieldset
         role="group"
         aria-label={`Cash for ${view.caseName} by report date. Points are reported or projected values; nothing is drawn between report dates except forecast paths.`}
@@ -164,8 +164,9 @@ export function HistoricalChart({
               strokeDasharray="4 3"
             />
             <text
-              x={x(utc(mark.date)) + 4}
+              x={x(utc(mark.date)) + (x(utc(mark.date)) > W - M.right - 110 ? -4 : 4)}
               y={M.top - 28 + row * 14}
+              textAnchor={x(utc(mark.date)) > W - M.right - 110 ? "end" : "start"}
               className="fill-muted-foreground text-[10px]"
             >
               {mark.label}

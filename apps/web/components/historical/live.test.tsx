@@ -23,6 +23,7 @@ import {
   type RevealData,
   alternativeIssue,
   buildView,
+  mayApplyCompletion,
 } from "./live";
 
 vi.mock("motion/react", async (importOriginal) => {
@@ -450,5 +451,30 @@ describe("states and recovery", () => {
     seen.length = 0;
     renderToStaticMarkup(<Probe />);
     expect(Object.keys(seen[0] as object)).toEqual(["case"]);
+  });
+});
+
+describe("late completion guard", () => {
+  const ok = { alive: true, pathname: "/historical", search: "", originRunId: undefined };
+  const may = (over: Partial<Parameters<typeof mayApplyCompletion>[0]>) =>
+    mayApplyCompletion({ ...ok, ...over });
+
+  it("applies on the same page and run, keeping style and other params", () => {
+    expect(may({})).toBe(true);
+    expect(may({ search: "?style=2&alt=x" })).toBe(true);
+    expect(may({ search: "?run=A&style=2", originRunId: "A" })).toBe(true);
+    expect(may({ search: "?run=", originRunId: undefined })).toBe(true);
+  });
+
+  it("drops a call that finishes after the run changed", () => {
+    expect(may({ search: "?run=B" })).toBe(false); // new -> B
+    expect(may({ search: "?run=B", originRunId: "A" })).toBe(false); // A -> B
+    expect(may({ search: "", originRunId: "A" })).toBe(false); // A -> new
+  });
+
+  it("drops a call that finishes after leaving the route or unmounting", () => {
+    expect(may({ pathname: "/playground" })).toBe(false);
+    expect(may({ pathname: "/playground", search: "?run=A", originRunId: "A" })).toBe(false);
+    expect(may({ alive: false })).toBe(false);
   });
 });

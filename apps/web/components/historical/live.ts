@@ -435,3 +435,15 @@ export function buildView({ caseData, baseline, reveal, alternative }: ViewInput
     evidence: [...runEvidence(baseline), ...revealedEvidence, ...altEvidence],
   };
 }
+
+/** True only if a finished call may still touch the page: the session is mounted, the browser is
+ * still on /historical, and its run query is the one the call started from (missing = new). */
+export function mayApplyCompletion(args: {
+  alive: boolean;
+  pathname: string;
+  search: string;
+  originRunId?: string;
+}) {
+  const live = new URLSearchParams(args.search).get("run") || undefined;
+  return args.alive && args.pathname === "/historical" && live === (args.originRunId || undefined);
+}
