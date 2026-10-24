@@ -94,6 +94,19 @@ describe("adaptConversation", () => {
     expect(node(conv([source]), "op1")?.evidence?.map((e) => e.id)).toEqual(["s1", "s2"]);
   });
 
+  it("shows the stored instructions scope as saved, and no app id", () => {
+    const scope = "Rules Domino sends with each run. The app's own instructions also apply.";
+    const n = node(
+      conv([
+        analyst({ profile: { ...profile, instructionsScope: scope, appId: "app-secret-id" } }),
+      ]),
+      "op3",
+    );
+    expect(n?.summary).toBe(scope);
+    expect(JSON.stringify(n)).not.toContain("app-secret-id");
+    expect(node(conv([analyst()]), "op3")?.summary).toBeUndefined();
+  });
+
   it("leaves an unreported model unknown", () => {
     const n = node(
       conv([

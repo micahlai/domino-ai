@@ -368,6 +368,9 @@ export function HistoricalReplay({
   const selected = chartPoints(view).find((p) => p.id === selectedId);
   const selectedEvidence = view.evidence.find((e) => e.id === selected?.evidenceId);
   const stageIndex = stages.findIndex((s) => s.id === view.stage);
+  // An alternative can be saved before the reveal, so its availability is its own.
+  const done = (id: string, i: number) =>
+    i <= stageIndex || (id === "response" && !!view.alternative);
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -376,10 +379,10 @@ export function HistoricalReplay({
             <li
               key={s.id}
               aria-current={s.id === view.stage ? "step" : undefined}
-              className={i <= stageIndex ? "font-medium" : "text-muted-foreground"}
+              className={done(s.id, i) ? "font-medium" : "text-muted-foreground"}
             >
               {i + 1}. {s.label}
-              {i > stageIndex ? " (not revealed yet)" : ""}
+              {done(s.id, i) ? "" : " (not available yet)"}
             </li>
           ))}
         </ol>
