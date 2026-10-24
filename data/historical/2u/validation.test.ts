@@ -174,6 +174,21 @@ describe("2U cash-only case: protocol", () => {
     expect(proto.response.inWindowSavingsCents).toBe(0);
   });
 
+  it("A1-DOWNSIDE stays a visible unmodeled limit and out of the response run inputs", () => {
+    const unmodeled: string[] = proto.response.unmodeledAssumptionIds;
+    expect(unmodeled).toEqual(["A1-DOWNSIDE"]);
+    expect(proto.response.unmodeledNote).toMatch(/^UNMODELED/);
+    expect(proto.inputs.responseAssumptionIds).toEqual([
+      ...proto.inputs.baselineAssumptionIds,
+      ...proto.response.decisionAssumptionIds,
+    ]);
+    for (const id of unmodeled) {
+      expect(proto.inputs.responseAssumptionIds).not.toContain(id);
+      expect(run("alternative").inputs.assumptionIds).not.toContain(id);
+      expect(c.assumptions.some((a) => a.id === id)).toBe(true);
+    }
+  });
+
   const predictions = (...lists: { id: string }[][]) => lists.flat();
   const run = (kind: "baseline" | "alternative"): HistoricalRun => ({
     id: kind === "baseline" ? "run-baseline" : "run-response",

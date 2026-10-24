@@ -34,7 +34,7 @@
     "sourceIds": ["S7"],
     "factIds": ["F01", "F02", "F03", "F05", "F06", "F07", "F08"],
     "baselineAssumptionIds": ["AS-FIN0", "AS-FX0", "AS-RESTRICTED"],
-    "responseAssumptionIds": ["AS-FIN0", "AS-FX0", "AS-RESTRICTED", "A1", "A1-DOWNSIDE"]
+    "responseAssumptionIds": ["AS-FIN0", "AS-FX0", "AS-RESTRICTED", "A1"]
   },
   "observation": {
     "sourceIds": ["S8"],
@@ -52,6 +52,8 @@
   },
   "response": {
     "decisionAssumptionIds": ["A1"],
+    "unmodeledAssumptionIds": ["A1-DOWNSIDE"],
+    "unmodeledNote": "UNMODELED. A1-DOWNSIDE (0 to USD 13.75M a year, timing unknown, feasibility unknown) is not a run input and is not netted into any figure. The response shows cost only, with no benefit claim. The downside is a visible limitation, not a zero.",
     "postHoc": true,
     "postHocReason": "Chosen in a retrospective with the outcome known, though no number was tuned from the outcome. Hypothetical, feasibility unknown.",
     "oneTimeCostCents": {
