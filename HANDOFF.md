@@ -6,7 +6,8 @@
 - Current stages include historical evidence/contracts/backend/UI, H2d truthful activity, H4 four reusable styles/Motion, preview verification and continuous independent audits. No main merge/production deployment/shared cloud reset.
 - User reports Apify API token added to .env.local; value/validity not inspected. Prefer existing public references, no new scraper or billable Actor runs without a spending limit. Never read credentials into model context or logs.
 - Startup verified 2026-10-24 05:20 PDT: H1 evidence, H2a contracts and H3 presentation Claude workers launched from d5b2c94 in isolated worktrees; actual processes and file progress checked. Codex heartbeat domino-overnight-audit is ACTIVE every 20 minutes on this thread. Exact sessions/logs/process IDs and dependency gates are in kb/coordination/historical/active-run.md.
-- Next exact step: inspect the active-run record and actual worker status, audit completed commits, then advance only accepted dependency gates. No duplicate workers. Deadline 2026-10-24 11:15 PDT; keep the app available, AC connected and lid open. Bounded caffeinate guard session88844/PID14212 covers the gaps between phases.
+- All three initial Claude phases now completed locally: H1 2263a96 provisional evidence, H2a code8bdea82/packet89f8847, H3 db6ac41 presentation. Three scoped independent Codex audits are running; H2a full suite started. None is accepted for dependent real-case work yet.
+- Next exact step: inspect the active-run record, collect audits and full-check result, then advance only accepted dependency gates. No duplicate workers. Deadline 2026-10-24 11:15 PDT; keep the app available, AC connected and lid open. Bounded caffeinate guard session88844/PID14212 covers the gaps between phases.
 - All launch instructions below are archived history where they conflict with this active C0 run. H0 is inactive.
 
 ## Latest addition: clean UI, four styles and activity motion

@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 05:22 PDT. Current supervisor: Codex in thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Read this before dispatching; inspect processes and commits, do not duplicate work.
+Updated: 2026-10-24 05:23 PDT. Current supervisor: Codex in thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Read this before dispatching; inspect processes and commits, do not duplicate work.
 
 ## Scope and limits
 
@@ -24,14 +24,14 @@ All worktrees are under /Users/jaydenl/Dev/Hackathon/CalHacks 26. Each worker ha
 | Phase | Worktree / branch | Model | Exec session / PID at verification | Log | Status |
 | --- | --- | --- | --- | --- | --- |
 | H1 evidence | domino-H1 / H1-historical-evidence | Sonnet high | 92724 / 99188 | /tmp/domino-H1-evidence-claude.log | Completed provisional2263a964d2da3318f2e86f0935a3f897b81b2773; audit pending |
-| H2a contracts | domino-H2 / H2-historical-backend | Opus high | 89846 / 1126 | /tmp/domino-H2a-contracts-claude.log | Running, actual contract files present; no accepted checkpoint yet |
+| H2a contracts | domino-H2 / H2-historical-backend | Opus high | 89846 / 1126 | /tmp/domino-H2a-contracts-claude.log | Completed code8bdea82b9fa463e9acb775ae29891824c31e120d and packet89f8847; independent audit pending |
 | H3 presentation | domino-H3 / H3-historical-ui | Sonnet high | 9033 / 3613 | /tmp/domino-H3-presentation-claude.log | Completed db6ac41; audit pending, props-only synthetic preview |
 
-- All three processes and corresponding file progress verified around05:19. H1 and H3 completed while setup verification continued. Do not describe completed workers as still running or relaunch them blindly.
+- All three processes and corresponding file progress verified around05:19. All three completed while setup verification continued. Do not describe completed workers as still running or relaunch them blindly.
 - H2/H3 dependencies installed from frozen lockfile offline, no downloads. H1 research needs no install.
 - H1 is NOT an accepted real-case bundle. SEC fetch returned403; figures were taken from WebFetch summaries, hashes absent, debt/MD&A incompletely read. Reconcile and verify primary-source content, then normalize to accepted contracts. Q4 actual cash rose; do not rewrite that result into a successful crisis warning. Worker explicitly qualifies hypothetical action costs and debt interpretation.
 - H3 claims web103tests, typecheck and focused biome pass. No independent full suite/build/browser yet. It changed five primitive import paths for Vitest compatibility. Review those and pre-reveal data boundaries. No live endpoint/wiring is implemented.
-- Read-only reviewers dispatched at05:22: /root/audit_e3b_causality on H1 source/provenance/arithmetic and minimal retrieval repair; /root/audit_ui_integration on H3 presentation truthfulness, leakage, semantics and reuse. Reuse these agents and collect reports before duplicate audits. /root/audit_e3b_rules available for high-risk H2a review once complete.
+- Read-only reviewers dispatched at05:22: /root/audit_e3b_causality on H1 source/provenance/arithmetic and minimal retrieval repair; /root/audit_ui_integration on H3 presentation truthfulness, leakage, semantics and reuse. Reuse these agents and collect reports before duplicate audits. /root/audit_e3b_rules dispatched at05:23 for high-risk H2a review. Lead full H2a check started; log /tmp/domino-H2a-full-check.log. Check its process/result before claiming the serialized slot or launching more full checks.
 
 ## Next exact steps
 
