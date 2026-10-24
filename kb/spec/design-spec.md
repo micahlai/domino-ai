@@ -117,22 +117,22 @@ All components live in `apps/web/components/`. Each has a playground section wit
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | `#202B27` | Deep green page background derived from the supplied palette |
-| Surface | `#2B3B36` | Panels and popovers |
+| Background | `#15110F` | Near-black brown page background |
+| Surface | `#211B17` | Dark brown panels and popovers |
 | Warm surface | `#3B312B` | Secondary controls and selected supporting areas |
-| Border | `#45534C` | Subtle separators |
+| Border | `#493B32` | Subtle separators |
 | Text | `#F4F1EB` | Main text |
-| Text muted | `#B7C5BD` | Labels, captions |
+| Text muted | `#BEB3AA` | Labels, captions |
 | Accent / safe | `#68B99E` | Primary actions, selected future, surviving futures |
-| Clay | `#BA8768` | Supporting chart and history accents |
-| Danger | `#BA6A68` | Broken rules, lender's limit, breaking futures |
+| Clay | `#D6A17E` | Supporting chart and history accents |
+| Danger | `#D991A8` | Broken rules, lender's limit, breaking futures |
 | Font | Inter | Everything |
 | Radius | 8 px | Cards, buttons |
 | Spacing | 4 px steps | Use Tailwind spacing scale |
 
-Rose text is lightened to `#D9918F` for small text contrast; the supplied rose remains the warning fill/stroke.
+Pink warning text is lightened to `#E6A5B9` for small text contrast. Green remains the primary color; pink and orange are supporting accents.
 
-Dark mode is the default per Micah's supplied palette. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
+Dark mode uses a near-black brown base per Micah's revised direction. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
 
 ---
 

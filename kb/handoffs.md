@@ -1,7 +1,12 @@
 # Handoffs
 
 Newest first. One short entry at the end of every task or work session.
-Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
+Format: `## 2026-10-24 Micah / Codex — revised theme
+- Done: Changed the base to near-black brown, green primary, pink warnings and orange history accents. Logo retained from calhacks-2026.
+- Next: Finish P3, then P4.
+- Watch out: This replaces the earlier green background direction.
+
+## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
 ## 2026-10-24 01:07 Micah (Codex, dark theme and logo)
 - Done: applied the supplied mint/clay/rose/green/brown palette as the default dark theme, with readable off-white text and accessible warning text. Reused the original two-tile Domino SVG from calhacks-2026 for the header and favicon; preserved geometry and wordmark dot. Checks (56 tests), build and desktop screenshot review pass.
