@@ -43,6 +43,7 @@ and parsed with the Zod schema when read in actions.
 | Function | Args | Returns |
 | --- | --- | --- |
 | `companies.get` | `{ companyId }` | company row |
+| `companies.capabilities` (I3 planned) | `{ companyId }` | `{ addEvent: boolean, simulate: boolean, nextWeek: boolean }`; readiness from current computed snapshot/base, false when unavailable |
 | `sources.list` | `{ companyId }` | sources rows (connect screen) |
 | `resilience.get` | `{ companyId, withFixes }` | `ResilienceReport` |
 | `history.get` | `{ companyId }` | `{ weeks: HistoryWeek[], pastEvents: PastEvent[] }` |
