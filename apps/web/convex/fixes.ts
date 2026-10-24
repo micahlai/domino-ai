@@ -2,6 +2,7 @@ import { FixCandidateSchema } from "@domino/contracts";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
+import { isComputed } from "./lib/computed";
 import { Cents, parse } from "./lib/parse";
 import { branchRecord, candidateRecord, missing, requireBranch } from "./lib/records";
 
@@ -14,10 +15,13 @@ export const forBranch = query({
       .query("fixes")
       .withIndex("by_branch", (q) => q.eq("branchId", branchId))
       .collect();
-    return rows
+    const fixes = rows
       .filter((row) => row.companyId === branch.row.companyId)
-      .map((row) => ({ fix: parse(FixCandidateSchema, row.data), gain: parse(Cents, row.gain) }))
-      .sort((a, b) => b.gain - a.gain || a.fix.id.localeCompare(b.fix.id));
+      .map((row) => ({ fix: parse(FixCandidateSchema, row.data), gain: parse(Cents, row.gain) }));
+    // Computed futures store rows in engine rank order (rules cleared first); a gain-only
+    // sort would undo it. Illustrative fixture rows keep the original gain order.
+    if (isComputed(branch.row.companyId, branchId)) return fixes;
+    return fixes.sort((a, b) => b.gain - a.gain || a.fix.id.localeCompare(b.fix.id));
   },
 });
 
