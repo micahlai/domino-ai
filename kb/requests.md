@@ -3,6 +3,8 @@
 Ask for a change in someone else's area here. Newest first.
 Format: `- [ ] YYYY-MM-DD From -> To: request (file or function). Why.` Tick it when done.
 
+- [ ] 2026-10-24 Codex brain -> integration owner: C2 adds optional observation/replay contexts to grade/learn. Existing Forecast[] lacks origin date and records; user authorized backend completion. Independently review before adoption; no schema/table migration or existing call break. See kb/spec/learning-context.md.
+
 - [x] 2026-10-24 Codex brain -> Jayden + Micah: review C1 in kb/spec/engine-context-contract-proposal.md. The contracts-only branch adds explicit invoice linkage/classification, bill targets and evidenced consequences, domino/scoring contexts, and branch/fix risk IDs. Affects engine, sim fixture spreads, agent validation and Convex payload readers. Initial request was for preparation; merge is now authorized and complete. Seed-data updates remain separate. Resolved by reviewed C1, merged at 3c54e67 under explicit user authorization; engine adoption and data backfill remain separate.
 
 - [ ] 2026-10-24 Micah -> Jayden: P2 is ready on `codex/p2-convex`. Replace `connect`, `engine`, `agents`, and `week.advance` internal action placeholders in E5/E7; honor the identifier and lastPull rules in `kb/spec/convex-api.md`. Why: public mutations now schedule those exact entry points.

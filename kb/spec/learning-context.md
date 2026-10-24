@@ -1,0 +1,26 @@
+# C2: Grading and retrospective model replay
+
+Status: additive contract proposal required by backend completion. Independent audit confirmed existing Forecast[] cannot recover origin cash timing or per-record inputs. The user authorized ongoing backend implementation; keep this change isolated and independently review it before downstream implementation. Existing callers remain source-compatible.
+
+## Contract addition
+- Add GradeContextSchema/type with forecastAsOf: ISODate, asOf: ISODate, bankWindowComplete: literal true. Dates must be real calendar dates and asOf must be later than forecastAsOf. Meaning: starting forecast cash is the end-of-day balance on forecastAsOf; caller supplies all bank transactions strictly after it through asOf. Empty actualBank can be a known quiet window. The explicit true assertion is a caller responsibility, not proof the external bank was complete.
+- Add LearningExampleSchema/type with snapshot: Snapshot, actualBank: BankTxn[], asOf: ISODate, bankWindowComplete: literal true. snapshot is the authentic stored origin snapshot, not reconstructed from today's outcomes. Require real origin/cutoff dates and snapshot.asOf < asOf. Reject contaminated origins: invoice/bill paid dates, bank transaction dates or card transaction dates after snapshot.asOf. Planned future payroll, unpaid invoice due dates and deal expectedClose are allowed. Do not change SnapshotSchema globally.
+- Add LearnContextSchema/type with examples: LearningExample[]. Require unique origin identities (companyId + snapshot.asOf), so repeated origin windows do not silently receive extra weight. Empty examples are allowed and mean no replay evidence.
+- Add optional trailing context to Engine.grade(previous, actualBank, context?) and Engine.learn(snapshot, model, history, context?). Export types/schemas through the package index. Output shapes stay unchanged. Legacy history Forecast[] stays source-compatible but is not authoritative replay input: with context, only its examples define replay origins; without context, learning returns the unchanged model. These semantics must be explicit in comments.
+- Runtime engine follow-up validates example company against the current snapshot, cutoff <= current snapshot.asOf, forecast calendar/bucket consistency, and observable inputs. Contracts cannot check cross-call facts. C2 itself writes no engine behavior.
+
+## Grading follow-up semantics (implementation after C2)
+- Missing grading context or no completed forecast weeks must throw a clear insufficient-observation/context error, not return a fabricated 0% error.
+- Start actual cash at previous.weeks[0].opening as of forecastAsOf. Accumulate bank amounts strictly after forecastAsOf through each completed forecast Sunday <= asOf. Include the pre-Monday gap. Ignore later transactions and incomplete weeks. Validate ordered Monday buckets and the first forecast Monday consistent with existing engine forecast convention.
+- Percentage denominator is max(abs(actual closing), 1 cent), explicitly disclosed for zero/negative balances. Mean is equally weighted over completed forecast weeks. Compute ratios exactly before the final percentage conversion; percentages are not monetary amounts. Miss threshold is strictly over 3%, including exact-boundary tests.
+- Evidence can identify the discrepant week and relevant observed transactions, explicitly noncausal. No invoice-cause claim can be inferred from a bank description or matching amount because existing contracts have no settlement join. Do not invent causal explanations.
+
+## Learning follow-up semantics
+- Only observable paid invoices/card records through the current snapshot cutoff can build a candidate. Minimum sample/support rules and recurring-spend assumptions must be explicit and tested. Future observations never contribute.
+- Replay both the supplied current model and the candidate on exactly the same origin snapshots, with changes=[] only. Do not compare a new candidate against stored forecasts from an older model. Historical forecast arrays cannot establish the current-model baseline.
+- Context examples are authoritative; history is retained only for compatibility. Filter/validate same-company origins and cutoff <= current snapshot.asOf. Reject contaminated origins, duplicate origins or false coverage, rather than treating future knowledge as model improvement.
+- Weight each completed example-week equally. Accept only strict mean-error improvement. Ties, regressions, empty/no-completed evidence or no actual model change return the original model/rules/version unchanged. Repeated learning must not inflate version.
+- Accepted version increments once and records factual rules/evidence plus measured before/after error. Describe improvement as retrospective fit, not held-out predictive improvement. Final held-out evaluation is a separate gate; no guarantee of monotonic future accuracy.
+
+## Required contract tests
+Real leap/calendar dates, reversed/equal cutoffs, missing/false bankWindowComplete, future paid/bank/card origin contamination, allowed future plans, duplicate origins, empty contexts, schema round trips and legacy function assignment/call compatibility. No changes to fixture numerical outputs, dependencies or runtime engine.
