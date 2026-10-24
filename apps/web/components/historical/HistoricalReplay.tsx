@@ -110,6 +110,18 @@ function EvidenceDetail({ item }: { item: HistoricalEvidence }) {
   );
 }
 
+export function EvidenceList({ evidence }: { evidence: HistoricalEvidence[] }) {
+  return evidence.length ? (
+    <>
+      {evidence.map((item) => (
+        <EvidenceDetail key={item.id} item={item} />
+      ))}
+    </>
+  ) : (
+    <p className="text-sm text-muted-foreground">No sources are attached yet.</p>
+  );
+}
+
 function EvidenceSheet({ evidence }: { evidence: HistoricalEvidence[] }) {
   return (
     <Sheet>
@@ -127,11 +139,7 @@ function EvidenceSheet({ evidence }: { evidence: HistoricalEvidence[] }) {
           </SheetDescription>
         </SheetHeader>
         <div className="mt-8 space-y-8">
-          {evidence.length ? (
-            evidence.map((item) => <EvidenceDetail key={item.id} item={item} />)
-          ) : (
-            <p className="text-sm text-muted-foreground">No sources are attached yet.</p>
-          )}
+          <EvidenceList evidence={evidence} />
         </div>
       </SheetContent>
     </Sheet>
@@ -298,6 +306,22 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
               </svg>
               Reported balance
             </span>
+            {view.nowcast ? (
+              <span className="inline-flex items-center gap-2">
+                <svg width="12" height="12" aria-hidden="true">
+                  <circle
+                    cx="6"
+                    cy="6"
+                    r="4.5"
+                    fill="hsl(var(--card))"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="1.5"
+                    strokeDasharray="2 2"
+                  />
+                </svg>
+                Modeled estimate at cutoff
+              </span>
+            ) : null}
             <span className="inline-flex items-center gap-2">
               <svg width="12" height="12" aria-hidden="true">
                 <rect

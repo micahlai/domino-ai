@@ -33,6 +33,14 @@ const evidence: HistoricalEvidence[] = [
     note: "Stands in for the reported result. It is shown next to the forecast, never over it.",
   },
   {
+    id: "ev-nowcast",
+    provenance: "derived",
+    label: "Cash estimate at the cutoff (modeled)",
+    source: "Backend estimate from reported facts, saved at the knowledge cutoff",
+    publishedOn: "2024-03-15",
+    note: "A modeled estimate, not a reported balance. The forecast and every alternative start from it.",
+  },
+  {
     id: "ev-threshold",
     provenance: "assumption",
     label: "Warning threshold",
@@ -57,6 +65,13 @@ const evidence: HistoricalEvidence[] = [
     note: "Synthetic detail is never shown as reported evidence.",
   },
 ];
+
+const nowcast: CashPoint = {
+  id: "n1",
+  date: "2024-03-15",
+  cash: 3_600_000_000,
+  evidenceId: "ev-nowcast",
+};
 
 const reported: CashPoint[] = [
   { id: "r1", date: "2023-06-30", cash: 5_200_000_000, evidenceId: "ev-reported" },
@@ -115,9 +130,19 @@ const alternative: AlternativeView = {
   ],
 };
 
+// First stage at which each evidence item may appear. Anything published after the knowledge
+// cutoff is held back until its stage, so the sources sheet cannot leak it before the reveal.
+const evidenceFrom: Record<string, HistoricalView["stage"]> = {
+  "ev-observed": "observed",
+  "ev-alt": "response",
+};
+const stageOrder: HistoricalView["stage"][] = ["baseline", "observed", "response"];
+
 /** Mirrors production: later stages add data, and earlier stages never contain it. */
 export function previewView(stage: HistoricalView["stage"]): HistoricalView {
   const revealed = stage !== "baseline";
+  const visible = (item: HistoricalEvidence) =>
+    stageOrder.indexOf(stage) >= stageOrder.indexOf(evidenceFrom[item.id] ?? "baseline");
   return {
     caseName: "Example Co (synthetic preview)",
     stage,
@@ -128,6 +153,7 @@ export function previewView(stage: HistoricalView["stage"]): HistoricalView {
       ...(revealed ? { revealedOn: "2024-05-10" } : {}),
     },
     reported,
+    nowcast,
     projected,
     observed: revealed ? observed : [],
     comparison: revealed
@@ -146,6 +172,6 @@ export function previewView(stage: HistoricalView["stage"]): HistoricalView {
       : [],
     ...(stage === "response" ? { alternative } : {}),
     threshold: { cents: 2_000_000_000, label: "Analyst threshold (assumption)" },
-    evidence: [...evidence],
+    evidence: evidence.filter(visible),
   };
 }

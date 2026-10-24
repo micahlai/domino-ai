@@ -68,6 +68,10 @@ export interface HistoricalView {
   dates: HistoricalDates;
   /** Reported balances, only at the frequency the filings support. */
   reported: CashPoint[];
+  /** Backend-supplied modeled estimate at the knowledge cutoff. The saved forecast and any
+   * alternative both pass through it, so they cannot diverge before the cutoff. Not a reported
+   * value, and the UI never computes it. */
+  nowcast?: CashPoint;
   /** Saved forecast, starting from the last reported point. Stays after reveal. */
   projected: CashPoint[];
   /** Reported results published after the forecast was saved. Empty before reveal. */

@@ -11,10 +11,11 @@ const W = 720;
 const H = 320;
 const M = { left: 64, right: 24, top: 28, bottom: 44 };
 
-type Kind = "reported" | "projected" | "observed" | "alternative";
+type Kind = "reported" | "nowcast" | "projected" | "observed" | "alternative";
 
 const kindLabel: Record<Kind, string> = {
   reported: "Reported",
+  nowcast: "Modeled estimate at cutoff",
   projected: "Saved forecast",
   observed: "Reported after forecast",
   alternative: "Alternative (projected)",
@@ -31,10 +32,27 @@ export function chartPoints(view: HistoricalView): ChartPoint[] {
     points.map((point) => ({ ...point, kind }));
   return [
     ...tag(view.reported, "reported"),
+    ...tag(view.nowcast ? [view.nowcast] : [], "nowcast"),
     ...tag(view.projected, "projected"),
     ...tag(view.observed, "observed"),
     ...tag(view.alternative?.path ?? [], "alternative"),
   ];
+}
+
+/** Saved forecast and alternative share the supplied cutoff estimate, so they cannot diverge
+ * before the decision date. Without one the alternative is drawn from its own first point:
+ * the UI never invents a starting value. */
+export function forecastPaths(view: HistoricalView): {
+  projected: CashPoint[];
+  alternative: CashPoint[];
+} {
+  const origin = view.reported.at(-1);
+  const anchor = view.nowcast;
+  const alt = view.alternative?.path ?? [];
+  return {
+    projected: [...(origin ? [origin] : []), ...(anchor ? [anchor] : []), ...view.projected],
+    alternative: alt.length ? [...(anchor ? [anchor] : []), ...alt] : [],
+  };
 }
 
 export function HistoricalChart({
@@ -64,9 +82,7 @@ export function HistoricalChart({
   const py = (p: CashPoint) => y(p.cash);
   const line = (list: CashPoint[]) =>
     list.map((p, i) => `${i ? "L" : "M"}${px(p).toFixed(1)} ${py(p).toFixed(1)}`).join(" ");
-  const origin = view.reported.at(-1);
-  const projectedPath = origin ? [origin, ...view.projected] : view.projected;
-  const altPath = origin ? [origin, ...(view.alternative?.path ?? [])] : [];
+  const { projected: projectedPath, alternative: altPath } = forecastPaths(view);
   const tickDates = [...new Set(points.map((p) => p.date))].sort();
   const sweep = reduced
     ? {}
@@ -202,6 +218,7 @@ export function HistoricalChart({
           const selected = p.id === selectedId;
           const label = `${kindLabel[p.kind]}, ${formatReportDate(p.date)}: ${formatCents(p.cash)}`;
           const projected = p.kind === "projected" || p.kind === "alternative";
+          const modeled = p.kind === "nowcast";
           const colour = p.kind === "alternative" ? "hsl(var(--clay))" : "hsl(var(--primary))";
           return (
             <motion.g
@@ -235,7 +252,17 @@ export function HistoricalChart({
                 <circle cx={px(p)} cy={py(p)} r={9} fill="none" stroke={colour} strokeWidth={1.5} />
               ) : null}
               {/* Hollow = projected, filled = reported. Shape also differs, so colour is not alone. */}
-              {projected ? (
+              {modeled ? (
+                <circle
+                  cx={px(p)}
+                  cy={py(p)}
+                  r={5}
+                  fill="hsl(var(--card))"
+                  stroke={colour}
+                  strokeWidth={2}
+                  strokeDasharray="2 2"
+                />
+              ) : projected ? (
                 <rect
                   x={px(p) - 5}
                   y={py(p) - 5}

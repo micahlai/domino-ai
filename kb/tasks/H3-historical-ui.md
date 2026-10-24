@@ -10,3 +10,6 @@
 - Files and commit: apps/web/components/historical/*, Playground.tsx, five ui/ import lines, kb/coordination/historical/ui-status.md. Commit SHA: see `git log -1 H3-historical-ui`.
 - Verification: apps/web tsc, biome on components, vitest (103 pass, 5 new). No browser or full check/build run; chart look unseen.
 - Watch out / next: see ui-status.md "Pending for live wiring". Fixture values are invented, not 2U.
+- Repair (audit P1/P2 on db6ac41): preview evidence is now filtered by stage (baseline holds only items published by the cutoff). The chart takes an optional backend-supplied `nowcast` (modeled estimate at the cutoff, dashed hollow circle); forecast and alternative both branch from it, so they no longer diverge before Mar 15. With no nowcast the alternative starts at its own first point; the UI invents no cash.
+- Tests: apps/web tsc clean, biome clean, vitest components/historical 9 pass (4 new: visible sources by stage, shared branch point, no invented start). No browser, full check or build run.
+- Limitations: nowcast is a local view prop and a fixture value; the live packet must supply it (or the alternative stays unanchored). The sheet content is tested via `EvidenceList`, not an opened dialog (no DOM test env). Pre-reveal leaks from a real payload are still reported, not hidden, by the component. Commit SHA: see `git log -1 H3-historical-ui`.

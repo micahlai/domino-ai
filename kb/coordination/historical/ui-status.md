@@ -19,6 +19,11 @@ State: presentation checkpoint only. Live wiring is pending. Branch H3-historica
 - NOT verified: any browser view (no server started per instructions), desktop/mobile layout, keyboard in a real browser, evidence sheet open state, reduced-motion in a browser, reload. Chart appearance is unseen. Full `pnpm check` and `pnpm build` not run (C0 schedules).
 - Fixture-only: every state. Live: none.
 
+## Repair after audit (P1/P2)
+- Preview evidence filtered by stage; baseline sources contain nothing published after the cutoff.
+- `HistoricalView.nowcast` (optional, backend-supplied cents): modeled estimate at the cutoff. Forecast and alternative both branch from it. Drawn as a dashed hollow circle, distinct from reported dots and projected diamonds.
+- Ask for H0/C0: the packet must provide a cutoff nowcast, or alternatives stay unanchored in the chart.
+
 ## Pending for live wiring
 1. Frozen H2 packet (exact types, historical endpoints, example payloads, SHAs); API-ready closure adopted before wiring.
 2. Adapter from the packet to `HistoricalView`. Backend must supply signed `difference`, `outcome`, alternative cost/benefit/downside and range bounds as cents; the UI does no financial math.
