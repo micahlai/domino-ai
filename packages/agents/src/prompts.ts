@@ -94,8 +94,8 @@ export const defaultMaxTokens: Record<AgentJob, number> = {
   mapSource: 4096,
   readConstraints: 4096,
   proposeFixes: 8192,
-  explain: 512,
-  weeklyBrief: 1024,
+  explain: 4096,
+  weeklyBrief: 4096,
 };
 
 export interface ClaudeRequestBody {

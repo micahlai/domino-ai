@@ -1,6 +1,11 @@
 import { fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
-import { CREAO_API_BASE_URL, type CreaoOptions, createCreaoClient } from "./creao";
+import {
+  CREAO_API_BASE_URL,
+  type CreaoDiagnostics,
+  type CreaoOptions,
+  createCreaoClient,
+} from "./creao";
 import { ProviderError } from "./errors";
 import { RESULT_END, RESULT_START } from "./prompts";
 import { outputJsonSchema } from "./schemas";
@@ -317,6 +322,24 @@ describe("CREAO chat text extraction", () => {
     ).resolves.toBe("From JSON.");
   });
 
+  it("rejects malformed JSON inside delimiters instead of reading it as prose", async () => {
+    const wrap = (body: string) => `${RESULT_START}\n${body}\n${RESULT_END}`;
+    for (const body of [
+      '{"text": "Cash was close."',
+      '  {"text": "Cash", }',
+      '["Cash was close."',
+      '```json\n{"text": "Cash was close.",}\n```',
+    ]) {
+      await expect(categoryOf(extract({ chatText: wrap(body) }, "weeklyBrief"))).resolves.toBe(
+        "no_result",
+      );
+    }
+    // Ordinary delimited prose, including braces mid-text, is still a brief.
+    await expect(
+      extract({ chatText: wrap("Cash held up {mostly} this week.") }, "weeklyBrief"),
+    ).resolves.toBe("Cash held up {mostly} this week.");
+  });
+
   it("does not accept an echoed input object as a brief", async () => {
     const echo = `\`\`\`json\n${JSON.stringify(briefInput)}\n\`\`\``;
     await expect(categoryOf(extract({ chatText: echo }, "weeklyBrief"))).resolves.toBe("no_result");
@@ -333,6 +356,97 @@ describe("CREAO chat text extraction", () => {
     const prompt = JSON.parse(calls[0]!.body!).inputs.prompt as string;
     expect(prompt.split(RESULT_START)).toHaveLength(2); // only the outputFormat instruction
     expect(JSON.parse(prompt).data.apiDocs).toContain(RESULT_START);
+  });
+});
+
+describe("CREAO format diagnostics", () => {
+  const secretText = "Secret brief about Acme";
+  const artifacts = [
+    { id: "art_9", title: "secret-title.md", type: "text/markdown", url: "https://x.example/a" },
+    { id: "art_8", title: "notes", type: "text/plain", url: "https://x.example/b" },
+    { id: "art_7", title: "pic", type: "image/png", url: "https://x.example/c" },
+    { id: "art_6", title: "untyped", url: "https://x.example/d" },
+  ];
+
+  function observed(result: unknown, callback?: (d: CreaoDiagnostics) => unknown) {
+    const seen: CreaoDiagnostics[] = [];
+    const diagnostics = (d: CreaoDiagnostics) => {
+      seen.push(d);
+      return callback?.(d);
+    };
+    const { creao } = client(scripted(completed(result)), {
+      diagnostics: diagnostics as CreaoOptions["diagnostics"],
+    });
+    return { seen, run: creao.run("weeklyBrief", briefInput) };
+  }
+
+  it("reports format counts for an unvalidated result without any provider text", async () => {
+    const chatText = `${secretText}\n${RESULT_START}\n{"text": "${secretText}",\n${RESULT_END}\n\`\`\`json\n${JSON.stringify(briefInput)}\n\`\`\``;
+    const { seen, run } = observed({ text: "memory", chatText, artifacts });
+    await expect(categoryOf(run)).resolves.toBe("no_result");
+    expect(seen).toEqual([
+      {
+        job: "weeklyBrief",
+        stage: "select",
+        failure: "no_result",
+        resultPresent: true,
+        chatTextPresent: true,
+        chatTextLength: chatText.length,
+        resultStartMarker: true,
+        resultEndMarker: true,
+        delimitedBlocks: 1,
+        malformedDelimited: 1,
+        fences: 1,
+        wholeJson: false,
+        envelopes: 0,
+        artifacts: { json: 0, markdown: 1, text: 1, other: 1, missing: 1 },
+        jsonArtifacts: 0,
+        jsonArtifactsParsed: 0,
+        candidates: 1,
+        validated: 0,
+        distinct: 0,
+      },
+    ]);
+    expect(JSON.stringify(seen)).not.toMatch(/Secret|Acme|memory|secret|art_|http|run_|agent/);
+  });
+
+  it("reports a validated result as done", async () => {
+    const chatText = `${RESULT_START}\nCash was close.\n${RESULT_END}`;
+    const { seen, run } = observed({ chatText });
+    await expect(run).resolves.toBe("Cash was close.");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ stage: "done", candidates: 1, validated: 1, distinct: 1 });
+    expect(seen[0]).not.toHaveProperty("failure");
+  });
+
+  it("names the failure stage before a result exists", async () => {
+    const { seen, run } = observed(null);
+    await expect(categoryOf(run)).resolves.toBe("no_result");
+    expect(seen[0]).toMatchObject({ stage: "extract", failure: "no_result", resultPresent: false });
+
+    const failed: CreaoDiagnostics[] = [];
+    const { creao } = client(scripted(json({ id: "run_1", status: "failed" })), {
+      diagnostics: (d) => void failed.push(d),
+    });
+    await expect(categoryOf(creao.run("weeklyBrief", briefInput))).resolves.toBe("run_failed");
+    expect(failed[0]).toMatchObject({ stage: "poll", failure: "run_failed" });
+  });
+
+  it("is off by default and never changes the provider result when the callback fails", async () => {
+    const good = { chatText: `${RESULT_START}\nCash was close.\n${RESULT_END}` };
+    await expect(
+      client(scripted(completed(good))).creao.run("weeklyBrief", briefInput),
+    ).resolves.toBe("Cash was close.");
+    const throws = () => {
+      throw new Error("callback broke");
+    };
+    const rejects = () => Promise.reject(new Error("callback broke"));
+    for (const callback of [throws, rejects]) {
+      await expect(observed(good, callback).run).resolves.toBe("Cash was close.");
+      await expect(categoryOf(observed({ chatText: "Done." }, callback).run)).resolves.toBe(
+        "no_result",
+      );
+    }
   });
 });
 

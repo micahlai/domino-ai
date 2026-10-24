@@ -1,7 +1,7 @@
 import type { AgentBackend, AgentJob } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { type ClaudeOptions, createClaudeClient } from "./claude";
-import { type CreaoOptions, createCreaoClient } from "./creao";
+import { type CreaoDiagnostics, type CreaoOptions, createCreaoClient } from "./creao";
 import { type FailureCategory, ProviderError } from "./errors";
 import type { TransportRuntime } from "./http";
 import { isStructuredJob, outputSchemas } from "./schemas";
@@ -60,6 +60,8 @@ export interface SmokeReport {
   summary?: { items: number } | { characters: number };
   /** Validated synthetic output, only with SMOKE_PRINT_OUTPUT=1. Never raw provider text. */
   output?: unknown;
+  /** CREAO format counts, only with SMOKE_DIAGNOSTICS=1. */
+  diagnostics?: CreaoDiagnostics;
 }
 
 const jobs: AgentJob[] = ["mapSource", "readConstraints", "proposeFixes", "explain", "weeklyBrief"];
@@ -86,18 +88,28 @@ export async function runSmoke(
   }
 
   const runtime = { fetch: options.fetch, now: options.now, sleep: options.sleep };
+  let diagnostics: CreaoDiagnostics | undefined;
+  const capture =
+    env.SMOKE_DIAGNOSTICS === "1"
+      ? (d: CreaoDiagnostics) => {
+          diagnostics = d;
+        }
+      : undefined;
   const client =
     backend === "creao"
-      ? createCreaoClient(env, { ...options.creao, ...runtime })
+      ? createCreaoClient(env, { ...options.creao, ...runtime, diagnostics: capture })
       : createClaudeClient(env, { ...options.claude, ...runtime });
   const now = options.now ?? (() => Date.now());
   const started = now();
   const base = { job, backend };
+  const withDiagnostics = () => (diagnostics ? { diagnostics } : {});
   try {
     const value = await client.run(job, smokeInputs[job]);
     const durationMs = now() - started;
     const parsed = outputSchemas[job].safeParse(value);
-    if (!parsed.success) return { ...base, ok: false, reason: "invalid_output", durationMs };
+    if (!parsed.success) {
+      return { ...base, ok: false, reason: "invalid_output", durationMs, ...withDiagnostics() };
+    }
     const summary = isStructuredJob(job)
       ? { items: (parsed.data as unknown[]).length }
       : { characters: (parsed.data as string).length };
@@ -107,6 +119,7 @@ export async function runSmoke(
       durationMs,
       summary,
       ...(env.SMOKE_PRINT_OUTPUT === "1" ? { output: parsed.data } : {}),
+      ...withDiagnostics(),
     };
   } catch (error) {
     const durationMs = now() - started;
@@ -118,9 +131,10 @@ export async function runSmoke(
         category: error.category,
         ...(error.httpStatus === undefined ? {} : { httpStatus: error.httpStatus }),
         durationMs,
+        ...withDiagnostics(),
       };
     }
     // Unknown errors may carry provider text; report only that one happened.
-    return { ...base, ok: false, reason: "unexpected_error", durationMs };
+    return { ...base, ok: false, reason: "unexpected_error", durationMs, ...withDiagnostics() };
   }
 }
