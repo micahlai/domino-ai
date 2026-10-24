@@ -3,6 +3,7 @@
 import type { Cents, ISODate } from "@domino/contracts";
 import { scaleLinear, scaleUtc } from "d3-scale";
 import { motion, useReducedMotion } from "motion/react";
+import { useId } from "react";
 import { formatCents } from "../../lib/format";
 import { formatReportDate } from "./format";
 import type { CashPoint, HistoricalView } from "./types";
@@ -84,9 +85,12 @@ export function HistoricalChart({
     list.map((p, i) => `${i ? "L" : "M"}${px(p).toFixed(1)} ${py(p).toFixed(1)}`).join(" ");
   const { projected: projectedPath, alternative: altPath } = forecastPaths(view);
   const tickDates = [...new Set(points.map((p) => p.date))].sort();
+  // A clip wipes the saved forecast in. pathLength would overwrite strokeDasharray with its own
+  // values and draw the forecast solid, hiding the dashed "projected" meaning.
+  const clipId = `forecast-reveal-${useId().replace(/:/g, "")}`;
   const sweep = reduced
     ? {}
-    : { initial: { pathLength: 0 }, animate: { pathLength: 1 }, transition: { duration: 0.6 } };
+    : { initial: { width: 0 }, animate: { width: W }, transition: { duration: 0.6 } };
   const fade = reduced
     ? {}
     : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.3 } };
@@ -194,14 +198,19 @@ export function HistoricalChart({
           />
         ) : null}
         {projectedPath.length > 1 ? (
-          <motion.path
-            d={line(projectedPath)}
-            fill="none"
-            stroke="hsl(var(--primary-ink))"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            {...sweep}
-          />
+          <>
+            <clipPath id={clipId}>
+              <motion.rect x={0} y={0} width={W} height={H} {...sweep} />
+            </clipPath>
+            <path
+              d={line(projectedPath)}
+              fill="none"
+              stroke="hsl(var(--primary-ink))"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              clipPath={`url(#${clipId})`}
+            />
+          </>
         ) : null}
         {tickDates.map((d) => (
           <text

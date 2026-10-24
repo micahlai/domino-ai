@@ -5,6 +5,7 @@ import { FileText } from "lucide-react";
 import { useState } from "react";
 import { formatCents } from "../../lib/format";
 import { cn } from "../../lib/utils";
+import { ActivityPanel } from "../ActivityPanel";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -382,6 +383,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
       </Card>
       {view.comparison.length ? <Comparison rows={view.comparison} /> : null}
       {view.alternative ? <Alternative alt={view.alternative} /> : null}
+      <ActivityPanel source="unavailable" />
     </div>
   );
 }

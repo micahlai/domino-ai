@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivitySimulation } from "@/components/ActivitySimulation";
 import { AddEventDialog } from "@/components/AddEventDialog";
 import { BranchChart } from "@/components/BranchChart";
 import { ConnectChecklist, type SourcePreview } from "@/components/ConnectChecklist";
@@ -35,6 +36,7 @@ const sections = [
   "ResilienceBar",
   "MultiverseTimeline",
   "StyleComparison",
+  "ActivityPanel",
   "ParticleMotion",
   "HistoricalReplay",
   "RiskList",
@@ -209,6 +211,12 @@ export function Playground() {
         description="The same fixed preview state in all four styles, drawn from shared components. Preview values only; no data is loaded. Ramp and Hyphenate follow only the public pages that were inspected, not their private product screens."
       >
         <StyleComparison />
+      </PreviewSection>
+      <PreviewSection
+        name="ActivityPanel"
+        description="Real activity events in a stable list. Here the events are a clearly labelled simulation: Step delivers a few at a time, Replay starts over."
+      >
+        <ActivitySimulation />
       </PreviewSection>
       <PreviewSection
         name="ParticleMotion"
