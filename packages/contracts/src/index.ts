@@ -4,3 +4,4 @@ export * from "./sim";
 export * from "./learning";
 export type * from "./modules";
 export * from "./historical";
+export * from "./historical-specialist";
