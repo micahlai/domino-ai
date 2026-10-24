@@ -74,7 +74,14 @@ When a prompt or task card names a skill, read that file before you start.
 | `demo-check` | Running the demo script end to end |
 | `figma-stage-log` | Writing a Figma stage log entry |
 
-## 7. Owners
+## 7. Brain and workers
+
+- One session is the **brain** (see `skills/orchestrator/SKILL.md`). It plans, writes task cards, dispatches, reviews and merges. It does not write feature code.
+- Every other session is a **worker** with one task card, one folder, its own worktree and branch.
+- Workers write their result in the Result section of their task card. Only the brain edits `kb/status/board.md` and `kb/handoffs.md`.
+- The human launches workers for risky work (engine math, contracts, schema, hero UI). The brain may launch headless workers for small contained tasks.
+
+## 8. Owners
 
 | Area | Owner |
 | --- | --- |

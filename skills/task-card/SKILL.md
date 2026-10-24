@@ -17,6 +17,11 @@ Vague tasks make agents wander. A good card is short and testable.
 - **Contracts used:** exact types/functions from packages/contracts.
 - **Done when:** named tests pass, or a named playground section shows X. `pnpm check` passes.
 - **Notes:** spec sections, fixtures to use, known traps.
+
+## Result (worker fills this in when done)
+- Done:
+- What changed (files):
+- Watch out:
 ```
 
 ## Rules

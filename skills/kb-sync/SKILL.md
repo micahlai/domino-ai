@@ -14,9 +14,13 @@ The knowledge base (`kb/`) is how two people and many agents stay in step.
 3. Read the newest 3 entries in `kb/handoffs.md`.
 4. Read open items in `kb/requests.md` addressed to you.
 5. Read the spec section named on your task card.
-6. Set your board row to `doing` with your branch name.
+6. Brain or solo only: set the board row to `doing` with the branch name.
 
 ## Finish
+
+If you are a **worker** (you have a task card): steps 1, 4, 5, 6 below, and instead of steps 2 and 3, fill the
+**Result** section at the bottom of your task card. Do not edit the board or handoffs; the brain does that.
+If you are the **brain** or working solo: all steps.
 
 1. `pnpm check` passes.
 2. Update your board row (`review` or `done`, plus a short note).
