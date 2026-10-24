@@ -96,4 +96,35 @@ export default defineSchema({
     refs: v.array(v.string()),
     at: v.string(),
   }).index("by_company", ["companyId"]),
+  // Historical case study (H2c). Runs are append-only; reveal state lives in its own table.
+  historicalRuns: defineTable({
+    runId: v.string(),
+    requestId: v.string(),
+    caseId: v.string(),
+    kind: v.union(v.literal("baseline"), v.literal("alternative")),
+    baselineRunId: v.optional(v.string()),
+    run: v.any(),
+    snapshot: v.any(),
+    summary: v.any(),
+    rowHash: v.string(),
+  })
+    .index("by_runId", ["runId"])
+    .index("by_requestId", ["requestId"]),
+  historicalReveals: defineTable({
+    runId: v.string(),
+    requestId: v.string(),
+    revealedThrough: v.string(),
+    revealedAt: v.string(),
+    comparisons: v.any(),
+    // Optional only so pre-repair local rows still validate; reads fail closed without them.
+    view: v.optional(v.any()),
+    revealHash: v.optional(v.string()),
+  })
+    .index("by_runId", ["runId"])
+    .index("by_requestId", ["requestId"]),
+  // One per accepted reveal requestId, so a key stays bound to its first runId.
+  historicalRevealReceipts: defineTable({ requestId: v.string(), runId: v.string() }).index(
+    "by_requestId",
+    ["requestId"],
+  ),
 });

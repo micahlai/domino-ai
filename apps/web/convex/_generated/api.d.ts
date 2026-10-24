@@ -22,6 +22,7 @@ import type * as events from "../events.js";
 import type * as explanations from "../explanations.js";
 import type * as fixes from "../fixes.js";
 import type * as grades from "../grades.js";
+import type * as historical from "../historical.js";
 import type * as history from "../history.js";
 import type * as lib_computed from "../lib/computed.js";
 import type * as lib_parse from "../lib/parse.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   explanations: typeof explanations;
   fixes: typeof fixes;
   grades: typeof grades;
+  historical: typeof historical;
   history: typeof history;
   "lib/computed": typeof lib_computed;
   "lib/parse": typeof lib_parse;
