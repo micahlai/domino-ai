@@ -35,9 +35,7 @@
       "GrossProfit": {
         "tag": "us-gaap:GrossProfit",
         "unit": "USD",
-        "values": [
-          253928000
-        ],
+        "values": [253928000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -55,9 +53,7 @@
       "SellingAndMarketingExpense": {
         "tag": "us-gaap:SellingAndMarketingExpense",
         "unit": "USD",
-        "values": [
-          188033000
-        ],
+        "values": [188033000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -75,9 +71,7 @@
       "ResearchAndDevelopmentExpense": {
         "tag": "us-gaap:ResearchAndDevelopmentExpense",
         "unit": "USD",
-        "values": [
-          97582000
-        ],
+        "values": [97582000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -95,9 +89,7 @@
       "GeneralAndAdministrativeExpense": {
         "tag": "us-gaap:GeneralAndAdministrativeExpense",
         "unit": "USD",
-        "values": [
-          64318000
-        ],
+        "values": [64318000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -117,9 +109,7 @@
       "AccountsReceivableNetCurrent": {
         "tag": "us-gaap:AccountsReceivableNetCurrent",
         "unit": "USD",
-        "values": [
-          23423000
-        ],
+        "values": [23423000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -141,9 +131,7 @@
       "ContractWithCustomerLiabilityCurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
         "unit": "USD",
-        "values": [
-          121888000
-        ],
+        "values": [121888000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -218,9 +206,7 @@
       "GrossProfit": {
         "tag": "us-gaap:GrossProfit",
         "unit": "USD",
-        "values": [
-          418404000
-        ],
+        "values": [418404000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -238,9 +224,7 @@
       "SellingAndMarketingExpense": {
         "tag": "us-gaap:SellingAndMarketingExpense",
         "unit": "USD",
-        "values": [
-          184040000
-        ],
+        "values": [184040000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -258,9 +242,7 @@
       "ResearchAndDevelopmentExpense": {
         "tag": "us-gaap:ResearchAndDevelopmentExpense",
         "unit": "USD",
-        "values": [
-          126937000
-        ],
+        "values": [126937000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -278,9 +260,7 @@
       "GeneralAndAdministrativeExpense": {
         "tag": "us-gaap:GeneralAndAdministrativeExpense",
         "unit": "USD",
-        "values": [
-          101587000
-        ],
+        "values": [101587000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -300,9 +280,7 @@
       "AccountsReceivableNetCurrent": {
         "tag": "us-gaap:AccountsReceivableNetCurrent",
         "unit": "USD",
-        "values": [
-          108430000
-        ],
+        "values": [108430000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -318,9 +296,7 @@
       "ContractWithCustomerLiability": {
         "tag": "us-gaap:ContractWithCustomerLiability",
         "unit": "USD",
-        "values": [
-          248934000
-        ],
+        "values": [248934000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -336,9 +312,7 @@
       "ContractWithCustomerLiabilityCurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
         "unit": "USD",
-        "values": [
-          246451000
-        ],
+        "values": [246451000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -354,9 +328,7 @@
       "ContractWithCustomerLiabilityNoncurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
         "unit": "USD",
-        "values": [
-          2483000
-        ],
+        "values": [2483000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -425,9 +397,7 @@
       "GrossProfit": {
         "tag": "us-gaap:GrossProfit",
         "unit": "USD",
-        "values": [
-          354852000
-        ],
+        "values": [354852000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -445,9 +415,7 @@
       "SellingAndMarketingExpense": {
         "tag": "us-gaap:SellingAndMarketingExpense",
         "unit": "USD",
-        "values": [
-          190559000
-        ],
+        "values": [190559000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -465,9 +433,7 @@
       "ResearchAndDevelopmentExpense": {
         "tag": "us-gaap:ResearchAndDevelopmentExpense",
         "unit": "USD",
-        "values": [
-          101279000
-        ],
+        "values": [101279000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -485,9 +451,7 @@
       "GeneralAndAdministrativeExpense": {
         "tag": "us-gaap:GeneralAndAdministrativeExpense",
         "unit": "USD",
-        "values": [
-          106467000
-        ],
+        "values": [106467000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -507,9 +471,7 @@
       "AccountsReceivableNetCurrent": {
         "tag": "us-gaap:AccountsReceivableNetCurrent",
         "unit": "USD",
-        "values": [
-          100996000
-        ],
+        "values": [100996000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -525,9 +487,7 @@
       "ContractWithCustomerLiability": {
         "tag": "us-gaap:ContractWithCustomerLiability",
         "unit": "USD",
-        "values": [
-          206400000
-        ],
+        "values": [206400000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -544,9 +504,7 @@
       "ContractWithCustomerLiabilityCurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
         "unit": "USD",
-        "values": [
-          205639000
-        ],
+        "values": [205639000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -562,9 +520,7 @@
       "ContractWithCustomerLiabilityNoncurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
         "unit": "USD",
-        "values": [
-          752000
-        ],
+        "values": [752000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -633,9 +589,7 @@
       "GrossProfit": {
         "tag": "us-gaap:GrossProfit",
         "unit": "USD",
-        "values": [
-          712664000
-        ],
+        "values": [712664000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -653,9 +607,7 @@
       "SellingAndMarketingExpense": {
         "tag": "us-gaap:SellingAndMarketingExpense",
         "unit": "USD",
-        "values": [
-          394753000
-        ],
+        "values": [394753000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -673,9 +625,7 @@
       "ResearchAndDevelopmentExpense": {
         "tag": "us-gaap:ResearchAndDevelopmentExpense",
         "unit": "USD",
-        "values": [
-          163208000
-        ],
+        "values": [163208000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -693,9 +643,7 @@
       "GeneralAndAdministrativeExpense": {
         "tag": "us-gaap:GeneralAndAdministrativeExpense",
         "unit": "USD",
-        "values": [
-          141093000
-        ],
+        "values": [141093000],
         "facts": [
           {
             "start": "2025-01-01",
@@ -715,9 +663,7 @@
       "AccountsReceivableNetCurrent": {
         "tag": "us-gaap:AccountsReceivableNetCurrent",
         "unit": "USD",
-        "values": [
-          150817000
-        ],
+        "values": [150817000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -733,9 +679,7 @@
       "ContractWithCustomerLiability": {
         "tag": "us-gaap:ContractWithCustomerLiability",
         "unit": "USD",
-        "values": [
-          388467000
-        ],
+        "values": [388467000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -752,9 +696,7 @@
       "ContractWithCustomerLiabilityCurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
         "unit": "USD",
-        "values": [
-          385320000
-        ],
+        "values": [385320000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -770,9 +712,7 @@
       "ContractWithCustomerLiabilityNoncurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
         "unit": "USD",
-        "values": [
-          3100000
-        ],
+        "values": [3100000],
         "facts": [
           {
             "end": "2025-12-31",
@@ -841,9 +781,7 @@
       "GrossProfit": {
         "tag": "us-gaap:GrossProfit",
         "unit": "USD",
-        "values": [
-          932606000
-        ],
+        "values": [932606000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -861,9 +799,7 @@
       "SellingAndMarketingExpense": {
         "tag": "us-gaap:SellingAndMarketingExpense",
         "unit": "USD",
-        "values": [
-          403992000
-        ],
+        "values": [403992000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -881,9 +817,7 @@
       "ResearchAndDevelopmentExpense": {
         "tag": "us-gaap:ResearchAndDevelopmentExpense",
         "unit": "USD",
-        "values": [
-          294542000
-        ],
+        "values": [294542000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -901,9 +835,7 @@
       "GeneralAndAdministrativeExpense": {
         "tag": "us-gaap:GeneralAndAdministrativeExpense",
         "unit": "USD",
-        "values": [
-          150883000
-        ],
+        "values": [150883000],
         "facts": [
           {
             "start": "2025-02-01",
@@ -923,9 +855,7 @@
       "AccountsReceivableNetCurrent": {
         "tag": "us-gaap:AccountsReceivableNetCurrent",
         "unit": "USD",
-        "values": [
-          325136000
-        ],
+        "values": [325136000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -941,9 +871,7 @@
       "ContractWithCustomerLiability": {
         "tag": "us-gaap:ContractWithCustomerLiability",
         "unit": "USD",
-        "values": [
-          656700000
-        ],
+        "values": [656700000],
         "facts": [
           {
             "end": "2026-01-31",
@@ -959,9 +887,7 @@
       "ContractWithCustomerLiabilityCurrent": {
         "tag": "us-gaap:ContractWithCustomerLiabilityCurrent",
         "unit": "USD",
-        "values": [
-          647893000
-        ],
+        "values": [647893000],
         "facts": [
           {
             "end": "2026-01-31",
