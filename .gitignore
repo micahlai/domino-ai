@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+.turbo/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vercel
+# simulator answer keys and local data (never commit the answer key)
+data/answer-keys/
+data/local/

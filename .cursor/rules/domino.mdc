@@ -1,0 +1,8 @@
+---
+description: Domino project rules for Cursor
+alwaysApply: true
+---
+
+Read and follow `AGENTS.md` at the repo root before any change.
+Skills are plain markdown files in `.claude/skills/<name>/SKILL.md`; open the one that matches the task.
+Money is integer cents. Stay in the folder named on the task card. Never edit `packages/contracts` unless asked.
