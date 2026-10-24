@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:14 Codex brain (integration and C1 preparation)
+- Done: integrated latest product work, preserving both sides of knowledge-base insert conflicts; merged E1a at 5762475 and E6a at 63366ae under user authorization. Checks passed after each merge; final main has 81 tests plus typechecks/lint, production build and sim summary passing under Node 24.
+- Next: build_contract_c1 prepares the contracts-only patch in domino-contract-engine-context; review_contract_design audits it. Proposal and card are in kb/spec and kb/tasks. Review before shared-contract merge.
+- Watch out: Claude's E3a branch was not touched. Existing untracked web tooling files were preserved. No deployment, seed reset, push or team message. Old seeded payloads need a later safe backfill; C1 preparation does not make the engine consume the new fields.
+
 ## 2026-10-24 01:07 Micah (Codex, dark theme and logo)
 - Done: applied the supplied mint/clay/rose/green/brown palette as the default dark theme, with readable off-white text and accessible warning text. Reused the original two-tile Domino SVG from calhacks-2026 for the header and favicon; preserved geometry and wordmark dot. Checks (56 tests), build and desktop screenshot review pass.
 - Next: P3 and P4 use these semantic tokens; continue sequential worktrees and merge each task.
