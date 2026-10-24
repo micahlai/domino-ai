@@ -1,5 +1,20 @@
 # Domino handoff
 
+## Active direction: Codex supervision, Claude development
+
+- Latest user asked Codex to run needed Claude prompts, audit/monitor until return, minimize bloat and reuse existing UI. C0 is the current supervisor entry point; H0 manual coordinator is inactive. Do not launch duplicate orchestration.
+- Current stages include historical evidence/contracts/backend/UI, H2d truthful activity, H4 four reusable styles/Motion, preview verification and continuous independent audits. No main merge/production deployment/shared cloud reset.
+- User reports Apify API token added to .env.local; value/validity not inspected. Prefer existing public references, no new scraper or billable Actor runs without a spending limit. Never read credentials into model context or logs.
+- Next exact step: commit/push launch updates, create isolated H1/H2/H3 worktrees, start bounded Claude evidence/contracts/UI-presentation phases, record process IDs/logs/deadline in kb/coordination/historical/active-run.md, and enable heartbeat supervision. Fresh Codex sessions must inspect that record and actual processes before dispatching.
+
+## Latest addition: clean UI, four styles and activity motion
+
+- User requested existing component/library reuse, current style preserved, Ramp match, Hyphenate (confirmed hyphenate.ai), generic shadcn, and satisfying live activity motion. See kb/spec/ui-styles-motion-2026-10-24.md.
+- H0 remains the single launch. H3 produces the historical UI; at its verified checkpoint ownership transfers to H4 in ../domino-H4 on H4-ui-styles-motion, branched from that exact H3 SHA. Only one UI writer. H4 creates four variants of one shared component tree, not four apps.
+- Backend H2a defines an optional activity schema; H2d emits/query-filters real app operations. Agent/tool events remain idle unless actual product operations exist; labelled playground replay is separate. Full agent canvas/chat remains later. Do not show development subagents as product agents.
+- Reference inspection: public Ramp pages and Hyphenate platform checked; Ramp interactive tour is email-gated, no email submitted. Existing shadcn-style Radix primitives, CSS tokens, Lucide and motion14.6 already available. No dependencies need adding for core theming/motion.
+- Prompts and cards updated, no implementation launched here. Next exact step: launch H0 from the latest pushed integration branch; if already running, send it this scope update without starting duplicate workers. Four-style fidelity/screenshots and live/preview activity belong in morning report.
+
 ## Current goal: overnight launch handoff, 2026-10-24
 
 - User requested pushing updates, a fresh Claude orchestrator with evidence/backend subagents, a UI prompt, and the remaining project stages for an overnight run. Latest correction: only this computer runs overnight; one Claude lead spawns all three workers. Supersedes the assessment-only hold below. No new workers launched by this Codex preparation turn.

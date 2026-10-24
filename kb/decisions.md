@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-24 Codex: user requested four toggleable visual styles and meaningful activity motion. Use one shared component system and a separate H4 worktree after H3 releases UI ownership; reuse installed Radix/shadcn/Motion. Counterargument: per-style apps could match layouts more literally, but duplicate state, bugs and usage. Preserve Original default, match public Ramp/Hyphenate references, expose actual events only.
+
 - 2026-10-24 Codex: prepare bounded overnight implementation with Claude lead, evidence/backend/UI subagents on one computer, per the latest correction. Serialize full checks/builds and share one owned preview server. Allow parallel presentation and generic contracts; gate real-case modeling on evidence and live UI wiring on the frozen API. Counterargument: broader parallelism may build more screens, but increases unsupported assumptions and integration conflicts. User requested launch prompts and project stages; no workers started in this turn.
 
 - 2026-10-24 Codex brain: user changed direction to a historical public-company replay. Freeze new implementation dispatch; checkpoint existing workers and keep future integration off main. Propose a curated case, period cash model, immutable forecast/reveal and one costed alternative. Counterargument: less weekly detail, but public data cannot substantiate synthetic weekly actuals. Company selection remains open.

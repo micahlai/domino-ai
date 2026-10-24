@@ -1,5 +1,15 @@
 # Handoffs
 
+## 2026-10-24 Codex (supervised execution authorization)
+- Done: user authorized direct Claude development with Codex audit/monitoring. C0 supervisor and bounded H1/H2 worker prompts added; H0 becomes manual fallback. UI reuse and four-style/activity requirements retained.
+- Next: start isolated evidence/contracts/presentation phases, record exact process state, then review and advance gates through heartbeat supervision. No duplicate fresh-chat dispatch.
+- Watch out: Apify token reported available but unverified; do not print/copy it or introduce unnecessary crawler/integration work. Existing main/local changes remain untouched; three writers maximum, one check/build slot.
+
+## 2026-10-24 Codex (four-style UI and motion handoff)
+- Done: researched official references, confirmed Hyphenate identity, inspected existing Radix/shadcn tokens/Motion; added H4 spec/prompt/card and H2d truthful activity seam. H0 carries the updated single-computer run.
+- Next: H3 core checkpoint -> separate H4 worktree in the same UI slot; four styles with shared components, real-event transitions and same-state visual comparisons. No new implementation launched during preparation.
+- Watch out: no four parallel UI writers, no fabricated agent/tool work, no chart rewrite or fake weekly actuals. Ramp fidelity limited to observable references; original style remains default. Core preview survives incomplete polish.
+
 ## 2026-10-24 Codex (overnight launch preparation)
 - Done: pushed assessment108cdaa to origin/integration/historical-case-study; prepared rest-of-project stage gates, Claude orchestration/UI prompts, scoped H1/H2/H3 cards and versioned contract handoff.
 - Next: one fresh Claude session launches all three workers on this computer. Three writers total, isolated worktrees, serialized full checks/builds, provisional preview assembly; Codex independently audits before final integration. No worker launched during prompt preparation.

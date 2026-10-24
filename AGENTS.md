@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Current scope (2026-10-24): historical public-company case study. Read `kb/context/historical-case-study-2026-10-24.md` and `kb/spec/historical-case-study-plan.md` before applying the original product description below. The user has requested an overnight launch handoff. Follow `kb/spec/project-stages-2026-10-24.md` and the H0/H3 prompts for isolated worker/preview branches. No main merges; Codex owns final integration. Preserve completed UI and existing interfaces.
+Current scope (2026-10-24): historical public-company case study. Read `kb/context/historical-case-study-2026-10-24.md` and `kb/spec/historical-case-study-plan.md` before applying the original product description below. The user has requested an overnight launch handoff. Follow `kb/spec/project-stages-2026-10-24.md` and the C0 supervisor prompt (Claude implements, Codex audits) for isolated worker/preview branches. No main merges; Codex owns final integration. Preserve completed UI and existing interfaces. The latest visual scope is `kb/spec/ui-styles-motion-2026-10-24.md`: H4 follows H3, with four shared-component styles and actual-event motion.
 
 Rules for every AI coding agent in this repo (Claude Code, Codex, Cursor, CREAO).
 Read this file fully before you write any code.
