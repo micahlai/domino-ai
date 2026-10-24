@@ -189,6 +189,14 @@ describe("Workspace map", () => {
     expect(html).toContain("not data moved");
     expect(html).not.toMatch(/bytes|transfer|throughput/i);
   });
+
+  it("reserves a toolbar above the canvas on small screens and keeps the caption readable by screen readers", () => {
+    const html = render([IDLE_DOMINO, source]);
+    // Header precedes the canvas in the flow, so it cannot cover the graph; it only floats from lg up.
+    expect(html.indexOf("Investigate</h1>")).toBeLessThan(html.indexOf("react-flow"));
+    expect(html).toMatch(/class="flex flex-wrap[^"]*lg:absolute/);
+    expect(html).toMatch(/class="sr-only[^"]*lg:not-sr-only[^"]*">A dot on a line/);
+  });
 });
 
 describe("Canvas nodes", () => {

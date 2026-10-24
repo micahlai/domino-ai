@@ -51,3 +51,15 @@ Status: implemented, committed locally on G6-company-map. Not pushed. Codex stil
 - **Tests:** new "reconnect recovery latch" suite runs the offline -> cached queued -> same-content new array -> catch-up -> true live transition sequence through `settle` plus `pulsesFor`; repeated unchanged cached snapshots; away states never release; plain live is not held. Caption test asserts neutral wording.
 - **Verified:** `npx vitest run components/investigate` (apps/web): 5 files, 101 tests pass. `npx tsc --noEmit`: clean. `npx biome check --write` on the two owned folders: clean.
 - **Not verified:** no browser, so caption fit in the frame is unseen. The Workspace effect wiring of `settle` has no DOM test; the pure sequence is tested.
+
+## Repair 2 requested by parent browser check
+- At 390x844 after FitView, the absolute brand/title/status and pulse caption overlapped the Sources group. Reserve compact space on small screens instead of covering the graph.
+
+## Result: Repair 2
+Status: implemented, committed locally on G6-company-map. Not pushed. Codex owns browser, full suite, build and visual acceptance.
+
+- **Change** (`InvestigateWorkspace.tsx` only, plus one test): the brand/title/status block moved above the canvas in the Canvas section. Below `lg` it is a normal-flow one-row toolbar (`flex-wrap`, bottom border, logo 44px tall) so the canvas starts under it and FitView fits only the free space. From `lg` up it is the same absolute top-left column as before (`lg:absolute lg:left-4 lg:top-4 lg:flex-col`), so desktop is unchanged.
+- **Caption:** "A dot on a line marks newly recorded step activity, not data moved." is `sr-only` below `lg` (still read by screen readers) and visible from `lg`. Status text and the `h1` stay visible.
+- **Side effect:** the Domino home link is now first in DOM and tab order, as it reads on screen. Canvas keeps `min-h-[45dvh]`; the page still scrolls (`overflow-y-auto`) and the Conversation panel is unchanged.
+- **Verified** (apps/web): `npx vitest run components/investigate` 5 files, 102 tests pass (new test: header precedes canvas, toolbar classes, caption sr-only until lg). `npx tsc --noEmit` clean. `npx biome check --write` on the two owned folders clean.
+- **Not verified:** no browser. Please check at 390x844 that the toolbar fits on one or two rows with a long status label and that the canvas height is still useful.

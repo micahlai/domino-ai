@@ -573,6 +573,26 @@ function Workspace({
         aria-label="Canvas"
         className="relative flex flex-1 shrink-0 flex-col lg:min-h-0 lg:shrink"
       >
+        {/* A compact toolbar above the canvas on mobile so it never covers the graph; floats top-left on desktop. */}
+        <div className="flex flex-wrap items-center gap-x-3 border-b px-3 lg:pointer-events-none lg:absolute lg:left-4 lg:top-4 lg:z-10 lg:flex-col lg:items-start lg:gap-1.5 lg:border-b-0 lg:px-0">
+          <Link
+            href="/"
+            aria-label="Domino home"
+            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
+            <span className="text-lg">
+              domino<span className="text-primary">.</span>
+            </span>
+          </Link>
+          <h1 className="text-sm font-medium">Investigate</h1>
+          <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
+          {nodes.length > 1 ? (
+            <p className="sr-only text-xs text-muted-foreground lg:not-sr-only lg:max-w-56">
+              A dot on a line marks newly recorded step activity, not data moved.
+            </p>
+          ) : null}
+        </div>
         <div ref={canvasRef} className="relative min-h-[45dvh] flex-1 lg:min-h-0">
           <div className="absolute inset-0">
             <ReactFlow
@@ -617,25 +637,6 @@ function Workspace({
           {nodes.length === 0 ? (
             <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
               {connection === "loading" ? "Loading the investigation." : "No steps to show yet."}
-            </p>
-          ) : null}
-        </div>
-        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5">
-          <Link
-            href="/"
-            aria-label="Domino home"
-            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-            <span className="text-lg">
-              domino<span className="text-primary">.</span>
-            </span>
-          </Link>
-          <h1 className="text-sm font-medium">Investigate</h1>
-          <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
-          {nodes.length > 1 ? (
-            <p className="max-w-56 text-xs text-muted-foreground">
-              A dot on a line marks newly recorded step activity, not data moved.
             </p>
           ) : null}
         </div>
