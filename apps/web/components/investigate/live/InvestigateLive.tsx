@@ -9,6 +9,7 @@ import { z } from "zod";
 import { api } from "../../../convex/_generated/api";
 import { InvestigateWorkspace } from "../InvestigateWorkspace";
 import type { CanvasConnection, CanvasNode } from "../types";
+import { CompanyKnowledge } from "./CompanyKnowledge";
 import { FinancialOutput } from "./FinancialOutput";
 import { type Adapted, ConversationSchema, adaptConversation } from "./adapt";
 import { conversationFromSearch, mayApplyCompletion, pendingPayload, sendRequest } from "./session";
@@ -148,6 +149,14 @@ function Session({ conversationId }: { conversationId?: string }) {
     [adapted],
   );
 
+  // The saved baseline comes from the succeeded forecast step (every output carries it), never
+  // from the newest run. Keyed by run so another session's packet cannot linger.
+  const baselineRunId = adapted ? [...adapted.outputs.values()][0]?.baselineRunId : undefined;
+  const renderKnowledge = useCallback(
+    () => <CompanyKnowledge key={baselineRunId ?? "pending"} runId={baselineRunId} />,
+    [baselineRunId],
+  );
+
   const offline = !connection.isWebSocketConnected && connection.connectionRetries > 0;
   const state: CanvasConnection = offline
     ? "offline"
@@ -187,6 +196,7 @@ function Session({ conversationId }: { conversationId?: string }) {
         canReveal={ready?.canReveal}
         canAlternative={ready?.canAlternative}
         renderOutput={renderOutput}
+        renderKnowledge={renderKnowledge}
       />
     </Frame>
   );
