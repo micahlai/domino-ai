@@ -16,6 +16,7 @@ import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ConversationPanel } from "./ConversationPanel";
 import {
+  CIRCLE_ROW,
   type FlowNode,
   IDLE_DOMINO,
   KIND_LABEL,
@@ -93,6 +94,15 @@ function statusText(node: CanvasNode) {
   return node.kind === "domino" ? status : `${KIND_LABEL[node.kind]} · ${status}`;
 }
 
+// Understated status: only a running or failed circle changes its outline; the label always says why.
+const CIRCLE_BORDER: Record<CanvasStatus, string> = {
+  idle: "border-border",
+  queued: "border-border",
+  running: "border-primary",
+  succeeded: "border-border",
+  failed: "border-destructive/70",
+};
+
 export function NodeCard({
   node,
   selected,
@@ -103,40 +113,44 @@ export function NodeCard({
   animateStatus?: boolean;
 }) {
   const Icon = node.kind === "domino" ? null : KIND_ICON[node.kind];
-  const line =
-    node.summary ??
-    (node.kind === "domino" && node.status === "idle" ? "Waiting for a question" : null);
+  const note = node.kind === "domino" && node.status === "idle" ? "Waiting for a question" : null;
   return (
-    <div
-      className={cn(
-        "flex w-60 items-center gap-3 rounded-xl border bg-card px-4 py-3.5 text-card-foreground shadow-sm transition-colors",
-        selected ? "border-primary ring-1 ring-primary" : "hover:border-muted-foreground/40",
-      )}
-    >
-      {Icon ? (
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-          <Icon aria-hidden="true" className="size-4" />
+    <div className="flex w-36 flex-col items-center gap-1.5 text-center">
+      <div className="grid h-[72px] place-items-center">
+        <span
+          className={cn(
+            "grid place-items-center rounded-full border bg-card transition-colors",
+            Icon ? "size-14" : "size-[72px]",
+            CIRCLE_BORDER[node.status],
+            selected
+              ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+              : "hover:border-muted-foreground/60",
+          )}
+        >
+          {Icon ? (
+            <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
+          ) : (
+            <Image src="/domino-logo.svg" width={40} height={40} alt="" />
+          )}
         </span>
-      ) : (
-        <Image src="/domino-logo.svg" width={36} height={36} alt="" />
-      )}
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{node.title}</p>
+      </div>
+      <div className="w-full min-w-0 px-1">
+        <p className="line-clamp-2 break-words text-xs font-medium leading-4">{node.title}</p>
         {/* Keyed by status so a real status change replays this fade once; restored nodes mount still. */}
         <motion.p
           key={node.status}
           initial={animateStatus ? { opacity: 0, y: 2 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          className="flex items-center justify-center gap-1.5 text-xs leading-4 text-muted-foreground"
         >
           <span
             aria-hidden="true"
-            className={cn("size-1.5 rounded-full", STATUS_DOT[node.status])}
+            className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[node.status])}
           />
           {statusText(node)}
         </motion.p>
-        {line ? <p className="mt-1 truncate text-xs text-muted-foreground">{line}</p> : null}
+        {note ? <p className="text-xs leading-4 text-muted-foreground">{note}</p> : null}
       </div>
     </div>
   );
@@ -159,7 +173,14 @@ function CanvasNodeView({ data, selected }: NodeProps<FlowNode>) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
-      <Handle type="target" position={Position.Left} isConnectable={false} className="!opacity-0" />
+      {/* Both handles sit on the circle's center; edges render under nodes, so lines end at the circle. */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+        style={{ top: CIRCLE_ROW / 2 }}
+        className="!pointer-events-none !opacity-0"
+      />
       <NodeCard
         node={data.node}
         selected={selected}
@@ -167,9 +188,10 @@ function CanvasNodeView({ data, selected }: NodeProps<FlowNode>) {
       />
       <Handle
         type="source"
-        position={Position.Right}
+        position={Position.Top}
         isConnectable={false}
-        className="!opacity-0"
+        style={{ top: CIRCLE_ROW / 2 }}
+        className="!pointer-events-none !opacity-0"
       />
     </motion.div>
   );
@@ -415,6 +437,7 @@ function Workspace({
         id: edge.id,
         source: edge.source,
         target: edge.target,
+        type: "straight",
         focusable: false,
         selectable: false,
       }));
@@ -468,7 +491,7 @@ function Workspace({
               style={flowStyle}
               fitView
               fitViewOptions={fitOptions}
-              minZoom={0.3}
+              minZoom={0.1}
               maxZoom={2}
               nodesConnectable={false}
               deleteKeyCode={null}

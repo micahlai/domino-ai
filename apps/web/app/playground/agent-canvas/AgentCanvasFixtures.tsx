@@ -31,7 +31,17 @@ function add(graph: Graph, node: CanvasNode, from: string): Graph {
   return { nodes: [...graph.nodes, node], edges: [...graph.edges, edge(from, node.id)] };
 }
 
-const STEPS: { label: string; apply: (graph: Graph) => Graph }[] = [
+// A node reached from several parents (a shared dependency).
+function addFrom(graph: Graph, node: CanvasNode, parents: string[]): Graph {
+  return {
+    nodes: [...graph.nodes, node],
+    edges: [...graph.edges, ...parents.map((from) => edge(from, node.id))],
+  };
+}
+
+type Step = { label: string; apply: (graph: Graph) => Graph };
+
+const STEPS: Step[] = [
   { label: "Domino starts", apply: (g) => patch(g, "domino", { status: "running" }) },
   {
     label: "Source arrives",
@@ -126,6 +136,78 @@ const STEPS: { label: string; apply: (graph: Graph) => Graph }[] = [
 const EMPTY: Graph = { nodes: [domino], edges: [] };
 const FULL = STEPS.reduce((graph, step) => step.apply(graph), EMPTY);
 
+// Branching web for visual review: several sources, specialists and outputs, with shared dependencies.
+const node = (id: string, kind: CanvasNode["kind"], title: string): CanvasNode => ({
+  id,
+  kind,
+  title,
+  status: "running",
+});
+
+const WEB_STEPS: Step[] = [
+  { label: "Domino starts", apply: (g) => patch(g, "domino", { status: "running" }) },
+  {
+    label: "Three sources arrive",
+    apply: (g) =>
+      ["Fixture filing", "Fixture news", "Fixture call transcript"].reduce(
+        (acc, title, i) =>
+          add(acc, { ...node(`src-${i}`, "source", title), status: "succeeded" }, "domino"),
+        g,
+      ),
+  },
+  {
+    label: "Two specialists start",
+    apply: (g) =>
+      addFrom(
+        add(g, node("agent-0", "agent", "Filing specialist"), "src-0"),
+        node("agent-1", "agent", "Market specialist (reads news and the call)"),
+        ["src-1", "src-2"],
+      ),
+  },
+  {
+    label: "Specialists finish",
+    apply: (g) =>
+      patch(patch(g, "agent-0", { status: "succeeded" }), "agent-1", { status: "succeeded" }),
+  },
+  {
+    label: "Two tools start",
+    apply: (g) =>
+      add(
+        add(g, node("tool-0", "tool", "Fixture forecast tool"), "agent-0"),
+        node("tool-1", "tool", "Fixture comparison tool"),
+        "agent-1",
+      ),
+  },
+  {
+    label: "Tools finish",
+    apply: (g) =>
+      patch(patch(g, "tool-0", { status: "succeeded" }), "tool-1", { status: "failed" }),
+  },
+  {
+    label: "Three results arrive",
+    apply: (g) =>
+      add(
+        add(
+          addFrom(g, { ...node("out-0", "output", "Fixture summary"), status: "succeeded" }, [
+            "tool-0",
+            "tool-1",
+          ]),
+          { ...node("out-1", "output", "Fixture risk list"), status: "succeeded" },
+          "tool-1",
+        ),
+        { ...node("out-2", "output", "Fixture forecast chart"), status: "succeeded" },
+        "tool-0",
+      ),
+  },
+];
+
+const run = (steps: Step[]) => steps.reduce((graph, step) => step.apply(graph), EMPTY);
+const SCENARIOS = {
+  chain: { steps: STEPS, full: FULL },
+  web: { steps: WEB_STEPS, full: run(WEB_STEPS) },
+};
+type ScenarioKey = keyof typeof SCENARIOS;
+
 const HISTORY: CanvasMessage[] = [
   { id: "m1", role: "user", text: "Fixture question" },
   { id: "m2", role: "assistant", text: "Fixture answer. Real answers come from saved messages." },
@@ -136,6 +218,7 @@ const CONNECTIONS: CanvasConnection[] = ["live", "loading", "offline", "unavaila
 export function AgentCanvasFixtures() {
   const [session, setSession] = useState(1);
   const [graph, setGraph] = useState(EMPTY);
+  const [scenario, setScenario] = useState<ScenarioKey>("chain");
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState<CanvasMessage[]>([]);
   const [connection, setConnection] = useState<CanvasConnection>("live");
@@ -144,7 +227,15 @@ export function AgentCanvasFixtures() {
   const [actions, setActions] = useState(false);
   const [chartSlot, setChartSlot] = useState(true);
 
-  function restart(next: Graph, nextStep: number, nextMessages: CanvasMessage[]) {
+  const { steps, full } = SCENARIOS[scenario];
+
+  function restart(
+    next: Graph,
+    nextStep: number,
+    nextMessages: CanvasMessage[],
+    key: ScenarioKey = scenario,
+  ) {
+    setScenario(key);
     setSession((s) => s + 1);
     setGraph(next);
     setStep(nextStep);
@@ -152,7 +243,7 @@ export function AgentCanvasFixtures() {
   }
 
   function deliver() {
-    const next = STEPS[step];
+    const next = steps[step];
     if (!next) return;
     setGraph(next.apply(graph));
     setStep(step + 1);
@@ -168,7 +259,7 @@ export function AgentCanvasFixtures() {
           size="sm"
           variant="outline"
           className="min-h-11"
-          onClick={() => restart(EMPTY, 0, [])}
+          onClick={() => restart(EMPTY, 0, [], "chain")}
         >
           New empty session
         </Button>
@@ -176,12 +267,20 @@ export function AgentCanvasFixtures() {
           size="sm"
           variant="outline"
           className="min-h-11"
-          onClick={() => restart(FULL, STEPS.length, HISTORY)}
+          onClick={() => restart(EMPTY, 0, [], "web")}
+        >
+          New branching web session (fixture)
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => restart(full, steps.length, HISTORY)}
         >
           Load saved history
         </Button>
-        <Button size="sm" className="min-h-11" onClick={deliver} disabled={step >= STEPS.length}>
-          {STEPS[step] ? `Deliver: ${STEPS[step]?.label}` : "All records delivered"}
+        <Button size="sm" className="min-h-11" onClick={deliver} disabled={step >= steps.length}>
+          {steps[step] ? `Deliver: ${steps[step]?.label}` : "All records delivered"}
         </Button>
         <label className="flex items-center gap-1.5">
           Connection
