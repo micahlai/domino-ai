@@ -2,6 +2,16 @@
 
 Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
 
+## Latest direction: spatial agent web
+
+User rejects a single-direction line. Reference https://www.instagram.com/reel/DdzFoJ3xybr/ was viewed in browser: opening frame dark spatial network, small outlined circular icons, short labels, thin edges, branching two-dimensional placement. Adopt stable clustered/radial placement around Domino, no fabricated edges or physics drift. G4 card in domino-G3/kb/tasks/G4-spatial-agent-web.md, base179626e after G3 candidate5d244d8. Sole UI Claude64729/exec37097 running in domino-G3, /tmp/domino-G4-claude.log, cwd verified. Requested four skills. Owns presentation graph/primitives/tests/playground only; live/** frozen for repair queue. No second UI writer.
+
+G3 candidate5d244d8 independently BLOCKED: stale completion unconditionally clears newer request identity, causing duplicate investigations on retry; valid pre-reveal alternative chart/costs/assumptions hidden. Reviewer audit_r1,30focusedtests pass, probe /tmp/domino-g3-retry-audit.cjs. After G4 checkpoint, same sole UI worker must fix these before acceptance. Do not merge candidate merely for visual work.
+
+G2d candidate70d0379 independently BLOCKED: verification bound only to local profile, permits remote app-id swap after queue. Fullcheck passes,42focused+5probes expose blocker. Claude Opus69536/exec11213 repair fromd11235e in domino-G2d, /tmp/domino-G2d-repair-claude.log. Freeze app identity, bind verified appId+role+version, reject drift before POST. Reviewer audit_g2a, /tmp/g2d-independent.test.ts. No live calls.
+
+Next: collect G4 visual checkpoint, independent presentation review/build/browser; then G3 live repairs; re-audit G2d independently. Current stable3102 remains previous accepted fixture until visual gate passes. Main unchanged. Older worker PIDs below superseded.
+
 ## Scheduled audit, October24 14:06 PDT
 
 Both recorded Claude workers remain active with verified cwd and no children. G3 has new adapt.ts/session.ts files in its assigned live folder; G2d has no tracked changes yet. Neither has a completed commit, so no new gate accepted and no tests repeated. Last checked preview remains991tests atcb44894, published8a2e296. Next collect scoped checkpoints for independent review. Monitor ownership corrected to G3; stored interval is15minutes, preserved. Main untouched.

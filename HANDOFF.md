@@ -1,5 +1,7 @@
 # Domino handoff
 
+Latest user correction: agent canvas must be a spatial web like the viewed Instagram reference, not horizontal pipeline. ClaudeG4 64729/exec37097 is sole UI writer in domino-G3, presentation-only. G3 candidate5d244d8 has2auditblockers queued after visualcheckpoint. G2d candidate70d0379 has1appidentityverification blocker; Claude69536/exec11213 repairs in domino-G2d. Read active-run for findings/logs. No candidate integrated; main unchanged.
+
 Current: checked integrationcb44894 passes991tests/typechecks/lint; R1 visual repairs shown at3102, G2b real localruntime passes, G2c offline adapter accepted. Claude G3UI18646/exec99532 and G2dbackend18871/exec10780 verified running in separate worktrees. Next inspect their Result/commits, independent audit and serialized checks/browser. Full real CREAO journey still pending dedicated app instructions/memory validation. Main694ab2a unchanged.
 
 Scheduled audit14:06 PDT: both Claude workers active; G3 adapter/session files started, G2d still inspecting. No new commit/gate, no repeat tests. Next audit completed checkpoints. Monitor interval verified15minutes and UI ownership updated to G3.
