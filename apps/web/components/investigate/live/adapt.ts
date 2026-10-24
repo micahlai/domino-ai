@@ -99,6 +99,13 @@ export const DOMINO_ID = "domino";
 const OUTPUT_TITLE: Record<OutputStage, string> = {
   forecast: "Saved cash forecast",
   reveal: "Forecast against what was reported",
+  alternative: "Saved costed alternative",
+};
+// Short human names for the map. The stored title (it can name the engine) stays in the details.
+const STEP_TITLE: Partial<Record<Operation["kind"], string>> = {
+  source_load: "Archived disclosure",
+  forecast: "Cash forecast",
+  reveal: "Reveal reported results",
   alternative: "Costed alternative",
 };
 const STEP_FOR_OUTPUT: Partial<Record<Operation["kind"], OutputStage>> = {
@@ -190,7 +197,7 @@ function operationNode(op: Operation): CanvasNode {
   return {
     id: op.operationId,
     kind: op.kind === "source_load" ? "source" : specialist ? "agent" : "tool",
-    title: op.title,
+    title: STEP_TITLE[op.kind] ?? op.title,
     status,
     ...(shownSummary ? { summary: shownSummary } : {}),
     ...(text ? { outputText: text } : {}),
@@ -199,6 +206,7 @@ function operationNode(op: Operation): CanvasNode {
     ...(profile ? { profile } : {}),
     metadata: [
       { label: "Operation", value: op.operationId },
+      { label: "Recorded step", value: op.title },
       { label: "Step type", value: op.role ? `${op.kind} (${op.role})` : op.kind },
       { label: "Recorded status", value: op.status },
       ...(specialist

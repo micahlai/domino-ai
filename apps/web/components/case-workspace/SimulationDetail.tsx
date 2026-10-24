@@ -156,12 +156,12 @@ function Tabs({
         onKeyDown={move}
         className="flex flex-wrap gap-1 border-b pb-1"
       >
-        {TABS.map((name) => (
+        {TABS.map((name, i) => (
           <button
             key={name}
             type="button"
             role="tab"
-            id={`${base}-${name}`}
+            id={`${base}-tab-${i}`}
             aria-selected={tab === name}
             aria-controls={`${base}-panel`}
             tabIndex={tab === name ? 0 : -1}
@@ -175,7 +175,12 @@ function Tabs({
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-${tab}`} className="pt-4">
+      <div
+        role="tabpanel"
+        id={`${base}-panel`}
+        aria-labelledby={`${base}-tab-${TABS.indexOf(tab)}`}
+        className="pt-4"
+      >
         {children}
       </div>
     </>

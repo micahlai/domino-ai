@@ -33,6 +33,15 @@ export function CompanyBody({ adapted }: { adapted: Adapted }) {
   return (
     <>
       <CompanyKnowledge key={baselineRunId ?? "pending"} runId={baselineRunId} />
+      <section aria-labelledby="company-gaps" className="mt-8">
+        <h3 id="company-gaps" className="text-sm font-medium">
+          What is missing
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This case rests on quarterly cash disclosures only. There are no invoice, customer or
+          payroll records, and no validated learnings yet.
+        </p>
+      </section>
       <section aria-labelledby="company-sources" className="mt-8">
         <h3 id="company-sources" className="text-sm font-medium">
           Sources

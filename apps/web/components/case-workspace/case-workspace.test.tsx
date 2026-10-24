@@ -159,6 +159,18 @@ describe("simulation detail", () => {
     expect(out).not.toContain("Load filings");
   });
 
+  it("points every panel label at a tab with a valid single id", () => {
+    for (const initialTab of ["Overview", "Impact chain", "Chart", "Execution"] as const) {
+      const out = html(
+        createElement(SimulationDetailView, { conversation: conv, adapted, initialTab }),
+      );
+      const labelled = /role="tabpanel"[^>]*aria-labelledby="([^"]*)"/.exec(out)?.[1] ?? "";
+      expect(labelled).toMatch(/^\S+$/);
+      const tab = new RegExp(`<button[^>]*id="${labelled.replace(/[:]/g, "\\$&")}"[^>]*>([^<]*)<`);
+      expect(tab.exec(out)?.[1]).toBe(initialTab);
+    }
+  });
+
   it("says there is no chart until a forecast step finished", () => {
     const none = conversation([sources]);
     const out = html(
@@ -178,12 +190,32 @@ describe("simulation detail", () => {
   });
 });
 
+describe("map labels", () => {
+  it("shows short names and keeps the stored title in the details", () => {
+    const stored = op({
+      operationId: "op2",
+      kind: "forecast",
+      status: "succeeded",
+      title: "Engine forecast (quarterly cash bridge)",
+    });
+    const nodes = adaptConversation(conversation([sources, stored])).nodes;
+    const node = nodes.find((n) => n.id === "op2");
+    expect(node?.title).toBe("Cash forecast");
+    expect(node?.metadata).toContainEqual({
+      label: "Recorded step",
+      value: "Engine forecast (quarterly cash bridge)",
+    });
+    expect(nodes.find((n) => n.id === "op1")?.title).toBe("Archived disclosure");
+  });
+});
+
 describe("CompanyBody", () => {
   it("reads the saved baseline run and lists sources safely", () => {
     const out = html(
       createElement(CompanyBody, { adapted: adaptConversation(conversation([sources, forecast])) }),
     );
     expect(out).toContain("knowledge:baseline-1");
+    expect(out).toContain("no invoice, customer or payroll records");
     expect(out).toContain('href="https://example.com/q"');
     expect(out).toContain("Published");
     expect(out).toContain("Odd date");
