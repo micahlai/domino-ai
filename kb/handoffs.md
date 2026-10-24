@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 07:23 Codex heartbeat
+- Done: H2c repair1 passed725tests and local retry/reveal/reload checks. Independent probes cleared availability, request receipts and frozen revealed evidence. Live UI card prepared.
+- Next: final bounded repair2 exposes frozen input objects and saved method/date metadata; re-review then H2d.
+- Watch out: getCase available evidence and saved forecast inputSnapshot are distinct; never replace old input provenance with current values. No main/cloud changes.
+
 ## 2026-10-24 07:07 Codex heartbeat
 - Done: H2c candidate passes719tests; isolated anonymous local backend compiled and concurrent save/reveal/alternative smoke passed. Generated bindings0377a9b.
 - Next: Claude repair1 addresses independently reproduced frozen-run/reveal/request-key defects and adds read-only retrieval. Re-audit before H2d and live UI wiring.

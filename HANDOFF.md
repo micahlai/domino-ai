@@ -2,6 +2,8 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest07:23 PDT: H2c repair1 passed725tests and live distinct-key retry checks; independent review cleared its main defects. Final repair2 is running (exec75136/PID97297) to expose exact frozen input evidence and saved metadata. H2d/live UI remain gated. UI wiring card0cfd53e is ready; active-run.md records the next exact step.
+
 - Latest07:07 PDT: H2c passed719tests and local concurrency smoke, but independent audit found frozen-read, revealed-evidence and retry-key defects plus missing getRun. Claude repair1 is verified running (exec45241/PID53162). H2d/UI wiring still gated. Current local backend3210/3211 and exact next steps are in active-run.md.
 
 - Latest07:04 PDT: H2c candidate completed at0e33f73, generated bindings0377a9b. Full719tests passed, and isolated local Convex3210/3211 passed concurrent save/reveal/alternative smoke. Independent audit pending; no Claude writer active. UI remains presentation-only. See active-run.md for owned runtime and next gate.

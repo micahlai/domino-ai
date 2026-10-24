@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 07:07 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
+Updated: 2026-10-24 07:23 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
 
 ## Execution limits
 
@@ -31,10 +31,10 @@ Updated: 2026-10-24 07:07 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-d
 
 | Phase | Worktree / branch | Model | Exec / last verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
-| H2c repair1 | domino-H2 / H2-historical-backend | Opus high | 45241 / 53162 | /tmp/domino-H2c-r1-claude.log | Running from0377a9b; frozen reads/reveal evidence, retry receipts and getRun |
+| H2c repair2 | domino-H2 / H2-historical-backend | Opus high | 75136 / 97297 | /tmp/domino-H2c-r2-claude.log | Running froma9bc32d; expose frozen inputSnapshot and saved-run metadata |
 | H4b repair1 | domino-H4 / H4-ui-styles-motion | Sonnet high | 33430 / finished | /tmp/domino-H4b-r1-claude.log | Accepted436878e as presentation; full728tests/build and browser passed; waiting for backend |
 
-Only H2c repair1 is implementing. Independent review found four bounded blockers; H1/H4 and prior workers are stopped. The full-check slot is free. H4b repair verification logs: /tmp/domino-H4b-r1-check.log and /tmp/domino-H4b-r1-build.log.
+Only H2c repair2 is implementing. Repair1 resolved the original availability/receipt/reveal defects; one evidence-display gap remains. H1/H4 and prior workers are stopped. The full-check slot is free. H4b repair verification logs: /tmp/domino-H4b-r1-check.log and /tmp/domino-H4b-r1-build.log.
 
 ## Current blockers and next steps
 
@@ -84,3 +84,11 @@ Four desktop screenshots: /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-deskt
 - Independent Astra review blocks candidate approval on: CASE_CHANGED makes valid frozen runs unreadable after harmless source edits; revealed evidence is not frozen alongside stored comparisons; repeating reveal under a second requestId fails to reserve that key; no read-only run retrieval for reload. Reproductions /tmp/h2c-independent-audit.ts. Generic retrospective disclaimer is not held-out leakage.
 - Claude Opus repair1 launched exec45241/PID53162, cwd domino-H2, log /tmp/domino-H2c-r1-claude.log. Compact prompt /tmp/domino-H2c-repair-prompt.txt. Verified actual process/cwd. Scope only Convex/schema/generated/tests and Result/readiness notes. No H2d or UI dispatch yet.
 - Next exact step: collect repair commit, re-review those four findings with audit_e3b_rules, run serialized fullcheck and local live regression including two-key reveal conflict and getRun. Then H2d, then UI wiring on H4 ancestry. Local Convex watcher automatically rebundles isolated changes; never use shared cloud.
+
+## H2c repair1 reviewed, repair2 running, 07:23 PDT
+
+- Repair1 code8c16c4f/packeta9bc32d passed725tests/typechecks/lint. Fresh local HTTP probe passed eight baseline retries, eight distinct reveal keys returning one record, conflict on reusing an alias key for another baseline, getRun baseline/alternative retrieval, wrong-case rejection, exact comparison and immutable baseline. Existing pre-repair smoke reveals intentionally fail closed because they lack frozen evidence; use fresh runs, never reset data.
+- Independent Astra probes accepted availability, receipt binding, case association, frozen observation/comparison agreement and tamper rejection. One remaining gap: getRun exposed input IDs but no original objects, while getCase shows current cutoff inputs. A valid old run can display different evidence values.
+- Final bounded repair2 now runs exec75136/PID97297, verified cwd domino-H2, Opus high, log /tmp/domino-H2c-r2-claude.log. It adds validated getRun.inputSnapshot and saved cutoff/origin/method metadata. UI must use inputSnapshot for saved forecast provenance; available/revealed evidence remains separate to avoid mixing old inputs with newly derived observations. Prompt /tmp/domino-H2c-r2-prompt.txt. No new schema framework or financial code.
+- Next exact step: collect repair2, targeted re-review with audit_e3b_rules, fullcheck and local smoke. If accepted, publish complete H2 checkpoint and dispatch H2d. If another gate failure remains after this final repair, park with evidence rather than a third repair loop.
+- H4c live-wiring card committed on integration0cfd53e. It preserves all four styles and explicitly corrects inherited prospective wording, unknown downside/benefit handling and saved-input provenance. No UI writer launched before H2c/H2d readiness.
