@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex spatial audit and CREAO runtime acceptance
+- G2d3738d5c accepted, integrated3ea78ef;998tests and actual3214bundle/codegen/4APIchecks pass. DefaultgateOFF, no livecalls.
+- G4e7b7944 passed1028tests/build but browser+review foundFitViewclipping and labelbounds overlap. Actual3418localquestion createdrealforecastnodes/chart, providerhonestlyunavailable.
+- SoleUIClaude32944/73011 repairs G4 and G3fourboundedfindings. No candidateUIintegration, no mainmerge. Nextaudit+browserthenpublish.
+
 ## 2026-10-24 Codex live wiring dispatch
 - G2b actual3212/runtime passed ninechecks, integratedcb44894 with auditedR1/G2c; combined991tests/typechecks/lint pass. No provider calls, no main changes.
 - ClaudeG3 Sonnet18646/99532 andG2d Opus18871/10780 verified separate worktrees, oneUIwriter, requestedskills, nochildren/livecalls.

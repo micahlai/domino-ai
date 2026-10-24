@@ -2,6 +2,14 @@
 
 Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
 
+## Scheduled audit, October24 14:36 PDT
+
+- G2d repair3738d5c independently APPROVED:43focused+8probes; full998tests/typecheck/lint pass. Mergedpreview3ea78ef, combined998tests pass. Actual anonymous3214/site3215 bundle/codegen and4API checks pass, PID32068/exec33344, /tmp/domino-G2d-local-convex.log and /tmp/domino-G2d-runtime-smoke.log. Gate OFF, no keys/providercalls. Dedicated real apps/instructions/memory isolation still unverified.
+- G4 candidatee7b7944 finished; full1028tests/typechecks/lint/build pass, BUT visual audit BLOCKED on FitView floor clipping on mobile and label collision bounds116vs126px. Independent33tests/probe /tmp/domino-g4-audit.cjs. Browserdesktop/mobile reproduced clipping; circles/web/topology and keyboard details work. Do not publish as accepted.
+- Actual3418/investigate local browser submitted a question to3212, loaded real archivedsource/forecast/output operations and opened saved chart. Specialist failedprovider_unavailable honestly, no modelcall. This is a partial live journey only. No console warnings/errors. Candidate screenshots /tmp/domino-G4-spatial-desktop.png, /tmp/domino-G4-spatial-mobile.png, /tmp/domino-G4-live-forecast.png. No user-facing visual acceptance yet.
+- Sole UI ClaudeSonnet32944/exec73011, cwdverifieddomino-G3, now repairs G4twoissues AND G3twoissues in one bounded phase from999b5da. Log /tmp/domino-G4-G3-repair-claude.log. Nochildren. Cards G4-spatial-agent-web.md Repair1 + G3-live-canvas-repair1.md. Backendworker finished. Next independentre-audit, fullcheck/build/browser, then checkedpreviewintegration. Main694ab2a unchanged.
+- Currentruntime: stable3102 PID2358/exec61582 previousacceptedR1; candidate3418 PID24672/exec84404 e7b7944 builtagainst3212. Backend3214 currentG2d,3212 G2b,3210 legacyH2; preserve data. All older worker/processstates below are historical.
+
 ## Scheduled audit, October24 14:21 PDT
 
 Both current workers remain active with verified cwd and no children. G4 Claude64729 has changed graph.ts; G2d repairClaude69536 has changed investigation.ts. No finished commit, new acceptance or integration; do not rerun full suites against in-progress edits. Prepared G3-live-canvas-repair1.md for the sole UI worker AFTER G4 ends. Next collect G4 visual checkpoint and G2d repair, reuse independent reviewers, then serialized full checks/build/browser. Existing stable preview remains unchanged; main694ab2a preserved.
