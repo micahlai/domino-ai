@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
 
+import { type QuarterBridgeInput, quarterBridge } from "@domino/engine";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { hashInput } from "../../../../packages/agents/src/hash";
@@ -15,6 +16,11 @@ const LATER = ["S8", "H01", "H03", "D01", "2024-02-12"];
 const setup = () => convexTest(schema, modules);
 const baseline = (t: ReturnType<typeof setup>, requestId = "req-base-1") =>
   t.mutation(h.saveBaseline, { requestId, caseId });
+/** getRun minus inputSnapshot, i.e. the summary the mutations return. */
+const summaryOf = async (t: ReturnType<typeof setup>, runId: string) => {
+  const { inputSnapshot: _, ...summary } = await t.query(h.getRun, { caseId, runId });
+  return summary;
+};
 
 describe("historical persistence (2U)", () => {
   it("cutoff view hides every later source, fact, value and date", async () => {
@@ -152,11 +158,15 @@ describe("historical persistence (2U)", () => {
       requestId: "req-alt-1",
       baselineRunId: first.runId,
     });
-    expect(await t.query(h.getRun, { caseId, runId: first.runId })).toEqual(first);
-    expect(await t.query(h.getRun, { caseId, runId: alt.runId })).toEqual(alt);
-    expect(JSON.stringify(await t.query(h.getRun, { caseId, runId: first.runId }))).not.toMatch(
-      /S8|H0\d|D0\d/,
+    expect(await summaryOf(t, first.runId)).toEqual(first);
+    expect(await summaryOf(t, alt.runId)).toEqual(alt);
+    const stored = await t.run((ctx) => ctx.db.query("historicalRuns").collect());
+    expect((await t.query(h.getRun, { caseId, runId: alt.runId })).inputSnapshot).toEqual(
+      stored.find((r) => r.runId === alt.runId)!.snapshot,
     );
+    // The baseline's frozen inputs carry nothing held out past the cutoff.
+    const json = JSON.stringify(await t.query(h.getRun, { caseId, runId: first.runId }));
+    for (const s of LATER) expect(json).not.toContain(s);
     await expect(t.query(h.getRun, { caseId: "nope", runId: first.runId })).rejects.toThrow(
       /Unknown run/,
     );
@@ -216,7 +226,7 @@ describe("historical persistence (2U)", () => {
       return summary;
     });
     expect(old.run.inputHash).not.toBe(first.run.inputHash);
-    expect(await t.query(h.getRun, { caseId, runId: first.runId })).toEqual(old);
+    expect(await summaryOf(t, first.runId)).toEqual(old);
     expect(await baseline(t)).toEqual(old);
     expect((await t.query(h.getCase, { caseId, runId: first.runId })).revealed).toBe(false);
     // Saved alternative retries still return; a new one refuses the drifted baseline.
@@ -239,7 +249,7 @@ describe("historical persistence (2U)", () => {
         .map((p: { cents: number }) => p.cents),
     );
     expect(await t.query(h.getReveal, { runId: first.runId })).toEqual(r);
-    expect(await t.query(h.getRun, { caseId, runId: first.runId })).toEqual(old);
+    expect(await summaryOf(t, first.runId)).toEqual(old);
   });
 
   it("reveal keys stay bound to their first run, including repeat keys", async () => {
@@ -336,6 +346,87 @@ describe("historical persistence (2U)", () => {
     });
     await expect(t.query(h.getCase, { caseId, runId })).rejects.toThrow(/integrity/);
     await expect(t.query(h.getReveal, { runId })).rejects.toThrow(/integrity/);
+  });
+
+  it("getRun serves the saved run's exact frozen inputs; getCase stays the available view", async () => {
+    const t = setup();
+    const first = await baseline(t);
+    const current = (await t.query(h.getCase, { caseId })).case;
+    // Fixture: the run saved under an earlier method when S7 reported F01/F03 100 cents higher
+    // (F03 = F01 + F02 still holds). Predictions come from the engine on those inputs; hashes
+    // are recomputed so the row is valid on its own terms. Canonical evidence is untouched.
+    const METHOD = { id: "quarterly_cash_bridge", version: "0.0.9-earlier" };
+    const old = await t.run(async (ctx) => {
+      const row = (await ctx.db
+        .query("historicalRuns")
+        .withIndex("by_runId", (q) => q.eq("runId", first.runId))
+        .unique())!;
+      const snapshot = structuredClone(row.snapshot);
+      snapshot.sources[0].title = "2U Q3 2023 results (earlier title)";
+      for (const f of snapshot.facts) if (f.id === "F01" || f.id === "F03") f.cents += 100;
+      snapshot.method = METHOD;
+      const earlier = {
+        ...current,
+        facts: current.facts.map((f) => {
+          const s = snapshot.facts.find((x: { id: string }) => x.id === f.id);
+          return s ?? f;
+        }),
+      };
+      const bridge = quarterBridge({
+        ...(snapshot.roles as Omit<QuarterBridgeInput, "case">),
+        case: earlier,
+      });
+      const run = {
+        ...row.run,
+        method: METHOD,
+        predictions: [...bridge.nowcast, ...bridge.forecast],
+        inputHash: await hashInput(snapshot),
+      };
+      const summary = { ...row.summary, run };
+      await ctx.db.patch(row._id, {
+        snapshot,
+        run,
+        summary,
+        rowHash: await hashInput({ run, snapshot, summary }),
+      });
+      return { snapshot, summary };
+    });
+    expect(old.summary.run.predictions).not.toEqual(first.run.predictions);
+    const before = await t.query(h.getRun, { caseId, runId: first.runId });
+    // Exact original input objects, not today's.
+    expect(before.inputSnapshot).toEqual(old.snapshot);
+    const { inputSnapshot: _, ...summary } = before;
+    expect(summary).toEqual(old.summary);
+    const f01 = (facts: { id: string; cents?: number }[]) => facts.find((f) => f.id === "F01")!;
+    expect(f01(before.inputSnapshot.facts).cents).toBe(f01(current.facts).cents! + 100);
+    expect(before.inputSnapshot.sources[0].title).toMatch(/earlier title/);
+    expect(before.inputSnapshot.method).toEqual(before.run.method);
+    expect(before.inputSnapshot.roles.knowledgeCutoff).toBe(before.run.knowledgeCutoff);
+    expect(before.inputSnapshot.roles.originBalanceDate).toBe(before.run.originBalanceDate);
+    expect(before.inputSnapshot.caseId).toBe(caseId);
+    // getCase with the run: metadata from the saved run, evidence is the separate available view.
+    const view = await t.query(h.getCase, { caseId, runId: first.runId });
+    expect(view.method).toEqual(METHOD);
+    expect(view.knowledgeCutoff).toBe(before.run.knowledgeCutoff);
+    expect(view.originBalanceDate).toBe(before.run.originBalanceDate);
+    expect(f01(view.case.facts)).toEqual(f01(current.facts));
+    expect(f01(view.case.facts)).not.toEqual(f01(before.inputSnapshot.facts));
+    expect((await t.query(h.getCase, { caseId })).method).not.toEqual(METHOD);
+    // Reveal changes neither the saved inputs nor the run's metadata.
+    const r = await t.mutation(h.reveal, { requestId: "req-rev-1", runId: first.runId });
+    const target = old.summary.run.predictions.find((p: { id: string }) => p.id === "target_total");
+    expect(
+      r.comparisons.find((c: { predictionId: string }) => c.predictionId === "target_total")
+        .predictedCents,
+    ).toBe(target.cents);
+    expect(await t.query(h.getRun, { caseId, runId: first.runId })).toEqual(before);
+    const revealed = await t.query(h.getCase, { caseId, runId: first.runId });
+    expect(revealed.revealed).toBe(true);
+    expect(revealed.method).toEqual(METHOD);
+    expect(f01(revealed.case.facts)).toEqual(f01(current.facts));
+    await expect(t.query(h.getRun, { caseId: "nope", runId: first.runId })).rejects.toThrow(
+      /Unknown run/,
+    );
   });
 
   it("pre-reveal run views stay cutoff-filtered", async () => {

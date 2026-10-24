@@ -198,23 +198,30 @@ export const getCase = query({
   args: { caseId: v.string(), runId: v.optional(v.string()) },
   handler: async (ctx, { caseId, runId }) => {
     requireCase(caseId);
-    let cutoff = CUTOFF;
+    // A saved run's own cutoff, origin and method; today's protocol only without a run.
+    let saved: Pick<HistoricalRun, "knowledgeCutoff" | "originBalanceDate" | "method"> = {
+      knowledgeCutoff: CUTOFF,
+      originBalanceDate: protocol.originBalanceDate,
+      method: { ...QUARTER_BRIDGE_METHOD },
+    };
     let reveal: Doc<"historicalReveals"> | null = null;
     if (runId) {
       const { run } = await loadRun(ctx, runId, caseId);
-      cutoff = run.knowledgeCutoff;
+      saved = run;
       reveal = await loadReveal(ctx, run);
     }
+    const cutoff = saved.knowledgeCutoff;
     const through = reveal?.revealedThrough ?? cutoff;
     return {
-      // After reveal, the view frozen with the comparisons, never a re-filter of today's CASE.
+      // Available evidence: after reveal, the view frozen with the comparisons, never a
+      // re-filter of today's CASE. A saved forecast's own inputs are getRun().inputSnapshot.
       case: reveal ? (reveal.view as HistoricalCase) : visibleCase(cutoff),
       knowledgeCutoff: cutoff,
-      originBalanceDate: protocol.originBalanceDate,
+      originBalanceDate: saved.originBalanceDate,
       visibleThrough: through,
       revealed: reveal !== null,
       disclosure: protocol.disclosure,
-      method: { ...QUARTER_BRIDGE_METHOD },
+      method: saved.method,
       projectionAssumptions: PROJECTION_ASSUMPTIONS,
       riskRules: [],
       riskRulesNote: RISK_RULES_NOTE,
@@ -222,10 +229,17 @@ export const getCase = query({
   },
 });
 
-/** Stored summary of a saved run, for reload. Read-only. */
+/**
+ * Stored summary of a saved run plus the exact frozen inputs it was computed from (the
+ * hashed snapshot behind run.inputHash). Evidence for a saved forecast comes from
+ * inputSnapshot, never from the current case. Read-only.
+ */
 export const getRun = query({
   args: { caseId: v.string(), runId: v.string() },
-  handler: async (ctx, { caseId, runId }) => (await loadRun(ctx, runId, caseId)).row.summary,
+  handler: async (ctx, { caseId, runId }) => {
+    const { row, snapshot } = await loadRun(ctx, runId, caseId);
+    return { ...row.summary, inputSnapshot: snapshot };
+  },
 });
 
 /** Server computes and saves the baseline from the cutoff view. Idempotent on requestId. */
