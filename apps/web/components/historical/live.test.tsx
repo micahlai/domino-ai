@@ -4,12 +4,18 @@ import {
   HistoricalRunSchema,
 } from "@domino/contracts";
 import { ConvexError } from "convex/values";
+import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 // Server evidence JSON is read here, in tests only. Client code never imports it.
 import rawCase from "../../../../data/historical/2u/case.json";
 import protocol from "../../../../data/historical/2u/protocol.json";
-import { HistoricalJourney, HistoricalLive, describeError } from "./HistoricalLive";
+import {
+  HistoricalJourney,
+  HistoricalLive,
+  describeError,
+  useHistoricalQueries,
+} from "./HistoricalLive";
 import {
   type AlternativeData,
   type BaselineData,
@@ -376,8 +382,14 @@ describe("states and recovery", () => {
     expect(html({ raw: { case: { nope: true } } })).toContain("not in the expected shape");
   });
 
-  it("describes network failures as nothing changed, and server codes in plain words", () => {
-    expect(describeError(new Error("boom"))).toContain("Nothing here was changed");
+  it("does not claim a lost response changed nothing, and says a retry reuses the request", () => {
+    const text = describeError(new Error("boom"));
+    expect(text).not.toContain("Nothing here was changed");
+    expect(text).toContain("may or may not have been recorded");
+    expect(text).toContain("same request");
+  });
+
+  it("describes server codes in plain words", () => {
     expect(describeError(new ConvexError({ code: "CASE_CHANGED", message: "x" }))).toContain(
       "Save a new forecast",
     );
@@ -418,5 +430,25 @@ describe("states and recovery", () => {
       raw: { case: caseData(false), run: baseline(), reveal: null },
     });
     expect(out).toContain("Not connected");
+  });
+
+  // Regression for React error 301: a fresh query map each render makes useQueries resubscribe
+  // and set state during render, forever. Fizz re-runs a component that sets state while
+  // rendering, so a second pass here is the closest we can get without a DOM.
+  it("keeps the same query map across re-renders and only changes it with its inputs", () => {
+    const seen: unknown[] = [];
+    function Probe({ runId, altId }: { runId?: string; altId?: string }) {
+      const [again, setAgain] = useState(true);
+      seen.push(useHistoricalQueries(runId, altId));
+      if (again) setAgain(false);
+      return null;
+    }
+    renderToStaticMarkup(<Probe runId={BASE_ID} altId={ALT_ID} />);
+    expect(seen).toHaveLength(2);
+    expect(seen[1]).toBe(seen[0]);
+    expect(Object.keys(seen[0] as object).sort()).toEqual(["alt", "case", "reveal", "run"]);
+    seen.length = 0;
+    renderToStaticMarkup(<Probe />);
+    expect(Object.keys(seen[0] as object)).toEqual(["case"]);
   });
 });

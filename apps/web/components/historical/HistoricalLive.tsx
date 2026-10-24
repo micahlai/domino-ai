@@ -3,8 +3,8 @@
 import { useConvexConnectionState, useMutation, useQueries } from "convex/react";
 import { ConvexError } from "convex/values";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { api } from "../../convex/_generated/api";
 import { Button } from "../ui/button";
@@ -34,14 +34,19 @@ const codeText: Record<string, string> = {
 };
 const ErrorData = z.object({ code: z.string() });
 
-/** Plain words for a failed call. Network failures say nothing was lost. */
+/** A call succeeded but its answer was unusable. The request itself may have been recorded. */
+class UnusableResult extends Error {}
+
+/** Plain words for a failed call. A lost response may still have been applied, so never say it was not. */
 export function describeError(error: unknown): string {
+  if (error instanceof UnusableResult)
+    return "The service answered, but the answer could not be used. The request may have been recorded.";
   if (error instanceof ConvexError) {
     const data = ErrorData.safeParse(error.data);
     const text = data.success ? codeText[data.data.code] : undefined;
     if (text) return text;
   }
-  return "Could not reach the history service. Nothing here was changed. Check the connection and try again.";
+  return "Could not confirm the result. The request may or may not have been recorded. Check the connection and try again: the retry uses the same request, so it will not be saved twice.";
 }
 
 export type Act = { pending?: boolean; error?: string; done?: boolean };
@@ -244,6 +249,35 @@ function newRequestId() {
 
 const SavedRun = z.object({ runId: z.string().min(1) });
 
+/** Throws, so perform shows a retryable error with the same request id. */
+function savedRunId(result: unknown) {
+  const saved = SavedRun.safeParse(result);
+  if (!saved.success) throw new UnusableResult();
+  return saved.data.runId;
+}
+
+/** The map must keep its identity between renders: useQueries resubscribes on a new one. */
+export function useHistoricalQueries(runId?: string, altId?: string) {
+  return useMemo(
+    () => ({
+      case: {
+        query: api.historical.getCase,
+        args: { caseId: CASE_ID, ...(runId ? { runId } : {}) },
+      },
+      ...(runId
+        ? {
+            run: { query: api.historical.getRun, args: { caseId: CASE_ID, runId } },
+            reveal: { query: api.historical.getReveal, args: { runId } },
+          }
+        : {}),
+      ...(runId && altId
+        ? { alt: { query: api.historical.getRun, args: { caseId: CASE_ID, runId: altId } } }
+        : {}),
+    }),
+    [runId, altId],
+  );
+}
+
 function Connected() {
   const params = useSearchParams();
   const runId = params.get("run") || undefined;
@@ -252,21 +286,8 @@ function Connected() {
 }
 
 function Session({ runId, altId }: { runId?: string; altId?: string }) {
-  const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
-  const raw = useQueries({
-    case: { query: api.historical.getCase, args: { caseId: CASE_ID, ...(runId ? { runId } : {}) } },
-    ...(runId
-      ? {
-          run: { query: api.historical.getRun, args: { caseId: CASE_ID, runId } },
-          reveal: { query: api.historical.getReveal, args: { runId } },
-        }
-      : {}),
-    ...(runId && altId
-      ? { alt: { query: api.historical.getRun, args: { caseId: CASE_ID, runId: altId } } }
-      : {}),
-  });
+  const raw = useQueries(useHistoricalQueries(runId, altId));
   const saveBaseline = useMutation(api.historical.saveBaseline);
   const reveal = useMutation(api.historical.reveal);
   const computeAlternative = useMutation(api.historical.computeAlternative);
@@ -275,16 +296,27 @@ function Session({ runId, altId }: { runId?: string; altId?: string }) {
   const requestIds = useRef<Record<string, string>>({});
   const inFlight = useRef(new Set<string>());
 
+  // A replaced or unmounted session must not navigate or update state when its call finishes.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  // Read the live address, not the one captured when the call started, so a style chosen
+  // while the call was in flight is kept.
   function setParam(name: string, value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(window.location.search);
     next.set(name, value);
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    router.replace(`${window.location.pathname}?${next.toString()}`, { scroll: false });
   }
 
   async function perform(
     key: string,
-    call: (requestId: string) => Promise<unknown>,
-    after?: (result: unknown) => void,
+    call: (requestId: string) => Promise<string>,
+    after?: (runId: string) => void,
   ) {
     if (inFlight.current.has(key) || acts[key]?.done) return;
     inFlight.current.add(key);
@@ -292,10 +324,11 @@ function Session({ runId, altId }: { runId?: string; altId?: string }) {
     setActs((a) => ({ ...a, [key]: { pending: true } }));
     try {
       const result = await call(requestIds.current[key]);
+      if (!alive.current) return;
       setActs((a) => ({ ...a, [key]: { done: true } }));
       after?.(result);
     } catch (error) {
-      setActs((a) => ({ ...a, [key]: { error: describeError(error) } }));
+      if (alive.current) setActs((a) => ({ ...a, [key]: { error: describeError(error) } }));
     } finally {
       inFlight.current.delete(key);
     }
@@ -317,30 +350,21 @@ function Session({ runId, altId }: { runId?: string; altId?: string }) {
         onSave={() =>
           perform(
             "save",
-            (requestId) => saveBaseline({ requestId, caseId: CASE_ID }),
-            (result) => {
-              const saved = SavedRun.safeParse(result);
-              if (saved.success) setParam("run", saved.data.runId);
-              else
-                setActs((a) => ({
-                  ...a,
-                  save: { error: "The saved forecast came back in an unexpected shape." },
-                }));
-            },
+            async (requestId) => savedRunId(await saveBaseline({ requestId, caseId: CASE_ID })),
+            (id) => setParam("run", id),
           )
         }
         onReveal={() =>
-          runId && perform(named("reveal"), (requestId) => reveal({ requestId, runId }))
+          runId &&
+          perform(named("reveal"), (requestId) => reveal({ requestId, runId }).then(() => ""))
         }
         onAlternative={() =>
           runId &&
           perform(
             named("alt"),
-            (requestId) => computeAlternative({ requestId, baselineRunId: runId }),
-            (result) => {
-              const saved = SavedRun.safeParse(result);
-              if (saved.success) setParam("alt", saved.data.runId);
-            },
+            async (requestId) =>
+              savedRunId(await computeAlternative({ requestId, baselineRunId: runId })),
+            (id) => setParam("alt", id),
           )
         }
       />

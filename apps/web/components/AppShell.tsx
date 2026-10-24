@@ -23,6 +23,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? pathname.split("/")[2]
       : (process.env.NEXT_PUBLIC_DEMO_COMPANY_ID ?? "kestrel");
   const showNavigation = pathname !== "/";
+  // The historical page is real 2U history, not the Kestrel demo company.
+  const sidebarTitle = pathname.startsWith("/historical")
+    ? "2U / historical"
+    : companyId === "kestrel"
+      ? "Kestrel Data"
+      : "Company workspace";
   return (
     <div className="min-h-screen">
       <Suspense fallback={null}>
@@ -66,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {showNavigation ? (
           <aside className="border-b bg-muted/50 px-6 py-4 lg:min-h-[calc(100vh-80px)] lg:border-b-0 lg:border-r lg:px-5 lg:py-8">
             <div className="mb-3 flex items-center justify-between text-sm font-medium lg:mb-6">
-              <span>{companyId === "kestrel" ? "Kestrel Data" : "Company workspace"}</span>
+              <span>{sidebarTitle}</span>
               <PanelLeftClose className="size-4 text-muted-foreground" aria-hidden="true" />
             </div>
             <nav aria-label="Main navigation" className="flex flex-wrap gap-1 lg:flex-col">
