@@ -4,7 +4,13 @@ export type { JobInputs, JobOutputs, ProviderClient, ProviderClients } from "./t
 export { createAgentRuntime, createAgents } from "./agents";
 export type { AgentsOptions } from "./agents";
 export { ProviderError, failureCategories } from "./errors";
-export type { FailureCategory } from "./errors";
+export type { FailureCategory, ProviderJob } from "./errors";
+export {
+  buildHistoricalRequest,
+  historicalSpecialistDefaults,
+  runHistoricalSpecialist,
+} from "./historical";
+export type { HistoricalSpecialistOptions, HistoricalSpecialistResult } from "./historical";
 export {
   ANTHROPIC_VERSION,
   CLAUDE_MESSAGES_URL,

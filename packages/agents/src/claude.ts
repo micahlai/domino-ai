@@ -1,8 +1,14 @@
 import type { AgentJob } from "@domino/contracts";
 import { z } from "zod";
-import { failer } from "./errors";
+import { type FailureCategory, type ProviderError, failer } from "./errors";
 import { acceptCandidate } from "./extract";
-import { type TransportRuntime, boundedFetch, byteLength, runtimeFrom } from "./http";
+import {
+  type RequestBounds,
+  type TransportRuntime,
+  boundedFetch,
+  byteLength,
+  runtimeFrom,
+} from "./http";
 import { buildClaudeRequest, defaultMaxTokens } from "./prompts";
 import type { ProviderClient } from "./types";
 
@@ -28,6 +34,13 @@ const messageSchema = z.object({
   role: z.literal("assistant"),
   content: z.array(z.object({ type: z.string() }).passthrough()),
   stop_reason: z.string().nullable(),
+  model: z.string().min(1).optional(),
+  usage: z
+    .object({
+      input_tokens: z.number().int().nonnegative(),
+      output_tokens: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 const textBlock = z.object({ type: z.literal("text"), text: z.string() }).passthrough();
 /** Documented reasoning blocks: validated, then dropped unread. Never output or logged. */
@@ -67,45 +80,13 @@ export function createClaudeClient(
       const body = JSON.stringify(buildClaudeRequest(job, input, model, maxTokens));
       if (byteLength(body) > maxRequestBytes) throw fail("input_too_large");
 
-      const response = await boundedFetch(
+      const { json } = await requestClaudeJson(
         runtime,
-        CLAUDE_MESSAGES_URL,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${apiKey}`,
-            "anthropic-version": ANTHROPIC_VERSION,
-            "content-type": "application/json",
-            accept: "application/json",
-          },
-          body,
-        },
+        apiKey,
+        body,
         { timeoutMs, maxBytes: maxResponseBytes },
         fail,
       );
-      if (response.status >= 300 && response.status < 400) throw fail("redirect_rejected");
-      if (response.status !== 200) throw fail("http_status", response.status);
-
-      const message = messageSchema.safeParse(parseJson(response.text));
-      if (!message.success) throw fail("malformed_response");
-      const stop = message.data.stop_reason;
-      if (stop === "refusal") throw fail("refusal");
-      if (stop === "max_tokens" || stop === "model_context_window_exceeded") {
-        throw fail("truncated");
-      }
-      if (stop !== "end_turn") throw fail("unexpected_stop");
-
-      // Structured output arrives as exactly one text block, optionally after well-formed
-      // reasoning blocks; anything else is unexpected.
-      const content = message.data.content;
-      const reasoning = content.filter((b) => reasoningTypes.has(b.type));
-      const [only, ...rest] = content.filter((b) => !reasoningTypes.has(b.type));
-      const block = textBlock.safeParse(only);
-      const reasoningValid = reasoning.every((b) => reasoningBlock.safeParse(b).success);
-      if (rest.length > 0 || !block.success || !reasoningValid) throw fail("malformed_response");
-      const json = parseJson(block.data.text);
-      if (json === undefined) throw fail("malformed_response");
-
       const contractJson = job === "mapSource" ? mappingFromWire(json) : json;
       if (contractJson === undefined) throw fail("invalid_output");
       const accepted = acceptCandidate(job, input, { json: contractJson }, { bareArray: false });
@@ -113,6 +94,66 @@ export function createClaudeClient(
       return accepted.value;
     },
   };
+}
+
+export interface ClaudeReply {
+  json: unknown;
+  /** Model and usage as Claude reported them; absent only if the reply omitted them. */
+  model?: string;
+  usage?: { input_tokens: number; output_tokens: number };
+}
+
+/**
+ * One Messages POST: no redirects, no retries. Fails on non-200, refusal, truncation or any
+ * stop other than end_turn, then parses the single text block as JSON. Shared by the five
+ * jobs and the historical specialist entry point.
+ */
+export async function requestClaudeJson(
+  runtime: TransportRuntime,
+  apiKey: string,
+  body: string,
+  bounds: RequestBounds,
+  fail: (category: FailureCategory, httpStatus?: number) => ProviderError,
+): Promise<ClaudeReply> {
+  const response = await boundedFetch(
+    runtime,
+    CLAUDE_MESSAGES_URL,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body,
+    },
+    bounds,
+    fail,
+  );
+  if (response.status >= 300 && response.status < 400) throw fail("redirect_rejected");
+  if (response.status !== 200) throw fail("http_status", response.status);
+
+  const message = messageSchema.safeParse(parseJson(response.text));
+  if (!message.success) throw fail("malformed_response");
+  const stop = message.data.stop_reason;
+  if (stop === "refusal") throw fail("refusal");
+  if (stop === "max_tokens" || stop === "model_context_window_exceeded") {
+    throw fail("truncated");
+  }
+  if (stop !== "end_turn") throw fail("unexpected_stop");
+
+  // Structured output arrives as exactly one text block, optionally after well-formed
+  // reasoning blocks; anything else is unexpected.
+  const content = message.data.content;
+  const reasoning = content.filter((b) => reasoningTypes.has(b.type));
+  const [only, ...rest] = content.filter((b) => !reasoningTypes.has(b.type));
+  const block = textBlock.safeParse(only);
+  const reasoningValid = reasoning.every((b) => reasoningBlock.safeParse(b).success);
+  if (rest.length > 0 || !block.success || !reasoningValid) throw fail("malformed_response");
+  const json = parseJson(block.data.text);
+  if (json === undefined) throw fail("malformed_response");
+  return { json, model: message.data.model, usage: message.data.usage };
 }
 
 function parseJson(text: string): unknown {

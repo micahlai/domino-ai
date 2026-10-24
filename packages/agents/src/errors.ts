@@ -7,6 +7,7 @@ import type { AgentBackend, AgentJob } from "@domino/contracts";
  */
 export const failureCategories = [
   "config",
+  "invalid_input",
   "input_too_large",
   "network",
   "timeout",
@@ -30,10 +31,13 @@ export const failureCategories = [
 ] as const;
 export type FailureCategory = (typeof failureCategories)[number];
 
+/** The five operational jobs plus the separate historical specialist entry point. */
+export type ProviderJob = AgentJob | "historicalSpecialist";
+
 export class ProviderError extends Error {
   constructor(
     public readonly provider: AgentBackend,
-    public readonly job: AgentJob,
+    public readonly job: ProviderJob,
     public readonly category: FailureCategory,
     public readonly httpStatus?: number,
   ) {
@@ -45,7 +49,7 @@ export class ProviderError extends Error {
 }
 
 /** Binds provider and job so call sites only name the category. */
-export function failer(provider: AgentBackend, job: AgentJob) {
+export function failer(provider: AgentBackend, job: ProviderJob) {
   return (category: FailureCategory, httpStatus?: number): ProviderError =>
     new ProviderError(provider, job, category, httpStatus);
 }
