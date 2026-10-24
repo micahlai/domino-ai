@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 07:07 Codex heartbeat
+- Done: H2c candidate passes719tests; isolated anonymous local backend compiled and concurrent save/reveal/alternative smoke passed. Generated bindings0377a9b.
+- Next: Claude repair1 addresses independently reproduced frozen-run/reveal/request-key defects and adds read-only retrieval. Re-audit before H2d and live UI wiring.
+- Watch out: passing tests did not clear persistence audit. No main merge or shared cloud writes; local backend3210/3211 only.
+
 ## 2026-10-24 06:46 Codex heartbeat
 - Done: real 2U cash engine validation passed713tests; H4 presentation436878e passed728tests/build and desktop/mobile activity checks. Both branches pushed.
 - Next: Claude H2c builds immutable run/reveal APIs, then audit/local smoke, actual activity, and live UI wiring on H4 ancestry.

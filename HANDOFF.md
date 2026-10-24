@@ -2,6 +2,10 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest07:07 PDT: H2c passed719tests and local concurrency smoke, but independent audit found frozen-read, revealed-evidence and retry-key defects plus missing getRun. Claude repair1 is verified running (exec45241/PID53162). H2d/UI wiring still gated. Current local backend3210/3211 and exact next steps are in active-run.md.
+
+- Latest07:04 PDT: H2c candidate completed at0e33f73, generated bindings0377a9b. Full719tests passed, and isolated local Convex3210/3211 passed concurrent save/reveal/alternative smoke. Independent audit pending; no Claude writer active. UI remains presentation-only. See active-run.md for owned runtime and next gate.
+
 - Latest 06:46 PDT: H4 style/activity presentation436878e passed independent review,728tests/build and mobile/browser checks, and is pushed. Only Claude H2c is writing now. The UI waits for tested immutable run/reveal APIs and real activity; all four styles are preserved. No main merge or cloud deployment.
 
 - Latest 06:43 PDT: real-case engine/evidence gate passed713tests and is pushed at3fd98b6. Claude H2c now implements immutable saved runs and reveal APIs. Activity UI repair436878e is under independent review/fullcheck; live UI wiring waits for tested API readiness. Current sessions and restart instructions are in active-run.md.

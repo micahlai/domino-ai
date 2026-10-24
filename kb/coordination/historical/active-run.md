@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 06:46 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
+Updated: 2026-10-24 07:07 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
 
 ## Execution limits
 
@@ -16,8 +16,8 @@ Updated: 2026-10-24 06:46 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-d
 - Awake guard exec88844/PID14212, bounded caffeinate started05:20. Keep Codex open, AC connected and lid open. Do not touch unrelated caffeinate91684 or older Claude processes.
 - Existing main server127.0.0.1:3000 remains untouched.
 - H3 production preview127.0.0.1:3100, exec68463, log /tmp/domino-H3-preview.log, built97925fd. IAB tab5 historicalAuditTab may remain available.
-- H4 production preview127.0.0.1:3101, exec97863, log /tmp/domino-H4-preview.log, built7f2b69e. It does NOT reflect later CSS/activity edits. IAB tab6 styleAuditTab retained for handoff. Browser handle styleBrowser, viewport capability mobileViewport; temporary375x812 override was reset.
-- No local historical backend exists yet. Do not confuse synthetic UI previews with the completed case journey.
+- H4 production preview127.0.0.1:3101, exec89805, log /tmp/domino-H4b-r1-preview.log, built436878e. IAB tab6 styleAuditTab retained for handoff. Browser handle styleBrowser, viewport capability mobileViewport; temporary375x812 override was reset.
+- Isolated anonymous local Convex runs from domino-H2/apps/web on127.0.0.1:3210 (site3211), exec80763/backend PID38093, log /tmp/domino-H2-local-convex.log. Project-local state and generated local environment only; no shared cloud writes. Live API smoke passed, UI wiring remains pending. Never print deployment credentials or environment contents.
 
 ## Accepted checkpoints
 
@@ -31,10 +31,10 @@ Updated: 2026-10-24 06:46 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-d
 
 | Phase | Worktree / branch | Model | Exec / last verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
-| H2c immutable persistence | domino-H2 / H2-historical-backend | Opus high | 77360 / 80135 | /tmp/domino-H2c-claude.log | Running from accepted3fd98b6; actual APIs, no cloud deployment |
+| H2c repair1 | domino-H2 / H2-historical-backend | Opus high | 45241 / 53162 | /tmp/domino-H2c-r1-claude.log | Running from0377a9b; frozen reads/reveal evidence, retry receipts and getRun |
 | H4b repair1 | domino-H4 / H4-ui-styles-motion | Sonnet high | 33430 / finished | /tmp/domino-H4b-r1-claude.log | Accepted436878e as presentation; full728tests/build and browser passed; waiting for backend |
 
-Only H2c is implementing. H1/H4 and prior workers are stopped. The full-check slot is free. H4b repair verification logs: /tmp/domino-H4b-r1-check.log and /tmp/domino-H4b-r1-build.log.
+Only H2c repair1 is implementing. Independent review found four bounded blockers; H1/H4 and prior workers are stopped. The full-check slot is free. H4b repair verification logs: /tmp/domino-H4b-r1-check.log and /tmp/domino-H4b-r1-build.log.
 
 ## Current blockers and next steps
 
@@ -71,3 +71,16 @@ Four desktop screenshots: /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-deskt
 
 - H4b436878e independently approved after conflict-idempotence, failure/retry, stable-row-order and unknown-status repairs. Full728tests/typechecks/lint and production build passed. Mobile375px row now shows a readable label and full wrapped UTC timestamp; screenshot /tmp/domino-H4b-r1-mobile-activity.png. All eight labelled simulation steps verified, including failure, success and reconnect without duplicate rows. No browser errors. Projected path now preserves stroke-dasharray6 4 with no pathLength override. Live feed remains unavailable. H4 branch pushed.
 - Current H4 preview3101 serves436878e: exec89805, log /tmp/domino-H4b-r1-preview.log. Old owned previewPID68308 stopped before restart. Browser viewport reset; tab6 retained.
+
+## H2c live audit, 07:04 PDT
+
+- Candidate0e33f73 completed. Full719tests/typechecks/lint passed, log /tmp/domino-H2c-check.log. Initial sandbox-only Turbo TLS initialization failed; authorized rerun outside sandbox passed. No test failure hidden.
+- Isolated anonymous local Convex configured from an empty worktree-local environment on3210/3211. Bundler compiled normalized JSON and hash imports successfully. Generated API bindings and standard CLI tsconfig committed0377a9b; both web and standalone Convex typechecks passed. No cloud deployment or production change.
+- Real HTTP smoke passed: cutoff source isolation; eight concurrent identical baseline saves; four identical alternatives; eight identical reveals; exact target and $37.58M miss; saved baseline unchanged after reveal. Each concurrent request used a separate client.
+- Independent Astra audit remains pending. Review specifically includes frozen snapshots after case drift, retry semantics and read-only retrieval of a saved run. Do not claim API-ready or launch H2d until findings are resolved.
+
+## H2c repair dispatch, 07:07 PDT
+
+- Independent Astra review blocks candidate approval on: CASE_CHANGED makes valid frozen runs unreadable after harmless source edits; revealed evidence is not frozen alongside stored comparisons; repeating reveal under a second requestId fails to reserve that key; no read-only run retrieval for reload. Reproductions /tmp/h2c-independent-audit.ts. Generic retrospective disclaimer is not held-out leakage.
+- Claude Opus repair1 launched exec45241/PID53162, cwd domino-H2, log /tmp/domino-H2c-r1-claude.log. Compact prompt /tmp/domino-H2c-repair-prompt.txt. Verified actual process/cwd. Scope only Convex/schema/generated/tests and Result/readiness notes. No H2d or UI dispatch yet.
+- Next exact step: collect repair commit, re-review those four findings with audit_e3b_rules, run serialized fullcheck and local live regression including two-key reveal conflict and getRun. Then H2d, then UI wiring on H4 ancestry. Local Convex watcher automatically rebundles isolated changes; never use shared cloud.
