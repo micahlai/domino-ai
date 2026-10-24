@@ -1,0 +1,62 @@
+{
+  "schema_status": "PENDING: H2 contracts under repair; layout here is provisional and NOT normalized or validated against @domino/contracts",
+  "timezone_convention": "SEC acceptance times assumed US Eastern (EST, UTC-5 on both dates), read from EDGAR index pages via a summarising reader, not independently confirmed. PR Newswire times (S7, S8) carry explicit -05:00 offsets in the raw page JSON-LD.",
+  "normalization_needed": [
+    "source.published_at carries an offset; contract may want separate date + time + timezone",
+    "reported_unit is free text here; contract likely wants an enum plus multiplier",
+    "cents = thousands * 100000, no rounding involved",
+    "facts with text-only values (F22, F23, F26) need a non-numeric fact type or move to assumptions",
+    "derived facts carry derived_from IDs and inherit the latest input available_at",
+    "facts with reported_unit 'percent' (F16) carry cents null; contract needs a non-money numeric type",
+    "availability: separate issuer_public_at and sec_available_at where they differ (S3/S8)",
+    "reader-extracted quotes (F18-F23, F27-F30) need a quote_fidelity flag"
+  ],
+  "reconciliations_passed": [
+    "F01+F02=F03",
+    "F05+F06+F07+F08=F09",
+    "F04+F09=F03",
+    "H01+H02=H03",
+    "H04..H07=H08",
+    "F04+H08=H03",
+    "Q4 net H03-F03=19548",
+    "D01=H04-F05",
+    "D02=H05-F06",
+    "D03=H06-F07",
+    "D04=H07-F08",
+    "D05=H08-F09",
+    "Q4 flows sum",
+    "debt components 929768-46678=883090",
+    "883090-4966=878124",
+    "maturities sum 907650",
+    "schedule=components-revolver-other",
+    "term loan 377150-950-3800=372400",
+    "A1 bounds",
+    "F16 cents null",
+    "all cents=thousands*100000",
+    "F12+F13-F06=201"
+  ],
+  "status": "provisional_not_frozen",
+  "reconciliations_note": "Re-run 2026-10-24 on the repaired bundle with integer arithmetic; S1 inputs are reader-extracted, cross-checked to S7 raw bytes",
+  "hash_gaps": {
+    "hashed_raw_bytes": [
+      "S7 c1c9486e9a337b4b28b4980a8db86f10ddf8617dc9cbbc90a7209e98daee7e4f",
+      "S8 7c8500056751dcc9b9c46c94f5813e1b8f3d899041a577600c8aa3b54a2f5d24"
+    ],
+    "no_hash": [
+      "S1 10-Q (sec.gov 403 to curl; reader view is model-processed)",
+      "S2 8-K EX-99.1",
+      "S3 8-K EX-99.1",
+      "S4 10-K",
+      "S5 2024-07-25 announcement (not opened)",
+      "S6 8-K"
+    ]
+  },
+  "open_gaps": [
+    "S1 Item 2 MD&A not returned by the reader (text ended in Note 10): explicit 12-month sufficiency sentence unverified (F32)",
+    "Covenant thresholds not visible (F23)",
+    "Note 8 quotes are reader-extracted fragments, not byte-verified (F18-F23, F27-F30)",
+    "SEC acceptance times come from reader summaries of index pages",
+    "10-K body and S5 not read",
+    "A1 and R1 are analyst constructs; A1 feasibility unknown"
+  ]
+}
