@@ -7,7 +7,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Machine setup | `prompts/shared/00-setup.md` | — | todo | | |
+| S0 | Machine setup | `prompts/shared/00-setup.md` | — | doing | main | install + check pass; `.env.local` missing |
 | E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | todo | | |
 | E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
 | E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | todo | | Can run in parallel with E1 |

@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 00:18 Jayden (S0 check, agent)
+- Done: `pnpm install` and `pnpm check` pass (via corepack; 13 contract tests).
+- Next: `cp .env.example .env.local`, fill every key, then mark S0 done.
+- Watch out: accounts, Convex dev, and Figma MCP steps not verified by the agent.
+
 ## 2026-10-24 00:00 Jayden (setup)
 - Done: repo scaffold, contracts with Zod and fixtures (incl. multiverse), knowledge base, specs, prompts, skills, .env.example.
 - Next: Micah runs S0 then P1. Jayden runs S0 then E1 and E3 in parallel.
