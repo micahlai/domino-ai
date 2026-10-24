@@ -26,5 +26,5 @@ Investigation is the front door. The ordinary product path is investigate -> ins
 
 1. G6 local Claude, sole UI writer: grouping, node vocabulary, truthful pulses/entrances, a Company knowledge inspection slot using existing evidence only. New grouped visual checkpoint first. No shell edits yet.
 2. G7 friend on separate computer: pure frozen-run knowledge projection in two new lib files only. No UI/backend/schema/provider edits or credentials. Ready branch G7-company-knowledge. This can run alongside G6.
-3. G8 same local UI writer, only after G6 accepted and G7 audited: wire projected knowledge into click details and simplify landing/shared shell. Preserve same investigation APIs, no new persistence. Do not launch a second UI writer.
+3. G8a same local UI writer after G6 accepted: clean the landing/shared shell without waiting for G7. Then G8, after G7 is audited: wire projected knowledge into click details and simplify landing/shared shell. Preserve same investigation APIs, no new persistence. Do not launch a second UI writer.
 4. Codex independent audit, serialized full checks/build and actual desktop/mobile browser journey; integrate/push preview only. Scheduled audits still handle CREAO configuration in the existing signed-in Chrome profile, app-scoped only. The fixed workflow is not yet an autonomous CREAO coordinator.

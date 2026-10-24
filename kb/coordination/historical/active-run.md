@@ -19,16 +19,17 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Workers and runtimes
 
-16:02 audit: G6 PID3183/cwd verified, still at base9864858 with no changed files or completed output yet (only minutes since launch). No duplicate dispatched or tests repeated. Fetch found G7 still at the task-card base9864858; friend implementation not yet published. Native Chrome control hit a timeout while selecting the CREAO window; no remote setup change or provider call occurred. Reinspect current UI on the next actionable browser attempt. Automation prompt consolidated to remove stale R1/G3 and all-local ownership.
+Current G6: initial3601a85 passed 1,072 tests, typecheck/lint/build, but independent audit found reconnect catch-up animation and queued-group captions. Repaira18eae7 approved by reviewer after62focused tests; latest101investigate tests pass. Parent actual browser confirmed grouped frames, saved graph and knowledge-source detail. Mobile390x844 exposed header overlapping Sources; final bounded Claude mobile repair is running (exec21300, log /tmp/domino-G6-mobile-claude.log). No G6 integration/visual acceptance yet. Candidate3419 serves initial3601a85 for audit only. Friend G7 still at task-card base on last fetch. G8a shell cleanup may proceed after G6 without waiting for G7; G8 full knowledge wiring still waits for G7. No duplicate UI worker.
 
-G6 Claude Sonnet/high is running locally in domino-G6 / G6-company-map, sole UI writer. PID3183, exec49931, log /tmp/domino-G6-claude.log, base9864858. Process and cwd verified. Locked dependencies installed; no feature acceptance yet. G7-company-knowledge is reserved for the friend computer, only two new lib files and its card. G8 product shell/knowledge wiring is queued after both gates. Do not launch G7 locally or duplicate the G6 writer. Unrelated Claude sessions in the workspace root and Karoake are not ours.
+Owned backend3214 had stopped. Restarted the SAME anonymous deployment from domino-G2d with existing env/ports/data; PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. Saved conversation recovered in actual browser. No provider calls, keys or data reset.
 
 | Runtime | Ownership | State |
 | --- | --- | --- |
 | Stable web 3102 | domino-preview/apps/web; PID 25635, exec23065 | Running c40552a against backend3214; /tmp/domino-G5-preview.log |
-| Current backend 3214/site3215 | domino-G2d/apps/web; PID32068, exec33344 | Accepted G2d; /tmp/domino-G2d-local-convex.log |
+| Current backend 3214/site3215 | domino-G2d/apps/web; PID43364, exec76070 | Accepted G2d restarted with existing data; /tmp/domino-G2d-local-convex-resume.log |
 | Prior backend 3212/site3213 | domino-G2b/apps/web; PID9607, exec95774 | Preserved local data; /tmp/domino-G2b-local-convex.log |
 | Original backend 3210/site3211 | domino-H2/apps/web; PID15546, exec15918 | Preserved historical demo data |
+| Candidate web 3419 | domino-G6/apps/web; PID39378, exec13268 | Initial3601a85, audit only; /tmp/domino-G6-preview.log |
 | Candidate web 3417 and3418 | domino-R1 and domino-G3 | Verified owned PIDs79863/73099 stopped after stable preview acceptance |
 
 Verify PID and cwd before any restart. Preserve local databases. Node24: /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Build/start the preview with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3214.
