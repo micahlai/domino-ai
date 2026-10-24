@@ -1,7 +1,7 @@
 import type { AgentJob } from "@domino/contracts";
 import { z } from "zod";
 import { type FailureCategory, ProviderError, failer } from "./errors";
-import { scanChatText, selectOne } from "./extract";
+import { type Candidate, scanChatText, selectOne } from "./extract";
 import {
   type BoundedResponse,
   type TransportRuntime,
@@ -53,6 +53,9 @@ export const creaoDiagnosticStages = [
 export type CreaoDiagnosticStage = (typeof creaoDiagnosticStages)[number];
 export const artifactCategories = ["json", "markdown", "text", "other", "missing"] as const;
 export type ArtifactCategory = (typeof artifactCategories)[number];
+/** Artifact kinds that are downloaded and searched for an answer. */
+export const artifactKinds = ["json", "markdown", "text"] as const;
+export type ArtifactKind = (typeof artifactKinds)[number];
 
 export interface CreaoDiagnostics {
   job: AgentJob;
@@ -72,8 +75,12 @@ export interface CreaoDiagnostics {
   envelopes: number;
   /** Artifacts by declared MIME type category. */
   artifacts: Record<ArtifactCategory, number>;
-  jsonArtifacts: number;
-  jsonArtifactsParsed: number;
+  /** Downloadable artifacts by kind; all kinds share the maxArtifacts budget. */
+  recognizedArtifacts: Record<ArtifactKind, number>;
+  downloadedArtifacts: Record<ArtifactKind, number>;
+  /** JSON that parsed, or text that held at least one delimited, fenced or JSON candidate. */
+  parsedArtifacts: Record<ArtifactKind, number>;
+  artifactCandidates: number;
   candidates: number;
   validated: number;
   distinct: number;
@@ -147,8 +154,10 @@ function emptyDiagnostics(job: AgentJob): CreaoDiagnostics {
     wholeJson: false,
     envelopes: 0,
     artifacts: { json: 0, markdown: 0, text: 0, other: 0, missing: 0 },
-    jsonArtifacts: 0,
-    jsonArtifactsParsed: 0,
+    recognizedArtifacts: { json: 0, markdown: 0, text: 0 },
+    downloadedArtifacts: { json: 0, markdown: 0, text: 0 },
+    parsedArtifacts: { json: 0, markdown: 0, text: 0 },
+    artifactCandidates: 0,
     candidates: 0,
     validated: 0,
     distinct: 0,
@@ -175,8 +184,14 @@ function isEnvelope(json: unknown): boolean {
   );
 }
 
-function isJsonArtifact(artifact: Artifact): boolean {
-  return /json/i.test(artifact.type ?? "") || /\.json$/i.test(artifact.title ?? "");
+/** By declared MIME type, else by file extension in the title. Anything else is ignored. */
+function artifactKind(artifact: Artifact): ArtifactKind | undefined {
+  const type = artifact.type ?? "";
+  const title = artifact.title ?? "";
+  if (/json/i.test(type) || /\.json$/i.test(title)) return "json";
+  if (/markdown/i.test(type) || /\.(?:md|markdown)$/i.test(title)) return "markdown";
+  if (/^\s*text\/plain\b/i.test(type) || /\.txt$/i.test(title)) return "text";
+  return undefined;
 }
 
 function agentIdFor(job: AgentJob, env: Record<string, string | undefined>): string | undefined {
@@ -196,7 +211,7 @@ function parseJson(text: string): unknown {
 
 /**
  * CREAO chat API transport: create a run, poll it to a terminal status, then extract one
- * contract-valid answer from chat text or JSON artifacts. No hidden create retries: the
+ * contract-valid answer from chat text or JSON, Markdown and plain-text artifacts. No hidden create retries: the
  * router owns retry and fallback.
  */
 export function createCreaoClient(
@@ -305,15 +320,26 @@ export function createCreaoClient(
     });
     for (const artifact of result.artifacts ?? [])
       diag.artifacts[artifactCategory(artifact.type)]++;
-    const jsonArtifacts = (result.artifacts ?? []).filter(isJsonArtifact);
-    diag.jsonArtifacts = jsonArtifacts.length;
-    if (jsonArtifacts.length > bounds.maxArtifacts) throw fail("too_many_artifacts");
-    for (const artifact of jsonArtifacts) {
+    const recognized = (result.artifacts ?? []).flatMap((artifact) => {
+      const kind = artifactKind(artifact);
+      return kind ? [{ artifact, kind }] : [];
+    });
+    for (const { kind } of recognized) diag.recognizedArtifacts[kind]++;
+    if (recognized.length > bounds.maxArtifacts) throw fail("too_many_artifacts");
+    for (const { artifact, kind } of recognized) {
       const text = await downloadArtifact(artifact, runId);
-      const json = parseJson(text);
-      if (json === undefined) continue;
-      diag.jsonArtifactsParsed++;
-      candidates.push({ json });
+      diag.downloadedArtifacts[kind]++;
+      let found: Candidate[];
+      if (kind === "json") {
+        const json = parseJson(text);
+        found = json === undefined ? [] : [{ json }];
+      } else {
+        // The same strict scan as chat text: prose alone is never an answer.
+        found = scanChatText(text).candidates;
+      }
+      if (found.length > 0) diag.parsedArtifacts[kind]++;
+      diag.artifactCandidates += found.length;
+      candidates.push(...found);
     }
 
     diag.stage = "select";
