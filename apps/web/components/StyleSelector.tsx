@@ -1,15 +1,16 @@
 "use client";
 
-import { STYLES, setStyle, useStyle } from "../lib/style";
+import { setStyle, useStyle } from "../lib/style";
+import { STYLES } from "../lib/style-registry";
 
 /** Native radios give arrow-key movement, one tab stop and screen-reader grouping for free. */
 export function StyleSelector() {
   const current = useStyle();
   return (
-    <fieldset className="flex items-center gap-1 rounded-lg border bg-card p-0.5">
+    <fieldset className="flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-lg border bg-card p-0.5">
       <legend className="sr-only">Style</legend>
       {STYLES.map(({ id, label }) => (
-        <label key={id} className="relative">
+        <label key={id} className="relative min-w-0">
           <input
             type="radio"
             name="domino-style"

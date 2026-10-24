@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  /* [data-style="original"] lets the comparison playground reset a scoped preview to Original. */
+  :root,
+  [data-style="original"] {
     --background: 20.0 16.67% 7.06%;
     --foreground: 40.0 29.03% 93.92%;
     --card: 24.0 17.86% 10.98%;
@@ -31,11 +33,21 @@
     /* Accent for text, lines and chart marks. Original uses the mint directly. */
     --primary-ink: var(--primary);
     --particle-blend: lighter;
+    /* Shape tokens shared by Button, Table and Card. Defaults equal the pre-style sizes, so
+       Original is unchanged. Dialog/Sheet scrims read --overlay, which also reaches portals. */
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
+    --overlay: 0 0% 0% / 0.8;
   }
   /* Style tokens. Set on <html data-style>; the same variables feed Tailwind colors, SVG,
      canvas and Radix portals (which render under <body>). Ramp and Hyphenate hex values were
      read from the public sites' CSS; the rest of each palette is inferred (see ui-styles-result.md). */
   [data-style="ramp"] {
+    --control-h: 2.5rem;
+    --row-h: 2.25rem;
+    --card-pad: 1.25rem;
+    --overlay: 30 25% 4% / 0.5;
     --background: 30 11% 95%;
     --foreground: 30 25% 4%;
     --card: 0 0% 100%;
@@ -64,6 +76,7 @@
     color-scheme: light;
   }
   [data-style="hyphenate"] {
+    --overlay: 358 100% 10% / 0.5;
     --background: 38 38% 94%;
     --foreground: 358 100% 24%;
     --card: 40 33% 98%;
@@ -92,6 +105,7 @@
     color-scheme: light;
   }
   [data-style="shadcn"] {
+    --overlay: 0 0% 0% / 0.8;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;

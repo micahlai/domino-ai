@@ -1,12 +1,13 @@
 "use client";
 
 import { StyleSelector } from "@/components/StyleSelector";
+import { StyleSync } from "@/components/StyleSync";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, CircleHelp, PanelLeftClose } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 const links = [
   { href: "/c/kestrel", label: "Cash forecast" },
@@ -23,6 +24,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showNavigation = pathname !== "/";
   return (
     <div className="min-h-screen">
+      <Suspense fallback={null}>
+        <StyleSync />
+      </Suspense>
       <a
         href="#main"
         className="sr-only z-50 rounded bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -40,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             domino<span className="text-primary">.</span>
           </span>
         </Link>
-        <div className="flex flex-wrap items-center justify-end gap-x-4 text-sm text-muted-foreground">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-4 text-sm text-muted-foreground">
           <span className="hidden xl:inline">Plan cash needs before you act.</span>
           <StyleSelector />
           <Link

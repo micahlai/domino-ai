@@ -1,44 +1,49 @@
 import { useSyncExternalStore } from "react";
+import {
+  DEFAULT_STYLE,
+  STYLE_STORAGE_KEY,
+  type StyleId,
+  parseStyle,
+  resolveStyle,
+} from "./style-registry";
 
-/** Registry of selectable looks. Order is the selector order; the first is the default. */
-export const STYLES = [
-  { id: "original", label: "Original" },
-  { id: "ramp", label: "Ramp" },
-  { id: "hyphenate", label: "Hyphenate" },
-  { id: "shadcn", label: "shadcn" },
-] as const;
-
-export type StyleId = (typeof STYLES)[number]["id"];
-export const DEFAULT_STYLE: StyleId = "original";
-export const STYLE_STORAGE_KEY = "domino-style";
-const ids: readonly string[] = STYLES.map((style) => style.id);
-
-/** Anything that is not an exact registry id (null, "RAMP", "ramp ", markup) becomes Original. */
-export function parseStyle(value: unknown): StyleId {
-  return typeof value === "string" && ids.includes(value) ? (value as StyleId) : DEFAULT_STYLE;
-}
-
-/** A valid ?style= link wins over the stored choice, so review links are reproducible. It is
- * not written to storage; only an explicit selection is. */
-export function resolveStyle(urlValue: string | null, stored: string | null): StyleId {
-  return urlValue !== null && ids.includes(urlValue) ? (urlValue as StyleId) : parseStyle(stored);
-}
-
-/** Runs before first paint so there is no wrong-theme flash. Built from the registry, so the
- * allow-list lives in one place. Only a registry id is ever written to the page. */
-export const styleInitScript = `(function(){try{var ids=${JSON.stringify(ids)};var u=new URLSearchParams(location.search).get("style");var s=localStorage.getItem(${JSON.stringify(STYLE_STORAGE_KEY)});var v=ids.indexOf(u)>-1?u:ids.indexOf(s)>-1?s:${JSON.stringify(DEFAULT_STYLE)};document.documentElement.dataset.style=v}catch(e){document.documentElement.dataset.style=${JSON.stringify(DEFAULT_STYLE)}}})()`;
-
+// Client-only store. Server code (layout.tsx) imports style-registry.ts instead.
+// The <html data-style> attribute is the single source of truth, so the selector, portals and
+// canvas all read the same value and no React state needs to be lifted or remounted.
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
-// The <html data-style> attribute is the single source of truth, so the selector, portals and
-// canvas all read the same value and no React state needs to be lifted or remounted.
 const read = () => parseStyle(document.documentElement.dataset.style);
 
-export function setStyle(id: StyleId) {
+// Remembers an explicit choice for this page when storage is blocked, so a later client
+// navigation does not resolve back to Original.
+let chosen: StyleId | null = null;
+
+function readStored(): string | null {
+  try {
+    return localStorage.getItem(STYLE_STORAGE_KEY) ?? chosen;
+  } catch {
+    return chosen;
+  }
+}
+
+function apply(id: StyleId) {
+  if (read() === id) return;
   document.documentElement.dataset.style = id;
+  for (const listener of listeners) listener();
+}
+
+/** Re-derives the style from the current URL after a client navigation or back/forward. A removed
+ * ?style= falls back to the stored choice. Touches only the attribute: nothing remounts. */
+export function syncStyleFromSearch(search: string) {
+  apply(resolveStyle(new URLSearchParams(search).get("style"), readStored()));
+}
+
+export function setStyle(id: StyleId) {
+  chosen = id;
+  apply(id);
   try {
     localStorage.setItem(STYLE_STORAGE_KEY, id);
   } catch {
@@ -50,7 +55,6 @@ export function setStyle(id: StyleId) {
     url.searchParams.set("style", id);
     history.replaceState(history.state, "", url);
   }
-  for (const listener of listeners) listener();
 }
 
 export function useStyle(): StyleId {

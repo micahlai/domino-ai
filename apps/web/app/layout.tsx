@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
-import { styleInitScript } from "@/lib/style";
+import { styleInitScript } from "@/lib/style-registry";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";

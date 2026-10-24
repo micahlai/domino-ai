@@ -6,6 +6,7 @@
 - **Notes:** Follow prompts/product/H4-ui-styles-motion.md and kb/spec/ui-styles-motion-2026-10-24.md. Reuse installed shadcn/Radix/Motion, preserve current look by default, no four duplicated app trees.
 - **Handoff:** H4-ui-styles-motion in ../domino-H4 from accepted H3 SHA after UI ownership release. Publish exact commit and reference fidelity report to C0; no main merge.
 ## Result
+- Repair 1 (on 6ec7a15): build fix by splitting pure `lib/style-registry.ts` from client `lib/style.ts`; present-but-invalid `?style=` is Original regardless of storage, valid URL survives throwing `getItem`; `StyleSync` (Suspense) resyncs on navigation/back-forward/removed override; shape tokens + overlay token; `StyleComparison` playground section; header wrap classes. Focused only: tsc, biome, vitest 122 pass. Not run: build, full check, browser (C0). Activity still not started (waits on tested H2 contract); no fake events.
 - Done (H4a styles checkpoint only): style registry, four token sets, header selector, localStorage + validated `?style=` (URL wins, not stored), pre-paint SSR script, portal/canvas colors, `--primary-ink`, chart heading overlap fix. Not done: comparison playground, activity motion, screenshots.
 - Files and commit: see kb/coordination/historical/ui-styles-result.md. Commit: styles checkpoint on H4-ui-styles-motion (SHA from `git log -1`).
 - Verification: tsc, biome, vitest (115 pass) in apps/web. No browser/build/full check run (C0).

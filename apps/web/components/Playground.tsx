@@ -12,6 +12,7 @@ import { ProofDrawer } from "@/components/ProofDrawer";
 import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
+import { StyleComparison } from "@/components/StyleComparison";
 import { FixtureCompany } from "@/components/company/FixtureCompany";
 import { HistoricalReplay } from "@/components/historical/HistoricalReplay";
 import { previewView } from "@/components/historical/preview";
@@ -33,6 +34,7 @@ const sections = [
   "Headline",
   "ResilienceBar",
   "MultiverseTimeline",
+  "StyleComparison",
   "ParticleMotion",
   "HistoricalReplay",
   "RiskList",
@@ -201,6 +203,12 @@ export function Playground() {
           showFixes={showFixes}
           limit={limit}
         />
+      </PreviewSection>
+      <PreviewSection
+        name="StyleComparison"
+        description="The same fixed preview state in all four styles, drawn from shared components. Preview values only; no data is loaded. Ramp and Hyphenate follow only the public pages that were inspected, not their private product screens."
+      >
+        <StyleComparison />
       </PreviewSection>
       <PreviewSection
         name="ParticleMotion"
