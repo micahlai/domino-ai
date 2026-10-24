@@ -42,6 +42,8 @@ Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; its f9b5ad2 revi
 | P7 | Usability test and demo materials | `prompts/product/P7-user-test.md` | P6 | todo | | |
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
 
+| T1 | Dark palette and original Domino logo | User request | P1 | done | codex/dark-theme | Shared tokens, header mark and favicon; checks/build/screenshot pass |
+
 ## Shared
 
 | ID | Task | Prompt | When |

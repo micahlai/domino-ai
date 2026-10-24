@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ArrowUpRight, CircleHelp, Layers2, PanelLeftClose } from "lucide-react";
+import { ArrowUpRight, CircleHelp, PanelLeftClose } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -29,8 +30,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Domino home"
           className="flex min-h-11 items-center gap-3 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <Layers2 className="size-6 text-primary" aria-hidden="true" />
-          <span className="text-xl">domino</span>
+          <Image src="/domino-logo.svg" width={32} height={32} alt="" priority />
+          <span className="text-xl">
+            domino<span className="text-primary">.</span>
+          </span>
         </Link>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="hidden sm:inline">See the chain. Change the outcome.</span>

@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: default to the supplied dark palette and reuse the calhacks-2026 Domino mark. Why: explicit user direction supersedes the light-only design spec.
+
 - 2026-10-24 Codex brain: prepare E3a, E1a and E6a as package-scoped first slices; full E1/E3/E6 stay open. Why: unblock offline work without mixing shared files, credentials or unresolved contracts. See kb/tasks/launch-plan-2026-10-24.md for provisional forecast conventions and deferred work.
 - 2026-10-24 Codex brain: forecast must reject ambiguous signed-deal/invoice pairs until an explicit linkage is approved. Why: current contracts cannot establish whether cash is already invoiced; matching by amount alone could hide or double-count receipts.
 - 2026-10-24 Micah: P2 company relationships use Convex document IDs while fixture payloads retain canonical contract IDs. Why: database relationships stay typed without changing shared contracts. The seed returns the ID for UI routing.

@@ -1,7 +1,7 @@
 # Domino design spec
 
 Status: v1, 2026-10-24. Owner: Micah. Read with `build-spec.md`.
-Style: clean, calm, light. One accent color. A person with no finance knowledge must understand
+Style: clean, calm, dark. Mint is the primary accent. A person with no finance knowledge must understand
 the main screen in 10 seconds.
 
 ---
@@ -117,19 +117,22 @@ All components live in `apps/web/components/`. Each has a playground section wit
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | white `#FFFFFF` | Page |
-| Surface | `#F8F9FA` | Panels |
-| Border | `#E5E7EB` | Card and panel borders |
-| Text | `#111827` | Main text |
-| Text muted | `#6B7280` | Labels, captions |
-| Accent | `#2563EB` | Selected future, primary button |
-| Danger | `#DC2626` | Broken rules, lender's limit, breaking futures |
-| Safe | `#16A34A` | Surviving futures, working fixes |
-| Font | Inter (or Geist) | Everything |
+| Background | `#202B27` | Deep green page background derived from the supplied palette |
+| Surface | `#2B3B36` | Panels and popovers |
+| Warm surface | `#3B312B` | Secondary controls and selected supporting areas |
+| Border | `#45534C` | Subtle separators |
+| Text | `#F4F1EB` | Main text |
+| Text muted | `#B7C5BD` | Labels, captions |
+| Accent / safe | `#68B99E` | Primary actions, selected future, surviving futures |
+| Clay | `#BA8768` | Supporting chart and history accents |
+| Danger | `#BA6A68` | Broken rules, lender's limit, breaking futures |
+| Font | Inter | Everything |
 | Radius | 8 px | Cards, buttons |
 | Spacing | 4 px steps | Use Tailwind spacing scale |
 
-Dark mode is not in scope.
+Rose text is lightened to `#D9918F` for small text contrast; the supplied rose remains the warning fill/stroke.
+
+Dark mode is the default per Micah's supplied palette. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
 
 ---
 

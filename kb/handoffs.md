@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:07 Micah (Codex, dark theme and logo)
+- Done: applied the supplied mint/clay/rose/green/brown palette as the default dark theme, with readable off-white text and accessible warning text. Reused the original two-tile Domino SVG from calhacks-2026 for the header and favicon; preserved geometry and wordmark dot. Checks (56 tests), build and desktop screenshot review pass.
+- Next: P3 and P4 use these semantic tokens; continue sequential worktrees and merge each task.
+- Watch out: mint is both selection and survival, so chart labels and outcome symbols must distinguish them. Rose fills/strokes stay #BA6A68; small warning text uses a lighter derived shade for contrast.
+
 ## 2026-10-24 01:03 Codex brain (E1a/E6a complete)
 - Done: E1a 2540e74 and E6a d16ece3 completed on isolated branches, each independently reviewed by GPT-6.1 Sol with no blockers. Lead reran forced checks: E1a 5 sim + 13 contract tests and CLI; E6a 20 routing + 13 contract tests; both typechecks/lint passed. Reports and worker Results recorded in main.
 - Next: human glances at both diffs; integrate reviewed branches with fresh combined checks and resolve newer origin/main work without rewriting history. Full E1/E6 follow-up slices remain open. Claude owns E3a repairs.
