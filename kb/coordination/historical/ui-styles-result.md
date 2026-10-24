@@ -58,3 +58,6 @@ New: `lib/style.ts`, `lib/style-registry.ts`, `lib/style.test.ts`, `components/S
 
 ## H4c live core (candidate; activity pending)
 `/historical` wires the accepted H2c APIs (getCase, getRun, getReveal, saveBaseline, reveal, computeAlternative) through `components/historical/{live.ts,HistoricalLive.tsx}` and the existing `HistoricalReplay`/`HistoricalChart`, with the four styles and `ActivityPanel` reused unchanged. Style changes do not touch financial state (style is an ancestor attribute; the URL keeps `style`, `run`, `alt`). Activity stays `source="unavailable"`; no H2d API is called or guessed. Details, verification and open items are in the Result of `kb/tasks/H4c-historical-live-wiring.md`. Focused only: tsc, biome, vitest 177 pass; no build or browser.
+
+## H4d live activity (candidate)
+`/historical` now feeds the existing `ActivityPanel` from `api.historical.getActivity` (baseline run only; scope by case, cap 50, keyed by baseline run id). Loading, failed or malformed answers keep the panel unavailable with an honest note; the first actual batch mounts quiet. The playground simulation is unchanged and labelled. Details and open browser checks are in the Result of `kb/tasks/H4d-live-activity-wiring.md`. Focused only: vitest 127 pass, tsc, biome; no build or browser.

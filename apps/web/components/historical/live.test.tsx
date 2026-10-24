@@ -1,4 +1,6 @@
 import {
+  type ActivityEvent,
+  ActivityEventSchema,
   HistoricalCaseSchema,
   type HistoricalComparison,
   HistoricalRunSchema,
@@ -14,6 +16,7 @@ import {
   HistoricalJourney,
   HistoricalLive,
   describeError,
+  readActivity,
   useHistoricalQueries,
 } from "./HistoricalLive";
 import {
@@ -447,10 +450,97 @@ describe("states and recovery", () => {
     renderToStaticMarkup(<Probe runId={BASE_ID} altId={ALT_ID} />);
     expect(seen).toHaveLength(2);
     expect(seen[1]).toBe(seen[0]);
-    expect(Object.keys(seen[0] as object).sort()).toEqual(["alt", "case", "reveal", "run"]);
+    expect(Object.keys(seen[0] as object).sort()).toEqual([
+      "activity",
+      "alt",
+      "case",
+      "reveal",
+      "run",
+    ]);
     seen.length = 0;
     renderToStaticMarkup(<Probe />);
     expect(Object.keys(seen[0] as object)).toEqual(["case"]);
+  });
+
+  it("asks for the feed of the baseline only, and never without one", () => {
+    const seen: Record<string, unknown>[] = [];
+    function Probe({ runId, altId }: { runId?: string; altId?: string }) {
+      seen.push(useHistoricalQueries(runId, altId) as Record<string, unknown>);
+      return null;
+    }
+    renderToStaticMarkup(<Probe runId={BASE_ID} altId={ALT_ID} />);
+    expect(seen[0]?.activity).toMatchObject({ args: { caseId: FULL.id, baselineRunId: BASE_ID } });
+    renderToStaticMarkup(<Probe />);
+    expect(seen[1]).not.toHaveProperty("activity");
+  });
+});
+
+describe("live activity", () => {
+  const event = (
+    id: string,
+    sequence: number,
+    kind: ActivityEvent["kind"],
+    runId: string,
+    label: string,
+  ) =>
+    ActivityEventSchema.parse({
+      id,
+      sequence,
+      occurredAt: `2026-10-24T18:00:0${sequence}Z`,
+      caseId: FULL.id,
+      runId,
+      kind,
+      status: "succeeded",
+      entity: { kind: "run", id: runId },
+      label,
+    });
+  // Alternatives carry their own run id, so this feed is deliberately not all the baseline's.
+  const feed = [
+    event("e1", 1, "run_saved", BASE_ID, "Forecast saved for the cutoff"),
+    event("e2", 2, "alternative_computed", ALT_ID, "Alternative A1 computed"),
+  ];
+  const withActivity = (activity?: unknown, runId = BASE_ID) =>
+    html({
+      runId,
+      raw: { case: caseData(false), run: baseline(), reveal: null, activity },
+    });
+
+  it("reads unknown, failed, malformed and good answers apart", () => {
+    expect(readActivity(undefined)).toEqual({ unavailable: "loading" });
+    expect(readActivity(new Error("x"))).toEqual({ unavailable: "failed" });
+    expect(readActivity([{ id: "e1" }])).toEqual({ unavailable: "shape" });
+    expect(readActivity([])).toEqual({ events: [] });
+    expect(readActivity(feed)).toEqual({ events: feed });
+  });
+
+  it("does not mount a live feed while loading or after a failure", () => {
+    const loading = withActivity(undefined);
+    expect(loading).toContain("Loading the activity feed");
+    expect(loading).toContain("Not connected");
+    expect(loading).not.toContain("No activity yet");
+    const failed = withActivity(new Error("boom"));
+    expect(failed).toContain("could not be loaded");
+    expect(failed).not.toContain("No activity yet");
+    expect(withActivity("junk")).toContain("not in the expected shape");
+  });
+
+  it("shows the first batch, including the alternative's event, as live history", () => {
+    const out = withActivity(feed);
+    expect(out).toContain("Live");
+    expect(out).toContain("Forecast saved for the cutoff");
+    expect(out).toContain("Alternative A1 computed");
+    expect(out).toContain("Alternative computed");
+    // Static markup is the quiet first mount: nothing starts hidden for an entrance.
+    expect(out).not.toContain("opacity:0");
+  });
+
+  it("says an empty answered feed is empty, apart from an unknown one", () => {
+    expect(withActivity([])).toContain("No activity yet");
+  });
+
+  it("keeps the unavailable default without a feed query, and with no baseline", () => {
+    expect(withActivity()).toContain("Not connected");
+    expect(html({ raw: { case: caseData(false) } })).not.toContain("Activity events");
   });
 });
 

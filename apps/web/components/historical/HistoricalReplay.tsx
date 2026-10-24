@@ -2,7 +2,7 @@
 
 import type { Cents, ISODate } from "@domino/contracts";
 import { FileText } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { formatCents } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { ActivityPanel } from "../ActivityPanel";
@@ -65,6 +65,8 @@ export interface HistoricalReplayProps {
   status?: "ready" | "loading" | "error" | "unavailable";
   /** Plain-words detail for the error and unavailable states. */
   statusMessage?: string;
+  /** The host's activity panel. Without one the panel says it is not connected. */
+  activity?: ReactNode;
 }
 
 function DateFacts({ view }: { view: HistoricalView }) {
@@ -331,7 +333,12 @@ function RunNotes({ view }: { view: HistoricalView }) {
   );
 }
 
-export function HistoricalReplay({ view, status = "ready", statusMessage }: HistoricalReplayProps) {
+export function HistoricalReplay({
+  view,
+  status = "ready",
+  statusMessage,
+  activity,
+}: HistoricalReplayProps) {
   const [selectedId, setSelectedId] = useState<string>();
   if (status === "loading") {
     return (
@@ -464,7 +471,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
       </Card>
       {view.comparison.length ? <Comparison rows={view.comparison} /> : null}
       {view.alternative ? <Alternative alt={view.alternative} /> : null}
-      <ActivityPanel source="unavailable" />
+      {activity ?? <ActivityPanel source="unavailable" />}
     </div>
   );
 }

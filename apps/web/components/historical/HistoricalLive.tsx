@@ -1,5 +1,6 @@
 "use client";
 
+import { type ActivityEvent, ActivityEventSchema } from "@domino/contracts";
 import { useConvexConnectionState, useMutation, useQueries } from "convex/react";
 import { ConvexError } from "convex/values";
 import Link from "next/link";
@@ -7,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { api } from "../../convex/_generated/api";
+import { ActivityPanel } from "../ActivityPanel";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { HistoricalReplay } from "./HistoricalReplay";
@@ -58,6 +60,46 @@ interface Raw {
   run?: unknown;
   reveal?: unknown;
   alt?: unknown;
+  /** Present only for a live session with a baseline: undefined = loading, Error = failed. */
+  activity?: unknown;
+}
+
+/** The server already limits the feed to 50; the client cap just matches it. */
+const ACTIVITY_CAP = 50;
+const ActivityBatch = z.array(ActivityEventSchema);
+const feedUnavailable = {
+  loading: "Loading the activity feed. Until it answers, what has been recorded is unknown.",
+  failed:
+    "The activity feed could not be loaded, so what has been recorded is unknown. The forecast above is not affected.",
+  shape: "The activity feed was not in the expected shape, so it is not shown.",
+};
+
+/** Boundary parse. Unknown, loading and failed never look like an empty feed. */
+export function readActivity(
+  raw: unknown,
+): { events: ActivityEvent[] } | { unavailable: keyof typeof feedUnavailable } {
+  if (raw === undefined) return { unavailable: "loading" };
+  if (raw instanceof Error) return { unavailable: "failed" };
+  const parsed = ActivityBatch.safeParse(raw);
+  return parsed.success ? { events: parsed.data } : { unavailable: "shape" };
+}
+
+/** Real events only. The panel mounts as live with the first actual batch, so that batch is quiet
+ * and only ids that arrive later animate. Scope is the case, not the run: an alternative's events
+ * carry the alternative's run id and must stay. */
+function LiveActivity({ raw }: { raw: unknown }) {
+  // Parse once per delivery so the panel sees the same array until the query really changes.
+  const read = useMemo(() => readActivity(raw), [raw]);
+  if ("unavailable" in read)
+    return <ActivityPanel source="unavailable" note={feedUnavailable[read.unavailable]} />;
+  return (
+    <ActivityPanel
+      source="live"
+      events={read.events}
+      scope={{ caseId: CASE_ID }}
+      cap={ACTIVITY_CAP}
+    />
+  );
 }
 
 function Problem({ title, children }: { title: string; children: ReactNode }) {
@@ -225,7 +267,16 @@ export function HistoricalJourney({
           {alternative ? ` and alternative ${alternative.run.id}` : ""}.
         </p>
       ) : null}
-      <HistoricalReplay view={view} />
+      <HistoricalReplay
+        view={view}
+        activity={
+          // The key is the feed identity: another baseline is another feed. No `activity` key
+          // (synthetic or props-only use) keeps the "not connected" default.
+          base && "activity" in raw ? (
+            <LiveActivity key={base.run.id} raw={raw.activity} />
+          ) : undefined
+        }
+      />
     </div>
   );
 }
@@ -269,6 +320,10 @@ export function useHistoricalQueries(runId?: string, altId?: string) {
         ? {
             run: { query: api.historical.getRun, args: { caseId: CASE_ID, runId } },
             reveal: { query: api.historical.getReveal, args: { runId } },
+            activity: {
+              query: api.historical.getActivity,
+              args: { caseId: CASE_ID, baselineRunId: runId },
+            },
           }
         : {}),
       ...(runId && altId

@@ -183,3 +183,41 @@ describe("reconnect", () => {
     expect(ingestActivity(s, feed, scope, { quiet: true })).toBe(s);
   });
 });
+
+describe("ingestActivity for a live baseline feed", () => {
+  // The H4d scope: the case only, because an alternative's events carry the alternative's run id.
+  const caseScope: ActivityScope = { caseId: "c1" };
+  const inRun = (id: string, sequence: number, runId: string): ActivityEvent => ({
+    ...ev(id, sequence, "succeeded", id),
+    runId,
+  });
+
+  it("keeps an alternative's event that a baseline-run scope would drop", () => {
+    const batch = [inRun("a", 1, "base"), inRun("b", 2, "alt")];
+    expect(
+      ingestActivity(emptyActivity, batch, { caseId: "c1", runId: "base" }).events,
+    ).toHaveLength(1);
+    expect(ingestActivity(emptyActivity, batch, caseScope).events).toHaveLength(2);
+  });
+
+  it("makes the first batch quiet and a later new id fresh once", () => {
+    const first = ingestActivity(emptyActivity, [inRun("a", 1, "base")], caseScope, {
+      quiet: true,
+      cap: 50,
+    });
+    expect(first.fresh.size).toBe(0);
+    const next = [inRun("a", 1, "base"), inRun("b", 2, "alt")];
+    const second = ingestActivity(first, next, caseScope, { cap: 50 });
+    expect([...second.fresh]).toEqual(["b"]);
+    // The same batch again, reordered, changes nothing and cannot replay the entrance.
+    expect(ingestActivity(second, [...next].reverse(), caseScope, { cap: 50 })).toBe(second);
+  });
+
+  it("caps at 50 and ignores redelivery of what the cap dropped", () => {
+    const all = Array.from({ length: 55 }, (_, i) => inRun(`e${i}`, i + 1, "base"));
+    const s = ingestActivity(emptyActivity, all, caseScope, { quiet: true, cap: 50 });
+    expect(s.events).toHaveLength(50);
+    expect(s.events[0]?.id).toBe("e5");
+    expect(ingestActivity(s, all.slice(0, 5), caseScope, { cap: 50 })).toBe(s);
+  });
+});

@@ -62,7 +62,8 @@ interface FeedProps {
 
 export type ActivityPanelProps = { className?: string } & (
   | ({ source: "live" | "simulation" } & FeedProps)
-  | { source: "unavailable" }
+  /** `note` says why, in plain words, when the host knows (loading, failed). */
+  | { source: "unavailable"; note?: string }
 );
 
 export function ActivityPanel(props: ActivityPanelProps) {
@@ -75,8 +76,8 @@ export function ActivityPanel(props: ActivityPanelProps) {
       <CardContent>
         {props.source === "unavailable" ? (
           <p className="text-sm text-muted-foreground">
-            No activity feed is connected yet, so the status is unknown. This panel cannot say
-            whether anything is running or has been recorded.
+            {props.note ??
+              "No activity feed is connected yet, so the status is unknown. This panel cannot say whether anything is running or has been recorded."}
           </p>
         ) : (
           // A different case or run is a different feed, so its state starts clean.
