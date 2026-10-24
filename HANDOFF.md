@@ -2,6 +2,10 @@
 
 Current: checked integrationcb44894 passes991tests/typechecks/lint; R1 visual repairs shown at3102, G2b real localruntime passes, G2c offline adapter accepted. Claude G3UI18646/exec99532 and G2dbackend18871/exec10780 verified running in separate worktrees. Next inspect their Result/commits, independent audit and serialized checks/browser. Full real CREAO journey still pending dedicated app instructions/memory validation. Main694ab2a unchanged.
 
+Scheduled audit14:06 PDT: both Claude workers active; G3 adapter/session files started, G2d still inspecting. No new commit/gate, no repeat tests. Next audit completed checkpoints. Monitor interval verified15minutes and UI ownership updated to G3.
+
+## Archived checkpoints below
+
 Latest: R1 repair0148df5 accepted and integrated79a6e19, combined940tests/build and desktop/mobile browser pass. Updated labelled canvas fixture is served3102, exec61582. G2b7801fb5 independently approved934tests, isolated runtime smoke underway; G2cabb6d07 independently approved/fullcheck passed. No owned Claude implementation active; next launch G3 after runtime gate. Read active-run for current ownership. Main untouched. Full live journey remains incomplete.
 
 Latest scheduled audit13:33 PDT: all three recorded workers active; UI/provider file progress verified, backend repair still inspecting. No new accepted checkpoint or integration. Next collect completed commits for independent re-review.

@@ -1,6 +1,10 @@
 # Active run: agent canvas centerpiece
 
-Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every20minutes. No main merge.
+Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
+
+## Scheduled audit, October24 14:06 PDT
+
+Both recorded Claude workers remain active with verified cwd and no children. G3 has new adapt.ts/session.ts files in its assigned live folder; G2d has no tracked changes yet. Neither has a completed commit, so no new gate accepted and no tests repeated. Last checked preview remains991tests atcb44894, published8a2e296. Next collect scoped checkpoints for independent review. Monitor ownership corrected to G3; stored interval is15minutes, preserved. Main untouched.
 
 ## Current workers and next exact step
 
@@ -13,7 +17,7 @@ Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b re
 
 ## Inspection and decisions
 
-Historical getCase/getRun/saveBaseline/reveal/computeAlternative and frozen input snapshots are reusable. HistoricalLive has memoized queries and race guards; HistoricalChart/Replay and proof components stay readable inside an output detail. Current activity records only successful deterministic financial operations. apps/web/convex/agents.ts is still placeholders. No durable conversation or specialist DAG exists.
+Historical getCase/getRun/saveBaseline/reveal/computeAlternative and frozen input snapshots are reusable. HistoricalLive has memoized queries and race guards; HistoricalChart/Replay and proof components stay readable inside an output detail. Current activity records only successful deterministic financial operations. apps/web/convex/agents.ts remains old placeholders. The accepted investigation module now owns durable conversations and bounded specialist dependencies.
 
 packages/agents has actual Claude/CREAO transports, but existing operational jobs require weekly Branch/Snapshot models and must not be filled with invented historical data. Add a narrow historical specialist contract, permitted frozen evidence and engine output references, bounded conversation and citation validation. Durable task records with dependency IDs can supply graph nodes/edges without a general workflow engine. Real starts/results/errors only; no fake agent labels for mutation calls. Deterministic computation nodes are tools. Old theme work is finished and no more themes are queued.
 
@@ -31,12 +35,12 @@ Call: bounded curated2U investigation with actual specialist jobs and existing e
 
 User explicitly requests a brief chat update after EVERY scheduled coding audit, even if nothing finished: accomplishments since last run, checks passed or failed, current workers/blockers, next action. This supersedes quiet-on-unchanged instructions. Do not add coding-audit messages to Domino product activity or introduce a new canvas feature from that clarification. Automation prompt updated.
 
-## Current audit gates
+## Superseded initial audit findings (repairs accepted above)
 
 - G2b candidatec185500 passed930tests/typechecks/lint, /tmp/domino-G2b-check.log. Independent Astra32focused +6probes blocked4defects: public historical receipt/run/reveal ownership collision; frozen profile differs from actual dispatch; leases ignored on claim/finish; source hash drift. Report in G2b kb/reviews/G2b-durable-audit.md. Repair1 prompt /tmp/domino-G2b-repair-prompt.txt. Reuse audit_g2a after completion.
 - R1 candidate2d57610 passed930tests/typechecks/lint, /tmp/domino-R1-check.log. Sol audit16focused +probe blocked sibling node overlap, quiet history viewport/status animation, false Nothing has run yet on terminal nodes; explicit-empty mismatch also requested. Repair1 card in R1 and /tmp/domino-R1-repair-prompt.txt. Reuse audit_r1; browser/build remain pending.
 - G2c owns packages/agents only, no conflicting backend/UI files. Focused offline checks only, no secret reading/livecalls/remoteagentcreation by worker. Need independent provider audit before integration and bounded real app execution. No G3 wiring until corrected backend/UI accepted. Keep current3102 visual preview unchanged until verified.
 
-## Scheduled audit, October24 13:33 PDT
+## Archived scheduled audit, October24 13:33 PDT
 
 All three recorded Claude processes remain active, no duplicate workers. G2b repair14827 is still at its read/diagnosis stage, no new file changes or commit. R1 repair15437 has changed workspace/layout/tests; G2c7172 has changed provider transport/extraction/historical exports. Neither in-progress diff was accepted or integrated. No new completed gate since the prior report. Next: collect finished repair checkpoints, reuse independent reviewers, then run serialized full checks/build/browser. Existing app-scoped CREAO remains the only authorized route. No live provider calls or spend during this audit.
