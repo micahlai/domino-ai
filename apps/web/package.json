@@ -29,7 +29,8 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "^2.6.0",
-    "zod": "3.23.8"
+    "zod": "3.23.8",
+    "@domino/engine": "workspace:*"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
