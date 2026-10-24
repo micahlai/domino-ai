@@ -142,11 +142,14 @@ Dark mode uses a near-black brown base per Micah's revised direction. Charts use
 | --- | --- |
 | Lender's limit | Covenant |
 | Cash you can use | Liquidity, unrestricted cash |
-| Future, possible future | Scenario, universe (except in the pitch) |
-| Survives / breaks | Passes / fails stress test |
+| Cash forecast, scenario | Future, possible future, universe, multiverse |
+| Meets requirements / outside limits | Survives / breaks / fails stress test |
 | Pays 45 days late | DSO extension |
 | Low point | Trough, minimum balance |
 
+- Use “Preview fixes” for forecast comparisons; approval is a separate action.
+- Describe the event sequence as “Projected impact,” not a chain reaction.
+- The percentage is the weighted share of tested scenarios meeting requirements, not an unconditional probability.
 - Every number has a unit and a date: "$2.9M on Nov 30".
 - Every headline is a full answer, not a label.
 - Expert words appear only inside the proof drawer.

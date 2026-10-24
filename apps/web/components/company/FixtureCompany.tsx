@@ -54,7 +54,9 @@ export function FixtureCompany() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No fixes have been saved for this future.</p>
+          <p className="text-sm text-muted-foreground">
+            No fixes have been saved for this scenario.
+          </p>
         );
       }}
     />

@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:45 Micah (Codex, plain timeline copy)
+- Done: ran humanizer and taste on timeline copy. Replaced future/survival/break metaphors with cash forecasts, scenarios, cash requirements and projected impact; updated navigation, page title, accessibility text, empty states and playground descriptions. Renamed Apply fixes to Preview fixes and explained score weighting. Browser verified revised labels and the 7-to-9 scenario preview; checks and production build pass.
+- Next: use the updated design-spec wording table for P5/P6.
+- Watch out: contract identifiers, chart geometry, financial values and calculation behavior are unchanged. The score is a weighted share of tested scenarios, not an unconditional likelihood. Screenshot: /tmp/domino-plain-copy.png.
+
 ## 2026-10-24 01:30 Micah (Codex, P4)
 - Done: assembled the company workspace with reactive Convex reports, history, constraints, ranked risks, branches and selected-branch fixes. Exact risk combinations select matching event branches; unsaved combinations show honest empty states. Fix cards display backend scores and saved simulations, require confirmation, and persist approvals through the existing mutation. Browser checked cancel/confirm, persisted Approved after reload, proof, preview toggle and selection; phone sample layout at 390 px has no page overflow. All 67 tests, typecheck and lint pass; production build checked before merge.
 - Next: P5 implements branch detail and full connection/event/week flows. E7 replaces internal action placeholders, then enables the corresponding readiness flags in LiveCompany.tsx. Demo shortcut can use NEXT_PUBLIC_DEMO_COMPANY_ID with the actual seed company document ID.

@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const links = [
-  { href: "/c/kestrel", label: "Possible futures" },
+  { href: "/c/kestrel", label: "Cash forecast" },
   { href: "/c/kestrel/learning", label: "What we learned" },
   { href: "/c/kestrel/record", label: "Decision record" },
 ];
@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">See the chain. Change the outcome.</span>
+          <span className="hidden sm:inline">Plan cash needs before you act.</span>
           <Link
             href="/playground"
             className="flex min-h-11 items-center gap-2 rounded px-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"

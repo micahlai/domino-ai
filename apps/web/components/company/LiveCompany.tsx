@@ -31,7 +31,7 @@ export function CompanyConnectionStatus() {
 export function CompanyLoading() {
   return (
     <div className="space-y-6" aria-busy="true">
-      <p className="text-sm text-muted-foreground">Reading company records and possible futures…</p>
+      <p className="text-sm text-muted-foreground">Loading company records and cash forecasts…</p>
       <Skeleton className="h-12 w-3/4" />
       <Skeleton className="h-32 w-full" />
       <Skeleton className="h-[420px] w-full" />
@@ -46,13 +46,13 @@ function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] })
   if (candidates === undefined)
     return (
       <div aria-busy="true" className="space-y-3">
-        <p className="text-sm text-muted-foreground">Reading fixes for this future…</p>
+        <p className="text-sm text-muted-foreground">Loading proposed fixes for this scenario…</p>
         <Skeleton className="h-40 w-full" />
       </div>
     );
   if (!candidates.length)
     return (
-      <p className="text-sm text-muted-foreground">No fixes have been saved for this future.</p>
+      <p className="text-sm text-muted-foreground">No fixes have been saved for this scenario.</p>
     );
   return (
     <div className="space-y-4">
@@ -167,7 +167,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
               )}
             </div>
             <p className="max-w-xs text-xs text-muted-foreground">
-              New events and weeks are not available yet. Explore the saved futures below.
+              New events and weeks are not available yet. Review the saved forecasts below.
             </p>
           </div>
         }

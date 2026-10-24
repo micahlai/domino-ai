@@ -152,7 +152,7 @@ export function Playground() {
       </PreviewSection>
       <PreviewSection
         name="ResilienceBar"
-        description="A quick answer to how many possible futures survive."
+        description="The share of forecast scenarios that meet cash requirements."
       >
         <ResilienceBar
           report={fixtures.resilience}
@@ -163,7 +163,7 @@ export function Playground() {
       </PreviewSection>
       <PreviewSection
         name="MultiverseTimeline"
-        description="History on the left. Possible futures on the right."
+        description="Recorded cash on the left. Forecast scenarios on the right."
       >
         <MultiverseTimeline
           history={fixtures.history}
@@ -196,7 +196,10 @@ export function Playground() {
             onSelect={setSelectedRiskId}
           />
         </PreviewSection>
-        <PreviewSection name="DominoChain" description="The chain caused by Acme paying late.">
+        <PreviewSection
+          name="DominoChain"
+          description="The projected cash impact of Acme paying late."
+        >
           <DominoChain dominoes={eventBranch?.dominoes ?? []} />
         </PreviewSection>
         <PreviewSection name="FixCard" description="Try a change before a person decides to act.">
@@ -218,7 +221,7 @@ export function Playground() {
         </PreviewSection>
         <PreviewSection
           name="BranchChart"
-          description="Fixture low points for the chart that will compare futures."
+          description="Sample low points for comparing cash scenarios."
         >
           <BranchChart branches={fixtures.branches} limit={limit} />
         </PreviewSection>

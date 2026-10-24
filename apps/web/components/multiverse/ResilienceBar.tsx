@@ -43,25 +43,25 @@ export function ResilienceBar({
         </p>
         <div>
           <p className="text-base font-medium">
-            Survives {current.survivedCount} of {current.universes.length} futures
-            <span className="sr-only"> · {percent}% weighted survival</span>
+            {current.survivedCount} of {current.universes.length} scenarios meet requirements
+            <span className="sr-only"> · {percent}% weighted share within limits</span>
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {current.breakingPoints[0]
-              ? `Breaks with ${current.breakingPoints[0].label}.`
-              : "No breaking point found in these futures."}
+              ? `Risk threshold: ${current.breakingPoints[0].label}.`
+              : "No risk threshold is available for these scenarios."}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            Chance weighted by each possible future.
+            More likely scenarios carry more weight in this score.
           </p>
         </div>
       </div>
       <div className="shrink-0">
         <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm" htmlFor={id}>
           <Switch id={id} checked={showFixes} onCheckedChange={onToggle} />
-          Apply fixes
+          Preview fixes
         </label>
-        <p className="text-xs text-muted-foreground">Preview only. You decide.</p>
+        <p className="text-xs text-muted-foreground">Compare proposed fixes.</p>
       </div>
     </div>
   );

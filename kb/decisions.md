@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: use cash forecast/scenario and meets requirements/outside limits in timeline UI, replacing future/survival/break language per user direction. Label comparison toggles Preview fixes; keep shared contract names unchanged.
+
 - 2026-10-24 P4: Match the entire selected risk change set to an event branch; never show an unrelated single-risk chain for a combination. Approve only a matching saved fix branch, after confirmation. Keep compute mutations disabled until E7 action readiness is explicitly enabled.
 - 2026-10-24 Micah (Codex): Use the chat app API (`https://agent.creao.ai/api/v1`) and the locally verified shared key for the three Domino agents; keep Developer Console `/v2` separate. Response-format findings are in `kb/research/sponsors.md`.
 - 2026-10-24 Micah: remove Figma from frontend scope. Why: user direction; use the Next.js playground, screenshot reviews and Vercel instead. P7 now covers usability testing and demo materials.

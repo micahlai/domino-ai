@@ -24,7 +24,7 @@ describe("timeline without animation", () => {
     const hitPaths = html.match(/<path[^>]*stroke="transparent"[^>]*>/g) ?? [];
     expect(hitPaths).toHaveLength(fixtures.resilience.universes.length);
     expect(hitPaths.every((path) => / d="M/.test(path))).toBe(true);
-    expect(html).toContain("Choose a future");
+    expect(html).toContain("Select a scenario");
     expect(html).not.toContain('stroke-dasharray="0 1"');
     expect(html).not.toMatch(/NaN|Infinity/);
   });

@@ -32,6 +32,8 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
 | T1 | Dark palette and original Domino logo | User request | P1 | done | codex/dark-theme | Shared tokens, header mark and favicon; checks/build/screenshot pass |
 
+| C1 | Plain financial timeline copy | User request | P4 | done | codex/plain-timeline-copy | Forecast/scenario language, requirement outcomes and explicit preview copy; checks/browser pass |
+
 ## Shared
 
 | ID | Task | Prompt | When |

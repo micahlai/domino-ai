@@ -86,13 +86,14 @@ export function CompanyWorkspace({
       </div>
       <div>
         <Headline
-          text={`${data.company.name} survives ${report.survivedCount} of ${report.universes.length} possible futures.`}
+          text={`${data.company.name} meets cash requirements in ${report.survivedCount} of ${report.universes.length} scenarios.`}
         />
         <p className="mt-3 text-sm text-muted-foreground">
-          Explore the next 13 weeks. Choose a future to follow the chain and review your options.
+          Review the next 13 weeks of cash. Select a scenario to see its projected impact and
+          proposed fixes.
         </p>
       </div>
-      <section aria-label="Resilience" className="rounded-xl bg-card p-5 md:p-6">
+      <section aria-label="Cash requirements" className="rounded-xl bg-card p-5 md:p-6">
         <ResilienceBar
           report={data.report}
           reportWithFixes={data.reportWithFixes}
@@ -132,9 +133,11 @@ export function CompanyWorkspace({
       <div className="grid items-start gap-8 xl:grid-cols-[0.85fr_1fr_1.2fr]">
         <section aria-labelledby="risks-title" className="min-w-0 space-y-4">
           <h2 id="risks-title" className="text-base font-medium">
-            What could happen
+            Events to plan for
           </h2>
-          <p className="text-xs text-muted-foreground">Ranked risks for the 13-week view.</p>
+          <p className="text-xs text-muted-foreground">
+            Ranked by expected cash impact over 13 weeks.
+          </p>
           {data.risks.length ? (
             <RiskList
               risks={data.risks}
@@ -153,15 +156,15 @@ export function CompanyWorkspace({
         <section aria-labelledby="chain-title" className="min-w-0 space-y-5">
           <div>
             <h2 id="chain-title" className="text-base font-medium">
-              Follow the chain
+              Projected impact
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {future?.label ?? "Choose a possible future."}
+              {future?.label ?? "Select a scenario."}
             </p>
           </div>
           {showFixes ? (
             <p className="text-xs text-primary">
-              The chart previews fixes. This chain shows the original event.
+              The chart includes proposed fixes. These impacts describe the original event.
             </p>
           ) : null}
           {branch ? (
@@ -169,26 +172,26 @@ export function CompanyWorkspace({
               <DominoChain dominoes={branch.dominoes} />
             ) : (
               <p className="text-sm text-muted-foreground">
-                No chain reaction is recorded for this future.
+                No detailed impact assessment is saved for this scenario.
               </p>
             )
           ) : (
             <p className="text-sm text-muted-foreground">
               {future
-                ? "This combination has a forecast, but no detailed chain or fixes have been saved yet."
-                : "Select a future on the chart to explore its chain."}
+                ? "This scenario has a cash forecast. Its detailed impacts and fixes have not been saved yet."
+                : "Select a scenario to review its projected impact."}
             </p>
           )}
         </section>
         <section aria-labelledby="fixes-title" className="min-w-0 space-y-4">
           <h2 id="fixes-title" className="text-base font-medium">
-            Ways to change the outcome
+            Proposed fixes
           </h2>
           {branch ? (
             renderFixes(branch)
           ) : (
             <p className="text-sm text-muted-foreground">
-              Fixes will appear when a detailed future is available.
+              Fixes will appear when this scenario has a detailed assessment.
             </p>
           )}
         </section>

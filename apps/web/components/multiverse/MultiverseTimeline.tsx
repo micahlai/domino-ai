@@ -76,7 +76,7 @@ export function MultiverseTimeline({
           </span>
           <span className="inline-flex items-center gap-2">
             <span className="h-px w-5 bg-primary" />
-            Possible futures
+            Forecast scenarios
           </span>
         </div>
       </div>
@@ -93,22 +93,22 @@ export function MultiverseTimeline({
           aria-labelledby={`${id}-title ${id}-desc`}
         >
           <title id={`${id}-title`}>
-            {`Recorded cash and ${report.universes.length} possible futures`}
+            {`Recorded cash and ${report.universes.length} forecast scenarios`}
           </title>
           <desc id={`${id}-desc`}>
-            The past is left of Today. A dashed line marks the lender’s limit. Crosses mark breaks
-            and checks mark surviving futures. Use the selector below for keyboard access to every
-            future.
+            Recorded cash is left of Today. Forecast scenarios are on the right. The dashed line
+            shows the lender’s limit. Crosses mark the first unmet requirement; checks mean all
+            requirements are met. Use the menu below to select a scenario.
           </desc>
           <text x={graph.left} y={22} className="fill-muted-foreground text-[11px] tracking-widest">
-            PAST · {history.length} WEEKS
+            HISTORY · {history.length} WEEKS
           </text>
           <text
             x={graph.todayX + 18}
             y={22}
             className="fill-muted-foreground text-[11px] tracking-widest"
           >
-            FUTURES · 13 WEEKS
+            FORECAST · 13 WEEKS
           </text>
           {graph.ticks.map((tick) => (
             <g key={tick}>
@@ -307,7 +307,7 @@ export function MultiverseTimeline({
                     y={graph.y(points.at(-1)?.usable ?? graph.origin.usable) - 10}
                     className="fill-primary text-[11px]"
                   >
-                    Selected future
+                    Selected scenario
                   </text>
                 ) : null}
               </g>
@@ -386,28 +386,28 @@ export function MultiverseTimeline({
                 {formatCents(focused.forecast.lowPoint.usable)} on{" "}
                 {formatDate(focused.forecast.lowPoint.weekStart)} ·{" "}
                 {focused.survives
-                  ? "Survives"
-                  : `Breaks ${formatDate(focused.breaksAt ?? focused.forecast.lowPoint.weekStart)}`}
+                  ? "Within limits"
+                  : `Outside limits from ${formatDate(focused.breaksAt ?? focused.forecast.lowPoint.weekStart)}`}
               </p>
             </>
           ) : (
             <>
-              <p className="font-medium">Explore a possible future</p>
+              <p className="font-medium">Review a cash scenario</p>
               <p className="mt-1 text-muted-foreground">
-                Select a line or use the menu to see what could happen.
+                Select a line or use the menu to review its cash forecast.
               </p>
             </>
           )}
         </div>
         <label className="flex shrink-0 flex-col gap-2 text-xs text-muted-foreground">
-          Choose a future
+          Select a scenario
           <select
             className="min-h-11 max-w-64 rounded-md border bg-card px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             value={selectedUniverseId ?? ""}
             onChange={(event) => onSelectUniverse(event.target.value)}
           >
             <option value="" disabled>
-              Select a possible future
+              Select a scenario
             </option>
             {report.universes.map((future) => (
               <option key={futureKey(future)} value={future.id}>
@@ -419,12 +419,12 @@ export function MultiverseTimeline({
       </div>
       <p className="text-xs text-muted-foreground">
         {showFixes
-          ? "Fixes are being previewed across every future. Nothing is approved by this toggle."
-          : "Checks mark surviving futures. Crosses mark the first broken rule."}
+          ? "Showing the forecast with proposed fixes in each scenario. Approvals are recorded separately."
+          : "Checks show scenarios within limits. Crosses mark the first unmet requirement."}
       </p>
       <details className="text-sm">
         <summary className="cursor-pointer text-muted-foreground">
-          Explore {pastEvents.length} recorded events
+          View {pastEvents.length} recorded events
         </summary>
         <ul className="mt-3 space-y-2">
           {pastEvents.map((event) => (
