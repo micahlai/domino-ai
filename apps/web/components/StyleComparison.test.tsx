@@ -35,10 +35,15 @@ describe("style tokens", () => {
     "ring",
     "clay",
     "overlay",
+    "primary-ink",
+    "control-h",
+    "row-h",
+    "card-pad",
   ];
 
+  // Nested comparison scopes inherit any omitted token from the page style, so none may be omitted.
   it("defines every semantic colour in each style, so portals and charts never fall back", () => {
-    for (const { id } of STYLES.filter((style) => style.id !== "original")) {
+    for (const { id } of STYLES) {
       const body = block(`[data-style="${id}"] {`);
       for (const token of required) expect(body, `${id} --${token}`).toContain(`--${token}:`);
     }

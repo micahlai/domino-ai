@@ -76,6 +76,9 @@
     color-scheme: light;
   }
   [data-style="hyphenate"] {
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
     --overlay: 358 100% 10% / 0.5;
     --background: 38 38% 94%;
     --foreground: 358 100% 24%;
@@ -105,6 +108,10 @@
     color-scheme: light;
   }
   [data-style="shadcn"] {
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
+    --primary-ink: var(--primary);
     --overlay: 0 0% 0% / 0.8;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
