@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 05:23 PDT. Current supervisor: Codex in thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Read this before dispatching; inspect processes and commits, do not duplicate work.
+Updated: 2026-10-24 05:25 PDT. Current supervisor: Codex in thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Read this before dispatching; inspect processes and commits, do not duplicate work.
 
 ## Scope and limits
 
@@ -42,3 +42,9 @@ All worktrees are under /Users/jaydenl/Dev/Hackathon/CalHacks 26. Each worker ha
 5. H3 live wiring waits for that complete API-ready dependency. H4 takes the single UI slot in domino-H4 / H4-ui-styles-motion, created from exact accepted H3 SHA. Preserve Original default, share primitives across Ramp/Hyphenate/shadcn variants, reuse Motion. No fabricated product agent/tool events.
 6. Assemble exact checked commits in preview/historical-overnight; serialize checks/build and browser flow against an isolated local backend. Preserve existing main server on127.0.0.1:3000 and shared cloud database. No shared cloud reseed.
 7. At deadline record best reviewed core, unfinished gates, screenshots and live versus fixture evidence. Pause heartbeat. Update this record, HANDOFF and board before yielding each phase.
+
+## Latest audit transition, 05:25 PDT
+
+- H2a full check exec36564 exited0: uncached typechecks/tests and lint pass, log /tmp/domino-H2a-full-check.log. Full-check slot is free. Independent contract audit still pending, so no acceptance yet.
+- H3 audit complete: blocked. Baseline preview exposes future disclosure/alternative sources through sheet; chart makes alternative branch diverge before cutoff. Claude Sonnet/high repair1 launched in same H3 worktree, session96920, log /tmp/domino-H3-r1-claude.log. Scope is exactly these two fixes plus focused regressions, no H4/server/fullsuite/backend changes; 30-minute checkpoint. Verify process cwd before another launch.
+- H1 preliminary audit: arithmetic reconciles but F16 represents12percent as1,200,000cents; omitted revolver springing termination; incomplete issuer liquidity wording. SEC public web reader exposes fuller primary text, so source summaries are avoidable. Await final bounded report from audit_e3b_causality, then launch one evidence repair and normalize only against accepted contracts.
