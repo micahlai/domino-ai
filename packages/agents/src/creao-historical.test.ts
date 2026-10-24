@@ -92,10 +92,34 @@ async function failure(promise: Promise<unknown>) {
   return category;
 }
 
+/**
+ * Poll sleeps (3000) pass at once and are recorded. Any other length is the run-record
+ * deadline race: it waits until fired, so a settled callback is never beaten by fake time.
+ */
+function deadlineSleep() {
+  const sleeps: number[] = [];
+  const waiting: (() => void)[] = [];
+  const sleep = (ms: number) => {
+    if (ms === 3000) {
+      sleeps.push(ms);
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => waiting.push(resolve));
+  };
+  return {
+    sleep,
+    sleeps,
+    fire: () => {
+      for (const resolve of waiting) resolve();
+    },
+  };
+}
+
 describe("runCreaoHistoricalSpecialist", () => {
   it("runs the evidence analyst on its own app and reports the remote run", async () => {
     const order: string[] = [];
-    const { result, calls, sleeps, seen } = call(
+    const { sleep, sleeps } = deadlineSleep();
+    const { result, calls, seen } = call(
       (c, index) => {
         order.push(`fetch ${c.method}`);
         if (index === 0) return created();
@@ -103,6 +127,7 @@ describe("runCreaoHistoricalSpecialist", () => {
       },
       evidenceInput,
       {
+        sleep,
         onRunCreated: async (run) => {
           order.push(`created ${run.runId} ${run.status}`);
         },
@@ -204,6 +229,121 @@ describe("runCreaoHistoricalSpecialist", () => {
     });
     expect(await failure(result)).toBe("run_record_failed");
     expect(calls.map((c) => c.method)).toEqual(["POST"]);
+  });
+
+  describe("the run record callback", () => {
+    const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+    it("stops at the run deadline when the callback never settles", async () => {
+      const timer = deadlineSleep();
+      let recorded = 0;
+      const { result, calls, seen } = call(scripted(completed({})), evidenceInput, {
+        runDeadlineMs: 10,
+        sleep: timer.sleep,
+        onRunCreated: () => {
+          recorded++;
+          return new Promise<void>(() => {});
+        },
+      });
+      let settled = false;
+      result.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        },
+      );
+      await flush();
+      expect(settled).toBe(false);
+      timer.fire();
+      expect(await failure(result)).toBe("run_record_failed");
+      expect([recorded, calls.map((c) => c.method)]).toEqual([1, ["POST"]]);
+      expect(seen).toEqual([
+        expect.objectContaining({ stage: "create", failure: "run_record_failed" }),
+      ]);
+      expect(JSON.stringify(seen)).not.toMatch(/secret|app-|run_h|http/);
+    });
+
+    it("does not resume polling when the callback settles after the deadline", async () => {
+      const timer = deadlineSleep();
+      let finish: () => void = () => {};
+      const { result, calls } = call(scripted(completed({})), evidenceInput, {
+        runDeadlineMs: 10,
+        sleep: timer.sleep,
+        onRunCreated: () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      });
+      await flush();
+      timer.fire();
+      expect(await failure(result)).toBe("run_record_failed");
+      finish();
+      await flush();
+      expect(calls.map((c) => c.method)).toEqual(["POST"]);
+    });
+
+    it("does not leave an unhandled rejection when the callback fails after the deadline", async () => {
+      const timer = deadlineSleep();
+      let fail: (error: Error) => void = () => {};
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown) => unhandled.push(reason);
+      process.on("unhandledRejection", onUnhandled);
+      try {
+        const { result, calls } = call(scripted(completed({})), evidenceInput, {
+          runDeadlineMs: 10,
+          sleep: timer.sleep,
+          onRunCreated: () =>
+            new Promise<void>((_, reject) => {
+              fail = reject;
+            }),
+        });
+        await flush();
+        timer.fire();
+        expect(await failure(result)).toBe("run_record_failed");
+        fail(new Error("late db failure"));
+        await flush();
+        expect(unhandled).toEqual([]);
+        expect(calls).toHaveLength(1);
+      } finally {
+        process.off("unhandledRejection", onUnhandled);
+      }
+    });
+
+    it("stops without a second create when the callback rejects", async () => {
+      const timer = deadlineSleep();
+      const { result, calls } = call(scripted(completed({})), evidenceInput, {
+        sleep: timer.sleep,
+        onRunCreated: () => Promise.reject(new Error("db down")),
+      });
+      expect(await failure(result)).toBe("run_record_failed");
+      expect(calls.map((c) => c.method)).toEqual(["POST"]);
+    });
+
+    it("records once before the first poll, then polls to completion", async () => {
+      const timer = deadlineSleep();
+      const order: string[] = [];
+      const runs: unknown[] = [];
+      const { result, calls } = call(
+        (c, index) => {
+          order.push(`fetch ${c.method}`);
+          return index === 0 ? created() : completed({ chatText: block(evidenceOutput) });
+        },
+        evidenceInput,
+        {
+          sleep: timer.sleep,
+          onRunCreated: async (run) => {
+            runs.push(run);
+            order.push("recorded");
+          },
+        },
+      );
+      await expect(result).resolves.toMatchObject({ runId: "run_h1", output: evidenceOutput });
+      expect(runs).toEqual([{ runId: "run_h1", status: "queued" }]);
+      expect(order).toEqual(["fetch POST", "recorded", "fetch GET"]);
+      expect(calls).toHaveLength(2);
+    });
   });
 
   it.each([

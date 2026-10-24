@@ -278,7 +278,8 @@ export interface CreaoAppRun {
   strict?: boolean;
   /**
    * Awaited once the created run is accepted and before the first poll, so the caller can
-   * persist the run id. If it throws, the run stops with run_record_failed; nothing is reposted.
+   * persist the run id. If it throws or outlives the run deadline, the run stops with
+   * run_record_failed; nothing is polled or reposted.
    */
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
 }
@@ -330,11 +331,23 @@ export async function runCreaoApp(
   const runId = createdRun.data.id;
   checkStatus(createdRun.data.status, fail);
   if (spec.onRunCreated) {
-    try {
-      await spec.onRunCreated({ runId, status: createdRun.data.status.trim().toLowerCase() });
-    } catch {
-      throw fail("run_record_failed");
+    // The callback shares the whole-run deadline. If it fails or the deadline wins, stop:
+    // no poll and no repost. The raced promise stays handled, so a late settle is harmless.
+    const { onRunCreated } = spec;
+    const status = createdRun.data.status.trim().toLowerCase();
+    const left = remaining();
+    let recorded = false;
+    if (left > 0) {
+      try {
+        await Promise.race([
+          (async () => onRunCreated({ runId, status }))().then(() => {
+            recorded = true;
+          }),
+          runtime.sleep(left),
+        ]);
+      } catch {}
     }
+    if (!recorded) throw fail("run_record_failed");
   }
 
   diag.stage = "poll";

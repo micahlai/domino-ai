@@ -25,7 +25,7 @@ Status: offline-tested worker candidate, 2026-10-24. Not live-accepted. Codex au
 2. Resolve role config. Failure: `config`, zero requests.
 3. Build the prompt; over `maxPromptBytes`: `input_too_large`, zero requests.
 4. One POST. The created status must be a known pending state or `completed`; `failed`, `cancelled`/`canceled` and unknown states fail before the callback.
-5. `await options.onRunCreated({ runId, status })` (status is the observed remote status, lowercased). If it throws or rejects: `run_record_failed`, no poll and no second create.
+5. `await options.onRunCreated({ runId, status })` (status is the observed remote status, lowercased). If it throws or rejects: `run_record_failed`, no poll and no second create. The callback is bounded by the remaining whole-run deadline; if it has not settled by then the run also fails `run_record_failed`, and a late settle never resumes polling.
 6. Polls. Every poll must return the same `id` (missing or changed id: `malformed_response`). `failed` → `run_failed`, `cancelled` → `run_cancelled`, unknown → `unknown_status`, too many → `poll_limit`, out of time → `deadline`.
 7. Extract from `result.chatText` and trusted JSON/Markdown/text artifacts. `result.text` (the memory summary) is never read.
 8. Each JSON candidate must pass `HistoricalSpecialistOutputSchema` and `checkHistoricalSpecialistOutput` (citations, money prose, outcome promises). Exactly one distinct valid answer wins. No candidates: `no_result`. Candidates but none valid: `invalid_output`. Two different valid answers: `ambiguous_result`.
