@@ -9,10 +9,10 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
 | G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |
-| G2b durable investigation | doing | Repair7801fb5 independently approved;934tests pass, isolated local runtime gate pending |
+| G2b durable investigation | doing | Repair7801fb5 independently approved;934tests pass, nine actual local runtime checks pass; integratedcb44894 |
 | R1 canvas presentation | done | Repair0148df5 accepted/integrated79a6e19;940tests/build and desktop/mobile browser pass |
 | CREAO complete cycle | doing | User selected old app API; G2c repairabb6d07 independently approved/fullcheck passed, dedicated historical profiles/coordinator/live gates remain; developer key unused |
-| G3 complete canvas journey | todo | Real operations drive graph, node details open chart/proof; no fake execution; waits on accepted G2 |
+| G3 complete canvas journey | doing | Real operations drive graph, node details open chart/proof; no fake execution; Claude18646 in domino-G3; backend adoptionClaude18871 in domino-G2d |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
 | H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
 | H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass; final UI wiring accepted5db5f21 |

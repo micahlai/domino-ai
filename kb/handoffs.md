@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex live wiring dispatch
+- G2b actual3212/runtime passed ninechecks, integratedcb44894 with auditedR1/G2c; combined991tests/typechecks/lint pass. No provider calls, no main changes.
+- ClaudeG3 Sonnet18646/99532 andG2d Opus18871/10780 verified separate worktrees, oneUIwriter, requestedskills, nochildren/livecalls.
+- Next: audit completed checkpoints, fullchecks/build/realbrowser then dedicated historical CREAO app instructions/memory gate. Current3102 screenshot is labelled fixture, not real execution.
+
 ## 2026-10-24 Codex repaired canvas accepted
 - R1 0148df5 independently approved, integrated79a6e19; combined940tests/typechecks/lint/build and desktop/mobile browser checks pass. Updated3102 labelled fixture shown, not real execution.
 - G2b7801fb5 passed independent repair audit and934tests; isolated local runtime smoke pending. G2cabb6d07 approved after callback-deadline repair, fullcheck passes; no live CREAO acceptance yet.
