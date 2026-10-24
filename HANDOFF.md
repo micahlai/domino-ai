@@ -2,7 +2,7 @@
 
 ## Current priority: agent canvas, October24 12:27 PDT
 
-User corrected scope: agent canvas plus persistent conversation is the centerpiece. Prior completion applies only to historical dashboard. Follow prompts/shared/C1-canvas-supervisor.md and kb/spec/agent-canvas-2026-10-24.md. G1 visual285d7de independently accepted and merged previewdcfb1ab; combined820tests/build/browser pass. Open http://127.0.0.1:3102/investigate. Only G2a real specialist contracts now run (exec49171/PID29046), then audit and G2b durable real operations and G3 full journey. Read G1-accepted.md and active-run for exact state. UI phases must additionally load taste + ui-ux-pro-max. Claude /orchestrator + /ponytail implements, Codex audits. No main merge, no more themes. Current work/process ownership remains in active-run.md.
+User corrected scope: agent canvas plus persistent conversation is the centerpiece. Prior completion applies only to historical dashboard. Follow prompts/shared/C1-canvas-supervisor.md and kb/spec/agent-canvas-2026-10-24.md. G1 visual285d7de independently accepted and merged previewdcfb1ab; combined820tests/build/browser pass. Open http://127.0.0.1:3102/investigate. G2a candidate973dac3 passed863tests but independent audit found context-integrity gaps. Claude repair1 now runs exec94944/PID69311 from1a1cb90; re-review before G2b durable real operations and G3 full journey. Read G1-accepted.md and active-run for exact state. UI phases must additionally load taste + ui-ux-pro-max. Claude /orchestrator + /ponytail implements, Codex audits. No main merge, no more themes. Current work/process ownership remains in active-run.md.
 
 ## Current checkpoint: overnight preview complete, 08:49 PDT
 

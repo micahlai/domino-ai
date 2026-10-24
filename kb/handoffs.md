@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 12:46 Codex specialist audit
+- Done: G2a973dac3 full863tests/typechecks/lint pass. Independent Astra audit reproduced invalid context reaching provider despite tests. No live provider call or integration.
+- Next: Claude repair1 verified exec94944/PID69311 from1a1cb90, original worktree/scope. Re-review with audit_g2a, then combined check before G2b.
+- Watch out: enforce run/reference closure, hindsight/cutoff boundaries, real baseline relation and exact comparison context; safe negated caveats must pass. Report kb/reviews/G2a-specialists-audit.md. Canvas preview remains healthy, main untouched.
+
 ## 2026-10-24 12:37 Codex early canvas accepted
 - Done: G1 initial90da27c plus taste/UIUX Max repair285d7de independently checked;820tests/build/browser pass and integrated previewdcfb1ab. Early visual shown before backend dispatch. Current3102/investigate is visual only; temporary3103 stopped.
 - Next: Claude G2a real specialist contracts/provider runs exec49171/PID29046; audit, then G2b durable conversation/operations and G3 live graph/chart journey. Scheduled C1 supervision active every20minutes.

@@ -8,7 +8,7 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | --- | --- | --- |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
-| G2 actual specialist operations | doing | G2a contract/provider running in domino-G2a after early visual; durable G2b follows independent audit |
+| G2 actual specialist operations | doing | G2a973dac3 passes863tests but audit blocks context integrity; repair1 running94944/PID69311; G2b waits for acceptance |
 | G3 complete canvas journey | todo | Real operations drive graph, node details open chart/proof; no fake execution; waits on accepted G2 |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
 | H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
