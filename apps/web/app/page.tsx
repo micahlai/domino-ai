@@ -26,7 +26,7 @@ export default function LandingPage() {
       </ol>
       <div className="flex flex-wrap gap-3">
         <Button asChild size="lg">
-          <Link href="/investigate">
+          <Link href="/case/2u">
             Start investigating
             <ArrowRight className="ml-2 size-4" aria-hidden="true" />
           </Link>

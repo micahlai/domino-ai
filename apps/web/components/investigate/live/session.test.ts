@@ -245,6 +245,19 @@ describe("navigation guard", () => {
     expect(mayApplyCompletion({ ...here, alive: false, search: "" })).toBe(false);
     expect(mayApplyCompletion({ alive: true, pathname: "/historical", search: "" })).toBe(false);
   });
+  it("follows the route it is mounted on, and ignores c where the path fixes the conversation", () => {
+    const route = { alive: true, path: "/case/2u/simulations/a", pinned: true, originId: "a" };
+    expect(mayApplyCompletion({ ...route, pathname: "/case/2u/simulations/a", search: "" })).toBe(
+      true,
+    );
+    expect(mayApplyCompletion({ ...route, pathname: "/case/2u/simulations/b", search: "" })).toBe(
+      false,
+    );
+    expect(mayApplyCompletion({ ...route, pathname: "/investigate", search: "" })).toBe(false);
+    const workspace = { alive: true, path: "/case/2u", originId: "a" };
+    expect(mayApplyCompletion({ ...workspace, pathname: "/case/2u", search: "?c=a" })).toBe(true);
+    expect(mayApplyCompletion({ ...workspace, pathname: "/case/2u", search: "?c=b" })).toBe(false);
+  });
 });
 
 describe("describeError", () => {

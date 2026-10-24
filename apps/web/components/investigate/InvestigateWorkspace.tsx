@@ -462,6 +462,7 @@ function Workspace({
   canAlternative,
   renderOutput,
   renderKnowledge,
+  embedded,
 }: InvestigateWorkspaceProps) {
   // Omitted means the G1 preview Domino. An explicit [] is a real, empty investigation.
   // Company knowledge is a view of evidence the sources already carry, added after them.
@@ -575,17 +576,21 @@ function Workspace({
       >
         {/* A compact toolbar above the canvas on mobile so it never covers the graph; floats top-left on desktop. */}
         <div className="flex flex-wrap items-center gap-x-3 border-b px-3 lg:pointer-events-none lg:absolute lg:left-4 lg:top-4 lg:z-10 lg:flex-col lg:items-start lg:gap-1.5 lg:border-b-0 lg:px-0">
-          <Link
-            href="/"
-            aria-label="Domino home"
-            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-            <span className="text-lg">
-              domino<span className="text-primary">.</span>
-            </span>
-          </Link>
-          <h1 className="text-sm font-medium">Investigate</h1>
+          {embedded ? null : (
+            <>
+              <Link
+                href="/"
+                aria-label="Domino home"
+                className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
+                <span className="text-lg">
+                  domino<span className="text-primary">.</span>
+                </span>
+              </Link>
+              <h1 className="text-sm font-medium">Investigate</h1>
+            </>
+          )}
           <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
           {nodes.length > 1 ? (
             <p className="sr-only text-xs text-muted-foreground lg:not-sr-only lg:max-w-56">

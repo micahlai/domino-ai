@@ -59,4 +59,6 @@ export type InvestigateWorkspaceProps = {
   renderOutput?: (node: CanvasNode) => ReactNode;
   /** Optional detail for the Company knowledge node (G8). Rendered from saved evidence only. */
   renderKnowledge?: () => ReactNode;
+  /** Inside another page that already carries the brand and title (the case workspace). */
+  embedded?: boolean;
 };

@@ -20,8 +20,13 @@ const ErrorData = z.object({ code: z.string() });
 
 type Phase = { pending?: boolean; error?: string };
 
+/** Where this controller is mounted. Omitted = the legacy /investigate page. A pinned `id` is a
+ * conversation fixed by the route (a detail page), so there is no `c` to read or keep. */
+export type Place = { path: string; newHref: string; id?: string };
+const LEGACY: Place = { path: "/investigate", newHref: "/investigate" };
+
 /** Query state in words. Loading, missing, failed and malformed are all different. */
-function readConversation(raw: unknown, wantedId: string) {
+export function readConversation(raw: unknown, wantedId: string) {
   if (raw === undefined) return { state: "loading" as const };
   if (raw instanceof Error) {
     const data = raw instanceof ConvexError ? ErrorData.safeParse(raw.data) : undefined;
@@ -42,7 +47,11 @@ function readConversation(raw: unknown, wantedId: string) {
   return { state: "ready" as const, conversation: parsed.data };
 }
 
-function Frame({ children, fixed }: { children: ReactNode; fixed?: boolean }) {
+function Frame({
+  children,
+  fixed,
+  newHref,
+}: { children: ReactNode; fixed?: boolean; newHref: string }) {
   return (
     <div className="flex h-full flex-col">
       {fixed ? (
@@ -51,7 +60,7 @@ function Frame({ children, fixed }: { children: ReactNode; fixed?: boolean }) {
             One question per investigation. Domino follows fixed steps in order.
           </p>
           <Link
-            href="/investigate"
+            href={newHref}
             className="inline-flex min-h-11 items-center rounded text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           >
             New investigation
@@ -63,7 +72,7 @@ function Frame({ children, fixed }: { children: ReactNode; fixed?: boolean }) {
   );
 }
 
-function Session({ conversationId }: { conversationId?: string }) {
+function Session({ conversationId, place }: { conversationId?: string; place: Place }) {
   const router = useRouter();
   const connection = useConvexConnectionState();
   const queries = useMemo(
@@ -108,6 +117,8 @@ function Session({ conversationId }: { conversationId?: string }) {
       pathname: window.location.pathname,
       search: window.location.search,
       originId: conversationId,
+      path: place.path,
+      pinned: place.id !== undefined,
     });
 
   async function perform(
@@ -180,7 +191,7 @@ function Session({ conversationId }: { conversationId?: string }) {
   };
 
   return (
-    <Frame fixed={!!conversationId}>
+    <Frame fixed={!!conversationId} newHref={place.newHref}>
       <InvestigateWorkspace
         sessionId={conversationId}
         connection={state}
@@ -197,26 +208,28 @@ function Session({ conversationId }: { conversationId?: string }) {
         canAlternative={ready?.canAlternative}
         renderOutput={renderOutput}
         renderKnowledge={renderKnowledge}
+        embedded={place !== LEGACY}
       />
     </Frame>
   );
 }
 
-function Connected() {
+function Connected({ place }: { place: Place }) {
   const params = useSearchParams();
-  const id = conversationFromSearch(params.toString());
+  const id = place.id ?? conversationFromSearch(params.toString());
   // A different conversation is a different session: action state and request ids start clean.
-  return <Session key={id ?? "new"} conversationId={id} />;
+  return <Session key={id ?? "new"} conversationId={id} place={place} />;
 }
 
-export function InvestigateLive() {
+export function InvestigateLive({ place = LEGACY }: { place?: Place }) {
   // Missing deployment stays honestly unavailable; nothing is staged in its place.
   if (!process.env.NEXT_PUBLIC_CONVEX_URL)
     return (
       <InvestigateWorkspace
         connection="unavailable"
         error="This environment is not connected to the investigation service, so nothing can be sent."
+        embedded={place !== LEGACY}
       />
     );
-  return <Connected />;
+  return <Connected place={place} />;
 }

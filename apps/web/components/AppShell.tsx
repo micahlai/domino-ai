@@ -24,8 +24,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inDemo = pathname.startsWith("/c/");
   const companyId = inDemo ? pathname.split("/")[2] : "";
-  // The agent canvas owns the whole window and pins Original tokens, so it skips the shared header.
-  if (pathname.startsWith("/investigate")) {
+  // The agent canvas and the case workspace own the whole window and pin Original tokens, so they skip the shared header.
+  if (pathname.startsWith("/investigate") || pathname.startsWith("/case/")) {
     return (
       <main id="main" className="min-h-dvh">
         {children}
