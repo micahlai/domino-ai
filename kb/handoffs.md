@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-24 Codex friend knowledge accepted, inspector launched
+- G7friend42421c6 independently approved and actual saved payload probe passed; integrated7ee475b,1,128combinedtests/typecheck/lint pass. No future/reveal data entered frozen projection.
+- Sole G8Claude8943/exec14882 now wires raw saved snapshot (including roles) into Company knowledge details. Stable3102 remains acceptedb261057. Chrome control timeout blocks current CREAO setup attempt; no calls or settings changed. Main untouched.
+
 ## 2026-10-24 Codex product cleanup accepted
 - G8a320c42c independently accepted/integratedb261057 after1,080combinedtests/typecheck/lint/build and mobile browser/CTA checks. Stable3102 refreshed, navigation now promotes investigation, old routes preserved.
 - No owned Claude active. G7 friend projection pending; G8 knowledge wiring awaits it. CREAO setup/live coordinator still unverified. Main unchanged.

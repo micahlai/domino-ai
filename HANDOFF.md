@@ -1,6 +1,6 @@
 # Domino handoff
 
-Current authority: kb/coordination/historical/active-run.md. G6 grouped map and G8a product-entry cleanup accepted, final feature integrationb261057;1,080tests/typecheck/lint/build and desktop/mobile browser pass. Stable3102 PID89169/exec12818 serves accepted UI; grouped screenshot /tmp/domino-grouped-canvas-accepted.png. No owned Claude worker active. G7 projection remains friend-owned; G8 knowledge wiring awaits its reviewed commit. Continue CREAO setup in existing native Chrome session, app-scoped only, verification gateOFF. Backend3214 restored with existing data. Main694ab2a unchanged.
+Current authority: kb/coordination/historical/active-run.md. G7 friend42421c6 independently approved, actual saved-run probe passed, integrated7ee475b and combined1,128tests/typecheck/lint pass. G8 knowledge inspector ClaudeSonnet8943/exec14882 is verified sole UI writer in domino-G8, /tmp/domino-G8-claude.log. Stable3102 still acceptedb261057, no projector UI until G8 passes. Next audit G8, preserving raw snapshot.roles/cutoff and real data. CREAO native Chrome control timed out again; no configuration or provider calls. Main unchanged; monitor active.
 
 Latest15:06: G5cleanup accepted/integratedc40552a,1049tests/build and actualbrowser detail/earlyalternativechecks pass. Stable3102 servescleanup, no Claudeimplementationactive. CREAOsignin/config missing forsecondaudit; userasked, gateOFF/no livecalls. Preparedcreao-live-acceptance.md. FullCREAOcoordinatorjourneyincomplete; next requires accountUIaccess, not moreidleworkers. Mainuntouched.
 
