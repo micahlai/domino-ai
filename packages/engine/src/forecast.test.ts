@@ -290,6 +290,40 @@ describe("changes", () => {
       /toDate/,
     );
   });
+  it("shift_hire counts only days after asOf (regression: review E3a-f9b5ad2 P1)", () => {
+    const hire = (fromDate: string, toDate: string) => ({
+      kind: "shift_hire" as const,
+      label: "Eng",
+      monthlyCost: 300_000,
+      fromDate,
+      toDate,
+    });
+    // Entirely before asOf 2026-10-30: opening cash already reflects it
+    expect(inflows(tiny, noModel, [hire("2026-10-01", "2026-10-02")])).toEqual(at(0, 0));
+    // [10-29, 11-03): 10-29 and asOf itself excluded; 10-31 (1/31 of Oct), 11-01 and 11-02
+    // (2/30 of Nov) all land in week 0: 300000/31 + 20000 = 29677.42 -> 29677
+    expect(inflows(tiny, noModel, [hire("2026-10-29", "2026-11-03")])).toEqual(at(0, 29_677));
+  });
+  it("rounds exact values half up, once (regression: review E3a-f9b5ad2 P2)", () => {
+    // asOf Fri 2027-01-29, week 0 = Feb 1-7: 100018 * 7 / 28 = 25004.5 -> 25005
+    const feb = { ...tiny, asOf: "2027-01-29" };
+    const hire = {
+      kind: "shift_hire" as const,
+      label: "Eng",
+      monthlyCost: 100_018,
+      fromDate: "2027-02-01",
+      toDate: "2027-02-08",
+    };
+    expect(inflows(feb, noModel, [hire])).toEqual(at(0, 25_005));
+    // 125 * (100 - 64.4) / 100 = 44.5 -> 45
+    const early = {
+      kind: "discount_early_pay" as const,
+      invoiceId: "i1",
+      percent: 64.4,
+      payOn: "2026-11-03",
+    };
+    expect(inflows(withInvoice("2026-12-01", 125), noModel, [early])).toEqual(at(0, 45));
+  });
 });
 
 describe("purity", () => {

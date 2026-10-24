@@ -1,5 +1,6 @@
 import type { Change, ISODate, Snapshot } from "@domino/contracts";
 import { addDays, daysInMonth } from "./dates";
+import { type Ratio, addRatio, decimalRatio, ratio, roundCents } from "./money";
 import { type CashItem, bucketOf } from "./schedule";
 
 /**
@@ -61,39 +62,44 @@ function applyOne(
       requireRecord(snapshot.invoices, change.invoiceId, "invoice");
       return items.map((i) =>
         isItem(i, "invoice", change.invoiceId)
-          ? {
-              ...i,
-              date: change.payOn,
-              amount: Math.round((i.amount * (100 - change.percent)) / 100),
-            }
+          ? { ...i, date: change.payOn, amount: discounted(i.amount, change.percent) }
           : i,
       );
     case "shift_hire":
-      return [...items, ...hireSavings(change, weeks)];
+      return [...items, ...hireSavings(change, weeks, snapshot.asOf)];
   }
+}
+
+/** amount * (100 - percent) / 100, exact until the final rounding. */
+function discounted(amount: number, percent: number): number {
+  const p = decimalRatio(percent);
+  return roundCents(ratio(BigInt(amount) * (100n * p.den - p.num), 100n * p.den));
 }
 
 /**
  * Daily rate is monthlyCost / days in that calendar month, over [fromDate, toDate).
- * Each week's total is rounded to cents once. Savings are money not spent, so they count as cash in.
+ * Days on or before asOf are already reflected in opening cash, so they save nothing now.
+ * Each week's exact total is rounded to cents once. Savings are money not spent, so they count as cash in.
  */
 function hireSavings(
   change: Extract<Change, { kind: "shift_hire" }>,
   weeks: ISODate[],
+  asOf: ISODate,
 ): CashItem[] {
   if (change.toDate < change.fromDate)
     throw new Error(`shift_hire ${change.label}: toDate before fromDate`);
-  const perWeek = new Map<number, number>();
+  const perWeek = new Map<number, Ratio>();
   for (let day = change.fromDate; day < change.toDate; day = addDays(day, 1)) {
-    const week = bucketOf(day, weeks);
-    if (week !== null)
-      perWeek.set(week, (perWeek.get(week) ?? 0) + change.monthlyCost / daysInMonth(day));
+    const week = day > asOf ? bucketOf(day, weeks) : null;
+    if (week === null) continue;
+    const daily = ratio(change.monthlyCost, daysInMonth(day));
+    perWeek.set(week, addRatio(perWeek.get(week) ?? ratio(0), daily));
   }
   return [...perWeek].map(([week, saved]) => ({
     kind: "change" as const,
     id: change.label,
     date: weeks[week] ?? change.fromDate,
-    amount: Math.round(saved),
+    amount: roundCents(saved),
   }));
 }
 
