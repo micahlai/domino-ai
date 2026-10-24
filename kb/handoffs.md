@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 08:49 Codex final overnight checkpoint
+- Done: H4d code5db5f21 independently accepted at3570989. Final preview assembled in its own worktree, fresh offline install,815tests/typechecks/lint/build and real save/reveal/alternative/reload/activity journey pass. Four desktop/mobile styles captured. All Claude workers finished; monitor paused.
+- Next: review `preview/historical-overnight` at http://127.0.0.1:3102/historical and `kb/coordination/historical/overnight-result.md` before main integration. Preserve isolated backend3210/3211 and all worktrees.
+- Watch out: accepted case is a retrospective cash forecast miss, not validated distress warning. Unknown alternative benefit/downside remains explicit. Main694ab2a unchanged. Forced outage/reduced-motion runtime emulation are unverified; mutation request IDs do not survive reload.
+
 ## 2026-10-24 08:26 Codex heartbeat
 - Done: core4d5c86f independently accepted;798tests/build and real browser journey pass. Frozen sources, retrospective miss, cost-only alternative, reload, keyboard and mobile checked. Combined backend/UI90bcbf5 passed806tests and pushed.
 - Next: verified Sonnet H4d wires actual activity using existing panel; audit/build/fresh live journey then final preview branch.

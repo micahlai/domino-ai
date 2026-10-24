@@ -7,9 +7,9 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
-| C0/H1/H2/H3/H4 overnight run | doing | Historical backend4795d51 accepted734tests and live checks; Live core4d5c86f accepted; H4d activity wiring running after806test integration; active-run.md owns current state |
-| H4 visual styles/motion | doing | Presentation436878e accepted; Core4d5c86f accepted with browser proof; final activity wiring in progress |
-| H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass, UI wiring pending |
+| C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
+| H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
+| H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass; final UI wiring accepted5db5f21 |
 | E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |
 | E2a 29de286 | blocked | 650 tests/typecheck/lint pass; pagination, payout and OpenAPI defects independently reproduced; parked |
 | E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |

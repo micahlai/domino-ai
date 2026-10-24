@@ -1,5 +1,15 @@
 # Domino handoff
 
+## Current checkpoint: overnight preview complete, 08:49 PDT
+
+- Goal complete: one reviewable historical journey with four styles and actual activity. All Claude workers finished; monitoring is PAUSED. No further dispatch queued.
+- Open http://127.0.0.1:3102/historical from `../domino-preview`, branch `preview/historical-overnight`. Code5db5f21, acceptance3570989; final docs above it. Fresh offline install, 815 tests, typechecks/lint/build and browser journey pass.
+- Read [final report](kb/coordination/historical/overnight-result.md) and [runtime ownership](kb/coordination/historical/active-run.md). Screenshots for all styles, source links, restart commands and known limits are there.
+- Next exact step: user reviews demo and framing before main integration. Main694ab2a and unrelated work are untouched. Final preview3102 and isolated backend3210/3211 remain running; old owned previews stopped.
+- Open question: deepen verified 2U debt/constraint history or keep the cash-miss demo. This is retrospective, not validated warning accuracy. Agent canvas/chat remains deferred. Pending mutation IDs do not persist through reload; forced outage and runtime reduced motion are not browser verified.
+
+All older entries below are historical and superseded by this checkpoint.
+
 ## Active direction: Codex supervision, Claude development
 
 - Latest08:26 PDT: live core4d5c86f accepted after798tests/build, independent review and actual browser save/reveal/alternative/reload. Backend4795d51 merged into H4; combined806tests pass and90bcbf5 pushed. Only H4d activity wiring now runs (exec72525/PID99485). Preview3101 serves working core4d5c86f; final event wiring/browser/preview-branch gates remain.
