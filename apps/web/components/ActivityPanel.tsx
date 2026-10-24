@@ -8,6 +8,7 @@ import {
   type ActivityScope,
   type ActivityState,
   DEFAULT_CAP,
+  MAX_CONFLICTS,
   activityRows,
   emptyActivity,
   ingestActivity,
@@ -74,7 +75,8 @@ export function ActivityPanel(props: ActivityPanelProps) {
       <CardContent>
         {props.source === "unavailable" ? (
           <p className="text-sm text-muted-foreground">
-            No activity feed is connected yet. Nothing is running and nothing has been recorded.
+            No activity feed is connected yet, so the status is unknown. This panel cannot say
+            whether anything is running or has been recorded.
           </p>
         ) : (
           // A different case or run is a different feed, so its state starts clean.
@@ -119,7 +121,7 @@ function Feed({ events, scope, cap = DEFAULT_CAP, onOpenEvidence }: FeedProps) {
       </output>
       <ul
         aria-label="Activity events"
-        className="max-h-72 space-y-1 overflow-y-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="max-h-72 space-y-1 overflow-y-auto overflow-x-hidden rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {rows.map((row) => {
           const { latest } = row;
@@ -138,7 +140,9 @@ function Feed({ events, scope, cap = DEFAULT_CAP, onOpenEvidence }: FeedProps) {
                 aria-pressed={row.key === selectedKey}
                 onClick={() => setSelectedKey(row.key === selectedKey ? undefined : row.key)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm",
+                  // Badge beside one text column, at any width: the label keeps the room, and the
+                  // full timestamp wraps under it instead of squeezing it.
+                  "grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 rounded-md border px-3 py-2 text-left text-sm",
                   "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   row.key === selectedKey && "bg-muted",
                 )}
@@ -155,18 +159,26 @@ function Feed({ events, scope, cap = DEFAULT_CAP, onOpenEvidence }: FeedProps) {
                     {view.text}
                   </Badge>
                 </motion.span>
-                <span className="min-w-0 flex-1">
+                <span className="min-w-0">
                   <span className="block text-xs text-muted-foreground">
                     {kindLabel[latest.kind]}
                   </span>
                   <span className="block break-words">{latest.label}</span>
+                  <time
+                    dateTime={latest.occurredAt}
+                    className="block text-xs tabular-nums text-muted-foreground"
+                  >
+                    {formatRuntime(latest.occurredAt)}
+                  </time>
+                  {row.retry ? (
+                    <span className="block text-xs text-muted-foreground">
+                      Retry started{" "}
+                      <time dateTime={row.retry.occurredAt} className="tabular-nums">
+                        {formatRuntime(row.retry.occurredAt)}
+                      </time>
+                    </span>
+                  ) : null}
                 </span>
-                <time
-                  dateTime={latest.occurredAt}
-                  className="shrink-0 text-xs tabular-nums text-muted-foreground"
-                >
-                  {formatRuntime(latest.occurredAt)}
-                </time>
               </button>
             </motion.li>
           );
@@ -174,8 +186,9 @@ function Feed({ events, scope, cap = DEFAULT_CAP, onOpenEvidence }: FeedProps) {
       </ul>
       {state.conflicts ? (
         <p className="text-xs text-destructive">
-          {state.conflicts} event{state.conflicts === 1 ? "" : "s"} reused an id with different
-          content and {state.conflicts === 1 ? "was" : "were"} ignored.
+          {state.conflicts >= MAX_CONFLICTS ? `${MAX_CONFLICTS}+` : state.conflicts} conflicting
+          version{state.conflicts === 1 ? "" : "s"} of an event id{" "}
+          {state.conflicts === 1 ? "was" : "were"} ignored. The first copy is kept.
         </p>
       ) : null}
       {selected ? (
