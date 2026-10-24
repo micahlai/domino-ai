@@ -16,7 +16,7 @@ import {
 import { daysBetween, toMs } from "./dates";
 import { money } from "./dominoes";
 import { forecast } from "./forecast";
-import { compare, mean, scoreWeeks, toPct } from "./grade";
+import { assertBank, compare, mean, scoreWeeks, toPct } from "./grade";
 import type { Ratio } from "./money";
 
 const MIN_SAMPLES = 3;
@@ -41,6 +41,8 @@ export function learn(
   const current = SnapshotSchema.parse(snapshot);
   const parsed = CompanyModelSchema.parse(model);
   const { examples } = LearnContextSchema.parse(context);
+  // The cutoff gates every observation, so it must be a real calendar date.
+  toMs(current.asOf);
   for (const example of examples) assertExample(example, current);
   const next = candidate(current, parsed);
   if (!next) return model;
@@ -63,10 +65,13 @@ function assertExample(example: LearningExample, current: Snapshot): void {
   }
   // The bank window end must be known by now too, or replay would use future bank data.
   for (const date of [origin.asOf, example.asOf]) {
+    toMs(date);
     if (date > current.asOf) {
       throw new Error(`replay example dated ${date} is after the current snapshot ${current.asOf}`);
     }
   }
+  // Checked here, not only in replay, so bad evidence fails even when no candidate exists.
+  assertBank(example.actualBank);
 }
 
 /** Completed example-weeks, each weighted equally. Origins with no closed week add nothing. */

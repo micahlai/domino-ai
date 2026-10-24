@@ -92,7 +92,7 @@ function missEvidence(week: ScoredWeek): Evidence[] {
     {
       source: "nessie",
       ref: `week:${week.weekStart}`,
-      note: `Week of ${week.weekStart}: forecast closing ${money(Number(week.forecastClosing))}, bank shows ${money(Number(week.actualClosing))} (${pct}% off).${denominator}`,
+      note: `Week of ${week.weekStart}: forecast closing ${money(safeCents(week.forecastClosing, week.weekStart))}, bank shows ${money(safeCents(week.actualClosing, week.weekStart))} (${pct}% off).${denominator}`,
     },
     ...week.txns.map((t) => ({
       source: "nessie" as const,
@@ -117,7 +117,8 @@ function assertForecast(forecast: Forecast, forecastAsOf: ISODate): void {
       !amounts.every(Number.isSafeInteger) ||
       w.inflow < 0 ||
       w.outflow < 0 ||
-      w.closing !== w.opening + w.inflow - w.outflow ||
+      // BigInt: safe operands can still have an inexact Number sum.
+      BigInt(w.closing) !== BigInt(w.opening) + BigInt(w.inflow) - BigInt(w.outflow) ||
       (previousClosing !== undefined && w.opening !== previousClosing)
     ) {
       throw new Error(
@@ -128,7 +129,17 @@ function assertForecast(forecast: Forecast, forecastAsOf: ISODate): void {
   }
 }
 
-function assertBank(bank: BankTxn[]): void {
+/** Cents is a safe Number; refuse rather than round an aggregate outside that range. */
+function safeCents(cents: bigint, weekStart: ISODate): number {
+  if (cents > BigInt(Number.MAX_SAFE_INTEGER) || cents < BigInt(Number.MIN_SAFE_INTEGER)) {
+    throw new RangeError(
+      `${cents} cents for the week of ${weekStart} is outside the safe cents range and cannot be shown exactly`,
+    );
+  }
+  return Number(cents);
+}
+
+export function assertBank(bank: BankTxn[]): void {
   const seen = new Set<string>();
   for (const t of bank) {
     toMs(t.date);

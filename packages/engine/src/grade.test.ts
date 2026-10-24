@@ -126,6 +126,27 @@ describe("grade", () => {
     expect(() => grade(friday, [], { ...window, bankWindowComplete: false as true })).toThrow();
   });
 
+  it("checks the balance equation exactly, even past safe intermediate sums", () => {
+    // MAX + 2 is not exact as a Number; the true closing is 2.
+    const max = Number.MAX_SAFE_INTEGER;
+    const window = ctx("2026-10-30", "2026-11-08");
+    const bank = [txn("in", "2026-11-02", 2), txn("out", "2026-11-02", -max)];
+    const wrong = makeForecast("2026-10-30", max, [[2, max]]);
+    expect(wrong.weeks[0]?.closing).toBe(1);
+    expect(() => grade(wrong, bank, window)).toThrow(/inconsistent/);
+    const right = makeForecast("2026-10-30", 2);
+    right.weeks[0] = { ...right.weeks[0]!, opening: max, inflow: 2, outflow: max };
+    expect(grade(right, bank, window).errorPct).toBe(0);
+  });
+
+  it("refuses to print bank cash beyond safe cents instead of rounding it", () => {
+    const max = Number.MAX_SAFE_INTEGER;
+    const bank = [txn("large", "2026-11-02", max), txn("small", "2026-11-02", 2)];
+    const run = () => grade(makeForecast("2026-10-30", 0), bank, ctx("2026-10-30", "2026-11-08"));
+    expect(run).toThrow(RangeError);
+    expect(run).toThrow(/9007199254740993 cents.*week of 2026-11-02/);
+  });
+
   it("does not mutate its inputs", () => {
     const before = JSON.stringify([friday, fridayBank]);
     grade(friday, fridayBank, ctx("2026-10-30", "2026-11-15"));

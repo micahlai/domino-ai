@@ -188,6 +188,24 @@ describe("learn: replay acceptance", () => {
     expect(() => learn(current, empty, [], ctx(late, late))).toThrow();
   });
 
+  it("rejects an impossible current cutoff before using it", () => {
+    expect(() => learn({ ...current, asOf: "2026-10-32" }, empty, [], ctx(late))).toThrow(
+      /invalid date: 2026-10-32/,
+    );
+  });
+
+  it("validates replay bank records even when no candidate exists", () => {
+    // No paid invoices or cards: candidate is null, but bad evidence is still bad.
+    const noSignal = base("2026-10-30");
+    const dup = example(origin, [txn("same", "2026-09-10", 1), txn("same", "2026-09-11", 1)]);
+    expect(() => learn(noSignal, empty, [], ctx(dup))).toThrow(/duplicate bank transaction/);
+    const badDate = example(origin, [txn("bad", "2026-02-30", 1)]);
+    expect(() => learn(noSignal, empty, [], ctx(badDate))).toThrow(/invalid date/);
+    const unsafe = example(origin, [txn("big", "2026-09-10", Number.MAX_SAFE_INTEGER + 2)]);
+    expect(() => learn(noSignal, empty, [], ctx(unsafe))).toThrow(/safe integer/);
+    expect(learn(noSignal, empty, [], ctx(late))).toBe(empty);
+  });
+
   it("does not mutate its inputs", () => {
     const context = ctx(late);
     const before = JSON.stringify([current, empty, context]);
