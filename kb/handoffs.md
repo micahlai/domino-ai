@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 06:46 Codex heartbeat
+- Done: real 2U cash engine validation passed713tests; H4 presentation436878e passed728tests/build and desktop/mobile activity checks. Both branches pushed.
+- Next: Claude H2c builds immutable run/reveal APIs, then audit/local smoke, actual activity, and live UI wiring on H4 ancestry.
+- Watch out: historical model honestly misses by$37.58M; response is cost-only sensitivity with unmodeled downside. No live feed or complete journey yet.
+
 ## 2026-10-24 06:02 Codex heartbeat
 - Done: approved H2acontract repair and H3presentation; raw-backed2Ucashsubset independentlyverified. H4foundation buildfailure andURLbugs routedtoClaude.
 - Next: normalizecashsubset, auditpureperiodmodel, repairfourstyles; three boundedworkersverified. Fullstate in active-run.md.

@@ -2,6 +2,10 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest 06:46 PDT: H4 style/activity presentation436878e passed independent review,728tests/build and mobile/browser checks, and is pushed. Only Claude H2c is writing now. The UI waits for tested immutable run/reveal APIs and real activity; all four styles are preserved. No main merge or cloud deployment.
+
+- Latest 06:43 PDT: real-case engine/evidence gate passed713tests and is pushed at3fd98b6. Claude H2c now implements immutable saved runs and reveal APIs. Activity UI repair436878e is under independent review/fullcheck; live UI wiring waits for tested API readiness. Current sessions and restart instructions are in active-run.md.
+
 - Latest 06:27 PDT: normalized cash evidence accepted at a4e49e0 after source/schema validation and formatting-only lint repair. Four-style foundation accepted at1d7cdf6; desktop/mobile screenshots saved. Claude now repairs five period-engine audit defects and builds the typed activity presentation. Live persistence and historical UI wiring remain pending. Read active-run.md for exact processes, servers and dependency gates.
 
 - Latest06:02: three verifiedworkers now H1cash-subsetnormalization, H2bsyntheticperiodmodel, H4astylerepair1. H2acontracts accepted682tests. H3presentationaccepted656tests/build/desktop. H4initialbuildfailed despite664tests, repairrunning. See compactactive-run.md forcurrentownership; oldnotesbelowarehistory.
