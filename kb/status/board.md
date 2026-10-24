@@ -10,8 +10,8 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | S0 | Machine setup | `prompts/shared/00-setup.md` | — | doing | main | Offline check gate verified with Node 24; credentials/accounts remain unverified |
 | E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | doing | main | E1a merged at 5762475; later E1 slices remain open |
 | E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
-| E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | doing | E3a-forecast | Claude built E3a at f9b5ad2; two review fixes required, E3b/contracts still open |
-| E4 | Engine: risks, fix scoring, history, stress test | `prompts/engine/E4-multiverse.md` | E3 | todo | | Powers the hero visual |
+| E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | doing | E3a-forecast | Claude repaired E3a at 4a9be26; review and 41-test branch check pass, merge pending; C1 merged, E3b next |
+| E4 | Engine: risks, fix scoring, history, stress test | `kb/tasks/E4-multiverse.md` | E3b merged | blocked | | Card prepared; launch after E3b review/integration |
 | E5 | Connectors + tie-out (Convex actions) | `prompts/engine/E5-connectors.md` | E2, P2 | todo | | |
 | E6 | Agents: CREAO + Claude adapters | `prompts/engine/E6-agents.md` | S0 | doing | main | E6a merged at 63366ae; live adapters remain open |
 | E7 | Wire actions: connect.run, recompute, week.advance; grade + learn | `prompts/engine/E7-wiring-learning.md` | E4, E5, E6 | todo | | |
@@ -20,7 +20,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 ### First slices
 
 Plan: `kb/tasks/launch-plan-2026-10-24.md`. These slices need the verified offline S0 gate, not live credentials.
-Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; its f9b5ad2 review requires repairs. Do not launch another engine worker. User authorized E1a/E6a integration; both are merged and combined main passes 81 tests, typechecks, lint and build.
+Parent E1/E3/E6 remain incomplete. Claude completed E3a repairs at 4a9be26; independent review and 41-test branch check pass, integration pending. C1 is merged under user authorization. Combined main passes 103 tests, typechecks, lint and build. E3b/E4 cards are prepared, with sequential dependency gates; neither is launched.
 
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
@@ -28,7 +28,12 @@ Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; its f9b5ad2 revi
 | E1a | `kb/tasks/E1a-kestrel.md` | S0 offline checks | done | E1a-kestrel | merged at 5762475 |
 | E6a | `kb/tasks/E6a-agent-feasibility.md` | S0 offline checks; public docs | done | E6a-agent-feasibility | merged at 63366ae |
 
-C1 contract preparation: review, `kb/tasks/C1-engine-context.md`, commit `f80401d` on `contract-engine-context`, sibling `domino-contract-engine-context`. Independent review passed; 103 tests/typechecks/lint passed. Pending Jayden/Micah review before contract merge.
+C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under explicit user authorization. Independent review and post-merge 103-test check/build passed. Existing data backfill is separate.
+
+| ID | Task card | Dependency | Status | Planned branch | Worktree |
+| --- | --- | --- | --- | --- | --- |
+| E3b | `kb/tasks/E3b-dominoes.md` | C1 done; E3a repair integration pending | blocked | E3b-dominoes | Not created; human launch in Codex GPT-6.1 Sol/high after gate |
+| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | blocked | E4-multiverse | Not created; human launch in Claude Code after gate |
 
 ## Product (Micah)
 

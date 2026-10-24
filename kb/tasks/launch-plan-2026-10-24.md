@@ -1,5 +1,5 @@
 # Jayden launch plan: 2026-10-24
-Owner: Codex brain. Initial preparation is complete. Update: Claude Code implemented E3a at f9b5ad2; independent review blocks merge on two bugs. Use kb/tasks/E3a-r1-money-dates.md for repairs in that existing worktree. Do not launch the E3a prompt below again.
+Owner: Codex brain. Historical first-wave plan. Update: Claude repaired E3a at 4a9be26; independent review and 41-test check pass, integration pending. C1 merged at 3c54e67. Next cards are E3b-dominoes.md and E4-multiverse.md, governed by kb/spec/engine-e3b-e4-implementation.md. Do not relaunch the original E3a prompt below.
 Current gate: Saturday noon, real engine output in the multiverse. These three slices start that path; they do not satisfy the gate by themselves.
 
 ## Decision

@@ -1,5 +1,7 @@
 # E3 · Engine: changes, forecast, dominoes (Jayden)
 
+Current execution card: `kb/tasks/E3b-dominoes.md`. Read `kb/spec/engine-e3b-e4-implementation.md` first; it supersedes conflicting instructions in this historical full-task prompt. Respect the card dependency gate and worker ownership.
+
 Tool: Claude Code or Codex ("Codex OK"). Branch: `E3-forecast`. Folder: `packages/engine`. Depends on: S0.
 Skill files (in skills/): kb-sync, engine-tdd.
 

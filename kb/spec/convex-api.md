@@ -69,7 +69,7 @@ and parsed with the Zod schema when read in actions.
 
 ## Actions (Jayden)
 
-Pending C1: [engine-context-contract-proposal.md](engine-context-contract-proposal.md) defines explicit invoice links, bill targets, branch risk IDs, fix targets and engine calculation contexts. No table-validator migration is needed. After contract approval, actions must load ordered ancestry and pass the model/changes for daily deadline checks. Existing seed records require a separate safe backfill; rerunning the create-once seed does not update them. No backfill has run.
+Merged C1 (3c54e67), engine wiring pending: [engine-context-contract-proposal.md](engine-context-contract-proposal.md) defines explicit invoice links, bill targets, branch risk IDs, fix targets and engine calculation contexts. No table-validator migration is needed. Actions must load ordered ancestry and pass the model/changes for daily deadline checks. Existing seed records require a separate safe backfill; rerunning the create-once seed does not update them. No backfill has run.
 
 | Function | What it does |
 | --- | --- |

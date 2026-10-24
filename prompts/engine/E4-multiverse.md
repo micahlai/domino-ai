@@ -1,5 +1,7 @@
 # E4 · Engine: risks, fix scoring, history, stress test (Jayden)
 
+Current execution card: `kb/tasks/E4-multiverse.md`. Read `kb/spec/engine-e3b-e4-implementation.md` first; it supersedes conflicting instructions in this historical full-task prompt. Respect the card dependency gate and worker ownership.
+
 Tool: Claude Code. Branch: `E4-multiverse`. Folder: `packages/engine`. Depends on: E3.
 Skill files (in skills/): kb-sync, engine-tdd.
 

@@ -1,6 +1,6 @@
 # C1: Engine context contract proposal
-Status: prepared at f80401d on contract-engine-context for Jayden and Micah review. Independent review and 103-test workspace check passed. Not merged; no production or seeded data is changed.
-Scope: optional payload fields, new Zod context schemas, optional trailing Engine arguments, fixtures and contract tests. Claude continues E3a repairs on its existing branch.
+Status: merged on main at 3c54e67 under explicit user authorization after independent review of f80401d. Post-merge forced check passes 103 tests plus typechecks/lint; production build passes. No production or seeded data changed.
+Scope: optional payload fields, new Zod context schemas, optional trailing Engine arguments, fixtures and contract tests. Claude completed E3a repairs at 4a9be26; review and branch checks pass, integration pending.
 Decision: use explicit record relationships and calculation context rather than infer them from names or matching amounts. Counterargument: one-to-one invoice linkage does not cover split billing; reject that unsupported case in v1 rather than silently approximate it.
 
 ## 1. Deal identity and invoice linkage
@@ -48,6 +48,6 @@ Decision: use explicit record relationships and calculation context rather than 
 ## 6. Verification and rollout
 - Contract tests cover old-field omission, explicit null, retained metadata, bad links/duplicates, constraint field validity, context schemas and optional Engine signature compatibility.
 - Run focused contracts tests and full pnpm check including web/Convex, simulator and router. Existing malformed-deal fixture tests may need a contract-valid deliberate ambiguous copy in future E3b, not changes to Claude's current worktree.
-- Review C1 independently. Both owners review before merging the shared contract branch, per skills/contract-change/SKILL.md.
-- After approval: merge C1; then re-review/merge Claude's E3a repairs; E3b adopts invoice linkage and context, followed by E4 using common rule evaluation and explicit targets. E5/E7 later supplies contexts from Convex.
+- C1 independent review passed; the user explicitly authorized merging it. This authorization superseded the generic pre-merge approval step in skills/contract-change/SKILL.md. No separate Micah approval is claimed.
+- C1 is merged. Next integrate the reviewed E3a repair, then E3b adopts invoice linkage and context, followed by E4 using common rule evaluation and explicit targets. See engine-e3b-e4-implementation.md and the scoped cards. E5/E7 later supplies contexts from Convex.
 - Do not touch Claude's branch, seed live data, deploy, push, create paid calls, or send team messages during this preparation.

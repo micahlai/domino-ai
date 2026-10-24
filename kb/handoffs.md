@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:40 Codex brain (C1 merged, Claude repairs verified)
+- Done: merged reviewed C1 at 3c54e67 under user authorization; forced main check passes 103 tests plus typechecks/lint, build passes. Verified Claude repair 4a9be26 with independent Astra review and 41-test branch check. Prepared gated E3b/E4 cards and implementation brief; no feature code written by the brain.
+- Next: integrate reviewed E3a and run combined checks, then human launches E3b in Codex GPT-6.1 Sol/high from a fresh worktree. E4 follows E3b review/merge in Claude Code. Neither next worker is launched.
+- Watch out: E3a is still unmerged; its branch check is not combined C1 validation. Existing seed payloads need separate safe backfill. No push/deploy/reset, no E3a worktree edit, no worktree deletion. Concurrent Nessie research and untracked web tooling preserved.
+
 ## 2026-10-24 01:21 Codex brain (integration complete, C1 ready)
 - Done: E1a/E6a integrated on main at 5762475/63366ae; combined 81 tests, typechecks, lint, summary CLI and production build passed. Prepared C1 f80401d in its own contracts-only worktree; independent Astra review and lead's full 103-test check passed. Proposal, review and task Result recorded.
 - Next: Jayden/Micah review C1 before shared-contract merge. Claude remains on E3a repairs. E3b then consumes explicit invoice links and calculation contexts; E4 uses targeted fixes and common rule evaluation.

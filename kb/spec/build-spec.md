@@ -131,8 +131,8 @@ Data flow:
 
 The source of truth is code: `packages/contracts/src/`.
 
-Draft C1 additions for E3b/E4 are specified in [engine-context-contract-proposal.md](engine-context-contract-proposal.md).
-They are prepared on a separate contract branch and are not effective on main until both owners review and the branch is merged.
+C1 additions for E3b/E4 are merged at 3c54e67; their semantics are in [engine-context-contract-proposal.md](engine-context-contract-proposal.md).
+Engine adoption is pending. The scoped [E3b/E4 implementation brief](engine-e3b-e4-implementation.md) supersedes conflicting examples below, including unconditional consequences, p90 offsets, fix usefulness/status and unsupported automatic good events.
 
 | File | Holds |
 | --- | --- |
