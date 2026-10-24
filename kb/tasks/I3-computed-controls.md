@@ -8,6 +8,6 @@
 - **Verification:** Test readiness true for current computed base, false for fixture and stale-date branches, and unavailable company. Check type/build and existing UI tests. Codex will exercise browser after deployment; report that separately.
 - **Coordination:** You are not alone. No env/dependency/contract/hero styling edits, provider calls, deployment, secrets, other checkout writes, subagents, pull/rebase/reset/stash/merge/push. Commit only owned files and Result for independent review. Claude directly authorized by user.
 ## Result (worker fills this in when done)
-- Done:
-- What changed (files):
-- Watch out:
+- Done: 2026-10-24, Claude. `companies.capabilities` returns `{addEvent, simulate, nextWeek}`; addEvent/simulate are true only when a saved base branch exists at `baseBranchId(companyId, latestSnapshot.asOf)` for that company (same latest-snapshot rule as `loadInputs`). nextWeek is always false. LiveCompany queries it (loading skeleton until it resolves), passes `canSimulate` into LiveFixes, and says events and fixes are available but week advancement is not. Approval flow and FixCard wording untouched. Focused tests (30), `pnpm check` (98 web tests, biome clean) and `pnpm build` pass on Node 24.11.1. Browser not exercised (Codex after deploy).
+- What changed (files): `apps/web/convex/companies.ts` (new query), `apps/web/convex/tests/computed.test.ts` (true for current computed base; false after a newer snapshot, for the fixture company, a deleted company and a company with no snapshot), `apps/web/components/company/LiveCompany.tsx`, this Result.
+- Watch out: No `_generated` change needed: `api.d.ts` types `companies` as `typeof companies`, so the new query is picked up without codegen; the deployment still needs the function pushed. Readiness ignores `company.today` because the engine actions run on the latest snapshot, not `today`. FixtureCompany copy and `/playground` unchanged.
