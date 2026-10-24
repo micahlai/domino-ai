@@ -1,5 +1,7 @@
 # Domino handoff
 
+Current authority: kb/coordination/historical/active-run.md, now consolidated with old entries preserved separately. Preview c40552a is checked and running on3102; 1,049 tests/build/browser pass. No Claude worker is active. Real CREAO execution is blocked on browser sign-in and dedicated-agent configuration; verification gate stays off. Main is unchanged. Next: inspect access once, follow creao-live-acceptance.md, pause monitoring if the same blocker persists with no independent work.
+
 Latest15:06: G5cleanup accepted/integratedc40552a,1049tests/build and actualbrowser detail/earlyalternativechecks pass. Stable3102 servescleanup, no Claudeimplementationactive. CREAOsignin/config missing forsecondaudit; userasked, gateOFF/no livecalls. Preparedcreao-live-acceptance.md. FullCREAOcoordinatorjourneyincomplete; next requires accountUIaccess, not moreidleworkers. Mainuntouched.
 
 Update: G5 finished locallyeaa54d7 during this audit. No Claude writer active now. Independent audit_r1 and fullcheck /tmp/domino-G5-check.log running; not yet accepted/pushed. Stable3accfb9preview remains checked.
