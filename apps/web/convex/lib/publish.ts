@@ -9,7 +9,7 @@ import {
   FixCandidateSchema,
   SnapshotSchema,
 } from "@domino/contracts";
-import { engine } from "@domino/engine";
+import { engine, rankFixes } from "@domino/engine";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
@@ -484,7 +484,8 @@ async function loadAncestors(ctx: Ctx, companyId: Id<"companies">, parent: Store
 /**
  * Rebuild the whole current context once and require the stored root-to-parent chain, the
  * parent's candidate and the risks to match it. Rules and risk odds can change without moving
- * cash, so a forecast check alone would score a new fix beneath an old assessment.
+ * cash, so a forecast check alone would score a new fix beneath an old assessment. Fixes nested
+ * below the generated map are rebuilt level by level from their rebuilt parent, never trusted.
  */
 async function checkContext(
   ctx: Ctx,
@@ -499,24 +500,70 @@ async function checkContext(
   const { pool } = await proposalPool(ctx, companyId, existing, []);
   const computation = calculate(companyId, inputs, pool);
   const fresh = nextBranches(computation);
+  let parent: Branch | undefined;
+  const before: Change[] = [];
   for (const branch of chain) {
-    const next = fresh.get(branch.id);
+    const next =
+      fresh.get(branch.id) ??
+      (parent && (await rebuildNested(ctx, companyId, inputs, parent, before, branch.id)));
     if (!next || canonical({ ...next, status: branch.status }) !== canonical(branch)) stale();
+    if (parent) before.push(...parent.changes);
+    parent = next;
   }
-  const parentId = chain[chain.length - 1]?.id ?? "";
-  const ranked = computation.candidates.get(parentId);
+  if (!parent) return stale();
+  const ranked = computation.candidates.get(parent.id);
   const scored = ranked?.find((c) => c.fix.id === candidate.fix.id);
-  if (
-    ranked &&
-    (!scored || canonical([scored.fix, scored.gain]) !== canonical([candidate.fix, candidate.gain]))
-  )
-    stale();
+  if (ranked) {
+    if (
+      !scored ||
+      canonical([scored.fix, scored.gain]) !== canonical([candidate.fix, candidate.gain])
+    )
+      stale();
+  } else if (!scoreSaved(inputs, parent, before, candidate)) stale();
   const rows = await ctx.db
     .query("risks")
     .withIndex("by_company", (q) => q.eq("companyId", companyId))
     .collect();
   const stored = rows.filter((row) => row.asOf === computation.asOf).map((row) => row.data);
   if (canonical(byRiskId(stored)) !== canonical(byRiskId(computation.risks))) stale();
+}
+
+/** The one saved candidate under `parent` whose engine branch ID is `branchId`, rebuilt. */
+async function rebuildNested(
+  ctx: Ctx,
+  companyId: Id<"companies">,
+  inputs: Inputs,
+  parent: Branch,
+  before: Change[],
+  branchId: string,
+) {
+  const matches = (await branchFixes(ctx, companyId, parent.id))
+    .map((row) => ({ fix: parse(FixCandidateSchema, row.data), gain: parse(Cents, row.gain) }))
+    .filter((c) => `${parent.id}__${c.fix.id}` === branchId);
+  if (matches.length > 1) reject("INVALID_DATA", `Future ${branchId} has two saved candidates`);
+  const [saved] = matches;
+  if (!saved || !appliesTo(saved.fix, parent.riskIds ?? [])) return undefined;
+  return scoreSaved(inputs, parent, before, saved);
+}
+
+/**
+ * Engine branch for a saved candidate under a nested parent (`before` = the parent's
+ * ancestors' changes, root first), only if the engine still ranks it with the saved gain.
+ */
+function scoreSaved(
+  { snapshot, model, constraints }: Inputs,
+  parent: Branch,
+  before: Change[],
+  { fix, gain }: { fix: FixCandidate; gain: number },
+) {
+  const context = parent.parentId === null ? undefined : { ancestorChanges: before };
+  const branch = runEngine("scoreFix", () =>
+    engine.scoreFix(parent, fix, snapshot, model, constraints, context),
+  );
+  const [ranked] = runEngine("rankFixes", () =>
+    rankFixes(parent, [{ fix, branch }], snapshot, model, constraints, context),
+  );
+  return ranked?.gain === gain ? parse(BranchSchema, branch) : undefined;
 }
 
 const byRiskId = (risks: { id: string }[]) =>

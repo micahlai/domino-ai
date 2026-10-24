@@ -729,20 +729,169 @@ describe("simulateFix", () => {
       (row) => row.fix.id !== fix.id,
     );
     if (!hire) throw new Error("expected a second fix");
+    const event = (await t.query(api.branches.get, { branchId: parentId })) as Branch;
+    const parent = (await t.query(api.branches.get, { branchId: fixBranchId })) as Branch;
+    const context = { ancestorChanges: event.changes };
+    const expected = engine.scoreFix(parent, hire.fix, snapshot, model, constraints, context);
+    const [scored] = rankFixes(
+      parent,
+      [{ fix: hire.fix, branch: expected }],
+      snapshot,
+      model,
+      constraints,
+      context,
+    );
+    if (!scored) throw new Error("expected the second fix to help");
+    // A saved nested gain must match the engine like every other level.
     await t.run((ctx) =>
       ctx.db.insert("fixes", { companyId, branchId: fixBranchId, data: hire.fix, gain: 0 }),
     );
+    await expect(
+      t.mutation(computedRefs.simulateFix, { branchId: fixBranchId, fixId: hire.fix.id }),
+    ).rejects.toThrow("STALE_FUTURE");
+    await t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("fixes")
+        .withIndex("by_branch", (q) => q.eq("branchId", fixBranchId))
+        .collect();
+      for (const row of rows) await ctx.db.patch(row._id, { gain: scored.gain });
+    });
     const result = await t.mutation(computedRefs.simulateFix, {
       branchId: fixBranchId,
       fixId: hire.fix.id,
     });
-    const event = (await t.query(api.branches.get, { branchId: parentId })) as Branch;
-    const parent = (await t.query(api.branches.get, { branchId: fixBranchId })) as Branch;
-    expect(await t.query(api.branches.get, { branchId: result.branchId })).toEqual(
-      engine.scoreFix(parent, hire.fix, snapshot, model, constraints, {
-        ancestorChanges: event.changes,
-      }),
-    );
+    expect(await t.query(api.branches.get, { branchId: result.branchId })).toEqual(expected);
+  });
+
+  /** Event -> early payment -> hiring -> extra cash, each nested row saved with its engine gain. */
+  async function deepChain(t: T, companyId: Id<"companies">) {
+    const extra: FixCandidate = {
+      id: `${computedPrefix(companyId)}extra_unique_cash`,
+      label: "Extra capital",
+      changes: [
+        { kind: "add_cash", date: "2026-11-15", amount: 1_000_000, label: "Extra capital" },
+      ],
+      costNote: "depth probe",
+      risk: "low",
+      evidence: [],
+      targetRiskIds: [],
+    };
+    await t.run(async (ctx) => {
+      await recomputeCompany(ctx, companyId, { proposals: [extra], action: "engine.recompute" });
+    });
+    const eventId = eventBranchId(companyId, asOf, [ACME_LATE]);
+    const ranked = await t.query(api.fixes.forBranch, { branchId: eventId });
+    const pick = (suffix: string) => {
+      const row = ranked.find((r) => r.fix.id.endsWith(suffix));
+      if (!row) throw new Error(`missing ${suffix}`);
+      return row.fix;
+    };
+    const [early, hire] = [pick("demo_fix_early_pay"), pick("demo_fix_delay_hire")];
+    const event = (await t.query(api.branches.get, { branchId: eventId })) as Branch;
+    const firstId = `${eventId}__${early.id}`;
+    const saveUnder = async (parentId: string, fix: FixCandidate, ancestorChanges: Change[]) => {
+      const parent = (await t.query(api.branches.get, { branchId: parentId })) as Branch;
+      const context = { ancestorChanges };
+      const branch = engine.scoreFix(parent, fix, snapshot, model, constraints, context);
+      const [scored] = rankFixes(parent, [{ fix, branch }], snapshot, model, constraints, context);
+      if (!scored) throw new Error(`${fix.id} does not help under ${parentId}`);
+      await t.run((ctx) =>
+        ctx.db.insert("fixes", { companyId, branchId: parentId, data: fix, gain: scored.gain }),
+      );
+      return { parent, branch };
+    };
+    await saveUnder(firstId, hire, event.changes);
+    const second = await t.mutation(computedRefs.simulateFix, {
+      branchId: firstId,
+      fixId: hire.id,
+    });
+    const { parent, branch } = await saveUnder(second.branchId, extra, [
+      ...event.changes,
+      ...early.changes,
+    ]);
+    const simulate = () =>
+      t.mutation(computedRefs.simulateFix, { branchId: second.branchId, fixId: extra.id });
+    return { firstId, secondId: second.branchId, hire, extra, parent, expected: branch, simulate };
+  }
+
+  it("simulates a third unique fix beneath two nested fixes", async () => {
+    const { t, companyId } = await seeded();
+    const { secondId, expected, simulate } = await deepChain(t, companyId);
+    const third = await simulate();
+    expect(third.branchId).toBe(`${secondId}__${expected.id.split("__").at(-1)}`);
+    expect(await t.query(api.branches.get, { branchId: third.branchId })).toEqual(expected);
+    const before = await dump(t, companyId);
+    await simulate();
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("rejects a stale nested ancestor, its saved gain or a changed rule and writes nothing", async () => {
+    type Chain = Awaited<ReturnType<typeof deepChain>>;
+    type Tamper = (t: T, companyId: Id<"companies">, chain: Chain) => Promise<void>;
+    const tamperings: [string, Tamper][] = [
+      [
+        "nested ancestor",
+        async (t, _companyId, { secondId }) => {
+          await t.run(async (ctx) => {
+            const row = await ctx.db
+              .query("branches")
+              .withIndex("by_branchId", (q) => q.eq("branchId", secondId))
+              .unique();
+            if (!row) throw new Error("missing nested ancestor");
+            await ctx.db.patch(row._id, { data: { ...row.data, label: "Edited nested fix" } });
+          });
+        },
+      ],
+      [
+        "ancestor gain",
+        async (t, _companyId, { firstId, hire }) => {
+          await t.run(async (ctx) => {
+            const rows = await ctx.db
+              .query("fixes")
+              .withIndex("by_branch", (q) => q.eq("branchId", firstId))
+              .collect();
+            const row = rows.find((r) => r.data.id === hire.id);
+            if (!row) throw new Error("missing nested candidate");
+            await ctx.db.patch(row._id, { gain: row.gain + 1 });
+          });
+        },
+      ],
+      [
+        "ancestor candidate",
+        async (t, _companyId, { firstId, hire }) => {
+          await t.run(async (ctx) => {
+            const rows = await ctx.db
+              .query("fixes")
+              .withIndex("by_branch", (q) => q.eq("branchId", firstId))
+              .collect();
+            for (const row of rows.filter((r) => r.data.id === hire.id))
+              await ctx.db.delete(row._id);
+          });
+        },
+      ],
+      [
+        "rule",
+        async (t, companyId) => {
+          await t.run(async (ctx) => {
+            const rules = await ctx.db
+              .query("constraints")
+              .withIndex("by_company", (q) => q.eq("companyId", companyId))
+              .collect();
+            const minCash = rules.find((rule) => rule.data.kind === "min_cash");
+            if (!minCash) throw new Error("missing min_cash rule");
+            await ctx.db.patch(minCash._id, { data: { ...minCash.data, label: "NEW LIMIT" } });
+          });
+        },
+      ],
+    ];
+    for (const [name, tamper] of tamperings) {
+      const { t, companyId } = await seeded();
+      const chain = await deepChain(t, companyId);
+      await tamper(t, companyId, chain);
+      const before = await dump(t, companyId);
+      await expect(chain.simulate(), name).rejects.toThrow("STALE_FUTURE");
+      expect(await dump(t, companyId), name).toEqual(before);
+    }
   });
 
   it("rejects a candidate owned by another company", async () => {
