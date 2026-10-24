@@ -34,9 +34,12 @@ const addDays = (date: string, days: number): string | undefined => {
   const d = new Date(dayMs(date) + days * DAY_MS);
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
 };
-/** Exact integer sum check without leaving safe-integer range mid-way. */
+/**
+ * Exact integer sum check. refinements also run on values that already failed the safe
+ * integer checks (fractional, Infinity), and BigInt throws on those, so reject them first.
+ */
 const sums = (a: number, b: number, total: number): boolean =>
-  BigInt(a) + BigInt(b) === BigInt(total);
+  [a, b, total].every((n) => Number.isSafeInteger(n)) && BigInt(a) + BigInt(b) === BigInt(total);
 
 /** Nonnegative low/high cents, the same shape an assumption's one-time cost uses. */
 const CostRange = HistoricalAssumptionSchema.shape.oneTimeCost.unwrap();
@@ -70,7 +73,7 @@ export const HistoricalScenarioInputSchema = z
     event: HistoricalScenarioEventSchema,
     /** An existing case assumption, for example the A1 cost action. */
     responseAssumptionId: IdSchema.optional(),
-    /** True when the response was chosen after seeing a reveal; forces post-hoc. */
+    /** True when the event (and any response) was chosen after seeing a reveal; forces post-hoc. */
     selectedAfterReveal: z.boolean().optional(),
   })
   .strict()
@@ -84,8 +87,6 @@ export const HistoricalScenarioInputSchema = z
     if (from > through) issue(["event", "effectiveThrough"], "event ends before it starts");
     if (through > input.targetDate)
       issue(["event", "effectiveThrough"], "event must end by the target date");
-    if (input.selectedAfterReveal && input.responseAssumptionId === undefined)
-      issue(["selectedAfterReveal"], "selected-after-reveal needs a response");
   });
 export type HistoricalScenarioInput = z.infer<typeof HistoricalScenarioInputSchema>;
 
@@ -175,10 +176,14 @@ export const HistoricalScenarioResultSchema = z
       .object({
         /** Event branch minus baseline at the target date; counted once. */
         effectCents: HistoricalScenarioEffectSchema,
+        /** True when the hypothetical was chosen after seeing a reveal (input selectedAfterReveal). */
+        postHoc: z.boolean(),
         predictions: z.array(HistoricalPredictionSchema).min(1),
       })
       .strict(),
     response: HistoricalScenarioResponseSchema.optional(),
+    /** The event or the response is post-hoc. */
+    postHoc: z.boolean(),
     impact: z
       .object({
         nodes: z.array(HistoricalScenarioImpactNodeSchema),
@@ -267,8 +272,14 @@ export const HistoricalScenarioResultSchema = z
       }
     }
 
-    // Response timing, cost, feasibility and post-hoc status.
+    // Post-hoc status: event taint from the input, scenario taint from event or response.
     const res = r.response;
+    if (input.selectedAfterReveal && !r.event.postHoc)
+      issue(["event", "postHoc"], "an event chosen after the reveal is post-hoc");
+    if (r.postHoc !== (r.event.postHoc || res?.postHoc === true))
+      issue(["postHoc"], "scenario post-hoc must be true exactly when the event or response is");
+
+    // Response timing, cost, feasibility and response post-hoc status.
     if (res) {
       if (!(cutoff < res.effectiveFrom && res.effectiveFrom <= input.targetDate))
         issue(

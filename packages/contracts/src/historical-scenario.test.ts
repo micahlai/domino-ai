@@ -2,20 +2,46 @@ import { describe, expect, it } from "vitest";
 import { historicalFixtures as fx } from "./fixtures";
 import {
   HistoricalRunSchema,
+  type HistoricalScenarioInput,
   HistoricalScenarioInputSchema,
+  type HistoricalScenarioResult,
   HistoricalScenarioResultSchema,
 } from "./index";
 
 // Invented numbers for schema tests only; not reported data and not a claim about any company.
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-// biome-ignore lint/suspicious/noExplicitAny: mutators deliberately corrupt deep, invalid shapes
-type Json = Record<string, any>;
+type Result = HistoricalScenarioResult;
+type Prediction = Result["nowcast"][number];
+/** Localized invalid value: the one place a test says "this is deliberately the wrong type". */
+const wrong = <T>(value: unknown): T => value as T;
+/** Indexed access that fails loudly, so mutators stay typed under noUncheckedIndexedAccess. */
+const at = <T>(list: T[], i: number): T => {
+  const item = list[i];
+  if (item === undefined) throw new Error(`fixture has no item ${i}`);
+  return item;
+};
+const resp = (r: Result) => {
+  if (!r.response) throw new Error("fixture has no response");
+  return r.response;
+};
+const node = (r: Result, i: number) => at(r.impact.nodes, i);
+const edge = (r: Result, i: number) => at(r.impact.edges, i);
+const evt = (r: Result, i: number) => at(r.event.predictions, i);
+/** Predictions in the fixture are instants; this narrows the period union. */
+const day = (p: Prediction) => {
+  if (p.period.kind !== "instant") throw new Error("fixture period is not an instant");
+  return p.period;
+};
+const bandOf = (p: Prediction) => {
+  if (!p.range) throw new Error("fixture prediction has no range");
+  return p.range;
+};
 const messages = (result: {
   success: boolean;
   error?: { issues: { message: string }[] };
 }): string[] => (result.success ? [] : result.error!.issues.map((i) => i.message));
 
-const input = {
+const input: HistoricalScenarioInput = {
   baselineRunId: "base_run",
   knowledgeCutoff: "2023-11-09T16:45:46-05:00",
   targetDate: "2023-12-31",
@@ -33,12 +59,12 @@ const input = {
 
 const pred = (
   id: string,
-  kind: string,
-  metric: string,
+  kind: Prediction["kind"],
+  metric: Prediction["metric"],
   date: string,
   cents: number,
-  range?: number[],
-) => ({
+  range?: [number, number],
+): Prediction => ({
   id,
   kind,
   metric,
@@ -52,13 +78,15 @@ const total = (p: string, c: number, lo: number, hi: number) =>
 const usable = (p: string, c: number, lo: number, hi: number) =>
   pred(`${p}_usable`, "forecast", "cash_and_equivalents", "2023-12-31", c, [lo, hi]);
 
-const result = (): Json => ({
+const result = (): Result => ({
   input: clone(input),
   method: { id: "quarterly_event_bridge", version: "0.1.0" },
+  postHoc: false,
   nowcast: [pred("nowcast_total", "nowcast", "cash_including_restricted", "2023-11-09", 9e10)],
   baselinePredictions: [total("base", 100e9, 90e9, 110e9), usable("base", 80e9, 70e9, 90e9)],
   event: {
     effectCents: { low: -600e6, point: -500e6, high: -400e6 },
+    postHoc: false,
     predictions: [total("event", 99.5e9, 89.4e9, 109.6e9), usable("event", 79.5e9, 69.4e9, 89.6e9)],
   },
   response: {
@@ -119,12 +147,12 @@ const result = (): Json => ({
   },
 });
 
-const badInput = (mutate: (i: Json) => void): string[] => {
-  const i = clone(input) as Json;
+const badInput = (mutate: (i: HistoricalScenarioInput) => void): string[] => {
+  const i = clone(input);
   mutate(i);
   return messages(HistoricalScenarioInputSchema.safeParse(i));
 };
-const bad = (mutate: (r: Json) => void): string[] => {
+const bad = (mutate: (r: Result) => void): string[] => {
   const r = result();
   mutate(r);
   return messages(HistoricalScenarioResultSchema.safeParse(r));
@@ -188,13 +216,13 @@ describe("scenario input", () => {
   });
 
   it("requires safe integer nonnegative ordered cents", () => {
-    const outflow = (patch: Json) =>
+    const outflow = (patch: Partial<HistoricalScenarioInput["event"]["additionalOutflowCents"]>) =>
       badInput((i) => Object.assign(i.event.additionalOutflowCents, patch));
     expect(outflow({ low: -1 })).not.toEqual([]);
     expect(outflow({ low: 1.5 })).not.toEqual([]);
     expect(outflow({ high: Number.MAX_SAFE_INTEGER + 1 })).not.toEqual([]);
     expect(outflow({ low: 700_000_000 })).toContain("low is above high");
-    expect(outflow({ unit: "days" })).not.toEqual([]);
+    expect(outflow({ unit: wrong("days") })).not.toEqual([]);
     expect(outflow({ low: 0, high: 0 })).toEqual([]);
   });
 
@@ -210,7 +238,7 @@ describe("scenario input", () => {
       );
     expect(
       badInput((i) => {
-        i.observedFactIds = ["f1"];
+        Object.assign(i, { observedFactIds: ["f1"] });
       }),
     ).not.toEqual([]);
   });
@@ -226,12 +254,13 @@ describe("scenario input", () => {
         i.event.uncertainty = "";
       }),
     ).toContain("must not be blank");
+    // An event-only hypothetical can also be chosen after a reveal.
     expect(
       badInput((i) => {
         i.responseAssumptionId = undefined;
         i.selectedAfterReveal = true;
       }),
-    ).toContain("selected-after-reveal needs a response");
+    ).toEqual([]);
     expect(
       badInput((i) => {
         i.currency = "usd";
@@ -268,7 +297,7 @@ describe("scenario result", () => {
     ).toContain(msg);
     expect(
       bad((r) => {
-        r.response.assumptionId = "a2";
+        resp(r).assumptionId = "a2";
       }),
     ).toContain("response is not the requested assumption");
   });
@@ -276,32 +305,32 @@ describe("scenario result", () => {
   it("checks prediction kinds, periods, currency and unique ids", () => {
     expect(
       bad((r) => {
-        r.nowcast[0].period.date = "2023-11-10";
+        day(at(r.nowcast, 0)).date = "2023-11-10";
       }),
     ).toContain("a nowcast must end by the cutoff local date");
     expect(
       bad((r) => {
-        r.baselinePredictions[0].period.date = "2023-12-30";
+        day(at(r.baselinePredictions, 0)).date = "2023-12-30";
       }),
     ).toContain("a branch forecast must end on the target date");
     expect(
       bad((r) => {
-        r.event.predictions[0].currency = "EUR";
+        evt(r, 0).currency = "EUR";
       }),
     ).toContain("prediction currency differs from the scenario");
     expect(
       bad((r) => {
-        r.nowcast[0].kind = "forecast";
+        at(r.nowcast, 0).kind = "forecast";
       }),
     ).toContain("expected a nowcast prediction");
     expect(
       bad((r) => {
-        r.event.predictions[0].id = "base_total";
+        evt(r, 0).id = "base_total";
       }),
     ).toContain("duplicate prediction id");
     expect(
       bad((r) => {
-        r.baselinePredictions[0].range = { low: 1.1e11, high: 2e11 };
+        at(r.baselinePredictions, 0).range = { low: 1.1e11, high: 2e11 };
       }),
     ).toContain("range must contain the point value");
   });
@@ -322,18 +351,18 @@ describe("scenario result", () => {
     const twice = "prediction is not the previous branch plus the stated effect";
     expect(
       bad((r) => {
-        r.event.predictions[0].cents = 99e9;
-        r.event.predictions[0].range = { low: 88.8e9, high: 109.2e9 };
+        evt(r, 0).cents = 99e9;
+        evt(r, 0).range = { low: 88.8e9, high: 109.2e9 };
       }),
     ).toContain(twice);
     expect(
       bad((r) => {
-        r.event.predictions[1].range.high += 1;
+        bandOf(evt(r, 1)).high += 1;
       }),
     ).toContain(twice);
     expect(
       bad((r) => {
-        r.response.predictions[1].cents -= 1;
+        at(resp(r).predictions, 1).cents -= 1;
       }),
     ).toContain(twice);
     expect(bad((r) => r.event.predictions.pop())).toContain(
@@ -354,43 +383,43 @@ describe("scenario result", () => {
   it("checks response timing, cost, and post-hoc status", () => {
     expect(
       bad((r) => {
-        r.response.effectiveFrom = "2023-11-09";
+        resp(r).effectiveFrom = "2023-11-09";
       }),
     ).toContain("response must take effect after the cutoff, inside the target quarter");
     expect(
       bad((r) => {
-        r.response.effectiveFrom = "2024-01-02";
+        resp(r).effectiveFrom = "2024-01-02";
       }),
     ).toContain("response must take effect after the cutoff, inside the target quarter");
     expect(
       bad((r) => {
-        r.response.benefitStart = "2024-01-02";
+        resp(r).benefitStart = "2024-01-02";
       }),
     ).toContain("benefit start is effectiveFrom plus the lag");
     expect(
       bad((r) => {
-        r.response.benefitDays = 3;
+        resp(r).benefitDays = 3;
       }),
     ).toContain("benefit days must run from benefit start to the target");
     expect(
       bad((r) => {
-        r.response.effectCents.low = -250e6;
+        resp(r).effectCents.low = -250e6;
       }),
     ).toContain("with no benefit inside the quarter the effect is the negated cost range");
     expect(
       bad((r) => {
-        r.response.label = "synthetic";
+        resp(r).label = wrong("synthetic");
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.response.feasibleAtCutoff = "maybe";
+        resp(r).feasibleAtCutoff = wrong("maybe");
       }),
     ).not.toEqual([]);
     const postHoc = "hindsight or post-reveal choices are post-hoc";
     expect(
       bad((r) => {
-        r.response.label = "hindsight";
+        resp(r).label = "hindsight";
       }),
     ).toContain(postHoc);
     expect(
@@ -401,7 +430,47 @@ describe("scenario result", () => {
     expect(
       bad((r) => {
         r.input.selectedAfterReveal = true;
-        r.response.postHoc = true;
+        r.event.postHoc = true;
+        resp(r).postHoc = true;
+        r.postHoc = true;
+      }),
+    ).toEqual([]);
+  });
+
+  it("marks an event-only choice after the reveal as post-hoc", () => {
+    const eventOnly = (r: Result) => {
+      r.input.responseAssumptionId = undefined;
+      r.response = undefined;
+      r.impact.nodes.splice(3, 2);
+      r.impact.edges.splice(2, 2);
+      r.input.selectedAfterReveal = true;
+    };
+    expect(bad(eventOnly)).toContain("an event chosen after the reveal is post-hoc");
+    expect(
+      bad((r) => {
+        eventOnly(r);
+        r.event.postHoc = true;
+      }),
+    ).toContain("scenario post-hoc must be true exactly when the event or response is");
+    expect(
+      bad((r) => {
+        eventOnly(r);
+        r.event.postHoc = true;
+        r.postHoc = true;
+      }),
+    ).toEqual([]);
+    // A post-hoc response taints the scenario even when the event is not post-hoc.
+    expect(
+      bad((r) => {
+        resp(r).label = "hindsight";
+        resp(r).postHoc = true;
+      }),
+    ).toContain("scenario post-hoc must be true exactly when the event or response is");
+    expect(
+      bad((r) => {
+        resp(r).label = "hindsight";
+        resp(r).postHoc = true;
+        r.postHoc = true;
       }),
     ).toEqual([]);
   });
@@ -409,11 +478,11 @@ describe("scenario result", () => {
   it("accepts a benefit that starts inside the quarter without constraining its size", () => {
     expect(
       bad((r) => {
-        r.response.benefitLagDays = 10;
-        r.response.benefitStart = "2023-12-11";
-        r.response.benefitDays = 21; // Dec 11..Dec 31 inclusive
-        r.response.effectCents = { low: -150e6, point: 0, high: 900e6 };
-        r.response.predictions = [
+        resp(r).benefitLagDays = 10;
+        resp(r).benefitStart = "2023-12-11";
+        resp(r).benefitDays = 21; // Dec 11..Dec 31 inclusive
+        resp(r).effectCents = { low: -150e6, point: 0, high: 900e6 };
+        resp(r).predictions = [
           total("resp", 99.5e9, 89.25e9, 110.5e9),
           usable("resp", 79.5e9, 69.25e9, 90.5e9),
         ];
@@ -424,42 +493,42 @@ describe("scenario result", () => {
   it("rejects bad graph structure and references", () => {
     expect(
       bad((r) => {
-        r.impact.nodes[1].id = "n_event";
+        node(r, 1).id = "n_event";
       }),
     ).toContain("duplicate node id");
     expect(
       bad((r) => {
-        r.impact.edges[1].id = "e1";
+        edge(r, 1).id = "e1";
       }),
     ).toContain("duplicate edge id");
     expect(
       bad((r) => {
-        r.impact.edges[0].to = "ghost";
+        edge(r, 0).to = "ghost";
       }),
     ).toContain("edge node not found");
     expect(
       bad((r) => {
-        r.impact.edges[0].from = "ghost";
+        edge(r, 0).from = "ghost";
       }),
     ).toContain("edge node not found");
     expect(
       bad((r) => {
-        r.impact.nodes[1].refId = "nope";
+        node(r, 1).refId = "nope";
       }),
     ).toContain("prediction node does not match the result");
     expect(
       bad((r) => {
-        r.impact.nodes[0].refId = "other";
+        node(r, 0).refId = "other";
       }),
     ).toContain("event node does not match the result");
     expect(
       bad((r) => {
-        r.impact.nodes[3].refId = "a2";
+        node(r, 3).refId = "a2";
       }),
     ).toContain("response node does not match the result");
     expect(
       bad((r) => {
-        r.impact.nodes[2].refId = "base_total";
+        node(r, 2).refId = "base_total";
       }),
     ).toContain("two nodes for the same record");
     expect(
@@ -472,22 +541,22 @@ describe("scenario result", () => {
     );
     expect(
       bad((r) => {
-        r.impact.edges[1].refs = [];
+        edge(r, 1).refs = [];
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.impact.edges[1].explanation = " ";
+        edge(r, 1).explanation = " ";
       }),
     ).toContain("must not be blank");
     expect(
       bad((r) => {
-        r.impact.edges[1].basis = "guess";
+        edge(r, 1).basis = wrong("guess");
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.impact.edges[1].refs = [{ kind: "metric", id: "x" }];
+        edge(r, 1).refs = [{ kind: wrong("metric"), id: "x" }];
       }),
     ).not.toEqual([]);
   });
@@ -495,34 +564,34 @@ describe("scenario result", () => {
   it("checks typed edge refs and the ref each basis needs", () => {
     expect(
       bad((r) => {
-        r.impact.edges[0].refs = [{ kind: "event", id: "other" }];
+        edge(r, 0).refs = [{ kind: "event", id: "other" }];
       }),
     ).toContain("event ref does not match the result");
     expect(
       bad((r) => {
-        r.impact.edges[1].refs = [{ kind: "prediction", id: "nope" }];
+        edge(r, 1).refs = [{ kind: "prediction", id: "nope" }];
       }),
     ).toContain("prediction ref does not match the result");
     expect(
       bad((r) => {
-        r.impact.edges[0].refs = [{ kind: "fact", id: "f1" }];
+        edge(r, 0).refs = [{ kind: "fact", id: "f1" }];
       }),
     ).toContain("a hypothesis edge must cite a event ref");
     expect(
       bad((r) => {
-        r.impact.edges[3].refs = [{ kind: "fact", id: "f1" }];
+        edge(r, 3).refs = [{ kind: "fact", id: "f1" }];
       }),
     ).toContain("a assumption edge must cite a assumption ref");
     expect(
       bad((r) => {
-        r.impact.edges[3].basis = "rule";
+        edge(r, 3).basis = "rule";
       }),
     ).toContain("a rule edge must cite a rule ref");
     // Fact, assumption and rule refs are structural here; the engine proves they exist.
     expect(
       bad((r) => {
-        r.impact.edges[3].basis = "rule";
-        r.impact.edges[3].refs = [{ kind: "rule", id: "analyst_floor" }];
+        edge(r, 3).basis = "rule";
+        edge(r, 3).refs = [{ kind: "rule", id: "analyst_floor" }];
       }),
     ).toEqual([]);
   });
@@ -559,24 +628,61 @@ describe("scenario result", () => {
   it("has no threshold, default or insolvency fields, and rejects extras", () => {
     expect(
       bad((r) => {
-        r.minCashCents = 0;
+        Object.assign(r, { minCashCents: 0 });
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.insolvent = false;
+        Object.assign(r, { insolvent: false });
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.impact.nodes[0].severity = "high";
+        Object.assign(node(r, 0), { severity: "high" });
       }),
     ).not.toEqual([]);
     expect(
       bad((r) => {
-        r.response.thresholdCents = 1;
+        Object.assign(resp(r), { thresholdCents: 1 });
       }),
     ).not.toEqual([]);
+  });
+});
+
+describe("dirty money values fail without throwing", () => {
+  // Zod still runs result-level checks on values that failed the safe-integer checks.
+  const fails = (mutate: (r: Result) => void) => {
+    const r = result();
+    mutate(r);
+    expect(() => HistoricalScenarioResultSchema.safeParse(r)).not.toThrow();
+    expect(HistoricalScenarioResultSchema.safeParse(r).success).toBe(false);
+  };
+
+  it.each([1.5, Number.POSITIVE_INFINITY])("rejects %s in baseline cents", (bad) => {
+    fails((r) => {
+      at(r.baselinePredictions, 0).cents = bad;
+    });
+  });
+
+  it.each([1.5, Number.POSITIVE_INFINITY])("rejects %s in the event effect point", (bad) => {
+    fails((r) => {
+      r.event.effectCents.point = bad;
+    });
+  });
+
+  it.each([1.5, Number.POSITIVE_INFINITY])("rejects %s in a forecast range", (bad) => {
+    fails((r) => {
+      bandOf(at(r.baselinePredictions, 0)).low = bad;
+    });
+    fails((r) => {
+      bandOf(evt(r, 0)).high = bad;
+    });
+  });
+
+  it.each([1.5, Number.POSITIVE_INFINITY])("rejects %s in the response effect", (bad) => {
+    fails((r) => {
+      resp(r).effectCents.high = bad;
+    });
   });
 });
 
