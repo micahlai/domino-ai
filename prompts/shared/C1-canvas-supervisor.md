@@ -13,3 +13,5 @@ User selected the existing app-scoped capi CREAO route only. Developer/account k
 Latest ownership override: read kb/spec/company-map-2026-10-24.md. G6 is the sole local UI writer in domino-G6, Sources/Toolbox grouping and truthful motion. G7-company-knowledge is reserved to the friend computer and owns only its new pure projection lib files. G8 shell/knowledge wiring follows both audits. Do not launch G7 locally or a duplicate UI worker. Monitor current PIDs from active-run. Native Chrome Jayden (Main) is already signed in to CREAO; do not require IAB login.
 
 Current phase update: G6 grouped map accepted c6e0a89. Sole local UI writer is G8a-product-entry in domino-G8a for shell/landing cleanup, independent of pending friend G7. G8 knowledge wiring still waits for G7. Read active-run for verified processes; never duplicate G6/G8a.
+
+Latest completion: G8a320c42c accepted as b261057; no owned UI worker active. Check active-run and remote G7 before dispatch. G8 knowledge detail wiring waits for friend projector; CREAO configuration can progress independently.

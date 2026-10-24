@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-24 Codex product cleanup accepted
+- G8a320c42c independently accepted/integratedb261057 after1,080combinedtests/typecheck/lint/build and mobile browser/CTA checks. Stable3102 refreshed, navigation now promotes investigation, old routes preserved.
+- No owned Claude active. G7 friend projection pending; G8 knowledge wiring awaits it. CREAO setup/live coordinator still unverified. Main unchanged.
+
 ## 2026-10-24 Codex grouped map accepted, cleanup running
 - G6a5d7723 acceptedc6e0a89 after independent reconnect/caption repair review,1,077combinedtests/build and desktop/mobile browser. Stable3102 updated; grouped Sources/Toolbox and knowledge detail shown.
 - G8a Claude71724 is sole UI writer, shell/landing cleanup; friend G7 projection remains separate. Backend3214 restarted with preserved data. Main unchanged, no live CREAO acceptance.

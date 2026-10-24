@@ -10,7 +10,7 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Current accepted result
 
-- Preview feature checkpoint: c6e0a89 (G6 grouped canvas,1,077 tests/build/browser). Prior c40552a: G5 cleanup eaa54d7 accepted after independent review, 1,049 tests, typechecks, lint, production build and targeted browser checks. Logs: /tmp/domino-G5-preview-check.log and /tmp/domino-G5-preview-build.log.
+- Preview feature checkpoint: b261057 (G6 grouped canvas plus G8a cleaned entry,1,080 tests/build/browser). Prior c40552a: G5 cleanup eaa54d7 accepted after independent review, 1,049 tests, typechecks, lint, production build and targeted browser checks. Logs: /tmp/domino-G5-preview-check.log and /tmp/domino-G5-preview-build.log.
 - Earlier paired G3/G4 repairs ef019a6 and 475fe57 were independently approved. Browser verified all 11 fixture nodes fit the mobile canvas, real local question submission, saved forecast chart, alternative before reveal, comparison after reveal and quiet reload. No console errors/warnings.
 - G5 reuses the shared financial view builder, removes the fake-reveal adapter workaround, fixes alternative availability labels and exposes the stored instruction-scope explanation. Early alternatives contain no observed outcome values, reveal date or future evidence.
 - G2d backend 3738d5c accepted after 43 focused tests, eight independent probes, 998 full tests and actual anonymous-backend smoke. Remote app identity is frozen; verification binds app ID plus role/profile version. Gate remains OFF.
@@ -21,13 +21,13 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 G6 complete and accepted: initial3601a85 plus independently approved reconnect/caption repaira18eae7 and browser-driven mobile repaira5d7723 integrated as c6e0a89. Final and combined preview checks pass1,077 tests/typechecks/lint, builds pass. Actual browser verified grouped frames, source/knowledge details, forecast output, quiet restored history (zero pulse markers), no console errors, mobile390x844 FitView all13records/groups within canvas and no horizontal overflow. Stable3102 serves c6e0a89. Screenshot /tmp/domino-grouped-canvas-accepted.png. This demonstrates real deterministic saved operations; CREAO specialists remain honestly unverified, no provider call.
 
-G8a Claude Sonnet/high now sole UI writer in domino-G8a/G8a-product-entry from c6e0a89; PID71724, exec88882, /tmp/domino-G8a-claude.log. Process/cwd and scoped edits verified. It owns only landing/AppShell and related test/card. G7 remains friend-owned, no implementation on last fetch; G8 knowledge wiring waits for it. Do not duplicate G8a or implement G7 locally.
+G8a completed320c42c and independently approved, then integratedb261057. Final combined1,080tests/typecheck/lint and productionbuild pass. Browser checked mobile390px with no horizontal overflow, real Start investigating link to lone-Domino canvas, absent primary Playground/theme/connect/demo links, clean console. Stable3102 now servesb261057 (PID89169, exec12818, /tmp/domino-G8a-stable-preview.log). No owned Claude implementation active. G7 remains friend-owned, no implementation on last fetch; G8 knowledge wiring waits for it. Do not duplicate finished G6/G8a or implement G7 locally.
 
-Owned backend3214 restored from same anonymous deployment with existing data: PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. No reset, credentials or provider calls. Candidate3419 verified owned and stopped after stable refresh.
+Owned backend3214 restored from same anonymous deployment with existing data: PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. No reset, credentials or provider calls. Candidates3419 and3420 verified owned and stopped after stable refresh.
 
 | Runtime | Ownership | State |
 | --- | --- | --- |
-| Stable web 3102 | domino-preview/apps/web; PID72905, exec60820 | Running c6e0a89 against backend3214; /tmp/domino-G6-stable-preview.log |
+| Stable web 3102 | domino-preview/apps/web; PID89169, exec12818 | Running b261057 against backend3214; /tmp/domino-G8a-stable-preview.log |
 | Current backend 3214/site3215 | domino-G2d/apps/web; PID43364, exec76070 | Accepted G2d restarted with existing data; /tmp/domino-G2d-local-convex-resume.log |
 | Prior backend 3212/site3213 | domino-G2b/apps/web; PID9607, exec95774 | Preserved local data; /tmp/domino-G2b-local-convex.log |
 | Original backend 3210/site3211 | domino-H2/apps/web; PID15546, exec15918 | Preserved historical demo data |
