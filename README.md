@@ -60,3 +60,25 @@ Before you push: `pnpm check` (typecheck, tests, lint).
 - **Seats it fills:** the FP&A analyst who owns the cash forecast, working with the controller and CFO.
 - **What is real and what is simulated:** see `kb/product/proof.md`.
 - **CREAO agent ids and run links:** see `kb/product/submission.md`.
+
+### CREAO backend configuration
+
+The local server configuration is in ignored `.env.local`. Keep `CREAO_API_KEY`
+there; never copy it into this README or frontend code.
+
+```dotenv
+CREAO_API_BASE_URL=https://agent.creao.ai/api/v1
+CREAO_AGENT_ID_MAPSOURCE=<your mapping agent ID>
+CREAO_AGENT_ID_CONSTRAINTS=<your constraints agent ID>
+CREAO_AGENT_ID_BRIEF=<your brief agent ID>
+```
+
+For this API family, start runs at `POST /apps/{agentId}/runs` relative to the
+configured base URL, with bearer authentication and an `inputs` object. See the
+[CREAO starter pack](https://community.creao.ai/AI_hackathon_UCLA2026/tech) and
+[API Trigger guide](https://docs.creao.ai/pro/api-trigger).
+
+Jayden's replacement key, agent IDs, and run share links are pending account setup.
+Existing local credentials were checked on 2026-10-24 but have not been replaced.
+Their completed results contain input/summary objects rather than the required
+contract outputs. Validate the replacement agents before claiming end-to-end learning.
