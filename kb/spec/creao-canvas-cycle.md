@@ -25,3 +25,9 @@ Current configured key was inspected by scope only: app-scoped, with existing ma
 Account API supports agent lifecycle, NDJSON stream, memory and usage. Super Agent routes are allowlisted; do not infer account entitlement from docs. Asked user to add CREAO_ACCOUNT_API_KEY into ignored domino-ai/.env.local, never into chat. Until supplied, implement provider-independent durable/UI pieces and preserve honest unavailable state. No secret copy to remote machine/Git. No automatic paid fallback. Inspect metadata with read-only calls before bounded execution.
 
 Call: actual CREAO jobs behind Domino-owned durable records, with a strict capability allowlist. Counterargument: handing the entire workflow/state to CREAO is simpler, but API access and historical memory isolation could block or contaminate the demo.
+
+## Historical memory isolation gate
+
+CREAO documents automatic long-term memory scoped per personal agent, not per conversation: https://docs.creao.ai/developer-api/agent-memory. A fresh conversation alone therefore does not establish a clean historical cutoff. Dedicated agent identities must be tied to their permitted case/cutoff/visibility, with memory checked before reuse and never shared backward from revealed outcomes. If access cannot prove isolation, block historical provider execution rather than claim an uncontaminated replay. Do not clear or overwrite unrelated agent memory.
+
+Account capabilities can first be checked read-only via GET /v1/agents and GET /v1/account/usage. Agent creation is itself an asynchronous operation, not a synchronous config insert: https://docs.creao.ai/developer-api/agents/create-agent. No creation, execution or entitlement has been verified yet. User confirmed they will add the account key; latest presence check still missing.
