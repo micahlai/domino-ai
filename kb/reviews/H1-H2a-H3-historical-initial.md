@@ -6,7 +6,7 @@ Independent audit confirms cash identities, unit conversions except F16, Q4 diff
 
 ## H2a8bdea82: blocked despite full check
 
-Astra probes /tmp/h2a-contract-audit.ts found selectedAfterReveal basis bypass, missing assumption dependency closure/cycle rejection, cross-case comparison acceptance, nonmonetary/negative oneTimeCost, and invalid prediction metric/period pairing. Direct/derived publication gates, reveal timing and25 exact signed comparison probes passed. Repair442d23b and packet2ae6e9b now await independent re-review and fullcheck. APIs remain proposed, no real-case acceptance.
+Astra probes /tmp/h2a-contract-audit.ts found selectedAfterReveal basis bypass, missing assumption dependency closure/cycle rejection, cross-case comparison acceptance, nonmonetary/negative oneTimeCost, and invalid prediction metric/period pairing. Direct/derived publication gates, reveal timing and25 exact signed comparison probes passed. Repair442d23b and packet2ae6e9b approved after independent re-probes, transitive dependency/hindsight checks and fullcheck. APIs remain proposed, no real-case acceptance.
 
 ## H3db6ac41: blocked, repaired97925fd accepted as props-only checkpoint
 

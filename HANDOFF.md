@@ -2,7 +2,7 @@
 
 ## Active direction: Codex supervision, Claude development
 
-- Latest heartbeat05:43: H3repair97925fd presentation accepted after656tests/check/build and desktopbrowser; pushedH3branch. H1source repair and H4astyles now running in isolated worktrees. H2arepair442d23b/packet2ae6e9b awaiting independent re-review/fullcheck. Exact processes and nextgates in active-run.md. Core live journey is not done.
+- Latest heartbeat05:43: H3repair97925fd presentation accepted after656tests/check/build and desktopbrowser; pushedH3branch. H1source repair and H4astyles now running in isolated worktrees. H2arepair442d23b/packet2ae6e9b now independently approved and fullcheck passed, contracts-only. Exact processes and nextgates in active-run.md. Core live journey is not done.
 
 - Latest user asked Codex to run needed Claude prompts, audit/monitor until return, minimize bloat and reuse existing UI. C0 is the current supervisor entry point; H0 manual coordinator is inactive. Do not launch duplicate orchestration.
 - Current stages include historical evidence/contracts/backend/UI, H2d truthful activity, H4 four reusable styles/Motion, preview verification and continuous independent audits. No main merge/production deployment/shared cloud reset.
