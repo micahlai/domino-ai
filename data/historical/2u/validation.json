@@ -1,0 +1,20 @@
+{
+ "schema_status": "PENDING: H2 contract not frozen; layout here is provisional and not validated against @domino/contracts",
+ "timezone_convention": "EDGAR acceptance times are assumed to be US Eastern; Nov 9 2023 and Feb 12 2024 are both EST (UTC-5). Convention not independently confirmed from an SEC page in this run.",
+ "normalization_needed": [
+  "source.published_at carries an offset; contract may want separate date + time + timezone",
+  "reported_unit is free text here; contract likely wants an enum plus multiplier",
+  "cents = thousands * 100000, no rounding involved",
+  "facts with text-only values (F22, F23, F26) need a non-numeric fact type or move to assumptions",
+  "derived facts carry derived_from IDs and inherit the latest input available_at"
+ ],
+ "reconciliations_passed": [
+  "F01+F02=F03",
+  "F05+F06+F07+F08=F09",
+  "F04+F09=F03",
+  "H01+H02=H03",
+  "H04..H07 sum=H08",
+  "F04+H08=H03",
+  "Q4 derived net = H03-F03 = 19,548"
+ ]
+}

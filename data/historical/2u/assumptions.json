@@ -1,0 +1,92 @@
+{
+ "status": "provisional",
+ "case": {
+  "company": "2U, Inc.",
+  "cik": "0001459417",
+  "ticker": "TWOU",
+  "selection_basis": "Default per task card. Selected on evidence fit: primary SEC filings give separately-reported cash and restricted cash, a full 9M cash-flow split, dated debt terms and a quantified cost action all published before the cutoff. Appgate/WeWork were not re-examined in this run; no later outcome was used to choose."
+ },
+ "cutoff": {
+  "knowledge_cutoff": "2023-11-10T23:59:59-05:00",
+  "latest_reported_balance_date": "2023-09-30",
+  "target_period_end": "2023-12-31",
+  "first_reveal": "S3 at 2024-02-12T16:09:41-05:00",
+  "stale_interval": "2023-09-30 to 2023-11-10 has no reported balance; any estimate there is a nowcast, identical across baseline and response branches"
+ },
+ "baseline_B1": {
+  "id": "B1",
+  "status": "analyst_assumption_predeclared",
+  "description": "Carry 9M operating and investing cash flows forward at one-third per quarter; assume zero financing and FX (the 9M financing outflow was dominated by a one-time $187.0M term loan repayment, per S2). Revolver draws and portfolio-management collection timing are not modelled.",
+  "inputs": [
+   "F03",
+   "F05",
+   "F06",
+   "F07"
+  ],
+  "arithmetic_thousands": {
+   "ops_per_q": -5840,
+   "inv_per_q": -12192,
+   "q4_net": -18032,
+   "dec31_combined_cash_estimate": 35819
+  },
+  "note": "Computed here only to define the method. Scoring against H03 belongs to the historical run, not to evidence."
+ },
+ "debt_rule_R1": {
+  "id": "R1",
+  "status": "analyst_derivation_needs_legal_review",
+  "description": "Springing term-loan maturity applies if more than $40M of the 2025 Notes are outstanding on 2025-01-30. The twelve-month look-forward from a filing date first includes 2025-01-30 for filings on or after 2024-01-30. At the cutoff (and S1 filing date 2023-11-09) it was outside the window, which is consistent with S2 containing no going-concern statement. The S1 MD&A liquidity text was not read, so S1's own going-concern position is unverified.",
+  "inputs": [
+   "F20",
+   "F22"
+  ],
+  "caveat": "Legal reading of the credit agreement is not verified; Q4 release (held-out H10) is the only evidence of how management applied it."
+ },
+ "intervention_A1": {
+  "id": "A1",
+  "status": "analyst_assumption_predeclared_ranges",
+  "label": "Bounded second cost action",
+  "description": "A further headcount/cost reduction announced at the cutoff, sized relative to the Q3 action already evidenced (12% headcount, $55M expected annualized savings).",
+  "anchors": {
+   "annualized_savings_per_headcount_point_thousands": 4583,
+   "q3_restructuring_charge_to_expected_annual_savings": 0.256
+  },
+  "parameters": {
+   "headcount_reduction_percent": {
+    "low": 3,
+    "high": 6,
+    "basis": "analyst range, 25%-50% of the Q3 action"
+   },
+   "one_time_cash_cost_as_fraction_of_annualized_savings": {
+    "low": 0.1,
+    "high": 0.26,
+    "basis": "upper end is the Q3 charge/savings ratio (F14/F17), which includes non-cash and lease items so cash cost may be lower; low end is analyst"
+   },
+   "first_cash_savings_lag_quarters": {
+    "low": 1,
+    "high": 2,
+    "basis": "analyst; Q3 action only began to show in later quarters. No evidence found of realised timing"
+   },
+   "savings_cash_conversion": {
+    "low": 0.5,
+    "high": 1.0,
+    "basis": "analyst; public expense savings are not automatically cash"
+   },
+   "revenue_or_enrollment_downside": {
+    "basis": "Not quantified. S2 reports Q3 FCE enrollments -21%, attributed by the issuer partly to program exits and a mid-2022 marketing change, so the data does not isolate any effect of headcount cuts. Treat downside as an explicit unknown range chosen by H2/H0 and label it analyst"
+   }
+  },
+  "feasibility": "Management executed a 12% cut in Q3 2023, so a further action was feasible in kind. Consent, severance law, covenant and university-contract effects were not examined.",
+  "in_window_implication": "Cost lands before savings. With a 1-2 quarter lag the 2023-12-31 target is likely flat or lower in cash than baseline, and the benefit appears in 2024. This is analyst reasoning, not evidence.",
+  "caution": "Alternatives must be chosen/frozen before reveal. A1 is predeclared here before any run."
+ },
+ "hindsight_experiment_X1": {
+  "id": "X1",
+  "status": "held_out_hindsight_only",
+  "description": "January 2024 factoring of up to $86.2M receivables at 88% (H11). Not available as a cutoff input: counterparty, rate and capacity unknown before 2024-02-12. May be shown only as a separately labelled hindsight experiment."
+ },
+ "rules": [
+  "No weekly actuals, invoices or payroll are present or implied.",
+  "EBITDA/revenue are never converted to cash.",
+  "Restricted cash is always carried separately; F03 and H03 are the only combined totals and are reported by the issuer."
+ ]
+}
