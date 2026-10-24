@@ -1,5 +1,7 @@
 # Domino handoff
 
+Latest: R1 repair0148df5 accepted and integrated79a6e19, combined940tests/build and desktop/mobile browser pass. Updated labelled canvas fixture is served3102, exec61582. G2b7801fb5 independently approved934tests, isolated runtime smoke underway; G2cabb6d07 independently approved/fullcheck passed. No owned Claude implementation active; next launch G3 after runtime gate. Read active-run for current ownership. Main untouched. Full live journey remains incomplete.
+
 Latest scheduled audit13:33 PDT: all three recorded workers active; UI/provider file progress verified, backend repair still inspecting. No new accepted checkpoint or integration. Next collect completed commits for independent re-review.
 
 ## Latest checkpoint: old CREAO selected, repairs active

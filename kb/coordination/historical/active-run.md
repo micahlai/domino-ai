@@ -1,26 +1,15 @@
 # Active run: agent canvas centerpiece
 
-Current checkpoint: October24, G2a accepted; G2b/R1 candidate audits blocked, bounded repair1 workers running; G2c app-scoped CREAO adapter running. Automation domino-overnight-audit ACTIVE every20minutes with C1 and CREAO scope. No main merge. Entry prompts/shared/C1-canvas-supervisor.md. Latest scope kb/spec/creao-canvas-cycle.md. Old11:15 deadline is superseded.
+Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke pending; G2c repair independently approved, full check passed. Automation remains ACTIVE every20minutes. No main merge.
 
 ## Current workers and next exact step
 
-| Phase | Checkout / branch | Verified process | Status / log |
-| --- | --- | --- | --- |
-| G1 visual | domino-G1 / G1-agent-canvas-visual | finished | Accepted285d7de, integrated and pushed |
-| G2a specialist boundary | domino-G2a / G2a-historical-specialists | finished | Repair9d7d6e6 accepted2db9a8b, integrated77127d3 and pushed |
-| G2b repair1 | domino-G2b / G2b-durable-investigation | Claude14827, caffeinate14850, exec47892, cwd verified | Basea6a6977 after candidatec185500; /tmp/domino-G2b-repair-claude.log |
-| R1 repair1 | domino-R1 / R1-canvas-presentation | Claude15437, caffeinate15460, exec90404, cwd verified | Basedfdd439 after candidate2d57610; /tmp/domino-R1-repair-claude.log |
-| G2c old CREAO adapter | domino-G2c / G2c-app-scoped-specialists | Claude7172, caffeinate7196, exec88483, cwd verified | Base2b9ecf9; /tmp/domino-G2c-claude.log; card G2c-app-scoped-specialists.md |
-
-
-- G2a repair passed914tests/typechecks/lint. Independent Astra audit_g2a passed162focused tests plus8probes and real-case positive packets; original context-integrity findings closed. Combined preview passed919tests/typechecks/lint, /tmp/domino-G2a-preview-check.log. No live provider call, no CREAO implementation claim. Report kb/reviews/G2a-specialists-audit.md.
-- Three local Claude implementations are active, NO children: G2b Opus/high repair, R1 Sonnet/high bounded repair, G2c Opus/high adapter. Total cap3. No duplicate UI writer. Claude uses /orchestrator and /ponytail. Owns Convex and narrow API packet only. Worker runs focused checks; Codex serializes full check/build/runtime audits. No main, UI, provider-package or shared coordination edits by worker.
-- G2b next gate: inspect Result/diff and independently test durability, idempotency, source/cutoff isolation, true operation lifecycle, errors and explicit development provider mode. Use kb/reviews/G2b-audit-plan.md. Then full check and isolated local smoke. Do not claim browser-independent execution merely from mocked tests.
-- Local R1 owns components/investigate/** and app/playground/agent-canvas/**, uses orchestrator/ponytail/taste/ui-ux-pro-max. Inspect its local checkpoint for review; do not duplicate or overwrite it. G3 local wiring waits for audited API and R1, owns app/investigate/page.tsx plus adapter.
-- User selected OLD APP-SCOPED CREAO ONLY. Use existing consumer capi integration with agent.creao.ai/api/v1/apps/.../runs. Leave CREAO_ACCOUNT_API_KEY unused; no developer v1/v2, wallet top-up or new paid fallback. G2c adds reusable historical adapter, not new remote agents. Dedicated compatible historical profiles, actual capability/cutoff-memory validation and real coordinator cycle remain live gates. Never claim app polling exposes internal agent/tool execution. New v2 key was valid, but is irrelevant to selected route.
-
-- Latest feature foundation dca5d11 is pushed along with G1 and G2a. Main694ab2a stays frozen. Node profile details show safe app-authored instructions, working style/version and actual provider. Hidden reasoning is excluded.
-- Early canvas screenshot was shown before backend dispatch. Current http://127.0.0.1:3102/investigate remains visual-only with Send disabled. Full visible real-agent journey is not complete. Existing historical dashboard is preserved.
+- R1 0148df5: finished, independently approved. 940 tests/typechecks/lint and production build pass in worker and combined preview. Desktop/mobile browser checks pass for node details, safe links, instructions, keyboard, conversation and offline states. Reduced motion verified by source/probes, runtime emulation unavailable. Integrated79a6e19. Stable preview3102 restarted exec61582, log /tmp/domino-canvas-preview.log. Screenshot /tmp/domino-audited-canvas-desktop.png. Labelled fixture only; /investigate still waits for G3.
+- G2b 7801fb5: finished, independently approved after four blockers fixed. 934 tests/typechecks/lint pass. Independent36focused tests plus8probes pass. Auditor audit_g2a owns isolated3212/site3213 runtime smoke in domino-G2b, preserving existing3210 data. No live provider calls. Integrate only after runtime gate.
+- G2c abb6d07: finished, independently approved after bounding onRunCreated. 162 focused tests and independent real-clock deadline/late-settlement probes pass; full check /tmp/domino-G2c-repair-check.log passes. Nonblocking timer cleanup remains. Dedicated historical app configuration/memory isolation and actual provider execution are not verified.
+- No owned Claude implementation remains active at this checkpoint. Unrelated Claude78153/root and94627/Karoake must remain untouched. Next launch G3 live canvas wiring from accepted R1+G2b once local runtime passes, plus a separate bounded backend provider integration after G2c adoption. One UI writer, max3 implementation processes total including children, all this computer.
+- Existing app-scoped CREAO only. Leave CREAO_ACCOUNT_API_KEY unused; no developer v1/v2, wallet top-up or paid fallback. Dedicated historical profiles/cutoff isolation and real coordinator cycle remain acceptance gates. App polling does not expose internal agent/tool execution.
+- Main694ab2a unchanged. Published work belongs to preview/historical-overnight. Current fixture demonstrates presentation, not real execution. Full requested journey is incomplete.
 
 ## Inspection and decisions
 

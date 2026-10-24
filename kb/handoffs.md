@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex repaired canvas accepted
+- R1 0148df5 independently approved, integrated79a6e19; combined940tests/typechecks/lint/build and desktop/mobile browser checks pass. Updated3102 labelled fixture shown, not real execution.
+- G2b7801fb5 passed independent repair audit and934tests; isolated local runtime smoke pending. G2cabb6d07 approved after callback-deadline repair, fullcheck passes; no live CREAO acceptance yet.
+- Next: runtime gate, G3 Claude live wiring, bounded backend provider integration. No main merge, no account-key use.
+
 ## 2026-10-24 Codex old CREAO route and audit repairs
 - User selects existing app-scoped CREAO only; new developer key unused. G2c adapter launched in isolated domino-G2c, exec88483/PID7172. No live calls by worker.
 - G2b and R1 each pass930tests/typechecks/lint but independent reviews found4backend and3UI blockers. Repairs verified in original worktrees: G2b14827/47892 and R115437/90404. Three processes total, no children.
