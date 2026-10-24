@@ -1,5 +1,18 @@
 # Domino handoff
 
+## Current goal: overnight launch handoff, 2026-10-24
+
+- User requested pushing updates, a fresh Claude orchestrator with evidence/backend subagents, a UI prompt, and the remaining project stages for an overnight run. Latest correction: only this computer runs overnight; one Claude lead spawns all three workers. Supersedes the assessment-only hold below. No new workers launched by this Codex preparation turn.
+- Use kb/spec/project-stages-2026-10-24.md. Launch prompts: prompts/shared/H0-overnight-orchestrator.md and prompts/product/H3-historical-ui.md. Task cards H1, H2a/H2b/H2c, H3 are prepared.
+- Base: origin/integration/historical-case-study, assessment 108cdaa plus this launch commit. Main remains 694ab2a locally; no main push/merge. Assessment was pushed successfully; launch docs are pushed on the same integration branch with this handoff.
+- Three concurrent writers on this computer: evidence, backend (contracts -> engine -> persistence), UI. Claude lead owns isolated coordination/preview work, Codex owns final independent audit and shared integration. Early UI previews are allowed; real data modeling/API wiring follow evidence/contract gates.
+- Reserved branches: claude/historical-orchestrator, H1-historical-evidence, H2-historical-backend, H3-historical-ui, preview/historical-overnight. They are reservations, not launched workers. Exact ownership and packet states in kb/coordination/historical/README.md.
+- Overnight ceiling six hours from launch, 30-minute checkpoints, two repair attempts per gate, no shared cloud writes or production deployment. Stop at one complete reviewable journey. Agent canvas and submission are later stages.
+- Next exact step: user launches one fresh Claude session with H0; it spawns evidence/backend/UI in three worktrees. Serialize full checks/builds and use one preview server. They publish feature/preview checkpoints for Codex morning audit. Do not silently launch duplicate sessions from this thread.
+- Existing audited work remains parked: E1b 9ab358a approved as simulator checkpoint, E3c ffeea88 and E2a 29de286 blocked. No feature repairs or integration of those branches in this preparation turn.
+
+## Previous assessment checkpoint
+
 ## Current goal: historical case study assessment, 2026-10-24
 
 - User pivot supersedes the backend-completion goal below. Source: kb/context/historical-case-study-2026-10-24.md. Plan and P5 dependency map: kb/spec/historical-case-study-plan.md. Sources: kb/research/historical-case-candidates.md.

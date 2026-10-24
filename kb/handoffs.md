@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex (overnight launch preparation)
+- Done: pushed assessment108cdaa to origin/integration/historical-case-study; prepared rest-of-project stage gates, Claude orchestration/UI prompts, scoped H1/H2/H3 cards and versioned contract handoff.
+- Next: one fresh Claude session launches all three workers on this computer. Three writers total, isolated worktrees, serialized full checks/builds, provisional preview assembly; Codex independently audits before final integration. No worker launched during prompt preparation.
+- Watch out: this supersedes the assessment-only hold. Six-hour ceiling, source/publication gates, no main merge, no production deploy or shared cloud reseed. E3c/E2a remain blocked and parked; agent canvas is later.
+
 ## 2026-10-24 Codex brain (historical pivot assessment)
 - Done: dedicated integration/historical-case-study worktree at main694ab2a; saved user scope, source comparison and minimal plan. P5 connect/detail remain stubs, main timeline/components reusable. E3c blocked despite657 passing tests; E2a blocked by three independent defects despite 650 passing tests. E1b repair 9ab358a independently approved as a preserved checkpoint; 661 tests and sim:print pass.
 - Next: review the proposed historical plan and provisional company choice before H1. H1-H3 are proposed only; all prior workers and audits finished. No new implementation, main merge, push or deployment.

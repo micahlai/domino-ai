@@ -1,6 +1,6 @@
 # Historical demo: recommendation for review
 
-Status: proposed, implementation held. User scope: ../context/historical-case-study-2026-10-24.md. Company research: ../research/historical-case-candidates.md.
+Status: assessed; overnight launch handoff now prepared in project-stages-2026-10-24.md. User scope: ../context/historical-case-study-2026-10-24.md. Company research: ../research/historical-case-candidates.md.
 
 ## Call and counterargument
 
@@ -57,13 +57,13 @@ Inspected at 694ab2a. Preserve all completed UI and existing API entry points. O
 
 Park E1b rolling-world simulation, E2a mock sources, E2b Nessie seeding, broad E5 connectors/tie-out, and E7 simulated-week orchestration. Preserve their code and task results. E3c forward operational plans are optional reuse and remain blocked by audit. Synthetic held-out companies, broad disaster scenarios, auto-generated tools, unlimited agents, and the agent canvas are deferred. Do not remove completed interfaces, tests, UI or dependencies.
 
-## Next three tasks, proposed only
+## Implementation sequence
 
 1. **H1 evidence bundle and evaluation protocol.** Claude, isolated worktree, research/data ownership. Select one company after comparing sources; record cutoff, period metrics, assumptions, later-outcome bundle and simple baseline. Verify primary-source publication times, unit conversions, cash reconciliation and the decision's feasible costs. Codex audits. Exit: defensible frozen input manifest and held-out outcomes with clear provenance. No forecast code until evidence fits.
-2. **H2 historical run, period model and reveal.** Claude after H1, isolated worktree, explicit contracts/engine/Convex ownership. Add minimal period contracts, immutable run storage, deterministic cash bridge and publication-gated observations. Preserve old operational APIs. Tests cover late publications/amendments, unknown dates, stale balance dates, YTD derivation, restricted cash, costs, immutable reveal and metric matching. Codex independently audits money and leakage controls. Exit: one reproducible backend journey with one costed alternative.
-3. **H3 historical UI journey.** Claude after contracts freeze, isolated worktree, UI ownership. Adapt current company screen and chart; case/date/source summary, save, reveal, error comparison, one response branch and proof. No canvas rewrite. Codex audits/browser checks. Exit: readable baseline -> observed event -> projected response with correct dates/labels, complete without live providers.
+2. **H2 historical run, period model and reveal.** Claude in an isolated worktree, with explicit contracts/engine/Convex ownership. Generic schemas and synthetic tests may start alongside H1; real-case modeling waits for checked evidence. Add minimal period contracts, immutable run storage, deterministic cash bridge and publication-gated observations. Preserve old operational APIs. Tests cover late publications/amendments, unknown dates, stale balance dates, YTD derivation, restricted cash, costs, immutable reveal and metric matching. Codex independently audits money and leakage controls. Exit: one reproducible backend journey with one costed alternative.
+3. **H3 historical UI journey.** Claude in an isolated worktree with UI ownership. Props-only presentation starts immediately; typing follows contract freeze and live wiring follows API-ready publication. Adapt current company screen and chart; case/date/source summary, save, reveal, error comparison, one response branch and proof. No canvas rewrite. Codex audits/browser checks. Exit: readable baseline -> observed event -> projected response with correct dates/labels, complete without live providers.
 
-Do not launch these tasks during assessment. Contracts and UI dependencies are sequential; writing three independent feature branches now would create avoidable rework. Review this plan and the evidence choice before dispatch. Integrate only approved work into integration/historical-case-study, run combined checks/build/browser journey there, and present the result before any main merge.
+The user subsequently requested parallel Claude workers and an overnight run. Follow project-stages-2026-10-24.md: evidence and generic contract work may overlap with props-only UI previews; real-case modeling waits for evidence and live UI wiring waits for the frozen, implemented interface. Prepared H0/H3 prompts carry that authority when launched. Integrate only approved work into integration/historical-case-study, run combined checks/build/browser journey there, and present the result before any main merge.
 
 ## Open decisions
 

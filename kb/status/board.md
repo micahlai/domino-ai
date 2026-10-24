@@ -1,12 +1,13 @@
 # Status board
 
-## Current scope: historical case study, implementation held
+## Current scope: historical case study, overnight launch handoff
 
-Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Proposed plan: `../spec/historical-case-study-plan.md`. Prior rows below are retained as implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
+Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
-| Historical assessment | review | 2U provisional; WeWork/Appgate alternatives; H1-H3 proposed only |
+| Historical assessment | done | 2U provisional; sources and plan independently reviewed |
+| H0/H1/H2/H3 overnight launch | todo | Prompts/cards prepared for one fresh Claude lead with evidence/backend/UI subagents on this computer; no workers launched by Codex |
 | E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |
 | E2a 29de286 | blocked | 650 tests/typecheck/lint pass; pagination, payout and OpenAPI defects independently reproduced; parked |
 | E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |

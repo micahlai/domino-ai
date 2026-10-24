@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-24 Codex: prepare bounded overnight implementation with Claude lead, evidence/backend/UI subagents on one computer, per the latest correction. Serialize full checks/builds and share one owned preview server. Allow parallel presentation and generic contracts; gate real-case modeling on evidence and live UI wiring on the frozen API. Counterargument: broader parallelism may build more screens, but increases unsupported assumptions and integration conflicts. User requested launch prompts and project stages; no workers started in this turn.
+
 - 2026-10-24 Codex brain: user changed direction to a historical public-company replay. Freeze new implementation dispatch; checkpoint existing workers and keep future integration off main. Propose a curated case, period cash model, immutable forecast/reveal and one costed alternative. Counterargument: less weekly detail, but public data cannot substantiate synthetic weekly actuals. Company selection remains open.
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
