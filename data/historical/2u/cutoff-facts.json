@@ -18,7 +18,10 @@
    "restricted_cash": false,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F02",
@@ -35,7 +38,10 @@
    "restricted_cash": true,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F03",
@@ -52,7 +58,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "equals F01+F02",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F04",
@@ -69,7 +78,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F05",
@@ -86,7 +98,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "YTD 9 months; no standalone Q3 figure was found in S1/S2",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F06",
@@ -103,7 +118,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F07",
@@ -120,7 +138,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "S2 attributes the decline to a $187.0M term loan repayment and the January 2023 refinancing (one-time)",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F08",
@@ -137,7 +158,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F09",
@@ -154,7 +178,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F10",
@@ -171,12 +198,15 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "2022-12-31: 62,826",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F11",
    "source_id": "S1",
-   "metric": "long_term_debt_carrying_value",
+   "metric": "long_term_debt_noncurrent_carrying_value",
    "kind": "reported",
    "balance_date": "2023-09-30",
    "period_start": null,
@@ -184,11 +214,14 @@
    "reported_value": 878124,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": 87812400000,
-   "locator": "S1 Part I Item 1, Condensed Consolidated Balance Sheets (p.4)",
+   "locator": "S1 balance sheet (p.4) and Note 8 Debt components table",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "No separate current-portion line on the balance sheet; 2022-12-31: 928,564",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "Non-current, net of unamortized discount/issuance costs and net of the current portion (F27). It is NOT total principal and NOT near-term cash repayment. Balance sheet shows no separate current-debt line; the current portion sits in Note 8 only. 2022-12-31: 928,564",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F12",
@@ -205,7 +238,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F13",
@@ -222,7 +258,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "F12+F13=36,777 vs investing 36,576 (F06): 201 of other investing items unidentified",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F14",
@@ -239,7 +278,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "includes non-cash and lease-related items; cash share unknown",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F15",
@@ -256,7 +298,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "2022-12-31: 6,692",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F16",
@@ -268,12 +313,15 @@
    "period_end": "2023-09-30",
    "reported_value": 12,
    "reported_unit": "percent",
-   "cents": 1200000,
+   "cents": null,
    "locator": "S2 narrative: 'reduced headcount in the third quarter by 12%'",
    "restricted_cash": null,
    "derived_from": null,
-   "note": null,
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "note": "percentage, not money; cents intentionally null. Issuer states the cut as headcount reduction in Q3 2023.",
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F17",
@@ -290,7 +338,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "management expectation; cash conversion unknown",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F18",
@@ -303,11 +354,16 @@
    "reported_value": 40000,
    "reported_unit": "USD thousands (source says $40 million)",
    "cents": 4000000000,
-   "locator": "S1 debt note",
+   "locator": "S1 Note 8 Debt, Second Amended Credit Agreement (Jan 9 2023)",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "termination 2026-06-28",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "$40M senior secured first lien revolver. Termination date June 28, 2026, OR January 1, 2025 if more than $50 million of the 2025 Notes remain outstanding on January 1, 2025 (springing termination; reader-extracted quote). That date is 3 months before the 2025 Notes mature (2025-05-01) and 29 days before the term-loan springing date in F22.",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)",
+   "springing_termination_date": "2025-01-01",
+   "springing_threshold_cents": 5000000000,
+   "default_termination_date": "2026-06-28"
   },
   {
    "id": "F19",
@@ -323,8 +379,10 @@
    "locator": "S1 debt note",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "$20M stated still available to borrow; availability conditions not read",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "Reader-extracted: outstanding borrowings $20 million and available borrowings $20 million at 2023-09-30. Availability conditions beyond that not read. Q4 release (held out) shows $40.0M drawn at 2023-12-31.",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
   },
   {
    "id": "F20",
@@ -340,8 +398,10 @@
    "locator": "S1 debt note",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "2.25%, matures 2025-05-01; scheduled principal due in 2025 per note: 383,800",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "2.25% convertible notes, mature 2025-05-01. Principal 380,000; unamortized issuance costs (3,331); net carrying 376,669; fair value $226.9M at 2023-09-30 (reader-extracted). Scheduled principal due 2025 in the maturity table: 383,800 (380,000 notes + 3,800 term-loan amortization, analyst decomposition)",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
   },
   {
    "id": "F21",
@@ -357,8 +417,10 @@
    "locator": "S1 debt note",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "4.50%, matures 2030-02-01",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "4.50% convertible notes, mature 2030-02-01. Principal 147,000; unamortized discount/issuance costs (19,867); net carrying 127,133; fair value $73.2M (reader-extracted)",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
   },
   {
    "id": "F22",
@@ -374,8 +436,10 @@
    "locator": "S1 debt note, Jan 9 2023 amendment",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "Maturity extended to 2026-12-28; springing maturity if more than $40M of 2025 Notes remain outstanding on January 30, 2025. Term loan carrying 377,150 (principal quoted as $372.4M); the note's scheduled-principal total 907,650 was not reconciled to the components",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "Reader-extracted: term loan maturity extended from 2024-12-28 to 2026-12-28, or 2025-01-30 if more than $40 million of the 2025 Notes remain outstanding on January 30, 2025. Term-loan line 377,150 (carrying 9/30/23, before term-loan unamortized costs of $23.5M per note). See F27-F30 and derived C01 for the principal reconciliation",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
   },
   {
    "id": "F23",
@@ -391,8 +455,10 @@
    "locator": "S1 debt note",
    "restricted_cash": null,
    "derived_from": null,
-   "note": "Term loan: minimum Recurring Revenues (threshold not read). Revolver only: max senior secured net leverage, max total net leverage, min fixed charge coverage (thresholds not read). Company stated compliance at 2023-09-30. NO minimum-liquidity covenant seen, but the note text was truncated so absence is unverified",
-   "available_at": "2023-11-09T16:45:46-05:00"
+   "note": "Reader-extracted from Note 8: term loan has a minimum Recurring Revenues covenant; three further covenants benefit only revolver lenders (max senior secured net leverage, max total net leverage, min fixed charge coverage). Numeric thresholds NOT visible in the reader text. Company states compliance at 2023-09-30 and 2022-12-31. No minimum-liquidity covenant listed in Note 8 as extracted; full-text absence not verifiable",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "checked_in_raw": [],
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
   },
   {
    "id": "F24",
@@ -409,7 +475,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "university fees collected over 12-24 months; timing within window unknown",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F25",
@@ -426,7 +495,10 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "revenue, not cash",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
   },
   {
    "id": "F26",
@@ -443,7 +515,191 @@
    "restricted_cash": null,
    "derived_from": null,
    "note": "Revenue $965-990M; net loss $250-240M; adjusted EBITDA $165-175M. EBITDA is not cash; capex and FCF guidance not given",
-   "available_at": "2023-11-09T16:01:46-05:00"
+   "available_at": "2023-11-09T16:01:46-05:00",
+   "checked_in_raw": [
+    "S7"
+   ]
+  },
+  {
+   "id": "F27",
+   "metric": "current_portion_of_long_term_debt",
+   "kind": "reported",
+   "balance_date": "2023-09-30",
+   "reported_value": 4966,
+   "cents": 496600000,
+   "locator": "S1 Note 8 Debt components table",
+   "note": "Total debt carrying 883,090 less current portion 4,966 = non-current 878,124 (F11). Current portion is carrying-basis, not a full cash-repayment schedule",
+   "source_id": "S1",
+   "period_start": null,
+   "period_end": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "reported_unit": "USD thousands (as stated in source headers)",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)",
+   "checked_in_raw": []
+  },
+  {
+   "id": "F28",
+   "metric": "total_debt_carrying_value",
+   "kind": "reported",
+   "balance_date": "2023-09-30",
+   "reported_value": 883090,
+   "cents": 88309000000,
+   "locator": "S1 Note 8 Debt components table",
+   "note": "Components (thousands): term loan 377,150; revolver 20,000; convertible notes 527,000; government grant obligations 3,500; other borrowings 2,118; less unamortized discount/costs (46,678). 2022-12-31 total: 936,144",
+   "source_id": "S1",
+   "period_start": null,
+   "period_end": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "reported_unit": "USD thousands (as stated in source headers)",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)",
+   "checked_in_raw": []
+  },
+  {
+   "id": "F29",
+   "metric": "scheduled_principal_maturities_total",
+   "kind": "reported",
+   "balance_date": "2023-09-30",
+   "reported_value": 907650,
+   "cents": 90765000000,
+   "locator": "S1 Note 8 future principal payments table",
+   "note": "By period (thousands): remainder 2023 950; 2024 3,800; 2025 383,800; 2026 368,600; 2027 1,500; thereafter 149,000. Excludes the 20,000 revolver and 2,118 other borrowings (components 929,768 less 22,118 = 907,650, checked in validation). 2027+ includes conditional government loans that may be forgiven",
+   "source_id": "S1",
+   "period_start": null,
+   "period_end": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "reported_unit": "USD thousands (as stated in source headers)",
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)",
+   "checked_in_raw": []
+  },
+  {
+   "id": "F30",
+   "metric": "liquidity_warning_accelerated_maturity",
+   "kind": "reported",
+   "reported_value": null,
+   "reported_unit": "text",
+   "cents": null,
+   "locator": "S1 Note 8 Debt (last paragraph before revolver borrowings sentence)",
+   "note": "Warning: if the company does not refinance or raise capital to reduce debt, and the term loan balance of $372.4 million springs forward to January 30, 2025, the 'Company's liquidity may not be sufficient to pay off the balance on the accelerated maturity date' (short phrase reader-extracted, also reproduced by secondary source X-SEC-1). The reader paraphrased the rest as dependent on revenue growth and cost reduction; exact wording not verified. This is in the filing available at the cutoff, so it is the company's own warning, not a Domino-first finding. No 'substantial doubt' or 'going concern' sentence appears in the reader text of Note 8",
+   "source_id": "S1",
+   "period_start": null,
+   "period_end": null,
+   "balance_date": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)",
+   "checked_in_raw": []
+  },
+  {
+   "id": "F31",
+   "metric": "noteholder_refinancing_discussions",
+   "kind": "reported",
+   "source_id": "S2",
+   "reported_value": null,
+   "reported_unit": "text",
+   "cents": null,
+   "locator": "S7 Business Outlook: 'The company is in active discussions with noteholders to refinance its convertible notes to address impending maturities ... aims to have a successful transaction in the near term.'",
+   "note": "Verified in S7 raw bytes. Management intent, no terms, counterparties or probability given",
+   "checked_in_raw": [
+    "S7"
+   ],
+   "available_at": "2023-11-09T16:01:00-05:00",
+   "period_start": null,
+   "period_end": null,
+   "balance_date": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "verification": "raw bytes"
+  },
+  {
+   "id": "F32",
+   "metric": "management_next_12_month_liquidity_expectation",
+   "kind": "reported",
+   "reported_value": null,
+   "reported_unit": "text",
+   "cents": null,
+   "locator": "S7 Business Outlook (verified); S1 Item 2 MD&A (NOT retrieved)",
+   "note": "What is verified: management expects about $145 million of cash from portfolio management over the next 12 to 24 months (F24) and 'believe[s] this cash will provide flexibility to launch new programs, invest in growth areas, and strengthen the company's balance sheet' (S7). That is a 12 to 24 month collection expectation, not a 12-month sufficiency conclusion. NOT verified: any explicit MD&A sentence that cash and resources suffice for the next twelve months. The reader never returned Item 2. Neither confirmed nor denied here. S7 lists 'expectations regarding the amount of time its cash balances and other available financial resources will be sufficient' only as a forward-looking-statement topic, with no duration",
+   "checked_in_raw": [
+    "S7"
+   ],
+   "available_at": "2023-11-09T16:01:00-05:00",
+   "source_id": "S1",
+   "period_start": null,
+   "period_end": null,
+   "balance_date": null,
+   "restricted_cash": null,
+   "derived_from": null,
+   "verification": "reader-extracted (WebFetch model-processed text of S1, chars 0-137,244; not original bytes, not hashable)"
+  }
+ ],
+ "derived": [
+  {
+   "id": "C01",
+   "kind": "derived",
+   "metric": "term_loan_balance_at_2025_01_30_from_schedule",
+   "reported_value": 372400,
+   "cents": 37240000000,
+   "reported_unit": "USD thousands",
+   "derived_from": [
+    "F22",
+    "F29"
+   ],
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "locator": "377,150 (term loan line) - 950 (remainder 2023) - 3,800 (2024) = 372,400",
+   "note": "Matches the $372.4 million in the F30 warning exactly, so the warning's balance is the scheduled term-loan principal on the springing date. Analyst reconciliation, not stated by the issuer"
+  },
+  {
+   "id": "C02",
+   "kind": "derived",
+   "metric": "scheduled_principal_through_2024",
+   "reported_value": 4750,
+   "cents": 475000000,
+   "reported_unit": "USD thousands",
+   "derived_from": [
+    "F29"
+   ],
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "locator": "950 + 3,800",
+   "note": "Compare current portion 4,966 (F27): 216 difference unexplained (likely other borrowings). Neither number is the 2025 maturity wall"
+  },
+  {
+   "id": "C03",
+   "kind": "derived",
+   "metric": "debt_principal_components_total",
+   "reported_value": 929768,
+   "cents": 92976800000,
+   "reported_unit": "USD thousands",
+   "derived_from": [
+    "F28"
+   ],
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "locator": "377,150+20,000+527,000+3,500+2,118; less 46,678 = 883,090 (F28)",
+   "note": "gross of discount; includes revolver"
+  },
+  {
+   "id": "C04",
+   "kind": "derived",
+   "metric": "liquidity_vs_springing_exposure",
+   "reported_value": null,
+   "reported_unit": "text",
+   "cents": null,
+   "derived_from": [
+    "F01",
+    "F19",
+    "F18",
+    "F20",
+    "F22"
+   ],
+   "available_at": "2023-11-09T16:45:46-05:00",
+   "locator": "cash 41,141 + undrawn revolver 20,000 = 61,141 at 2023-09-30 versus 2025 Notes 380,000 and term loan 372,400",
+   "note": "Revolver availability disappears if the 2025-01-01 springing termination triggers (F18), so it cannot be counted as liquidity against the 2025 wall. Restricted cash 12,710 excluded"
   }
  ]
 }

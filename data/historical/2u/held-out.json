@@ -4,7 +4,7 @@
  "facts": [
   {
    "id": "H01",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "cash_and_cash_equivalents",
    "kind": "reported",
    "balance_date": "2023-12-31",
@@ -13,15 +13,20 @@
    "reported_value": 60689,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": 6068900000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": false,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H02",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "restricted_cash",
    "kind": "reported",
    "balance_date": "2023-12-31",
@@ -30,15 +35,20 @@
    "reported_value": 12710,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": 1271000000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": true,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H03",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "cash_cash_equivalents_and_restricted_cash_end_of_period",
    "kind": "reported",
    "balance_date": "2023-12-31",
@@ -47,15 +57,20 @@
    "reported_value": 73399,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": 7339900000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H04",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "net_cash_operating_fy2023",
    "kind": "reported",
    "balance_date": null,
@@ -64,15 +79,20 @@
    "reported_value": -3431,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": -343100000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": "unaudited, pre-10-K",
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H05",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "net_cash_investing_fy2023",
    "kind": "reported",
    "balance_date": null,
@@ -81,15 +101,20 @@
    "reported_value": -49831,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": -4983100000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H06",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "net_cash_financing_fy2023",
    "kind": "reported",
    "balance_date": null,
@@ -98,15 +123,20 @@
    "reported_value": -55018,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": -5501800000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H07",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "effect_of_exchange_rate_fy2023",
    "kind": "reported",
    "balance_date": null,
@@ -115,15 +145,20 @@
    "reported_value": -899,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": -89900000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H08",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "net_change_in_cash_fy2023",
    "kind": "reported",
    "balance_date": null,
@@ -132,15 +167,20 @@
    "reported_value": -109179,
    "reported_unit": "USD thousands (as stated in source headers)",
    "cents": -10917900000,
-   "locator": "S3 earnings release, financial statements",
+   "locator": "S8 earnings release, financial statements",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H09",
-   "source_id": "S3",
+   "source_id": "S8",
    "metric": "total_debt_incl_revolver",
    "kind": "reported",
    "balance_date": "2023-12-31",
@@ -149,41 +189,61 @@
    "reported_value": 904700,
    "reported_unit": "USD thousands (source says $904.7 million incl. $40.0M drawn on revolver)",
    "cents": 90470000000,
-   "locator": "S3 narrative",
+   "locator": "S8 narrative",
    "restricted_cash": null,
    "derived_from": null,
    "note": null,
-   "available_at": "2024-02-12T16:09:41-05:00"
+   "available_at": "2024-02-12T16:01:00-05:00",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H10",
-   "source_id": "S3",
+   "source_id": "S8",
    "kind": "reported",
    "metric": "going_concern_conditional_language",
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "note": "Substantial doubt if the term loan is not amended/refinanced or capital raised and obligations accelerate or fall due within twelve months. Conditional; no amendment terms given.",
-   "locator": "S3 narrative"
+   "locator": "S8 narrative",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H11",
-   "source_id": "S3",
+   "source_id": "S8",
    "kind": "reported",
    "metric": "january_2024_receivables_factoring",
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "note": "Up to $86.2M of receivables (portfolio management/program exit), Morgan Stanley Senior Funding, purchase rate 88%; fees not disclosed. Post-cutoff action: hindsight experiment only.",
-   "locator": "S3 narrative",
+   "locator": "S8 narrative",
    "reported_value": 86200,
    "reported_unit": "USD thousands (source says $86.2 million)",
-   "cents": 8620000000
+   "cents": 8620000000,
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H12",
-   "source_id": "S3",
+   "source_id": "S8",
    "kind": "reported",
    "metric": "q1_2024_and_fy2024_guidance",
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "note": "Q1 revenue $195-198M, net loss $60-55M, adj EBITDA $10-12M; FY revenue $805-815M, net loss $90-85M, adj EBITDA $120-125M; capex about $45M. Not cash.",
-   "locator": "S3 outlook table"
+   "locator": "S8 outlook table",
+   "sec_available_at": "2024-02-12T16:09:41-05:00",
+   "checked_in_raw": [
+    "S8"
+   ],
+   "sec_cross_source": "S3"
   },
   {
    "id": "H13",
@@ -192,7 +252,8 @@
    "metric": "prepackaged_chapter_11_announcement",
    "available_at": "2024-07-25",
    "note": "Epilogue only. Not opened in this run.",
-   "locator": "S5"
+   "locator": "S5",
+   "checked_in_raw": []
   }
  ],
  "derived": [
@@ -209,10 +270,11 @@
     "H04",
     "F05"
    ],
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "source_id": null,
    "locator": "FY2023 (S3) minus nine months (S1)",
-   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate."
+   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate.",
+   "sec_available_at": "2024-02-12T16:09:41-05:00"
   },
   {
    "id": "D02",
@@ -227,10 +289,11 @@
     "H05",
     "F06"
    ],
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "source_id": null,
    "locator": "FY2023 (S3) minus nine months (S1)",
-   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate."
+   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate.",
+   "sec_available_at": "2024-02-12T16:09:41-05:00"
   },
   {
    "id": "D03",
@@ -245,10 +308,11 @@
     "H06",
     "F07"
    ],
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "source_id": null,
    "locator": "FY2023 (S3) minus nine months (S1)",
-   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate."
+   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate. Debt proceeds FY 329,223 vs 9M 309,223 = 20,000 more in Q4, consistent with the revolver going from 20,000 to 40,000 drawn (S8: $40.0M drawn); Q4 payments on debt 375,283-373,914 = 1,369. 9M debt lines from reader text of S1.",
+   "sec_available_at": "2024-02-12T16:09:41-05:00"
   },
   {
    "id": "D04",
@@ -263,10 +327,11 @@
     "H07",
     "F08"
    ],
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "source_id": null,
    "locator": "FY2023 (S3) minus nine months (S1)",
-   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate."
+   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate.",
+   "sec_available_at": "2024-02-12T16:09:41-05:00"
   },
   {
    "id": "D05",
@@ -281,10 +346,12 @@
     "H08",
     "F09"
    ],
-   "available_at": "2024-02-12T16:09:41-05:00",
+   "available_at": "2024-02-12T16:01:00-05:00",
    "source_id": null,
    "locator": "FY2023 (S3) minus nine months (S1)",
-   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate."
+   "note": "Valid only if S3 unaudited FY and S1 YTD share scope/basis; the identity net=H03-F03 reconciles exactly. Later 10-K may restate.",
+   "sec_available_at": "2024-02-12T16:09:41-05:00"
   }
- ]
+ ],
+ "availability_note": "available_at = issuer public time (S8, 16:01:00 ET); sec_available_at = EDGAR acceptance of the 8-K (S3, 16:09:41 ET). First reveal is the earlier."
 }

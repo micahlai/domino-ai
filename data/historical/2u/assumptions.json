@@ -10,8 +10,10 @@
   "knowledge_cutoff": "2023-11-10T23:59:59-05:00",
   "latest_reported_balance_date": "2023-09-30",
   "target_period_end": "2023-12-31",
-  "first_reveal": "S3 at 2024-02-12T16:09:41-05:00",
-  "stale_interval": "2023-09-30 to 2023-11-10 has no reported balance; any estimate there is a nowcast, identical across baseline and response branches"
+  "first_reveal": "S8 issuer-public 2024-02-12T16:01:00-05:00 (SEC acceptance of the same 8-K at 16:09:41, S3); first reveal is the earlier",
+  "stale_interval": "2023-09-30 to 2023-11-10 has no reported balance; any estimate there is a nowcast, identical across baseline and response branches",
+  "availability_note": "Q4 issuer-public time precedes SEC availability by 8 min 41 s; both are after cutoff and held out",
+  "status": "provisional"
  },
  "baseline_B1": {
   "id": "B1",
@@ -33,22 +35,36 @@
  },
  "debt_rule_R1": {
   "id": "R1",
-  "status": "analyst_derivation_needs_legal_review",
-  "description": "Springing term-loan maturity applies if more than $40M of the 2025 Notes are outstanding on 2025-01-30. The twelve-month look-forward from a filing date first includes 2025-01-30 for filings on or after 2024-01-30. At the cutoff (and S1 filing date 2023-11-09) it was outside the window, which is consistent with S2 containing no going-concern statement. The S1 MD&A liquidity text was not read, so S1's own going-concern position is unverified.",
-  "inputs": [
-   "F20",
-   "F22"
+  "status": "illustrative_policy_not_historical_first_warning",
+  "description": "A Domino alert rule: flag a debt event when its date enters a 12-month look-forward from the as-of date. 2025-01-01 (revolver) and 2025-01-30 (term loan) enter the window for as-of dates on or after 2024-01-01 and 2024-01-30. At the 2023-11-10 cutoff both are outside it, so R1 would not fire on them; it is a policy being demonstrated, not a reconstruction of when anyone first warned.",
+  "historical_facts_not_derived_from_r1": [
+   "F30: the company's own 10-Q (2023-11-09) already warned that liquidity may not suffice if the term loan accelerates to 2025-01-30",
+   "F18: the revolver springing termination on 2025-01-01 (>$50M of 2025 Notes) is earlier than the term-loan date and was also in the 10-Q",
+   "F31: management said on 2023-11-09 it was in active discussions to refinance the converts",
+   "H10 (held out): going-concern conditional language first seen in the 2024-02-12 release"
   ],
-  "caveat": "Legal reading of the credit agreement is not verified; Q4 release (held-out H10) is the only evidence of how management applied it."
+  "management_expectation_vs_warning": {
+   "expectation": "F32 (portfolio management cash $145M over 12-24 months; MD&A 12-month statement not retrieved)",
+   "warning": "F30"
+  },
+  "inputs": [
+   "F18",
+   "F20",
+   "F22",
+   "F30",
+   "F31"
+  ],
+  "caveat": "Legal reading of the credit agreement not verified; thresholds ($50M revolver / $40M term loan) are reader-extracted from Note 8. No claim that R1 would have been an early or unique signal."
  },
  "intervention_A1": {
   "id": "A1",
-  "status": "analyst_assumption_predeclared_ranges",
+  "status": "hypothetical_analyst_assumption_predeclared_ranges",
   "label": "Bounded second cost action",
-  "description": "A further headcount/cost reduction announced at the cutoff, sized relative to the Q3 action already evidenced (12% headcount, $55M expected annualized savings).",
+  "description": "HYPOTHETICAL bounded second cost action. Not a company plan or disclosed intention. Sized as a fraction of an expected (not realised) Q3 action.",
   "anchors": {
    "annualized_savings_per_headcount_point_thousands": 4583,
-   "q3_restructuring_charge_to_expected_annual_savings": 0.256
+   "q3_restructuring_charge_to_expected_annual_savings": 0.256,
+   "note": "55,000/12 = 4,583.33 rounded; anchor is a management expectation (F17), not realised savings"
   },
   "parameters": {
    "headcount_reduction_percent": {
@@ -72,12 +88,53 @@
     "basis": "analyst; public expense savings are not automatically cash"
    },
    "revenue_or_enrollment_downside": {
-    "basis": "Not quantified. S2 reports Q3 FCE enrollments -21%, attributed by the issuer partly to program exits and a mid-2022 marketing change, so the data does not isolate any effect of headcount cuts. Treat downside as an explicit unknown range chosen by H2/H0 and label it analyst"
+    "status": "hypothetical_unknown_feasibility",
+    "basis": "Not evidenced. S7 reports Q3 FCE enrollments -21%, attributed to portfolio management and a mid-2022 marketing change, so public data does not isolate any effect of headcount on revenue.",
+    "gross_savings_offset_fraction": {
+     "low": 0.0,
+     "high": 0.5,
+     "basis": "hypothetical: share of gross annualized savings lost to lower revenue contribution or added attrition cost; 0 and 0.5 are analyst bounds, not estimates"
+    },
+    "revenue_at_risk_pct_of_fy2023_revenue_guidance_midpoint": {
+     "low": 0.0,
+     "high": 1.0,
+     "midpoint_revenue_thousands": 977500,
+     "basis": "hypothetical bound; midpoint of $965-990M (F26). 1.0% = 9,775 thousand per year at the upper bound. Timing unknown"
+    },
+    "label": "hypothetical analyst sensitivity; must be shown as an unknown range, never a forecast"
    }
   },
-  "feasibility": "Management executed a 12% cut in Q3 2023, so a further action was feasible in kind. Consent, severance law, covenant and university-contract effects were not examined.",
+  "feasibility": "UNKNOWN. The Q3 2023 12% headcount cut and its expected $55M annualized savings (F16, F17) are management statements; realised savings and cash timing are not evidenced. Nothing here treats the prior cut as proof that a further cut would save money or can be executed. Consent, severance law, university-contract delivery obligations, covenants (including minimum Recurring Revenues, F23) and noteholder talks (F31) were not examined.",
   "in_window_implication": "Cost lands before savings. With a 1-2 quarter lag the 2023-12-31 target is likely flat or lower in cash than baseline, and the benefit appears in 2024. This is analyst reasoning, not evidence.",
-  "caution": "Alternatives must be chosen/frozen before reveal. A1 is predeclared here before any run."
+  "caution": "Alternatives must be chosen/frozen before reveal. A1 is predeclared here before any run.",
+  "bounded_arithmetic_thousands": {
+   "gross_annualized_savings": {
+    "low": 13750,
+    "high": 27500,
+    "calc": "4,583.33 per headcount point (55,000/12) x 3 or 6 points"
+   },
+   "one_time_cash_cost": {
+    "low": 1375,
+    "high": 7150,
+    "calc": "13,750 x 0.10; 27,500 x 0.26"
+   },
+   "cash_savings_inside_window_to_2023-12-31": {
+    "low": 0,
+    "high": 0,
+    "calc": "lag of 1-2 quarters from a cutoff-date announcement lands savings after 2023-12-31"
+   },
+   "cash_effect_inside_window": {
+    "low": -7150,
+    "high": -1375,
+    "calc": "one-time cost only; revenue downside unknown and excluded"
+   },
+   "annualized_net_savings_after_downside_and_conversion": {
+    "low": null,
+    "high": 27500,
+    "calc": "high = 100% conversion, 0 offset. Low is unknown: with offset and severance-driven revenue loss the net could be negative, so no floor is asserted"
+   },
+   "status": "arithmetic on predeclared hypothetical ranges; not a forecast; cents = thousands x 100000 when loaded"
+  }
  },
  "hindsight_experiment_X1": {
   "id": "X1",
