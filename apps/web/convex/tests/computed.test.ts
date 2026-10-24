@@ -104,9 +104,12 @@ describe("computed demo seed", () => {
     const actions = (await t.query(api.log.list, { companyId: first.companyId, limit: 10 })).map(
       (row) => row.action,
     );
-    expect(actions).toEqual(
-      expect.arrayContaining(["computed.seed", "demo.proposals", "engine.recompute"]),
-    );
+    expect(actions.sort()).toEqual([
+      "computed.seed",
+      "demo.proposals",
+      "engine.proposal-order",
+      "engine.recompute",
+    ]);
     expect(await t.run(async (ctx) => (await ctx.db.query("companies").collect()).length)).toBe(2);
   });
 
@@ -205,10 +208,8 @@ describe("computed demo seed", () => {
     expect(early.map((row) => row.fix.targetRiskIds)).toContainEqual([ACME_LATE]);
     expect(early.every((row) => row.fix.label.startsWith("Demo proposal"))).toBe(true);
     expect(early.map((row) => row.gain)).not.toContain(23_500_000);
-    // Source proposals apply in canonical proposal-ID order, on the first run and every rerun.
-    const selected = proposals
-      .filter((p) => useful.has(p.id))
-      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    // Source proposals apply in the caller's order, never re-sorted by ID.
+    const selected = proposals.filter((p) => useful.has(p.id));
     const withFixes = engine.stressTest(snapshot, model, constraints, risks, selected);
     expect(await t.query(api.resilience.get, { companyId, withFixes: true })).toEqual(withFixes);
     expect(withFixes.appliedFixIds.length).toBeGreaterThan(0);
@@ -367,6 +368,112 @@ describe("recompute", () => {
     await t.mutation(computedRefs.recompute, { companyId });
     const again = await t.query(api.fixes.forBranch, { branchId: parent.id });
     expect(again.map((row) => row.fix.id)).toEqual(ranked.map((r) => r.fix.id));
+  });
+});
+
+describe("proposal order", () => {
+  const ORDER = "engine.proposal-order";
+  const earlyPay = (id: string, payOn: string): FixCandidate => ({
+    id,
+    label: id,
+    changes: [{ kind: "discount_early_pay", invoiceId: "inv_acme_2027", percent: 2, payOn }],
+    costNote: "order probe",
+    risk: "low",
+    evidence: [],
+    targetRiskIds: [ACME_LATE],
+  });
+
+  async function orderCompany() {
+    const t = testBackend();
+    const companyId = await insertCompany(t, constraints);
+    const prefix = computedPrefix(companyId);
+    // Caller order is z then a: the reverse of ID order, so an ID sort would show up.
+    const z = earlyPay(`${prefix}z_early`, "2026-11-20");
+    const a = earlyPay(`${prefix}a_early`, "2026-11-27");
+    await t.run(async (ctx) => {
+      await recomputeCompany(ctx, companyId, { proposals: [z, a], action: "engine.recompute" });
+    });
+    return { t, companyId, z, a };
+  }
+
+  const manifests = (t: T, companyId: Id<"companies">) =>
+    t.run(async (ctx) =>
+      (await ctx.db.query("log").collect())
+        .filter((row) => row.companyId === companyId && row.action === ORDER)
+        .map((row) => row.refs),
+    );
+
+  it("applies explicit proposals in caller order and keeps it across reruns", async () => {
+    const { t, companyId, z, a } = await orderCompany();
+    const risks = independentRisks();
+    const callerOrder = engine.stressTest(snapshot, model, constraints, risks, [z, a]);
+    const idOrder = engine.stressTest(snapshot, model, constraints, risks, [a, z]);
+    expect(callerOrder.appliedFixIds).toEqual([z.id, a.id]);
+    expect(callerOrder).not.toEqual(idOrder);
+    expect(await t.query(api.resilience.get, { companyId, withFixes: true })).toEqual(callerOrder);
+    expect(await manifests(t, companyId)).toEqual([[z.id, a.id]]);
+
+    const before = await dump(t, companyId);
+    await t.mutation(computedRefs.recompute, { companyId });
+    await t.run(async (ctx) => {
+      await recomputeCompany(ctx, companyId, { proposals: [a, z], action: "engine.recompute" });
+    });
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("appends genuinely new explicit proposals in caller order", async () => {
+    const { t, companyId, z, a } = await orderCompany();
+    const prefix = computedPrefix(companyId);
+    const hire = {
+      ...(fixtures.fixes[1] as FixCandidate),
+      id: `${prefix}0_hire`,
+      targetRiskIds: [],
+    };
+    const y = earlyPay(`${prefix}y_early`, "2026-11-24");
+    await t.run(async (ctx) => {
+      await recomputeCompany(ctx, companyId, {
+        proposals: [y, a, hire],
+        action: "engine.recompute",
+      });
+    });
+    // Saved order first, then new IDs in caller order (y before the ID-first 0_hire).
+    expect((await manifests(t, companyId)).at(-1)).toEqual([z.id, a.id, y.id, hire.id]);
+    expect(await t.query(api.resilience.get, { companyId, withFixes: true })).toEqual(
+      engine.stressTest(snapshot, model, constraints, independentRisks(), [z, a, y, hire]),
+    );
+  });
+
+  it("rejects conflicting IDs, missing payloads and unordered saved proposals", async () => {
+    const { t, companyId, z } = await orderCompany();
+    const before = await dump(t, companyId);
+    const conflict = { ...z, label: "Same ID, different payload" };
+    await expect(
+      t.run((ctx) =>
+        recomputeCompany(ctx, companyId, { proposals: [conflict], action: "engine.recompute" }),
+      ),
+    ).rejects.toThrow("INVALID_PROPOSAL");
+    expect(await dump(t, companyId)).toEqual(before);
+
+    const dropRows = (match: (row: { fix: FixCandidate }) => boolean) =>
+      t.run(async (ctx) => {
+        for (const row of await ctx.db.query("fixes").collect())
+          if (row.companyId === companyId && match({ fix: row.data })) await ctx.db.delete(row._id);
+      });
+    await dropRows((row) => row.fix.id === z.id);
+    const missingPayload = await dump(t, companyId);
+    await expect(t.mutation(computedRefs.recompute, { companyId })).rejects.toThrow("INVALID_DATA");
+    expect(await dump(t, companyId)).toEqual(missingPayload);
+
+    const { t: t2, companyId: other } = await orderCompany();
+    await t2.run(async (ctx) => {
+      for (const row of await ctx.db.query("log").collect())
+        if (row.companyId === other && row.action === ORDER) await ctx.db.delete(row._id);
+    });
+    const unordered = await dump(t2, other);
+    await expect(t2.mutation(computedRefs.recompute, { companyId: other })).rejects.toThrow(
+      "LEGACY_DATA",
+    );
+    expect(await dump(t2, other)).toEqual(unordered);
   });
 });
 
@@ -529,6 +636,113 @@ describe("simulateFix", () => {
       t.mutation(computedRefs.simulateFix, { branchId: "br_acme_late", fixId: "fix_early_pay" }),
     ).rejects.toThrow("LEGACY_DATA");
     expect(await t.query(api.branches.list, { companyId: fixture.companyId })).toHaveLength(5);
+  });
+
+  it("rejects a parent whose rules changed without a cash change and writes nothing", async () => {
+    const { t, companyId } = await seeded();
+    const { parentId, fix, fixBranchId } = await candidate(t, companyId);
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("branches")
+        .withIndex("by_branchId", (q) => q.eq("branchId", fixBranchId))
+        .unique();
+      if (row) await ctx.db.delete(row._id);
+      const rules = await ctx.db
+        .query("constraints")
+        .withIndex("by_company", (q) => q.eq("companyId", companyId))
+        .collect();
+      const minCash = rules.find((rule) => rule.data.kind === "min_cash");
+      if (!minCash) throw new Error("missing min_cash rule");
+      await ctx.db.patch(minCash._id, {
+        data: { ...minCash.data, limit: 999_000_000, label: "NEW LIMIT" },
+      });
+    });
+    const parent = (await t.query(api.branches.get, { branchId: parentId })) as Branch;
+    // The forecast alone still matches, so only the full context shows it is stale.
+    expect(engine.forecast(snapshot, model, parent.changes)).toEqual(parent.forecast);
+    const before = await dump(t, companyId);
+    await expect(
+      t.mutation(computedRefs.simulateFix, { branchId: parentId, fixId: fix.id }),
+    ).rejects.toThrow("STALE_FUTURE");
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("rejects stale risk definitions or probabilities in the parent's context", async () => {
+    const { t, companyId } = await seeded();
+    const { parentId, fix } = await candidate(t, companyId);
+    const simulate = () =>
+      t.mutation(computedRefs.simulateFix, { branchId: parentId, fixId: fix.id });
+    const patchRisk = (probability: number) =>
+      t.run(async (ctx) => {
+        const rows = await ctx.db
+          .query("risks")
+          .withIndex("by_company", (q) => q.eq("companyId", companyId))
+          .collect();
+        const row = rows.find((r) => r.data?.id === ACME_LATE);
+        if (!row?.data) throw new Error("missing risk");
+        const old = row.data.probability;
+        await ctx.db.patch(row._id, { data: { ...row.data, probability } });
+        return old;
+      });
+    const old = await patchRisk(0.99);
+    let before = await dump(t, companyId);
+    await expect(simulate()).rejects.toThrow("STALE_FUTURE");
+    expect(await dump(t, companyId)).toEqual(before);
+    await patchRisk(old);
+
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("branches")
+        .withIndex("by_branchId", (q) => q.eq("branchId", parentId))
+        .unique();
+      if (!row) throw new Error("missing parent");
+      await ctx.db.patch(row._id, { data: { ...row.data, probability: 0.99 } });
+    });
+    before = await dump(t, companyId);
+    await expect(simulate()).rejects.toThrow("STALE_FUTURE");
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("rejects a saved candidate whose gain no longer matches the engine", async () => {
+    const { t, companyId } = await seeded();
+    const { parentId, fix } = await candidate(t, companyId);
+    await t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("fixes")
+        .withIndex("by_branch", (q) => q.eq("branchId", parentId))
+        .collect();
+      const row = rows.find((r) => r.data.id === fix.id);
+      if (!row) throw new Error("missing candidate");
+      await ctx.db.patch(row._id, { gain: row.gain + 1 });
+    });
+    const before = await dump(t, companyId);
+    await expect(
+      t.mutation(computedRefs.simulateFix, { branchId: parentId, fixId: fix.id }),
+    ).rejects.toThrow("STALE_FUTURE");
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("still simulates a fix beneath a fix with the whole ancestry once", async () => {
+    const { t, companyId } = await seeded();
+    const { parentId, fix, fixBranchId } = await candidate(t, companyId);
+    const hire = (await t.query(api.fixes.forBranch, { branchId: parentId })).find(
+      (row) => row.fix.id !== fix.id,
+    );
+    if (!hire) throw new Error("expected a second fix");
+    await t.run((ctx) =>
+      ctx.db.insert("fixes", { companyId, branchId: fixBranchId, data: hire.fix, gain: 0 }),
+    );
+    const result = await t.mutation(computedRefs.simulateFix, {
+      branchId: fixBranchId,
+      fixId: hire.fix.id,
+    });
+    const event = (await t.query(api.branches.get, { branchId: parentId })) as Branch;
+    const parent = (await t.query(api.branches.get, { branchId: fixBranchId })) as Branch;
+    expect(await t.query(api.branches.get, { branchId: result.branchId })).toEqual(
+      engine.scoreFix(parent, hire.fix, snapshot, model, constraints, {
+        ancestorChanges: event.changes,
+      }),
+    );
   });
 
   it("rejects a candidate owned by another company", async () => {

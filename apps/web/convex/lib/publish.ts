@@ -20,11 +20,11 @@ import {
   calculate,
   canonical,
   eventBranchId,
-  inSnapshot,
   isComputed,
   matchRisk,
   reject,
   runEngine,
+  uniqueProposals,
 } from "./computed";
 import { Cents, parse } from "./parse";
 import { branchRecord, candidateRecord, missing, requireCompany } from "./records";
@@ -107,10 +107,44 @@ async function storedProposals(ctx: Ctx, companyId: Id<"companies">, branches: S
 }
 
 /**
- * Proposal ID order is the canonical source order: saved rows come back in rank order per
- * future, so sorting keeps the first run and every rerun applying fixes identically.
+ * Source order of the useful proposals. Fix rows are stored in per-future display rank, so the
+ * order the stress test applies proposals in lives in its own log entry instead.
  */
-const byId = (a: FixCandidate, b: FixCandidate) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const ORDER = "engine.proposal-order";
+
+async function savedOrder(ctx: Ctx, companyId: Id<"companies">) {
+  const row = await ctx.db
+    .query("log")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .order("desc")
+    .filter((q) => q.eq(q.field("action"), ORDER))
+    .first();
+  return row?.refs ?? null;
+}
+
+/**
+ * Saved proposals in their recorded order, then genuinely new explicit ones in caller order.
+ * Missing order, missing payloads and conflicting payloads are refused, never guessed.
+ */
+async function proposalPool(
+  ctx: Ctx,
+  companyId: Id<"companies">,
+  existing: Stored[],
+  explicit: FixCandidate[],
+) {
+  const saved = uniqueProposals(await storedProposals(ctx, companyId, existing));
+  const order = await savedOrder(ctx, companyId);
+  if (order === null && saved.length > 0)
+    reject("LEGACY_DATA", "Saved proposals have no recorded order; they need a reviewed backfill");
+  const ids = order ?? [];
+  const byId = new Map(saved.map((fix) => [fix.id, fix]));
+  if (new Set(ids).size !== ids.length || saved.some((fix) => !ids.includes(fix.id)))
+    reject("INVALID_DATA", "The recorded proposal order does not match the saved proposals");
+  const ordered = ids.map(
+    (id) => byId.get(id) ?? reject("INVALID_DATA", `Saved proposal ${id} is missing`),
+  );
+  return { order, pool: uniqueProposals([...ordered, ...explicit]) };
+}
 
 export type RecomputeOptions = {
   /** Explicit extra proposals (the demo seed); saved ones are always included. */
@@ -131,12 +165,17 @@ export async function recomputeCompany(
 ) {
   const inputs = await loadInputs(ctx, companyId);
   const existing = await companyBranches(ctx, companyId);
-  const saved = await storedProposals(ctx, companyId, existing);
-  const pool = [...saved, ...(options.proposals ?? [])].sort(byId);
+  const { order, pool } = await proposalPool(ctx, companyId, existing, options.proposals ?? []);
   const computation = calculate(companyId, inputs, pool);
   options.check?.(computation);
   await guardDecisions(ctx, companyId, existing, computation);
-  const changed = await publish(ctx, companyId, existing, computation);
+  let changed = await publish(ctx, companyId, existing, computation);
+  const useful = new Set([...computation.candidates.values()].flat().map((c) => c.fix.id));
+  const nextOrder = pool.filter((fix) => useful.has(fix.id)).map((fix) => fix.id);
+  if (canonical(nextOrder) !== canonical(order ?? [])) {
+    await log(ctx, companyId, ORDER, nextOrder);
+    changed = true;
+  }
   const base = computation.branches[0];
   if (changed && base) await log(ctx, companyId, options.action, [base.id]);
   return { computation, changed };
@@ -399,7 +438,7 @@ export async function simulateFixForBranch(ctx: MutationCtx, branchId: string, f
   const ancestors = await loadAncestors(ctx, companyId, parent);
   const inputs = await loadInputs(ctx, companyId);
   const ancestorChanges = ancestors.flatMap((b) => b.changes);
-  checkCurrent(companyId, inputs, parent.data, ancestorChanges);
+  await checkContext(ctx, companyId, inputs, [...ancestors, parent.data], candidate);
   if (!appliesTo(candidate.fix, parent.data.riskIds ?? []))
     reject("INVALID_PROPOSAL", "This fix does not target the risks in this future");
   const { snapshot, model, constraints } = inputs;
@@ -442,19 +481,43 @@ async function loadAncestors(ctx: Ctx, companyId: Id<"companies">, parent: Store
   return chain;
 }
 
-/** The parent must belong to the latest snapshot and still match the engine's forecast. */
-function checkCurrent(
-  companyId: string,
+/**
+ * Rebuild the whole current context once and require the stored root-to-parent chain, the
+ * parent's candidate and the risks to match it. Rules and risk odds can change without moving
+ * cash, so a forecast check alone would score a new fix beneath an old assessment.
+ */
+async function checkContext(
+  ctx: Ctx,
+  companyId: Id<"companies">,
   inputs: Inputs,
-  parent: Branch,
-  ancestorChanges: Change[],
+  chain: Branch[],
+  candidate: { fix: FixCandidate; gain: number },
 ) {
-  const { snapshot, model } = inputs;
   const stale = () =>
     reject("STALE_FUTURE", "This future is out of date; recompute the forecast first");
-  if (!inSnapshot(companyId, snapshot.asOf, parent.id)) stale();
-  const forecast = runEngine("forecast", () =>
-    engine.forecast(snapshot, model, [...ancestorChanges, ...parent.changes]),
-  );
-  if (canonical(forecast) !== canonical(parent.forecast)) stale();
+  const existing = await companyBranches(ctx, companyId);
+  const { pool } = await proposalPool(ctx, companyId, existing, []);
+  const computation = calculate(companyId, inputs, pool);
+  const fresh = nextBranches(computation);
+  for (const branch of chain) {
+    const next = fresh.get(branch.id);
+    if (!next || canonical({ ...next, status: branch.status }) !== canonical(branch)) stale();
+  }
+  const parentId = chain[chain.length - 1]?.id ?? "";
+  const ranked = computation.candidates.get(parentId);
+  const scored = ranked?.find((c) => c.fix.id === candidate.fix.id);
+  if (
+    ranked &&
+    (!scored || canonical([scored.fix, scored.gain]) !== canonical([candidate.fix, candidate.gain]))
+  )
+    stale();
+  const rows = await ctx.db
+    .query("risks")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .collect();
+  const stored = rows.filter((row) => row.asOf === computation.asOf).map((row) => row.data);
+  if (canonical(byRiskId(stored)) !== canonical(byRiskId(computation.risks))) stale();
 }
+
+const byRiskId = (risks: { id: string }[]) =>
+  [...risks].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

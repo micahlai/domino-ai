@@ -77,7 +77,8 @@ async function insertInputs(ctx: MutationCtx): Promise<Id<"companies">> {
     await ctx.db.insert("sources", {
       companyId,
       kind,
-      baseUrl: kind === "nessie" ? "http://api.nessieisreal.com" : `http://localhost:4010/${kind}`,
+      baseUrl:
+        kind === "nessie" ? "https://prod-api.nessieisreal.com" : `http://localhost:4010/${kind}`,
       mappings: [],
       lastPull: null,
       tieOut: "pending",
