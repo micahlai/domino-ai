@@ -73,7 +73,7 @@ type MultiverseTimelineProps = {
 | Element | Look |
 | --- | --- |
 | Past line | Solid, 2 px, orange. Area below it lightly filled. |
-| Past event markers | Small circles on the line. Red outline for bad events, green for good. Label on hover. |
+| Past event markers | Small circles on the line. Red outline for bad events, green for good. Label on hover; click or press Enter/Space to open recorded event details. |
 | Today line | Vertical, 1 px, dashed. Label "Today" and its date at the bottom. |
 | Base future | 2 px, off-white, continues the past line. |
 | Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: muted green. Breaks: pink after the break point, muted before it. |
@@ -103,7 +103,13 @@ The playground's ParticleMotion section repeats sample curves 30 times to exerci
 
 While the pointer is inside the plot, show dotted vertical and horizontal guides at the nearest supplied weekly point. Hide the guides when it leaves. Show the full date, including year, and exact cash to the cent. Use recorded history on the left and the selected scenario on the right; default to the base forecast when none is selected. Hovering other curves must not change the inspected scenario; clicking still selects them. Never interpolate money or present the synthetic Today anchor as a recorded weekly value.
 
-Keep the last inspected week in the readout when the pointer leaves. An Inspect week range control provides keyboard arrows, Home/End and touch access to the values. Keep its date when changing scenarios or previewing fixes, and update the value from the current report. On narrow screens, choosing a week brings its chart position into the horizontal viewport. Avoid collisions with nearby month and endpoint labels. The existing company and playground timelines include this behavior.
+Keep the last inspected week in the readout when the pointer leaves. Focus the chart and use Left/Right, Home/End to inspect weeks, or tap a chart position on touch screens; there is no Inspect week slider. Keep its date when changing scenarios or previewing fixes, and update the value from the current report. Keyboard inspection brings the point into both horizontal and vertical view when needed. Avoid collisions with nearby month and endpoint labels. The existing company and playground timelines include this behavior.
+
+### 3.6 Scale controls and recorded event details (`codex/timeline-controls`)
+
+Time and Cash each have decrease/increase controls with a visible percentage. Time expands horizontal spacing from 100% to 300%; Cash adjusts vertical spacing from 75% to 200%. Reset scales returns both to 100%. The underlying date/cash domains and supplied values stay unchanged. Scroll within the chart to explore expanded views; its visible height stays bounded at 390 px. Keep the current view centered across scale changes, and preserve particle, fix-preview and scenario-selection behavior.
+
+Recorded event markers have 44 px pointer targets, keyboard Enter/Space activation and a corresponding native button in the recorded-events list. Clicking opens a shadcn dialog with the supplied label, full date, event type, optional exact cash effect and attached source references, quotes and notes. Show an honest empty state when no source records exist. Escape, Close or the backdrop dismisses the popup and returns focus to the triggering marker/button. Do not generate event explanations or perform financial calculations.
 
 ---
 

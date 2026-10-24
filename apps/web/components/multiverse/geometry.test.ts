@@ -1,6 +1,6 @@
 import { fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
-import { futureKey, timelineGeometry } from "./geometry";
+import { futureKey, timelineGeometry, timestamp } from "./geometry";
 
 const today = fixtures.snapshot.asOf;
 const limit = 300_000_000;
@@ -23,6 +23,44 @@ describe("timeline geometry", () => {
     for (const future of fixtures.resilience.universes) {
       expect(before.points(future)[0]).toEqual(before.origin);
       expect(before.path(before.points(future))).not.toMatch(/NaN|Infinity/);
+    }
+  });
+
+  it("scales time and cash pixel spacing independently without changing supplied values", () => {
+    const base = makeGeometry(false);
+    const wide = timelineGeometry(
+      fixtures.history,
+      today,
+      fixtures.resilience,
+      fixtures.resilienceWithFixes,
+      limit,
+      1806,
+    );
+    const tall = timelineGeometry(
+      fixtures.history,
+      today,
+      fixtures.resilience,
+      fixtures.resilienceWithFixes,
+      limit,
+      1000,
+      688,
+    );
+    expect(wide.x.domain()).toEqual(base.x.domain());
+    expect(wide.y.domain()).toEqual(base.y.domain());
+    expect(tall.x.domain()).toEqual(base.x.domain());
+    expect(tall.y.domain()).toEqual(base.y.domain());
+    const start = base.past[0];
+    const end = base.past.at(-1);
+    if (!start || !end) throw new Error("Missing history fixture");
+    expect(wide.x(timestamp(end.date)) - wide.x(timestamp(start.date))).toBeCloseTo(
+      2 * (base.x(timestamp(end.date)) - base.x(timestamp(start.date))),
+    );
+    expect(tall.y(end.usable) - tall.y(start.usable)).toBeCloseTo(
+      2 * (base.y(end.usable) - base.y(start.usable)),
+    );
+    expect(tall.past).toEqual(base.past);
+    for (const future of fixtures.resilience.universes) {
+      expect(tall.points(future)).toEqual(base.points(future));
     }
   });
 

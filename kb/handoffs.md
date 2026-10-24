@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:45 Micah (Codex, timeline controls)
+- Done: removed Inspect week slider, added independent Time/Cash decrease/increase controls and reset, with bounded two-direction chart scrolling. Recorded marker clicks and keyboard activation open full date, exact cash effect and attached source evidence in an accessible dismissible dialog, with focus return. Retained pointer-only crosshairs tied to the selected scenario, curve-click selection, keyboard/touch weekly readouts and particle caps. All 76 tests, typecheck, lint and build pass; company/playground, scale limits/reset, hover lock, popup dismissal, 390 px overflow and production rendering reviewed.
+- Next: review codex/timeline-controls; work is isolated from P5/P6 and main.
+- Watch out: scale controls change pixel spacing, never the supplied date/cash domains or financial values. Expanded views scroll within a 390 px viewport; keyboard inspection reveals its point in both directions. Local max-zoom particle drawing was about 0.37 ms/frame with the existing 720-particle cap. Screenshots: /tmp/domino-timeline-event.png and /tmp/domino-timeline-event-mobile.png.
+
 ## 2026-10-24 02:21 Micah (Codex, weekly inspection)
 - Done: added dotted date/value crosshairs tied to the selected forecast, with full year and exact cash to the cent. Guides appear only while the pointer is inside the plot; hovering another curve does not change the inspected scenario, while clicking still selects it. The last weekly readout remains available outside the plot. Inspect week supports arrows, Home/End and touch; narrow charts reveal the chosen position. Verified hover lock, pointer exit, click selection, history, fix comparison, playground, mobile overflow and production rendering. All 75 tests, typecheck, lint and build pass.
 - Next: review codex/timeline-particles at port 3005; main remains unchanged.

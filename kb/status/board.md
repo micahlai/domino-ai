@@ -37,6 +37,8 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | V1 | Timeline particle experiment | User request | P3 | done | codex/timeline-particles | Full-line probability-weighted emission; 72 tests/build pass; browser checked |
 | V2 | Timeline date/value inspection | User request | V1 | done | codex/timeline-particles | Selected-scenario guides only inside plot; weekly values, keyboard/touch; 75 tests/build pass |
 
+| V3 | Timeline scales and event details | User request | V2 | done | codex/timeline-controls | Independent scales/reset, accessible event popup, slider removed; 76 tests/check/build and desktop/mobile review pass |
+
 ## Shared
 
 | ID | Task | Prompt | When |
