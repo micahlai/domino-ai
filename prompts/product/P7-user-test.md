@@ -1,14 +1,13 @@
-# P7 · Usability test, Figma stage log and slides (Micah)
+# P7 · Usability test and demo materials (Micah)
 
-Run by: Micah, with Claude Code for fixes. Depends on: P6.
-Skill files (in skills/): taste, figma-stage-log, demo-check.
+Run by: Micah, with Codex or Claude Code for fixes. Depends on: P6.
+Skill files (in skills/): taste, demo-check.
 
 ## Steps
 1. Find 3 people outside the team. Give no explanation. Task: "Find the worst risk for this company and make it safer." Time each one (goal: 2 minutes).
 2. Write what confused them in a handoff entry. Record the count in kb/product/proof.md ("X of 3").
 3. Fix the top 3 issues (prompt below).
-4. Finish kb/stage-log.md (4 stages). Build the Figma Slides deck from the Figma example template: stage log, demo video slot,
-   embedded Figma files (Make + prototype), repo link. Share everything to "Anyone".
+4. Prepare demo materials: reviewed desktop/mobile screenshots, a demo video slot, proof numbers and repo link.
 
 ## Prompt (fixes)
 

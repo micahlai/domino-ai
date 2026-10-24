@@ -28,7 +28,7 @@ after work. It lives in git, so `git pull` gives you everything the other person
 | `decisions.md` | Each decision and why | Whenever we decide something |
 | `requests.md` | Requests to change someone else's area | When you need a change |
 | `scenarios.md` | Events and fixes we want to demo | Whenever you have an idea |
-| `stage-log.md` | Figma stage log (Figma track) | End of each stage |
+| `stage-log.md` | Archived optional track template (outside frontend scope) | Only if that track is resumed |
 | `glossary.md` | Finance words in plain English | When a new word appears |
 | `research/` | Public company data, sponsor notes | When you research something |
 | `tasks/` | Task cards for agents | Before you start an agent |

@@ -15,7 +15,7 @@ in its own worktree, and paste the block under "Prompt".
 | Sat 12 PM gate | `shared/99-gate-check.md` | `shared/99-gate-check.md` | Together |
 | Sat afternoon | `engine/E5-connectors.md`, then `engine/E7-wiring-learning.md` | `product/P5-flows.md`, then `product/P6-learning-record-polish.md` | Yes |
 | Sat 6 PM gate | `shared/99-gate-check.md` | `shared/99-gate-check.md` | Together |
-| Sat evening | `engine/E8-proof.md` | `product/P7-user-test-figma.md` | Yes |
+| Sat evening | `engine/E8-proof.md` | `product/P7-user-test.md` | Yes |
 | Sun night | Add-ons only if the gate passed | `product/P8-submission.md` | |
 
 ## How to run one prompt
@@ -29,5 +29,5 @@ in its own worktree, and paste the block under "Prompt".
 ## Agent tools
 
 - **Claude Code:** most prompts. Reads `CLAUDE.md` and the skills automatically.
-- **Codex:** prompts marked "Codex OK" (clear, contained). Tell it: "Read AGENTS.md first."
+- **Codex:** Micah’s web tasks P1–P8 and prompts marked "Codex OK". Read `AGENTS.md` and the named skills; frontend work uses Next.js on Vercel and `/playground`.
 - **Cursor:** live UI tweaks while you watch. Rules load from `.cursor/rules/`.

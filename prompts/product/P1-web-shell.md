@@ -1,6 +1,6 @@
 # P1 · Web shell + playground (Micah)
 
-Tool: Claude Code. Branch: `P1-web-shell`. Folder: `apps/web`. Depends on: S0.
+Tool: Codex or Claude Code. Branch: `P1-web-shell`. Folder: `apps/web`. Depends on: S0.
 Skill files (in skills/): kb-sync, ui-build.
 
 ## Prompt

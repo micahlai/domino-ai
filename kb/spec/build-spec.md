@@ -364,10 +364,10 @@ Deadline assumed Sunday 9 AM. Prompts are in `prompts/`.
 
 | Phase | Jayden (engine) | Micah (product) | Gate |
 | --- | --- | --- | --- |
-| Fri night: setup | S0, then E1 and E3 in parallel, E6 started | S0, P1, P2, Figma sketch | Both run `pnpm dev`; playground shows fixture multiverse |
+| Fri night: setup | S0, then E1 and E3 in parallel, E6 started | S0, P1, P2, playground sketch | Both run `pnpm dev`; playground shows fixture multiverse |
 | Sat 8 AM to 12 PM | E1, E2, E3, E4 | P3 (hero timeline), P4 | Multiverse shows real engine output for Kestrel |
 | Sat 12 PM to 6 PM | E5, E6, E7 | P5, P6 | Full demo flow works end to end |
-| Sat 6 PM to 12 AM | E8 | P7 (user test, Figma) | Every proof number is real |
+| Sat 6 PM to 12 AM | E8 | P7 (user test, demo materials) | Every proof number is real |
 | Sun 12 AM to 6 AM | Add-ons only if gate passed | P8 (video, submission) | Code freeze 6 AM |
 
 If a gate is missed, cut scope. Do not move the gate.
