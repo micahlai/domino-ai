@@ -1,4 +1,5 @@
-import { InvestigateWorkspace } from "@/components/investigate/InvestigateWorkspace";
+import { InvestigateLive } from "@/components/investigate/live/InvestigateLive";
+import { Suspense } from "react";
 
 export const metadata = { title: "Investigate" };
 
@@ -6,7 +7,9 @@ export default function Page() {
   // data-style pins the Original dark tokens whatever style the user picked elsewhere.
   return (
     <div data-style="original" className="h-dvh bg-background text-foreground">
-      <InvestigateWorkspace />
+      <Suspense fallback={null}>
+        <InvestigateLive />
+      </Suspense>
     </div>
   );
 }
