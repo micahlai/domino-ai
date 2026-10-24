@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:52 Codex brain (computed backend deployed)
+- Done: independently reviewed E7a, E6b and I2 repairs merged. Main522 tests/typechecks/lint and production build pass. Deployed configured development Convex and created a separate synthetic computed company. Micah UI is integrated.
+- Next: Claude I3 enables only tested event/fix controls; C3 adds optional forward-data contracts. Audit each before merging. Provider short-text failures need repair before full action wiring.
+- Watch out: computed0/11 is real engine output; do not restore illustrative7/11. Four direct live provider jobs pass; Claude explain truncates and CREAO weeklyBrief has no_result. Server/browser/workers and exact next steps in HANDOFF.md. No push, production deploy, data reset or env changes.
+
 ## 2026-10-24 03:41 Codex brain (backend audits)
 - Done: I2, E6b and E7a returned reviewable commits with passing branch checks. Independent Sol/Astra audits reproduced bounded defects and Claude is repairing them in isolated worktrees. Micah UI and C2 remain integrated and verified. SEC calibration facts recorded with qualified ratios.
 - Next: re-review current repair commits, integrate and run combined checks. I2 has priority for development deployment and the I3 computed controls. Then provider smoke and forward-data C3 adoption.
