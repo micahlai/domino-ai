@@ -16,3 +16,14 @@
 - Limits: layout is a deterministic column-by-depth layout. New nodes can overlap nodes the person has dragged. There is no edge styling by status.
 - Next slice: Codex browser pass and repairs from it, then the G3 adapter wiring records into these props on `/investigate`.
 - Exact commit: see the `web: R1 props-driven agent canvas` commit on `R1-canvas-presentation`.
+
+## Repair1 required
+
+Candidate2d57610 full check passes but independent Sol review blocks3P2 issues. Repair in original component/playground ownership, no dependencies or backend changes.
+
+- graph.ts65/85-96: sequential source siblings root->A then root->B preserve A at0 while B lands60, overlapping66px/86px cards without dragging. Use stable non-overlapping placement for incoming nodes while preserving user positions. Add incremental delivery regression.
+- InvestigateWorkspace.tsx396-400 and151-164: quiet loading/history still uses300ms fit and mounted status animation. Propagate quiet to viewport/status animation, not only enter. Preserve animation for actual new live transitions and reduced motion.
+- InvestigateWorkspace.tsx186-189/236-245: succeeded/failed nodes with absent optional detail say Nothing has run yet. Use truthful status-specific empty wording.
+- Also distinguish nodes omitted (default idle) from explicit nodes:[] (valid empty array), line377.
+
+Independent probe /tmp/domino-r1-audit-probe.cjs. Run focused tests/typecheck/scoped lint only. Codex handles actual screenshots/browser/full check/build. No worker servers or cached-browser attempts. Load actual taste/ui-ux-pro-max and note browser review remains pending. One process, no children,30minutecheckpoint. Commit locally with repair Result; no push/merge/shared notes.
