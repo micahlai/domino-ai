@@ -181,6 +181,52 @@ describe("Claude extraction", () => {
     await expect(categoryOf(claude.run("explain", branch))).resolves.toBe("malformed_response");
   });
 
+  const answer = { type: "text", text: JSON.stringify({ text: "Cash stays above the floor." }) };
+  const omitted = { type: "thinking", thinking: "", signature: "sig" };
+  const summarized = { type: "thinking", thinking: "PRIVATE-REASONING", signature: "sig" };
+  const redacted = { type: "redacted_thinking", data: "PRIVATE-REASONING" };
+
+  it.each([
+    ["omitted thinking (audit probe)", [omitted, answer]],
+    ["summarized thinking", [summarized, answer]],
+    ["redacted thinking", [redacted, answer]],
+    ["several reasoning blocks", [summarized, redacted, omitted, answer]],
+  ])("skips documented %s and returns only the text answer", async (_, content) => {
+    const { claude } = client(() => message({}, { content }));
+    const output = await claude.run("explain", branch);
+    expect(output).toBe("Cash stays above the floor.");
+    expect(JSON.stringify(output)).not.toMatch(/PRIVATE-REASONING|sig/);
+  });
+
+  it.each([
+    ["reasoning without an answer", [summarized]],
+    ["reasoning with two answers", [summarized, answer, answer]],
+    ["thinking without a signature", [{ type: "thinking", thinking: "" }, answer]],
+    ["thinking with non-string text", [{ type: "thinking", thinking: 1, signature: "s" }, answer]],
+    ["redacted thinking without data", [{ type: "redacted_thinking" }, answer]],
+    [
+      "reasoning beside a tool call",
+      [omitted, { type: "tool_use", id: "t", name: "x", input: {} }],
+    ],
+    ["reasoning beside a server tool", [omitted, { type: "server_tool_use", id: "t" }, answer]],
+    ["an unknown block type", [{ type: "reflection", text: "{}" }, answer]],
+  ])("rejects %s as malformed without leaking reasoning", async (_, content) => {
+    const { claude } = client(() => message({}, { content }));
+    const error = await failureOf(claude.run("explain", branch));
+    expect((error as ProviderError).category).toBe("malformed_response");
+    expect(String(error)).not.toMatch(/PRIVATE-REASONING/);
+  });
+
+  it("keeps refusal and truncation checks when reasoning is present", async () => {
+    for (const [stop, category] of [
+      ["refusal", "refusal"],
+      ["max_tokens", "truncated"],
+    ]) {
+      const { claude } = client(() => message({}, { content: [summarized], stop_reason: stop }));
+      await expect(categoryOf(claude.run("explain", branch))).resolves.toBe(category);
+    }
+  });
+
   it("rejects bare arrays, extra envelope keys and empty text", async () => {
     for (const output of [
       fixtures.fixes,

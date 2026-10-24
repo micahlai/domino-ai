@@ -364,6 +364,32 @@ describe("CREAO artifacts", () => {
     expect(download.every((call) => call.redirect === "manual")).toBe(true);
   });
 
+  it("follows a public storage host with a terminal dot, without auth", async () => {
+    const { creao, calls } = client(
+      scripted(completed({ artifacts: [artifact()] }), (call) =>
+        call.url.startsWith("https://agent.creao.ai/")
+          ? redirect("https://Storage.Example.com./signed")
+          : json([mapping]),
+      ),
+    );
+    await expect(creao.run("mapSource", mapInput)).resolves.toEqual([mapping]);
+    expect(calls.at(-1)!.url).toBe("https://storage.example.com./signed");
+    expect(calls.at(-1)!.headers.authorization).toBeUndefined();
+  });
+
+  it("treats the trusted host with a terminal dot as another origin", async () => {
+    let hop = 0;
+    const { creao, calls } = client(
+      scripted(completed({ artifacts: [artifact()] }), () => {
+        hop++;
+        if (hop === 1) return redirect(`https://agent.creao.ai.${artifactPath}?artifactId=art_1`);
+        return json([mapping]);
+      }),
+    );
+    await expect(creao.run("mapSource", mapInput)).resolves.toEqual([mapping]);
+    expect(calls.at(-1)!.headers.authorization).toBeUndefined();
+  });
+
   it("keeps auth off if storage redirects back to the trusted origin", async () => {
     let hop = 0;
     const { creao, calls } = client(
@@ -394,6 +420,21 @@ describe("CREAO artifacts", () => {
     ["a .internal host", "https://files.corp.internal/a"],
     ["embedded credentials", "https://user:pass@storage.example.com/a"],
     ["an unparseable location", "https://["],
+    // Audit probe: a terminal DNS dot must not hide a local name.
+    ["localhost.", "https://localhost./private"],
+    ["mixed-case LocalHost.", "https://LocalHost./private"],
+    ["metadata.google.internal.", "https://metadata.google.internal./latest"],
+    ["encoded Metadata.Google.Internal%2E", "https://Metadata.Google.Internal%2E/latest"],
+    ["server.local.", "https://server.local./private"],
+    ["intranet.", "https://intranet./private"],
+    ["encoded intranet%2e", "https://intranet%2e/private"],
+    // Headers are bytes, so Unicode dots arrive percent-encoded; URL maps them to ".".
+    ["an encoded ideographic dot", "https://localhost%E3%80%82/private"],
+    ["an encoded fullwidth dot", "https://localhost%EF%BC%8E/private"],
+    ["a loopback address with a terminal dot", "https://127.0.0.1./a"],
+    ["a doubled terminal dot", "https://localhost../a"],
+    ["a leading dot", "https://.localhost/a"],
+    ["an empty middle label", "https://files..internal/a"],
   ])("rejects a redirect to %s", async (_, location) => {
     const { creao, calls } = client(
       scripted(completed({ artifacts: [artifact()] }), redirect(location)),

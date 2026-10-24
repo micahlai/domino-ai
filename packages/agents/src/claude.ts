@@ -30,6 +30,12 @@ const messageSchema = z.object({
   stop_reason: z.string().nullable(),
 });
 const textBlock = z.object({ type: z.literal("text"), text: z.string() }).passthrough();
+/** Documented reasoning blocks: validated, then dropped unread. Never output or logged. */
+const reasoningTypes = new Set(["thinking", "redacted_thinking"]);
+const reasoningBlock = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("thinking"), thinking: z.string(), signature: z.string() }),
+  z.object({ type: z.literal("redacted_thinking"), data: z.string() }),
+]);
 
 /** Wire shape for FieldMapping.fields under Claude's closed-object schema dialect. */
 const wireMapping = z
@@ -89,10 +95,14 @@ export function createClaudeClient(
       }
       if (stop !== "end_turn") throw fail("unexpected_stop");
 
-      // Structured output arrives as exactly one text block; anything else is unexpected.
-      const [only, ...rest] = message.data.content;
+      // Structured output arrives as exactly one text block, optionally after well-formed
+      // reasoning blocks; anything else is unexpected.
+      const content = message.data.content;
+      const reasoning = content.filter((b) => reasoningTypes.has(b.type));
+      const [only, ...rest] = content.filter((b) => !reasoningTypes.has(b.type));
       const block = textBlock.safeParse(only);
-      if (rest.length > 0 || !block.success) throw fail("malformed_response");
+      const reasoningValid = reasoning.every((b) => reasoningBlock.safeParse(b).success);
+      if (rest.length > 0 || !block.success || !reasoningValid) throw fail("malformed_response");
       const json = parseJson(block.data.text);
       if (json === undefined) throw fail("malformed_response");
 

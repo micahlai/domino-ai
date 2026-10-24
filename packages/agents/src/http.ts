@@ -115,8 +115,14 @@ export function byteLength(text: string): number {
 export function isSafeRedirectTarget(url: URL): boolean {
   if (url.protocol !== "https:") return false;
   if (url.username || url.password) return false;
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // A terminal DNS dot names the same host ("localhost." is localhost), so drop one before
+  // classifying. Any other empty label is never a real public name, so reject it.
+  const host = url.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (host.includes(":")) return !isPrivateIPv6(host);
+  if (host.split(".").includes("")) return false;
   const v4 = parseIPv4(host);
   if (v4) return !isPrivateIPv4(v4);
   // Single-label names resolve through local search domains.
