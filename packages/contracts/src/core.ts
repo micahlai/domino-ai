@@ -371,6 +371,8 @@ function checkForwardData(
       issue(at("issued"), "a plan invoice cannot be issued after asOf");
     else if (invoice.issued >= plan.nextInvoiceDate)
       issue(at("issued"), "a plan invoice must precede the plan's nextInvoiceDate");
+    else if (plan.endDate !== undefined && invoice.issued > plan.endDate)
+      issue(at("issued"), "a plan invoice cannot be issued after the plan's endDate");
     if (invoice.amount !== plan.amount)
       issue(at("amount"), "a plan invoice must bill the plan amount");
     const occurrence = JSON.stringify([plan.id, invoice.issued]);

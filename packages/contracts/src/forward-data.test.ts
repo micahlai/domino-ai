@@ -228,6 +228,32 @@ describe("plan-linked invoices", () => {
     expect(snapshotIssues(later)).toContainEqual(["invoices", forward.invoices.length, "issued"]);
   });
 
+  describe("plan end date", () => {
+    const ended = (endDate: string, ...invoices: Invoice[]): Snapshot => ({
+      ...withInvoices(...invoices),
+      asOf: "2026-10-31",
+      billingPlans: [{ ...plan, nextInvoiceDate: "2026-11-30", endDate }],
+    });
+
+    it("rejects a link issued after the plan's endDate", () => {
+      expect(snapshotIssues(ended("2026-09-30", planInvoice("2026-10-31")))).toContainEqual([
+        "invoices",
+        forward.invoices.length,
+        "issued",
+      ]);
+    });
+
+    it("accepts a link issued exactly on endDate", () => {
+      expect(SnapshotSchema.safeParse(ended("2026-10-31", planInvoice("2026-10-31"))).success).toBe(
+        true,
+      );
+    });
+
+    it("keeps earlier history and a cursor past endDate valid after cancellation", () => {
+      expect(SnapshotSchema.safeParse(ended("2026-09-30")).success).toBe(true);
+    });
+  });
+
   it("rejects a link to a duplicated plan ID", () => {
     const twice = { ...forward, billingPlans: [plan, { ...plan }] };
     expect(snapshotIssues(twice)).toContainEqual([
