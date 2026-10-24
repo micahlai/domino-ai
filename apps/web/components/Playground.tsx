@@ -13,6 +13,7 @@ import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
 import { FixtureCompany } from "@/components/company/FixtureCompany";
+import { ParticleMotionPreview } from "@/components/multiverse/ParticleMotionPreview";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +29,7 @@ const sections = [
   "Headline",
   "ResilienceBar",
   "MultiverseTimeline",
+  "ParticleMotion",
   "RiskList",
   "DominoChain",
   "FixCard",
@@ -184,6 +186,12 @@ export function Playground() {
           showFixes={showFixes}
           limit={limit}
         />
+      </PreviewSection>
+      <PreviewSection
+        name="ParticleMotion"
+        description="Motion stress preview: 30 copies of sample forecast paths, not new financial scenarios."
+      >
+        <ParticleMotionPreview />
       </PreviewSection>
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <PreviewSection

@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:00 Micah (Codex, particle experiment)
+- Done: created codex/timeline-particles in the primary checkout, without a new worktree. Added a Canvas particle layer following cached D3 curve samples, quiet trails, selected-path glints, and continuous fix morphs. One animation loop, at most 144 particles/32 tracks, pixel ratio capped at 1.5; stops offscreen/hidden/paused and respects reduced motion, with 30 fps on coarse pointers and adaptive backoff. Added a clearly labeled 30-copy playground stress preview. Browser measured roughly 0.14–0.29 ms drawing per frame near 60 fps in that desktop preview; 390 px layout has no page overflow and reduces the field to 31 particles. Pause/resume, selection, fix comparison and clean hydration checked. All 71 tests and production build pass.
+- Next: review the experimental branch at the local port 3005 preview before merging. Main is unchanged.
+- Watch out: particles are display-only and do not represent extra financial values or uncertainty. Timing is from this desktop browser, not a device-wide performance guarantee. Reduced-motion initial rendering is regression tested; no OS preferences were changed. The Button helper import is relative so the existing SSR test can resolve it without adding test configuration. Screenshot: /tmp/domino-particles.png.
+
 ## 2026-10-24 01:45 Micah (Codex, plain timeline copy)
 - Done: ran humanizer and taste on timeline copy. Replaced future/survival/break metaphors with cash forecasts, scenarios, cash requirements and projected impact; updated navigation, page title, accessibility text, empty states and playground descriptions. Renamed Apply fixes to Preview fixes and explained score weighting. Browser verified revised labels and the 7-to-9 scenario preview; checks and production build pass.
 - Next: use the updated design-spec wording table for P5/P6.

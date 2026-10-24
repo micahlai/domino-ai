@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: keep the particle experiment on codex/timeline-particles in the primary checkout. Use cached, bounded Canvas filaments over the existing SVG, with explicit pause and visibility/reduced-motion safeguards; no WebGL dependency or new financial encoding.
+
 - 2026-10-24 Micah: use cash forecast/scenario and meets requirements/outside limits in timeline UI, replacing future/survival/break language per user direction. Label comparison toggles Preview fixes; keep shared contract names unchanged.
 
 - 2026-10-24 P4: Match the entire selected risk change set to an event branch; never show an unrelated single-risk chain for a combination. Approve only a matching saved fix branch, after confirmation. Keep compute mutations disabled until E7 action readiness is explicitly enabled.

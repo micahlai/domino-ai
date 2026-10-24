@@ -11,7 +11,10 @@ import type {
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatCents, formatDate } from "../../lib/format";
+import { Button } from "../ui/button";
+import { TimelineParticles } from "./TimelineParticles";
 import { futureKey, timelineGeometry, timestamp } from "./geometry";
+import type { ParticleTrack } from "./particles";
 
 export interface MultiverseTimelineProps {
   history: HistoryWeek[];
@@ -41,8 +44,11 @@ export function MultiverseTimeline({
   const [hovered, setHovered] = useState<string>();
   const [eventId, setEventId] = useState<string>();
   const reduced = useReducedMotion();
+  const [ready, setReady] = useState(false);
+  const [motionEnabled, setMotionEnabled] = useState(true);
   const id = useId().replace(/:/g, "");
   useEffect(() => {
+    setReady(true);
     if (!container.current) return;
     const observer = new ResizeObserver(([entry]) => {
       if (entry) setWidth(Math.max(860, Math.round(entry.contentRect.width)));
@@ -54,7 +60,20 @@ export function MultiverseTimeline({
     () => timelineGeometry(history, today, report, comparisonReport, limit, width),
     [history, today, report, comparisonReport, limit, width],
   );
+  const particleTracks = useMemo<ParticleTrack[]>(
+    () => [
+      { key: "history", path: graph.pastPath, history: true, withinLimits: true },
+      ...report.universes.map((future) => ({
+        key: futureKey(future),
+        path: graph.path(graph.points(future)) ?? "",
+        withinLimits: future.survives,
+        breakX: future.breaksAt ? graph.x(timestamp(future.breaksAt)) : undefined,
+      })),
+    ],
+    [graph, report],
+  );
   const selected = report.universes.find((future) => future.id === selectedUniverseId);
+  const activeParticleTrack = report.universes.find((future) => future.id === hovered) ?? selected;
   const focused = report.universes.find((future) => future.id === hovered) ?? selected;
   const pastEvent = pastEvents.find((event) => event.id === eventId);
   const months = [
@@ -69,7 +88,7 @@ export function MultiverseTimeline({
     <div ref={container} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <p className="font-medium">Cash you can use</p>
-        <div className="flex gap-5 text-xs text-muted-foreground">
+        <div className="flex min-h-9 flex-wrap items-center gap-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
             <span className="h-px w-5 bg-clay" />
             Recorded
@@ -78,12 +97,32 @@ export function MultiverseTimeline({
             <span className="h-px w-5 bg-primary" />
             Forecast scenarios
           </span>
+          {ready && reduced !== true ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-9 text-xs text-muted-foreground"
+              onClick={() => setMotionEnabled((enabled) => !enabled)}
+            >
+              {motionEnabled ? "Pause motion" : "Resume motion"}
+            </Button>
+          ) : null}
         </div>
       </div>
       <section
-        className="overflow-x-auto rounded-lg bg-background/40"
+        className="relative overflow-x-auto rounded-lg bg-background/40"
         aria-label="Cash timeline. Scroll horizontally on smaller screens."
       >
+        {ready && reduced === false ? (
+          <TimelineParticles
+            tracks={particleTracks}
+            width={width}
+            height={graph.height}
+            activeKey={activeParticleTrack ? futureKey(activeParticleTrack) : undefined}
+            enabled={motionEnabled}
+          />
+        ) : null}
         <svg
           width={width}
           height={graph.height}
