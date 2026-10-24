@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex credential check and audit reporting
+- User clarified: send a chat report after every scheduled coding audit, not development activity in the product canvas. Automation and C1 updated; no extra UI feature dispatched.
+- Account-format key present and correctly parsed, but Node24 GET usage/agents returns401 AUTHENTICATION_REQUIRED. Python client earlier hit signature403. No paid runs, creations or memory edits. User asked for freshly copied key; do not retry unchanged value.
+- G2b and R1 remain active locally, latest in-progress backend adds schema/investigation/tests. Neither phase accepted yet; main untouched.
+
 ## 2026-10-24 Codex local UI reassignment
 - User canceled the other computer. R1 now runs locally: exec7438/PID66496, cwd domino-R1 verified, baseb48d13f. Frozen dependencies installed. G2b42092 continues backend. No duplicate remote branch found on fetch.
 - One UI process without children; G2b may use one child, total cap3. Full checks/build/browser serialized by Codex. Monitor and ownership docs updated. Main untouched.
