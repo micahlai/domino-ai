@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Codex brain: E4 labels spend-spike probability 0.3 as a demo assumption, compares probability-weighted money using exact ratios, and labels historical usable cash as using current restricted cash. Why: the records do not establish incident probability or historical restricted balances; assumptions must not masquerade as learned facts.
+
 - 2026-10-24 Jayden: Codex may run Claude directly for the engine work and perform the audits/integration. Why: explicit user authorization removes the manual prompt relay; it supersedes the generic human-launch guidance for this work. Keep one engine writer and the existing review gates.
 
 - 2026-10-24 Codex brain: integrate P3/P4 and plain timeline copy through origin/main 687b91f; defer particle commits per user direction. Match saved event branches by explicit cumulative risk IDs, with a conservative ordered legacy fallback. Why: change equality cannot establish scenario identity after C1. Claude implemented the scoped fix; Codex independently reviewed it.
