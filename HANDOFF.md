@@ -2,6 +2,8 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest07:42 PDT: H2c accepted and pushed66b2d2a after independent review,726tests and local runtime checks. Accepted H2c merged into H4, combined772tests pass. Two verified Claude workers now run: H2d real activity (Opus) and H4c core live UI (Sonnet), with activity unavailable until its own gate passes. Main remains untouched. Current processes/next steps are in active-run.md.
+
 - Latest07:23 PDT: H2c repair1 passed725tests and live distinct-key retry checks; independent review cleared its main defects. Final repair2 is running (exec75136/PID97297) to expose exact frozen input evidence and saved metadata. H2d/live UI remain gated. UI wiring card0cfd53e is ready; active-run.md records the next exact step.
 
 - Latest07:07 PDT: H2c passed719tests and local concurrency smoke, but independent audit found frozen-read, revealed-evidence and retry-key defects plus missing getRun. Claude repair1 is verified running (exec45241/PID53162). H2d/UI wiring still gated. Current local backend3210/3211 and exact next steps are in active-run.md.

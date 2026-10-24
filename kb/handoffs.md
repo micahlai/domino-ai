@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 07:42 Codex heartbeat
+- Done: H2c8389326 independently approved, full726tests and local concurrency/snapshot checks passed, acceptance66b2d2a pushed. H4 dependency integration passed772tests.
+- Next: two verified Claude workers build real activity and core live UI in separate worktrees. Core UI uses only accepted H2c; later activity wiring follows tested H2d.
+- Watch out: saved inputSnapshot and available/revealed evidence have different roles. UI must use retrospective wording and unknown unmodeled downside, not inherited synthetic prospective claims. No main or shared cloud changes.
+
 ## 2026-10-24 07:23 Codex heartbeat
 - Done: H2c repair1 passed725tests and local retry/reveal/reload checks. Independent probes cleared availability, request receipts and frozen revealed evidence. Live UI card prepared.
 - Next: final bounded repair2 exposes frozen input objects and saved method/date metadata; re-review then H2d.

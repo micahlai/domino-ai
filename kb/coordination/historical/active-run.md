@@ -1,94 +1,51 @@
 # Active overnight run
 
-Updated: 2026-10-24 07:23 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
+Updated: 2026-10-24 07:42 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual commits/processes before dispatching. Do not duplicate workers. Earlier audit history remains in Git and kb/reviews.
 
-## Execution limits
+## Limits and ownership
 
-- Entry: prompts/shared/C0-codex-supervisor.md. Claude implements; Codex reviews, checks and integrates. H0 is inactive. At most three Claude writers, one UI owner, no nested workers. Use Sonnet for evidence/UI and Opus for money/backend. One bounded phase per launch, 30-minute checkpoint target, at most two repairs per gate. Stop repeated retries at usage limits; no paid fallback. Fresh contexts do not reset account limits.
-- Started 05:15 PDT. Deadline 2026-10-24 11:15 PDT (18:15 UTC). Stop new dispatch then preserve a safe checkpoint. No main merge/push, production deployment, or shared cloud writes. Main 694ab2a and unrelated local changes remain preserved.
-- Integration worktree: domino-case-study / integration/historical-case-study. All worktrees are under /Users/jaydenl/Dev/Hackathon/CalHacks 26. Final preview branch remains reserved as preview/historical-overnight.
-- Serialize installs, full checks, builds and browser verification. Node24: /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Full check: TURBO_FORCE=true pnpm check. Full-check slot is free. Reuse existing packages, primitives and Motion.
-- Never read/print credentials or environment contents. Apify token availability is user-reported and unverified. No billable Actors or unnecessary crawler.
-
-## Monitoring and owned servers
-
-- Automation domino-overnight-audit is ACTIVE every 20 minutes on this thread. Quiet when no user action is needed. Stop at completion or deadline and record remaining gates.
-- Awake guard exec88844/PID14212, bounded caffeinate started05:20. Keep Codex open, AC connected and lid open. Do not touch unrelated caffeinate91684 or older Claude processes.
-- Existing main server127.0.0.1:3000 remains untouched.
-- H3 production preview127.0.0.1:3100, exec68463, log /tmp/domino-H3-preview.log, built97925fd. IAB tab5 historicalAuditTab may remain available.
-- H4 production preview127.0.0.1:3101, exec89805, log /tmp/domino-H4b-r1-preview.log, built436878e. IAB tab6 styleAuditTab retained for handoff. Browser handle styleBrowser, viewport capability mobileViewport; temporary375x812 override was reset.
-- Isolated anonymous local Convex runs from domino-H2/apps/web on127.0.0.1:3210 (site3211), exec80763/backend PID38093, log /tmp/domino-H2-local-convex.log. Project-local state and generated local environment only; no shared cloud writes. Live API smoke passed, UI wiring remains pending. Never print deployment credentials or environment contents.
+- Entry: prompts/shared/C0-codex-supervisor.md. Claude implements, Codex audits/checks/integrates. H0 inactive. At most three writers, one UI owner. Sonnet for UI/evidence, Opus for backend. Fresh bounded phases, 30-minute target, at most two repairs per gate. Stop retry storms and paid fallbacks.
+- Deadline: October24 11:15 PDT /18:15 UTC. Stop dispatching then preserve safe checkpoints. Main694ab2a and unrelated work remain untouched. No main merge/push, production deployment, shared cloud writes or destructive reset.
+- Coordination: domino-case-study / integration/historical-case-study. Final branch preview/historical-overnight remains reserved. All worktrees under /Users/jaydenl/Dev/Hackathon/CalHacks 26.
+- Serialize full checks, installs, builds and browser work. Node24 at /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Full check TURBO_FORCE=true pnpm check. Slot currently free. Reuse existing packages, primitives and Motion. No secrets in output/commits or billable Apify Actors.
 
 ## Accepted checkpoints
 
-- Contracts code442d23b, packet2ae6e9b: independently approved after five boundary repairs; lead682tests/typechecks/lint passed. Pushed H2-historical-backend. APIs remain proposed. Assumptions must be in dependency order; upfront costs are nonnegative cents.
-- H3 presentation97925fd: independently approved after source leakage/branching repairs; full656tests/check/build and desktop browser passed. Pushed H3-historical-ui. Live wiring remains pending, UI ownership transferred to H4.
-- H1 normalized cash case807b2e2, formatting checkpoint a4e49e0: source/fact/baseline independently approved; lead inspected the one-field response-manifest repair and reran13 evidence validation tests. Full branch typechecks/tests passed, lint initially found five archived JSON formatting errors. Codex applied whitespace-only formatting, asserted parsed JSON equality, and lint passed. No raw HTML or evidence values changed. H1 branch pushed.
-- Only the S7/S8 raw-backed cash subset is accepted. Unhashed debt/covenants and research narratives remain excluded. This is a retrospective forecast miss plus hypothetical cost sensitivity, not a bankruptcy-warning claim. A1-DOWNSIDE is a visible unmodeled limitation, absent from run inputs.
-- H4 style foundation1d7cdf6: repaired server boundary, URL behavior and scoped tokens. Full671tests/check passed; production build and desktop/mobile browser passed at parent7f2b69e. Last CSS token repair independently inspected and full check passed. Approved as style foundation only, not complete H4. Approved contracts2ae6e9b merged at82432f6 for activity typing.
+- Evidence H1 a4e49e0: normalized raw-backed 2U cash-only case. S7 Q3 and S8 Q4 issuer releases verified with hashes/publication dates; 13 validation tests. Archived research remains excluded from runtime. Debt/covenant/going-concern claims are unverified and unused.
+- Contracts442d23b, enginea75406d and real-case41d04e7 accepted after independent reviews. Exact case gate passed713tests. Baseline misses actual year-end cash by$37.58M. Retrospective with outcome known, not a bankruptcy warning or prospective accuracy claim. Response is cost-only sensitivity; A1-DOWNSIDE is an explicit unmodeled limitation, not zero.
+- H2c code8389326, full dependency/acceptance66b2d2a, pushed H2-historical-backend. Independent Astra approval after two bounded repairs. Full726tests/typechecks/lint passed; /tmp/domino-H2c-r2-check.log. Local runtime passed concurrent save/reveal retries, distinct-key receipts/conflicts, wrong-case rejection, exact comparison and immutable input snapshots. Generated bindings included. Browser integration remains separate.
+- H2c API semantics: getRun.inputSnapshot is authoritative for saved input sources/facts/assumptions. getCase.case is available or frozen revealed evidence. Never substitute current inputs for a saved forecast or mix older basis facts into newer observation derivations. Run-scoped method/origin/cutoff use the saved run. Historical comparison is baseline only; alternative is never scored against actuals.
+- H3 presentation97925fd and H4 style/activity presentation436878e accepted/pushed. Four shared-component themes, truthful unavailable activity and labelled simulation. H4 full728tests/build plus desktop/mobile browser passed. Projected line dashes repaired. Reference colors checked; Ramp/Hyphenate layout/fonts inferred, not exact private app copies.
+- Accepted H2c66b2d2a merged into H4 at45d767d. UI card5b7076a narrowed to core wiring at4eb0ddc. Combined772tests/typechecks/lint passed, /tmp/domino-H4-h2c-merge-check.log. No feature conflicts. This integration is local until the next checked UI checkpoint.
 
-## Current workers and checks
+## Current workers
 
-| Phase | Worktree / branch | Model | Exec / last verified PID | Log | Status |
+| Phase | Worktree / branch | Model | Exec / verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
-| H2c repair2 | domino-H2 / H2-historical-backend | Opus high | 75136 / 97297 | /tmp/domino-H2c-r2-claude.log | Running froma9bc32d; expose frozen inputSnapshot and saved-run metadata |
-| H4b repair1 | domino-H4 / H4-ui-styles-motion | Sonnet high | 33430 / finished | /tmp/domino-H4b-r1-claude.log | Accepted436878e as presentation; full728tests/build and browser passed; waiting for backend |
+| H2d real activity | domino-H2 / H2-historical-backend | Opus high | 65651 / 55664 | /tmp/domino-H2d-claude.log | Running from66b2d2a; atomic events and baseline-scoped query |
+| H4c core live UI | domino-H4 / H4-ui-styles-motion | Sonnet high | 27825 / 62659 | /tmp/domino-H4c-core-claude.log | Running from4eb0ddc; accepted H2c only, activity unavailable |
 
-Only H2c repair2 is implementing. Repair1 resolved the original availability/receipt/reveal defects; one evidence-display gap remains. H1/H4 and prior workers are stopped. The full-check slot is free. H4b repair verification logs: /tmp/domino-H4b-r1-check.log and /tmp/domino-H4b-r1-build.log.
+Both process/cwd pairs verified07:42. H1 and all earlier writers stopped. Prompts /tmp/domino-H2d-prompt.txt and /tmp/domino-H4c-core-prompt.txt. Each owns its task Result, not shared board/HANDOFF. No nested workers.
 
-## Current blockers and next steps
+## Next exact steps
 
-1. Collect H2c checkpoint, actual API packet and generated bindings. Independently audit immutable input snapshots/hashes, idempotent retries, case/run associations, pre-reveal payload/metadata filtering and unchanged forecasts after reveal. Run the serialized full check. APIs are not ready merely because a packet claims so.
-2. Set up an isolated local Convex runtime after the candidate is reviewable. Installed CLI supports anonymous mode and explicit local ports; never run default dev against shared cloud. Smoke the curated save/reveal/alternative journey and confirm bindings. No production or shared-cloud writes.
-3. H2d adds actual operation events atomically with successful mutations, stable IDs/sequence and authorized metadata. No fake agent/tool work. Publish complete tested dependency ancestry before live UI adoption.
-4. Resume the UI slot on H4 ancestry at436878e, merge the complete accepted backend dependency, wire the historical page and activity query using actual APIs. Preserve all four styles and existing operational routes. No fresh UI scaffold or return to stale H3.
-5. Assemble exact checked commits into preview/historical-overnight, combined checks/build/browser, publish reviewable result. Keep baseline scoring distinct from counterfactual sensitivity. No main merge.
+1. Collect H2d candidate. Audit actual atomic events, stable sequence/IDs, retry receipts, concurrent distinct operations, no event on failure, and no other baseline's reveal metadata. Run focused/live probes plus serialized full check. Publish accepted complete H2 SHA.
+2. Collect H4c core candidate. Independent UI audit plus full check/build and local browser journey. Verify save/reveal/alternative/reload, no future-data client import, authoritative frozen input evidence, retrospective copy, unknown benefit/downside, keyboard/mobile and style-state preservation. It must not call a guessed H2d API.
+3. After both accepted, merge exact H2d SHA into H4 and launch a small activity wiring phase. First history load quiet; real new events animate once. Agent/tool simulations remain labelled playground only.
+4. Assemble preview/historical-overnight, combined checks/build/browser and reviewable morning result. Preserve main. If another repair fails beyond its two attempts, park that gate with evidence instead of repeated retries.
 
-## Browser evidence and limits
+Core UI now runs in parallel with H2d because its persistence dependency is accepted. This supersedes the earlier plan to wait for activity before any live UI work. Activity remains explicitly unavailable until tested H2d adoption.
 
-Four desktop screenshots: /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-desktop.png. Four375px screenshots use the same names ending -mobile.png. Additional /tmp/domino-H4a-mobile-chart.png. All styles preserved the alternative state and visible miss; source drawer worked, no console errors seen. Header wraps at375px; the chart scrolls horizontally. Inherited projected path rendered solid despite the dashed legend, now assigned to H4b. Reduced-motion runtime emulation and final integrated journey remain unverified. The Ramp/Hyphenate treatments use public references with inferred spacing/fonts, not exact private app copies.
+## Owned runtime and monitoring
 
-## Review agents
+- Automation domino-overnight-audit ACTIVE every20minutes; quiet when unchanged. Stop on completion/user stop/deadline. Awake guard exec88844/PID14212, bounded caffeinate from05:20. Keep app open, AC connected, lid open. Do not touch unrelated processes.
+- Isolated anonymous local Convex from domino-H2/apps/web, localhost3210 and site3211. exec80763/backendPID38093, /tmp/domino-H2-local-convex.log. Project-local state/environment only, no shared cloud. Watcher rebundles H2 changes and generates bindings. Never print credentials/env. Pre-repair smoke reveal rows lack frozen evidence and fail closed; use fresh runs, do not reset data.
+- Main server3000 untouched. H3 preview3100 exec68463 serves97925fd, /tmp/domino-H3-preview.log.
+- H4 preview3101 exec89805 serves436878e, /tmp/domino-H4b-r1-preview.log. It does not yet serve live H4c. Build with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210 for the integrated local journey, then restart only verified owned server. Do not run a second Convex watcher in H4.
+- CUA IAB tab6 styleAuditTab retained, browser styleBrowser. Viewport capability mobileViewport was reset. After compaction call cua.rewriteDocumentation before browser work. Prior screenshots /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-{desktop,mobile}.png and /tmp/domino-H4b-r1-mobile-activity.png. Reduced-motion runtime emulation and final live browser journey remain unverified.
 
-- audit_e3b_causality: evidence normalization reviewed; reuse for real-case data adoption.
-- audit_e3b_rules: engine review complete; reuse for repair and persistence boundaries.
-- audit_ui_integration: style review complete; reuse for activity/live wiring. May send a final note about the Motion dash issue.
+## Reviewers
 
-## Latest review handoff
-
-- Engine repair a75406d is complete and full check passed (exec91887, /tmp/domino-H2b-r1-check.log). Independent reviewer audit_e3b_rules is checking the five repairs, including the documented two-stage rounding choice. Do not accept or merge evidence until that review returns.
-- Convex local runtime preparation: installed CLI supports CONVEX_AGENT_MODE=anonymous and explicit local ports; source inspected, not launched. Never run default convex dev against a shared deployment. Configure an isolated project-local runtime only after H2c is reviewable.
-- Browser confirmed the inherited Motion issue: saved forecast path has stroke-dasharray=1 1 and pathLength=1 despite source6 4. H4b owns the fix; observed/alternative legend and chart must agree.
-
-## Latest gate advancement, 06:43 PDT
-
-- Engine a75406d received independent approval, including90 rounding/range probes. Accepted H1 evidence merged atdbabbf5. Real-case tests41d04e7 plus note3fd98b6 reproduce all frozen numbers, source closure, shared nowcast, post-hoc response and reveal boundary. Lead reviewed the assembly and full713tests/typechecks/lint passed. H2 branch pushed at3fd98b6. No model tuning or new financial implementation in the real-case phase.
-- H2c dispatched after these gates. It must keep normalized future evidence server-side, save canonical eligible input snapshots/hashes, compute runs on server, make retries/reveal idempotent and preserve immutable forecasts. Baseline comparisons are factual; never call counterfactual-versus-actual differences predictive accuracy. No activity emission until H2d. Offline codegen may run; C0 owns later isolated runtime.
-- H4b59da0aa passed fullcheck/build but audit found duplicate conflict counts, failure hidden by retry-start, row reorder after late events, unsupported unavailable-state claims, and missing reducer tests. Mobile browser also reproduced vertical one-letter labels and clipped timestamps. Repair436878e addresses these; re-review and verification underway. Screenshot of old defect /tmp/domino-H4b-mobile-activity.png.
-- H4 preview3101 was restarted on59da0aa, exec23603, log /tmp/domino-H4b-preview.log. It does not yet serve436878e. Original exec97863/PID99769 stopped after confirming owned cwd. Restart only owned server after next build before browser recheck.
-
-## Accepted presentation, 06:46 PDT
-
-- H4b436878e independently approved after conflict-idempotence, failure/retry, stable-row-order and unknown-status repairs. Full728tests/typechecks/lint and production build passed. Mobile375px row now shows a readable label and full wrapped UTC timestamp; screenshot /tmp/domino-H4b-r1-mobile-activity.png. All eight labelled simulation steps verified, including failure, success and reconnect without duplicate rows. No browser errors. Projected path now preserves stroke-dasharray6 4 with no pathLength override. Live feed remains unavailable. H4 branch pushed.
-- Current H4 preview3101 serves436878e: exec89805, log /tmp/domino-H4b-r1-preview.log. Old owned previewPID68308 stopped before restart. Browser viewport reset; tab6 retained.
-
-## H2c live audit, 07:04 PDT
-
-- Candidate0e33f73 completed. Full719tests/typechecks/lint passed, log /tmp/domino-H2c-check.log. Initial sandbox-only Turbo TLS initialization failed; authorized rerun outside sandbox passed. No test failure hidden.
-- Isolated anonymous local Convex configured from an empty worktree-local environment on3210/3211. Bundler compiled normalized JSON and hash imports successfully. Generated API bindings and standard CLI tsconfig committed0377a9b; both web and standalone Convex typechecks passed. No cloud deployment or production change.
-- Real HTTP smoke passed: cutoff source isolation; eight concurrent identical baseline saves; four identical alternatives; eight identical reveals; exact target and $37.58M miss; saved baseline unchanged after reveal. Each concurrent request used a separate client.
-- Independent Astra audit remains pending. Review specifically includes frozen snapshots after case drift, retry semantics and read-only retrieval of a saved run. Do not claim API-ready or launch H2d until findings are resolved.
-
-## H2c repair dispatch, 07:07 PDT
-
-- Independent Astra review blocks candidate approval on: CASE_CHANGED makes valid frozen runs unreadable after harmless source edits; revealed evidence is not frozen alongside stored comparisons; repeating reveal under a second requestId fails to reserve that key; no read-only run retrieval for reload. Reproductions /tmp/h2c-independent-audit.ts. Generic retrospective disclaimer is not held-out leakage.
-- Claude Opus repair1 launched exec45241/PID53162, cwd domino-H2, log /tmp/domino-H2c-r1-claude.log. Compact prompt /tmp/domino-H2c-repair-prompt.txt. Verified actual process/cwd. Scope only Convex/schema/generated/tests and Result/readiness notes. No H2d or UI dispatch yet.
-- Next exact step: collect repair commit, re-review those four findings with audit_e3b_rules, run serialized fullcheck and local live regression including two-key reveal conflict and getRun. Then H2d, then UI wiring on H4 ancestry. Local Convex watcher automatically rebundles isolated changes; never use shared cloud.
-
-## H2c repair1 reviewed, repair2 running, 07:23 PDT
-
-- Repair1 code8c16c4f/packeta9bc32d passed725tests/typechecks/lint. Fresh local HTTP probe passed eight baseline retries, eight distinct reveal keys returning one record, conflict on reusing an alias key for another baseline, getRun baseline/alternative retrieval, wrong-case rejection, exact comparison and immutable baseline. Existing pre-repair smoke reveals intentionally fail closed because they lack frozen evidence; use fresh runs, never reset data.
-- Independent Astra probes accepted availability, receipt binding, case association, frozen observation/comparison agreement and tamper rejection. One remaining gap: getRun exposed input IDs but no original objects, while getCase shows current cutoff inputs. A valid old run can display different evidence values.
-- Final bounded repair2 now runs exec75136/PID97297, verified cwd domino-H2, Opus high, log /tmp/domino-H2c-r2-claude.log. It adds validated getRun.inputSnapshot and saved cutoff/origin/method metadata. UI must use inputSnapshot for saved forecast provenance; available/revealed evidence remains separate to avoid mixing old inputs with newly derived observations. Prompt /tmp/domino-H2c-r2-prompt.txt. No new schema framework or financial code.
-- Next exact step: collect repair2, targeted re-review with audit_e3b_rules, fullcheck and local smoke. If accepted, publish complete H2 checkpoint and dispatch H2d. If another gate failure remains after this final repair, park with evidence rather than a third repair loop.
-- H4c live-wiring card committed on integration0cfd53e. It preserves all four styles and explicitly corrects inherited prospective wording, unknown downside/benefit handling and saved-input provenance. No UI writer launched before H2c/H2d readiness.
+- audit_e3b_rules: Astra, approved H2c8389326, reuse for H2d. Independent probes /tmp/h2c-independent-audit.ts, /tmp/h2c-r1-independent-audit.ts, /tmp/h2c-r2-independent-audit.ts.
+- audit_ui_integration: Sol6.1, approved presentation436878e, reuse for live core/activity.
+- audit_e3b_causality: Sol6.1, accepted normalized evidence, no further research required for this narrow case.

@@ -7,9 +7,9 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
-| C0/H1/H2/H3/H4 overnight run | doing | Evidence/engine/style presentation accepted; H2c final repair2 running after independent audit; active-run.md owns current state |
-| H4 visual styles/motion | doing | Four-style and activity presentation436878e checked; live wiring waits for H2c/H2d |
-| H2d actual activity | todo | Additive backend event feed for H4; no synthetic product agent activity |
+| C0/H1/H2/H3/H4 overnight run | doing | H2c accepted726tests; H2d activity and H4c core live UI running in parallel; active-run.md owns current state |
+| H4 visual styles/motion | doing | Presentation436878e accepted; H4c core live UI running against accepted H2c; activity wiring remains gated |
+| H2d actual activity | doing | Atomic baseline-scoped event feed, one bounded Claude phase from accepted66b2d2a |
 | E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |
 | E2a 29de286 | blocked | 650 tests/typecheck/lint pass; pagination, payout and OpenAPI defects independently reproduced; parked |
 | E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |
