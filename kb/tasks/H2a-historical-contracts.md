@@ -6,7 +6,7 @@
 - **Notes:** Read skills/contract-change/SKILL.md and historical-case-study-plan.md. Packet records proposed APIs separately from implemented APIs, currency/cash scope, availability inheritance, stale balance dates and UI states. Existing Forecast/GradeContext are not quarterly contracts. Activity schema semantics follow ui-styles-motion-2026-10-24.md; event support does not claim live agent execution.
 - **Handoff:** Single contract owner. Freeze compatible shapes early; no breaking changes after UI adoption. Draft dependency testing is permitted in worker branches; final shared approval remains morning review.
 ## Result
-- Done:
-- Files and commit:
-- Verification:
-- Watch out / next:
+- Done: additive historical source/fact/assumption/case/run/comparison schemas, save-time and reveal-time boundary contexts, optional activity event, synthetic validation fixture. Packet: kb/coordination/historical/contract-v1.md (frozen candidate; APIs proposed, none implemented).
+- Files and commit: contracts code `8bdea82b9fa463e9acb775ae29891824c31e120d`: new packages/contracts/src/historical.ts, historical.test.ts, fixtures/historical.ts; one export line each in src/index.ts and src/fixtures/index.ts. Reused checks.ts (CalendarDateSchema, SafeCentsSchema, flagRepeats, isCalendarDate) and core IdSchema; no duplicate money/date helpers. No engine/Convex/UI/manifest/lockfile edits.
+- Verification: in packages/contracts `pnpm exec tsc --noEmit` clean; `pnpm exec vitest run` 5 files, 189 tests passed (27 new); `pnpm exec biome check packages/contracts` clean; `tsc --noEmit` clean in packages/engine, agents, sim. Full `pnpm check`/build not run (Codex check slot).
+- Watch out / next: not pushed (supervisor rule overrides card's push). kb/requests.md and build-spec §5 not updated (outside H2a folder exceptions); Codex to decide. Contract does not check derivation arithmetic, inputHash, or feed sequence monotonicity (see packet "Not enforced"). Metric enum is minimal; H1 may need more metrics (additive). Real-case fit unverified until H1 evidence lands.
