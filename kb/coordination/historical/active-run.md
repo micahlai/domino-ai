@@ -1,3 +1,15 @@
+# Current product expansion checkpoint
+
+Authority: kb/spec/product-workspace-2026-10-24.md supersedes earlier navigation and delivery scope below. Main694ab2a untouched. Preview5acbb3a clean before coordination changes. Remote fetched successfully.
+
+- G8 candidate898ca52 completed; fullcheck passed, independent review found missing assumption basis. Claude repair PID27692/exec32771 in domino-G8, log /tmp/domino-G8-repair-claude.log, owns CompanyKnowledge component/test and card only. Confirm process before further dispatch. No other Domino implementation worker active at this inspection. Unrelated Claude94627/78153 preserved.
+- S1 additive scenario contracts is ready for local Claude. S2 saved catalog reserved exclusively for friend, task/prompt prepared. One schema index owned by S2; no local duplicate.
+- U1 unified navigation and early visual waits for accepted G8. S3 waits for accepted S1; S4 waits S1/S2/S3 and an explicit audited persistence design. U2 waits U1 visual shown and accepted S4. Do not skip gates or claim event support exists today.
+- Stable3102 still b261057; backend3214 PID43364 preserved. G7 projector accepted7ee475b. G8 not integrated. No historical CREAO calls; fixed coordination honestly disclosed, provider setup/coordinator remain open.
+- Next: collect G8 repair, independent re-review/fullchecks/build/browser; publish ready S2 branch and launch S1. Then sole UI U1 and show actual early visual before full redesign.
+
+## Prior detailed runtime and acceptance record
+
 # Active run: Domino agent canvas
 
 Updated October 24, 2026 after the 16:23 scheduled audit and G8 dispatch. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.

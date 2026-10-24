@@ -1,3 +1,7 @@
+# Updated product priority
+
+Read kb/spec/product-workspace-2026-10-24.md first, then active-run and actual workers. User expanded to one Workspace/Company/Simulations product and a distinct financial impact chain. G6/G7/G8a accepted; G8 provenance repair in current active-run. S1 local contracts, S2 friend catalog exclusively; no local duplicate or schema collision. U1 sole UI early visual after G8, S3 after S1, S4 after S1/S2/S3 plus reviewed persistence design, U2 after early visual and S4. Show early actual navigation/canvas/detail layout before full wiring. Keep historical replay separate from hypothetical event/response and preserve honest costs/uncertainty. All previous safety/provider/preview/monitor constraints below remain. Update records before ending each run.
+
 # C1: active canvas supervisor
 
 Read AGENTS.md, HANDOFF.md, kb/coordination/historical/active-run.md, kb/spec/company-map-2026-10-24.md and kb/spec/creao-canvas-cycle.md. This prompt supersedes earlier C0 deadlines and agent-page deferral. Current processes/commits come from active-run and actual inspection, not old handoff entries.

@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex unified product plan
+- Inspected completed G8, existing frozen runs/operations and quarterly engine. No event branch or historical causal graph yet. Reuse existing persistence and charts.
+- G8 repair owns sole UI; S1 additive contracts local; S2 read-only catalog is independent friend task. U1 early visual precedes full U2 wiring. S3 engine and S4 persistence have explicit gates.
+- New product scope: kb/spec/product-workspace-2026-10-24.md. Main unchanged; no live CREAO calls or new billing.
+
 ## 2026-10-24 Codex friend knowledge accepted, inspector launched
 - G7friend42421c6 independently approved and actual saved payload probe passed; integrated7ee475b,1,128combinedtests/typecheck/lint pass. No future/reveal data entered frozen projection.
 - Sole G8Claude8943/exec14882 now wires raw saved snapshot (including roles) into Company knowledge details. Stable3102 remains acceptedb261057. Chrome control timeout blocks current CREAO setup attempt; no calls or settings changed. Main untouched.

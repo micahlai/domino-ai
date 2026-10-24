@@ -1,5 +1,7 @@
 # Status board
 
+Latest product authority: `../spec/product-workspace-2026-10-24.md`. G8 candidate898ca52 in provenance repair; S1 contracts ready locally, S2 catalog reserved friend, U1 early visual after G8, S3/S4/U2 gated. Completed G6/G7/G8a preserved.
+
 ## Current scope: agent canvas centerpiece, supervised Claude implementation
 
 Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Current integration uses `preview/historical-overnight` in `../domino-preview`.

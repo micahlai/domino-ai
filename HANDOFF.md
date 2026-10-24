@@ -1,3 +1,7 @@
+# Latest handoff: unified Domino product
+
+Read kb/coordination/historical/active-run.md and kb/spec/product-workspace-2026-10-24.md first. New user scope adds Workspace/Company/Simulations, event/response lineage and financial impact chain. Preserve existing grouped canvas and frozen knowledge. Claude implements; Codex audits; preview only, main untouched. G8 candidate898ca52 has provenance repair running PID27692/exec32771, /tmp/domino-G8-repair-claude.log. S1 additive contracts ready; friend owns S2 catalog, no local duplicate. U1 early visual after G8, then gated S3/S4/U2. Exact tasks and prompts are committed with this note. Live CREAO identity/isolation and real coordinator still incomplete; only old app-scoped API allowed. Stable3102 remains acceptedb261057 against3214.
+
 # Domino handoff
 
 Current authority: kb/coordination/historical/active-run.md. G7 friend42421c6 independently approved, actual saved-run probe passed, integrated7ee475b and combined1,128tests/typecheck/lint pass. G8 knowledge inspector ClaudeSonnet8943/exec14882 is verified sole UI writer in domino-G8, /tmp/domino-G8-claude.log. Stable3102 still acceptedb261057, no projector UI until G8 passes. Next audit G8, preserving raw snapshot.roles/cutoff and real data. CREAO native Chrome control timed out again; no configuration or provider calls. Main unchanged; monitor active.
