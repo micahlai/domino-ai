@@ -6,7 +6,7 @@
 - **Notes:** Use existing Convex tests and local isolated runtime only; no shared cloud dev/deploy/reseed. Imported later data stays server-side and never enters forecast/agent inputs. Only actual implemented/tested endpoint names belong in the API-ready packet; generate bindings through supported local tooling.
 - **Handoff:** Push API-ready SHA on H2-historical-backend, update packet with actual names/args/results, reproducible setup and exact code SHA containing the complete evidence/contracts/engine/Convex/generated-bindings dependency closure. Do not claim browser integration from unit tests alone.
 ## Result
-- Done:
-- Files and commit:
-- Verification:
-- Watch out / next:
+- Done: curated 2U journey in Convex. Filtered case query -> server-computed baseline save -> explicit reveal -> stored comparisons -> server-computed cost-only A1 alternative. API names are listed under "H2c readiness" in `kb/coordination/historical/contract-v1.md`. State: candidate, not API-ready.
+- Files and commit: `apps/web/convex/historical.ts`, additive `historicalRuns`/`historicalReveals` in `schema.ts`, `convex/tests/historical.test.ts`. Code SHA 0e33f738ddb2d3ca98ec4c35e006801b69b1265e.
+- Verification: `vitest run convex` 4 files / 58 pass, 6 of them new. They cover the cutoff view leak check, save/retry, concurrent duplicate requests, conflicting requestId, unknown ids, reveal once and no overwrite, the late-evidence view after reveal, the alternative branch association and cost-only result, and run + snapshot tampering. `tsc --noEmit` (web) and `biome check apps/web/convex` are clean. Full `pnpm check`, build and deploy were not run, per instruction.
+- Watch out / next: (1) `_generated/api.d.ts` was not regenerated: codegen needs `CONVEX_DEPLOYMENT`. C0 should run `npx convex codegen --typecheck disable` in `apps/web` on an isolated local deployment and commit `_generated/`. The tests use `anyApi`. (2) The JSON import and the relative `packages/agents/src/hash` import are not proven under the Convex bundler (no deploy). (3) The concurrency tests run serially in convex-test, so real OCC behaviour is unproven in a runtime. (4) The `CASE_CHANGED` path is untested because module data cannot be edited in a test. (5) Alternatives are not revealed or scored, by design. (6) No H2d activity is emitted.

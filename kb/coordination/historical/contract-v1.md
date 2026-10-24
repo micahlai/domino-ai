@@ -62,3 +62,22 @@ Case loaded (cutoff, latest balance date, sources, assumptions) -> run saved -> 
 5. Predictions enforce balance-instant / flow-duration like facts. Negative predicted balances are still allowed (a forecast may show a shortfall).
 
 Shape change vs `8bdea82`: `oneTimeCost.unit` narrows to `"cents"`; case assumption order now matters for `dependsOn`. No consumer outside contracts uses either yet.
+
+## H2c readiness (candidate, NOT API-ready)
+
+- State: **candidate** pending Codex audit. Code SHA `0e33f738ddb2d3ca98ec4c35e006801b69b1265e` on H2-historical-backend (local, not pushed). Closure: contracts 442d23b, engine a75406d + period-2u test 41d04e7, evidence a4e49e0 (`data/historical/2u/case.json`, `protocol.json`), Convex module, additive schema.
+- Gate: `_generated/api.d.ts` is **not regenerated**. `convex codegen` refuses without `CONVEX_DEPLOYMENT`. Runtime `api.js` is `anyApi`, so tests run; typed `api.historical.*` needs C0 to run `npx convex codegen --typecheck disable` from `apps/web` against an isolated anonymous local deployment, then commit `_generated/`. Not checked in a deployed runtime or browser.
+- Module `apps/web/convex/historical.ts`. All inputs, method, decision and reveal time are server-owned. Clients send only IDs. `requestId` is 8-64 chars `[A-Za-z0-9_-]`. Errors are `ConvexError({code, message})`.
+
+| Function | Args | Result |
+| --- | --- | --- |
+| `historical:getCase` (query) | `{caseId, runId?}` | `{case, knowledgeCutoff, originBalanceDate, visibleThrough, revealed, disclosure, method, projectionAssumptions, riskRules: [], riskRulesNote}`. `case` is filtered to `visibleThrough` (the cutoff, or the run's reveal). Later sources/facts and hindsight assumptions are absent. |
+| `historical:saveBaseline` (mutation) | `{requestId, caseId}` | `{runId, run, riskRulesNote}`. Computes `quarterBridge` on the cutoff view, assumptions + `AS-RESTRICTED`, `riskRules: []`. Validated by `HistoricalRunContextSchema`. |
+| `historical:computeAlternative` (mutation) | `{requestId, baselineRunId}` | `{runId, run, costRelativeToBaseline: {low,point,high}, benefit: {start, daysInWindow, afterTarget: "unknown"}, postHoc: true, postHocReason, caveats: [A1-DOWNSIDE unmodeled note, point note]}`. Decision is `A1`, and the baseline must be a baseline run. It is not scored against disclosures. |
+| `historical:reveal` (mutation) | `{requestId, runId}` | `{runId, revealedThrough, revealedAt, comparisons}`. Baseline runs only. `revealedThrough` = next publication after the cutoff (S8 publishedAt). `compareRun` on the stored run; error = actual - forecast. Stored once per run. |
+| `historical:getReveal` (query) | `{runId}` | Same as reveal, or `null` before reveal. |
+
+- Persistence: `historicalRuns` is append-only. It stores `{runId, requestId, caseId, kind, baselineRunId?, run, snapshot, summary, rowHash}`. `historicalReveals` holds `{runId, requestId, revealedThrough, revealedAt, comparisons}`, separate from runs.
+- `inputHash` = `hashInput(snapshot)` from `packages/agents/src/hash` (relative import, no new package). The snapshot holds caseId, currency, method, bridge roles, cutoff, origin, and the exact input source/fact/assumption objects. `rowHash` covers run+snapshot+summary. Each load re-checks both hashes and that the current case still matches the snapshot (`INTEGRITY` / `CASE_CHANGED`).
+- Idempotency: the same requestId with the same args returns the stored result. The same requestId with other args fails `CONFLICT`. A new requestId saves a new run with the same inputHash. A second reveal of a run returns the first one.
+- Timestamps: `createdAt`/`revealedAt` are runtime time and are distinct from `knowledgeCutoff`/`revealedThrough`.
