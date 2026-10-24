@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 12:37 Codex early canvas accepted
+- Done: G1 initial90da27c plus taste/UIUX Max repair285d7de independently checked;820tests/build/browser pass and integrated previewdcfb1ab. Early visual shown before backend dispatch. Current3102/investigate is visual only; temporary3103 stopped.
+- Next: Claude G2a real specialist contracts/provider runs exec49171/PID29046; audit, then G2b durable conversation/operations and G3 live graph/chart journey. Scheduled C1 supervision active every20minutes.
+- Watch out: no real investigation is connected yet; Send deliberately disabled. All UI phases require /orchestrator, /ponytail, taste, ui-ux-pro-max. Main untouched. See G1-accepted.md and active-run.md.
+
 ## 2026-10-24 12:31 Codex canvas reprioritization
 - Done: user corrected centerpiece; inspected backend/provider/UI reuse, prepared G1 scope and C1 supervisor, created isolated domino-G1 frombc1d21f. Claude Opus worker verifiedPID4552 with requested /orchestrator and /ponytail. Existing monitor reactivated with revised scope.
 - Next: review/show G1 actual browser visual before full-flow implementation; then narrow real specialist and persisted conversation/graph APIs, then live UI wiring.
