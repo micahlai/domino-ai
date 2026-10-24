@@ -1,19 +1,45 @@
 # Active run: agent canvas centerpiece
 
-Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke pending; G2c repair independently approved, full check passed. Automation remains ACTIVE every20minutes. No main merge.
+Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
+
+## Scheduled audit, October24 14:36 PDT
+
+- G2d repair3738d5c independently APPROVED:43focused+8probes; full998tests/typecheck/lint pass. Mergedpreview3ea78ef, combined998tests pass. Actual anonymous3214/site3215 bundle/codegen and4API checks pass, PID32068/exec33344, /tmp/domino-G2d-local-convex.log and /tmp/domino-G2d-runtime-smoke.log. Gate OFF, no keys/providercalls. Dedicated real apps/instructions/memory isolation still unverified.
+- G4 candidatee7b7944 finished; full1028tests/typechecks/lint/build pass, BUT visual audit BLOCKED on FitView floor clipping on mobile and label collision bounds116vs126px. Independent33tests/probe /tmp/domino-g4-audit.cjs. Browserdesktop/mobile reproduced clipping; circles/web/topology and keyboard details work. Do not publish as accepted.
+- Actual3418/investigate local browser submitted a question to3212, loaded real archivedsource/forecast/output operations and opened saved chart. Specialist failedprovider_unavailable honestly, no modelcall. This is a partial live journey only. No console warnings/errors. Candidate screenshots /tmp/domino-G4-spatial-desktop.png, /tmp/domino-G4-spatial-mobile.png, /tmp/domino-G4-live-forecast.png. No user-facing visual acceptance yet.
+- Sole UI ClaudeSonnet32944/exec73011, cwdverifieddomino-G3, now repairs G4twoissues AND G3twoissues in one bounded phase from999b5da. Log /tmp/domino-G4-G3-repair-claude.log. Nochildren. Cards G4-spatial-agent-web.md Repair1 + G3-live-canvas-repair1.md. Backendworker finished. Next independentre-audit, fullcheck/build/browser, then checkedpreviewintegration. Main694ab2a unchanged.
+- Currentruntime: stable3102 PID2358/exec61582 previousacceptedR1; candidate3418 PID24672/exec84404 e7b7944 builtagainst3212. Backend3214 currentG2d,3212 G2b,3210 legacyH2; preserve data. All older worker/processstates below are historical.
+
+## Scheduled audit, October24 14:21 PDT
+
+Both current workers remain active with verified cwd and no children. G4 Claude64729 has changed graph.ts; G2d repairClaude69536 has changed investigation.ts. No finished commit, new acceptance or integration; do not rerun full suites against in-progress edits. Prepared G3-live-canvas-repair1.md for the sole UI worker AFTER G4 ends. Next collect G4 visual checkpoint and G2d repair, reuse independent reviewers, then serialized full checks/build/browser. Existing stable preview remains unchanged; main694ab2a preserved.
+
+## Latest direction: spatial agent web
+
+User rejects a single-direction line. Reference https://www.instagram.com/reel/DdzFoJ3xybr/ was viewed in browser: opening frame dark spatial network, small outlined circular icons, short labels, thin edges, branching two-dimensional placement. Adopt stable clustered/radial placement around Domino, no fabricated edges or physics drift. G4 card in domino-G3/kb/tasks/G4-spatial-agent-web.md, base179626e after G3 candidate5d244d8. Sole UI Claude64729/exec37097 running in domino-G3, /tmp/domino-G4-claude.log, cwd verified. Requested four skills. Owns presentation graph/primitives/tests/playground only; live/** frozen for repair queue. No second UI writer.
+
+G3 candidate5d244d8 independently BLOCKED: stale completion unconditionally clears newer request identity, causing duplicate investigations on retry; valid pre-reveal alternative chart/costs/assumptions hidden. Reviewer audit_r1,30focusedtests pass, probe /tmp/domino-g3-retry-audit.cjs. After G4 checkpoint, same sole UI worker must fix these before acceptance. Do not merge candidate merely for visual work.
+
+G2d candidate70d0379 independently BLOCKED: verification bound only to local profile, permits remote app-id swap after queue. Fullcheck passes,42focused+5probes expose blocker. Claude Opus69536/exec11213 repair fromd11235e in domino-G2d, /tmp/domino-G2d-repair-claude.log. Freeze app identity, bind verified appId+role+version, reject drift before POST. Reviewer audit_g2a, /tmp/g2d-independent.test.ts. No live calls.
+
+Next: collect G4 visual checkpoint, independent presentation review/build/browser; then G3 live repairs; re-audit G2d independently. Current stable3102 remains previous accepted fixture until visual gate passes. Main unchanged. Older worker PIDs below superseded.
+
+## Scheduled audit, October24 14:06 PDT
+
+Both recorded Claude workers remain active with verified cwd and no children. G3 has new adapt.ts/session.ts files in its assigned live folder; G2d has no tracked changes yet. Neither has a completed commit, so no new gate accepted and no tests repeated. Last checked preview remains991tests atcb44894, published8a2e296. Next collect scoped checkpoints for independent review. Monitor ownership corrected to G3; stored interval is15minutes, preserved. Main untouched.
 
 ## Current workers and next exact step
 
-- R1 0148df5: finished, independently approved. 940 tests/typechecks/lint and production build pass in worker and combined preview. Desktop/mobile browser checks pass for node details, safe links, instructions, keyboard, conversation and offline states. Reduced motion verified by source/probes, runtime emulation unavailable. Integrated79a6e19. Stable preview3102 restarted exec61582, log /tmp/domino-canvas-preview.log. Screenshot /tmp/domino-audited-canvas-desktop.png. Labelled fixture only; /investigate still waits for G3.
-- G2b 7801fb5: finished, independently approved after four blockers fixed. 934 tests/typechecks/lint pass. Independent36focused tests plus8probes pass. Auditor audit_g2a owns isolated3212/site3213 runtime smoke in domino-G2b, preserving existing3210 data. No live provider calls. Integrate only after runtime gate.
+- R1 0148df5: finished, independently approved. 940 tests/typechecks/lint and production build pass in worker and combined preview. Desktop/mobile browser checks pass for node details, safe links, instructions, keyboard, conversation and offline states. Reduced motion verified by source/probes, runtime emulation unavailable. Integrated79a6e19. Stable preview3102 restarted exec61582/PID2358, log /tmp/domino-canvas-preview.log. Screenshot /tmp/domino-audited-canvas-desktop.png. Labelled fixture only; /investigate still waits for G3.
+- G2b 7801fb5: finished, independently approved after four blockers fixed. 934 tests/typechecks/lint pass. Independent36focused tests plus8probes pass. Actual anonymous3212/site3213 bundle/codegen and nine runtime checks pass, backendPID9607 exec95774, /tmp/domino-G2b-local-convex.log and /tmp/domino-G2b-runtime-smoke.log. Existing3210 preserved. Integratedcb44894. No provider calls.
 - G2c abb6d07: finished, independently approved after bounding onRunCreated. 162 focused tests and independent real-clock deadline/late-settlement probes pass; full check /tmp/domino-G2c-repair-check.log passes. Nonblocking timer cleanup remains. Dedicated historical app configuration/memory isolation and actual provider execution are not verified.
-- No owned Claude implementation remains active at this checkpoint. Unrelated Claude78153/root and94627/Karoake must remain untouched. Next launch G3 live canvas wiring from accepted R1+G2b once local runtime passes, plus a separate bounded backend provider integration after G2c adoption. One UI writer, max3 implementation processes total including children, all this computer.
+- G3 Sonnet/high Claude18646 exec99532 now owns domino-G3/G3-live-canvas, log /tmp/domino-G3-claude.log. G2d Opus/high Claude18871 exec10780 owns domino-G2d/G2d-creao-durable-adoption, log /tmp/domino-G2d-claude.log. Both launched from checked cb44894, cwd verified, no children. Unrelated Claude78153/root and94627/Karoake remain untouched. One UI writer, max3 implementation processes total including children, all this computer.
 - Existing app-scoped CREAO only. Leave CREAO_ACCOUNT_API_KEY unused; no developer v1/v2, wallet top-up or paid fallback. Dedicated historical profiles/cutoff isolation and real coordinator cycle remain acceptance gates. App polling does not expose internal agent/tool execution.
 - Main694ab2a unchanged. Published work belongs to preview/historical-overnight. Current fixture demonstrates presentation, not real execution. Full requested journey is incomplete.
 
 ## Inspection and decisions
 
-Historical getCase/getRun/saveBaseline/reveal/computeAlternative and frozen input snapshots are reusable. HistoricalLive has memoized queries and race guards; HistoricalChart/Replay and proof components stay readable inside an output detail. Current activity records only successful deterministic financial operations. apps/web/convex/agents.ts is still placeholders. No durable conversation or specialist DAG exists.
+Historical getCase/getRun/saveBaseline/reveal/computeAlternative and frozen input snapshots are reusable. HistoricalLive has memoized queries and race guards; HistoricalChart/Replay and proof components stay readable inside an output detail. Current activity records only successful deterministic financial operations. apps/web/convex/agents.ts remains old placeholders. The accepted investigation module now owns durable conversations and bounded specialist dependencies.
 
 packages/agents has actual Claude/CREAO transports, but existing operational jobs require weekly Branch/Snapshot models and must not be filled with invented historical data. Add a narrow historical specialist contract, permitted frozen evidence and engine output references, bounded conversation and citation validation. Durable task records with dependency IDs can supply graph nodes/edges without a general workflow engine. Real starts/results/errors only; no fake agent labels for mutation calls. Deterministic computation nodes are tools. Old theme work is finished and no more themes are queued.
 
@@ -24,19 +50,19 @@ Call: bounded curated2U investigation with actual specialist jobs and existing e
 - Preserved final dashboard preview4f5432e, current planningbc1d21f in ../domino-preview on preview/historical-overnight. Prior815tests/typechecks/lint/build/browser pass covers dashboard only, NOT new canvas. Main694ab2a frozen. H1a4e49e0, H24795d51, H397925fd and H43570989; see overnight-result.md for exact accepted ancestry; no changes there.
 - After reconnect, recorded preview/backend processes had no listeners. Restored preview3102 now exec25391/PID41317 (/tmp/domino-canvas-preview.log), superseding exec62675/PID15710 and existing isolated backend3210/site3211 exec15918/PID15546 (/tmp/domino-H2-local-convex-resume.log), no data reset. Both listeners and HTTP200 verified12:32; reverify before stopping or restarting. No cloud/main3000 changes.
 - Old bounded awake guard expired around11:13; new Claude wrapped with caffeinate -i for its own lifetime. App/computer must remain available, AC/lid open recommended; no power settings changed.
-- Automation ACTIVE, same thread and20minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
+- Automation ACTIVE, same thread and15minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
 - All scopes require exact statuses/output evidence and frozen publication boundaries. Existing2U case remains retrospective cash miss, not validated bankruptcy warning. Preserve explicit costs, unknown benefit/downside. Agent graph execution does not make financial conclusions more validated.
 
 ## Scheduled audit reporting
 
 User explicitly requests a brief chat update after EVERY scheduled coding audit, even if nothing finished: accomplishments since last run, checks passed or failed, current workers/blockers, next action. This supersedes quiet-on-unchanged instructions. Do not add coding-audit messages to Domino product activity or introduce a new canvas feature from that clarification. Automation prompt updated.
 
-## Current audit gates
+## Superseded initial audit findings (repairs accepted above)
 
 - G2b candidatec185500 passed930tests/typechecks/lint, /tmp/domino-G2b-check.log. Independent Astra32focused +6probes blocked4defects: public historical receipt/run/reveal ownership collision; frozen profile differs from actual dispatch; leases ignored on claim/finish; source hash drift. Report in G2b kb/reviews/G2b-durable-audit.md. Repair1 prompt /tmp/domino-G2b-repair-prompt.txt. Reuse audit_g2a after completion.
 - R1 candidate2d57610 passed930tests/typechecks/lint, /tmp/domino-R1-check.log. Sol audit16focused +probe blocked sibling node overlap, quiet history viewport/status animation, false Nothing has run yet on terminal nodes; explicit-empty mismatch also requested. Repair1 card in R1 and /tmp/domino-R1-repair-prompt.txt. Reuse audit_r1; browser/build remain pending.
 - G2c owns packages/agents only, no conflicting backend/UI files. Focused offline checks only, no secret reading/livecalls/remoteagentcreation by worker. Need independent provider audit before integration and bounded real app execution. No G3 wiring until corrected backend/UI accepted. Keep current3102 visual preview unchanged until verified.
 
-## Scheduled audit, October24 13:33 PDT
+## Archived scheduled audit, October24 13:33 PDT
 
 All three recorded Claude processes remain active, no duplicate workers. G2b repair14827 is still at its read/diagnosis stage, no new file changes or commit. R1 repair15437 has changed workspace/layout/tests; G2c7172 has changed provider transport/extraction/historical exports. Neither in-progress diff was accepted or integrated. No new completed gate since the prior report. Next: collect finished repair checkpoints, reuse independent reviewers, then run serialized full checks/build/browser. Existing app-scoped CREAO remains the only authorized route. No live provider calls or spend during this audit.
