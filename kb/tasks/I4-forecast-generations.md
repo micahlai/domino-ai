@@ -1,0 +1,14 @@
+# I4: Retain forecast generations and prior decisions
+- **Goal:** Compute a new snapshot date without rewriting old forecasts, candidate evidence or approvals, while current UI queries show only the current generation.
+- **Folder:** apps/web/convex, including explicit schema.ts exception for per-generation proposal-order storage and generated bindings; this card Result. No UI edits/deps/contracts.
+- **Contracts used:** Existing Snapshot/Branch/FixCandidate/RiskEvent/ResilienceReport; opaque computed IDs and asOf identity. Read week-pipeline-plan.md.
+- **Done when:** Two snapshot dates compute independently, old approved/rejected ancestry/candidates remain byte-for-byte, current queries select newest date, recompute retries are idempotent, stale-parent simulation rejects, pnpm check/build pass.
+- **Schema:** Add forecastGenerations indexed by companyId/asOf, storing companyId, asOf and ordered proposalIds. Validate uniqueness/payload references. No destructive backfill. Existing single-generation computed companies can initialize from the existing engine.proposal-order log only when the saved payloads unambiguously belong to that generation; legacy fixture data remains gated.
+- **Publication:** Scope companyBranches, proposalPool/order, guardDecisions and publish to inputs.snapshot.asOf. Keep all prior-date branches/fixes/risks/reports and decisions. New generation starts with explicitly supplied current proposals or empty pool; never carry old invoice changes automatically. Same-date decided graph guards remain exact. Current generation nested decided branches still fail closed if recompute cannot reproduce them; no new unsupported behavior.
+- **Queries:** branches.list and risks.list return current snapshot generation for computed companies; resilience.get returns report for latest snapshot/date, not arbitrary latest insertion. Historic branches.get/fixes.forBranch/approvals retain references. Preserve legacy fixture display. Source of current date is latest validated snapshot, consistent with loadInputs/capabilities.
+- **Verification:** Approve a first-generation fix in convex-test, insert a later snapshot and recompute; verify prior bytes and decisions, second-generation report/branches and no stale proposals. Check same-date retries/no duplicate manifests, stale parent simulation, missing current generation returns empty/null, cross-company isolation and ambiguous legacy order rejection. Keep meaningful engine-rank ordering tests.
+- **Coordination:** You are not alone. Launch after main green; no other convex writer. No live deployment/data mutation/env/auth/network/provider calls/other checkout writes/subagents/board/handoffs/pull/rebase/reset/stash/merge/push. No week control enabling. Commit owned files/Result;30minute checkpoint.
+## Result (worker fills this in when done)
+- Done:
+- What changed (files):
+- Watch out:
