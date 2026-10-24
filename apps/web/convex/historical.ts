@@ -27,8 +27,8 @@ import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/s
  * after an explicit reveal. Inputs, method and decision are server-owned: clients send
  * only IDs, never predictions, hashes or case data.
  */
-const CASE: HistoricalCase = HistoricalCaseSchema.parse(caseJson);
-const CUTOFF = protocol.knowledgeCutoff;
+export const CASE: HistoricalCase = HistoricalCaseSchema.parse(caseJson);
+export const CUTOFF = protocol.knowledgeCutoff;
 const DECISION = "A1";
 // The bridge applies restricted-cash-held-flat by method but lists only F02; record the assumption.
 const METHOD_ASSUMPTIONS = ["AS-RESTRICTED"];
@@ -57,12 +57,12 @@ const revealThrough = (cutoff: string) =>
     .filter((p) => at(p) > at(cutoff))
     .sort((a, b) => at(a) - at(b))[0];
 
-function fail(code: string, message: string): never {
+export function fail(code: string, message: string): never {
   throw new ConvexError({ code, message });
 }
 
 /** Sources, facts and assumptions available by `through`. Hindsight assumptions never show. */
-function visibleCase(through: string): HistoricalCase {
+export function visibleCase(through: string): HistoricalCase {
   const facts = CASE.facts.filter((f) => at(f.availableAt) <= at(through));
   const factIds = new Set(facts.map((f) => f.id));
   return HistoricalCaseSchema.parse({
@@ -94,9 +94,24 @@ function snapshotOf(inputs: HistoricalRun["inputs"]) {
 }
 type Snapshot = ReturnType<typeof snapshotOf>;
 
-function requireRequestId(requestId: string) {
+export function requireRequestId(requestId: string) {
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(requestId))
     fail("INVALID_REQUEST", "requestId must be 8-64 letters, digits, _ or -");
+}
+
+/**
+ * Public calls (owner undefined) use public-shaped requestIds. Server-owned work passes its
+ * conversation as owner and a key containing ":", which the public shape rejects, so neither
+ * side can claim or prepopulate the other's rows.
+ */
+function requireKey(requestId: string, owner: string | undefined) {
+  if (owner === undefined) requireRequestId(requestId);
+  else if (!requestId.includes(":")) fail("INVALID_REQUEST", "Internal key has a public shape");
+}
+
+/** A run is written only by its owner: public calls cannot reveal or branch an owned run. */
+function requireOwner(row: Doc<"historicalRuns">, owner: string | undefined) {
+  if (row.owner !== owner) fail("OWNED", "This run belongs to a different conversation");
 }
 
 function requireCase(caseId: string) {
@@ -113,7 +128,18 @@ const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
  * Load a saved run and check it against its own frozen snapshot, never the current CASE:
  * a later case edit must not make a saved run unreadable. Drift only blocks new computations.
  */
-async function loadRun(ctx: QueryCtx, runId: string, caseId?: string) {
+export async function loadRun(
+  ctx: QueryCtx,
+  runId: string,
+  caseId?: string,
+): Promise<{
+  row: Doc<"historicalRuns">;
+  run: HistoricalRun;
+  snapshot: Snapshot;
+  /** The case rebuilt from the frozen snapshot only: the run's own fact base. */
+  frozenCase: HistoricalCase;
+  baseline: HistoricalRun | undefined;
+}> {
   const row = await ctx.db
     .query("historicalRuns")
     .withIndex("by_runId", (q) => q.eq("runId", runId))
@@ -141,7 +167,7 @@ async function loadRun(ctx: QueryCtx, runId: string, caseId?: string) {
     (await hashInput(snapshot)) !== run.inputHash
   )
     fail("INTEGRITY", "Stored run failed its integrity check");
-  const baseline =
+  const baseline: HistoricalRun | undefined =
     run.branch.kind === "alternative"
       ? (await loadRun(ctx, run.branch.baselineRunId)).run
       : undefined;
@@ -156,7 +182,7 @@ async function loadRun(ctx: QueryCtx, runId: string, caseId?: string) {
   };
   if (!HistoricalRunContextSchema.safeParse({ case: frozenCase, run, baseline }).success)
     fail("INTEGRITY", "Stored run failed its integrity check");
-  return { row, run, snapshot };
+  return { row, run, snapshot, frozenCase, baseline };
 }
 
 async function insertRun(
@@ -247,119 +273,143 @@ export const getRun = query({
 /** Server computes and saves the baseline from the cutoff view. Idempotent on requestId. */
 export const saveBaseline = mutation({
   args: { requestId: v.string(), caseId: v.string() },
-  handler: async (ctx, { requestId, caseId }) => {
-    requireRequestId(requestId);
-    requireCase(caseId);
-    const prior = await priorRun(ctx, requestId);
-    if (prior) {
-      if (prior.kind !== "baseline" || prior.caseId !== caseId)
-        fail("CONFLICT", "requestId already used for a different request");
-      return (await loadRun(ctx, prior.runId)).row.summary;
-    }
-    const known = visibleCase(CUTOFF);
-    const bridge = quarterBridge({ ...ROLES, case: known });
-    const inputs = {
-      ...bridge.inputs,
-      assumptionIds: inCaseOrder([...bridge.inputs.assumptionIds, ...METHOD_ASSUMPTIONS]),
-    };
-    const { run, snapshot } = await newRun("baseline", requestId, inputs, {
-      predictions: [...bridge.nowcast, ...bridge.forecast],
-      branch: { kind: "baseline" },
-    });
-    HistoricalRunContextSchema.parse({ case: known, run });
-    const summary = { runId: run.id, run, riskRulesNote: RISK_RULES_NOTE };
-    await insertRun(ctx, {
-      runId: run.id,
-      requestId,
-      caseId,
-      kind: "baseline",
-      run,
-      snapshot,
-      summary,
-    });
-    await emit(ctx, run.id, {
-      id: `evt-saved-${run.id}`,
-      occurredAt: run.createdAt,
-      runId: run.id,
-      kind: "run_saved",
-      entity: { kind: "run", id: run.id },
-      label: "Baseline forecast saved",
-      evidenceIds: run.inputs.sourceIds,
-      outputId: run.id,
-    });
-    return summary;
-  },
+  handler: (ctx, { requestId, caseId }) => saveBaselineIn(ctx, requestId, caseId),
 });
+
+/** saveBaseline's body, shared with server-owned investigation operations. */
+export async function saveBaselineIn(
+  ctx: MutationCtx,
+  requestId: string,
+  caseId: string,
+  owner?: string,
+) {
+  requireKey(requestId, owner);
+  requireCase(caseId);
+  const prior = await priorRun(ctx, requestId);
+  if (prior) {
+    if (prior.kind !== "baseline" || prior.caseId !== caseId || prior.owner !== owner)
+      fail("CONFLICT", "requestId already used for a different request");
+    return (await loadRun(ctx, prior.runId)).row.summary;
+  }
+  const known = visibleCase(CUTOFF);
+  const bridge = quarterBridge({ ...ROLES, case: known });
+  const inputs = {
+    ...bridge.inputs,
+    assumptionIds: inCaseOrder([...bridge.inputs.assumptionIds, ...METHOD_ASSUMPTIONS]),
+  };
+  const { run, snapshot } = await newRun("baseline", requestId, inputs, {
+    predictions: [...bridge.nowcast, ...bridge.forecast],
+    branch: { kind: "baseline" },
+  });
+  HistoricalRunContextSchema.parse({ case: known, run });
+  const summary = { runId: run.id, run, riskRulesNote: RISK_RULES_NOTE };
+  await insertRun(ctx, {
+    runId: run.id,
+    requestId,
+    caseId,
+    kind: "baseline",
+    ...(owner === undefined ? {} : { owner }),
+    run,
+    snapshot,
+    summary,
+  });
+  await emit(ctx, run.id, {
+    id: `evt-saved-${run.id}`,
+    occurredAt: run.createdAt,
+    runId: run.id,
+    kind: "run_saved",
+    entity: { kind: "run", id: run.id },
+    label: "Baseline forecast saved",
+    evidenceIds: run.inputs.sourceIds,
+    outputId: run.id,
+  });
+  return summary;
+}
 
 /** Server computes the cost-only A1 alternative against a saved baseline. Idempotent on requestId. */
 export const computeAlternative = mutation({
   args: { requestId: v.string(), baselineRunId: v.string() },
-  handler: async (ctx, { requestId, baselineRunId }) => {
-    requireRequestId(requestId);
-    const prior = await priorRun(ctx, requestId);
-    if (prior) {
-      if (prior.kind !== "alternative" || prior.baselineRunId !== baselineRunId)
-        fail("CONFLICT", "requestId already used for a different request");
-      return (await loadRun(ctx, prior.runId)).row.summary;
-    }
-    const { run: baseline, snapshot: frozen } = await loadRun(ctx, baselineRunId);
-    if (baseline.branch.kind !== "baseline")
-      fail("INVALID_BRANCH", "An alternative must start from a baseline run");
-    // A new alternative is computed from the current cutoff view, so it needs the baseline's
-    // frozen inputs and method to still match. Old runs stay readable; only this call refuses.
-    if (!same(snapshotOf(baseline.inputs), frozen) || baseline.knowledgeCutoff !== CUTOFF)
-      fail("CASE_CHANGED", "The case changed since this baseline was saved; save a new baseline");
-    const known = visibleCase(CUTOFF);
-    const alt = quarterAlternative({ ...ROLES, case: known }, DECISION);
-    const inputs = {
-      ...alt.inputs,
-      assumptionIds: inCaseOrder([...alt.inputs.assumptionIds, ...METHOD_ASSUMPTIONS]),
-    };
-    const { run, snapshot } = await newRun("alternative", requestId, inputs, {
-      predictions: [...alt.nowcast, ...alt.forecast],
-      branch: {
-        kind: "alternative",
-        baselineRunId,
-        decisionAssumptionIds: [DECISION],
-        // Authors knew the outcome when choosing A1, so the protocol label wins.
-        postHoc: alt.postHoc || protocol.response.postHoc,
-      },
-    });
-    HistoricalRunContextSchema.parse({ case: known, run, baseline });
-    const summary = {
-      runId: run.id,
-      run,
-      // Alternative minus saved baseline at the target. Not scored against disclosures.
-      costRelativeToBaseline: alt.effectCents,
-      benefit: { start: alt.benefitStart, daysInWindow: alt.benefitDays, afterTarget: "unknown" },
-      postHoc: run.branch.kind === "alternative" && run.branch.postHoc,
-      postHocReason: protocol.response.postHocReason,
-      caveats: [protocol.response.unmodeledNote, protocol.response.pointNote],
-    };
-    await insertRun(ctx, {
-      runId: run.id,
-      requestId,
-      caseId: CASE.id,
+  handler: (ctx, { requestId, baselineRunId }) =>
+    computeAlternativeIn(ctx, requestId, baselineRunId),
+});
+
+/** computeAlternative's body, shared with server-owned investigation operations. */
+export async function computeAlternativeIn(
+  ctx: MutationCtx,
+  requestId: string,
+  baselineRunId: string,
+  owner?: string,
+) {
+  requireKey(requestId, owner);
+  const prior = await priorRun(ctx, requestId);
+  if (prior) {
+    if (
+      prior.kind !== "alternative" ||
+      prior.baselineRunId !== baselineRunId ||
+      prior.owner !== owner
+    )
+      fail("CONFLICT", "requestId already used for a different request");
+    return (await loadRun(ctx, prior.runId)).row.summary;
+  }
+  const { row: baseRow, run: baseline, snapshot: frozen } = await loadRun(ctx, baselineRunId);
+  requireOwner(baseRow, owner);
+  if (baseline.branch.kind !== "baseline")
+    fail("INVALID_BRANCH", "An alternative must start from a baseline run");
+  // A new alternative is computed from the current cutoff view, so it needs the baseline's
+  // frozen inputs and method to still match. Old runs stay readable; only this call refuses.
+  if (!same(snapshotOf(baseline.inputs), frozen) || baseline.knowledgeCutoff !== CUTOFF)
+    fail("CASE_CHANGED", "The case changed since this baseline was saved; save a new baseline");
+  const known = visibleCase(CUTOFF);
+  const alt = quarterAlternative({ ...ROLES, case: known }, DECISION);
+  const inputs = {
+    ...alt.inputs,
+    assumptionIds: inCaseOrder([...alt.inputs.assumptionIds, ...METHOD_ASSUMPTIONS]),
+  };
+  const { run, snapshot } = await newRun("alternative", requestId, inputs, {
+    predictions: [...alt.nowcast, ...alt.forecast],
+    branch: {
       kind: "alternative",
       baselineRunId,
-      run,
-      snapshot,
-      summary,
-    });
-    // Alternative inputs are cutoff-only (HistoricalRunContextSchema above), so safe pre-reveal.
-    await emit(ctx, baselineRunId, {
-      id: `evt-alt-${run.id}`,
-      occurredAt: run.createdAt,
-      runId: run.id,
-      kind: "alternative_computed",
-      entity: { kind: "run", id: run.id },
-      label: "Alternative computed",
-      evidenceIds: run.inputs.sourceIds,
-      outputId: run.id,
-    });
-    return summary;
-  },
-});
+      decisionAssumptionIds: [DECISION],
+      // Authors knew the outcome when choosing A1, so the protocol label wins.
+      postHoc: alt.postHoc || protocol.response.postHoc,
+    },
+  });
+  HistoricalRunContextSchema.parse({ case: known, run, baseline });
+  const summary = {
+    runId: run.id,
+    run,
+    // Alternative minus saved baseline at the target. Not scored against disclosures.
+    costRelativeToBaseline: alt.effectCents,
+    benefit: { start: alt.benefitStart, daysInWindow: alt.benefitDays, afterTarget: "unknown" },
+    postHoc: run.branch.kind === "alternative" && run.branch.postHoc,
+    postHocReason: protocol.response.postHocReason,
+    caveats: [protocol.response.unmodeledNote, protocol.response.pointNote],
+  };
+  await insertRun(ctx, {
+    runId: run.id,
+    requestId,
+    caseId: CASE.id,
+    kind: "alternative",
+    baselineRunId,
+    ...(owner === undefined ? {} : { owner }),
+    run,
+    snapshot,
+    summary,
+  });
+  // Alternative inputs are cutoff-only (HistoricalRunContextSchema above), so safe pre-reveal.
+  await emit(ctx, baselineRunId, {
+    id: `evt-alt-${run.id}`,
+    occurredAt: run.createdAt,
+    runId: run.id,
+    kind: "alternative_computed",
+    entity: { kind: "run", id: run.id },
+    label: "Alternative computed",
+    evidenceIds: run.inputs.sourceIds,
+    outputId: run.id,
+  });
+  return summary;
+}
 
 type NewEvent = Omit<ActivityEvent, "sequence" | "caseId" | "status">;
 
@@ -467,52 +517,56 @@ async function revealReceipt(ctx: QueryCtx, requestId: string) {
  */
 export const reveal = mutation({
   args: { requestId: v.string(), runId: v.string() },
-  handler: async (ctx, { requestId, runId }) => {
-    requireRequestId(requestId);
-    // Pre-receipt rows recorded only the first requestId on the reveal itself.
-    const bound =
-      (await revealReceipt(ctx, requestId)) ??
-      (await ctx.db
-        .query("historicalReveals")
-        .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
-        .unique());
-    if (bound && bound.runId !== runId)
-      fail("CONFLICT", "requestId already used for a different request");
-    const { run } = await loadRun(ctx, runId);
-    if (run.branch.kind !== "baseline")
-      fail("INVALID_BRANCH", "Only a baseline run is compared with disclosures");
-    const existing = await loadReveal(ctx, run);
-    if (!bound) await ctx.db.insert("historicalRevealReceipts", { requestId, runId });
-    if (existing) return revealView(existing);
-    const through = revealThrough(run.knowledgeCutoff);
-    if (!through) fail("NOTHING_TO_REVEAL", "No later publication in this case");
-    // Saved predictions against the observations published by `through`; the run is not recomputed.
-    const fields = {
-      runId,
-      revealedThrough: through,
-      revealedAt: new Date().toISOString(),
-      comparisons: compareRun(CASE, run, through),
-      view: visibleCase(through),
-    };
-    const id = await ctx.db.insert("historicalReveals", {
-      ...fields,
-      requestId,
-      revealHash: await revealHash(fields),
-    });
-    // Only this baseline's feed gets the newly visible sources; other baselines never see them.
-    const before = new Set(visibleCase(run.knowledgeCutoff).sources.map((s) => s.id));
-    await emit(ctx, runId, {
-      id: `evt-reveal-${runId}`,
-      occurredAt: fields.revealedAt,
-      runId,
-      kind: "disclosure_revealed",
-      entity: { kind: "comparison", id: runId },
-      label: "Next disclosure revealed",
-      evidenceIds: fields.view.sources.map((s) => s.id).filter((s) => !before.has(s)),
-    });
-    return revealView((await ctx.db.get(id))!);
-  },
+  handler: (ctx, { requestId, runId }) => revealIn(ctx, requestId, runId),
 });
+
+/** reveal's body, shared with the explicit investigation reveal. */
+export async function revealIn(ctx: MutationCtx, requestId: string, runId: string, owner?: string) {
+  requireKey(requestId, owner);
+  // Pre-receipt rows recorded only the first requestId on the reveal itself.
+  const bound =
+    (await revealReceipt(ctx, requestId)) ??
+    (await ctx.db
+      .query("historicalReveals")
+      .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+      .unique());
+  if (bound && bound.runId !== runId)
+    fail("CONFLICT", "requestId already used for a different request");
+  const { row, run } = await loadRun(ctx, runId);
+  requireOwner(row, owner);
+  if (run.branch.kind !== "baseline")
+    fail("INVALID_BRANCH", "Only a baseline run is compared with disclosures");
+  const existing = await loadReveal(ctx, run);
+  if (!bound) await ctx.db.insert("historicalRevealReceipts", { requestId, runId });
+  if (existing) return revealView(existing);
+  const through = revealThrough(run.knowledgeCutoff);
+  if (!through) fail("NOTHING_TO_REVEAL", "No later publication in this case");
+  // Saved predictions against the observations published by `through`; the run is not recomputed.
+  const fields = {
+    runId,
+    revealedThrough: through,
+    revealedAt: new Date().toISOString(),
+    comparisons: compareRun(CASE, run, through),
+    view: visibleCase(through),
+  };
+  const id = await ctx.db.insert("historicalReveals", {
+    ...fields,
+    requestId,
+    revealHash: await revealHash(fields),
+  });
+  // Only this baseline's feed gets the newly visible sources; other baselines never see them.
+  const before = new Set(visibleCase(run.knowledgeCutoff).sources.map((s) => s.id));
+  await emit(ctx, runId, {
+    id: `evt-reveal-${runId}`,
+    occurredAt: fields.revealedAt,
+    runId,
+    kind: "disclosure_revealed",
+    entity: { kind: "comparison", id: runId },
+    label: "Next disclosure revealed",
+    evidenceIds: fields.view.sources.map((s) => s.id).filter((s) => !before.has(s)),
+  });
+  return revealView((await ctx.db.get(id))!);
+}
 
 /** Stored comparisons for a run, or null before reveal. */
 export const getReveal = query({
