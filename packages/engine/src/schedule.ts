@@ -44,7 +44,7 @@ export function baseSchedule(
       amount: inv.amount,
     });
   }
-  for (const deal of signedWonDeals(snapshot)) {
+  for (const deal of uninvoicedSignedDeals(snapshot)) {
     const customer = snapshot.customers.find((c) => c.id === deal.customerId);
     if (!customer) throw new Error(`deal ${deal.id}: unknown customer ${deal.customerId}`);
     const date = addDays(
@@ -82,21 +82,21 @@ export function baseSchedule(
 }
 
 /**
- * Signed won deals add cash only if not invoiced yet. Contracts have no deal-to-invoice link,
- * so a same-customer, same-amount invoice makes the deal ambiguous: refuse rather than guess.
- * Temporary guard until the link is approved (kb/requests.md).
+ * C1 linkage. A string invoiceId means that invoice carries the cash (even if already paid),
+ * so the deal adds nothing; null means not invoiced, so the deal adds cash once; a missing
+ * invoiceId is an unknown legacy mapping. Never guess by customer or amount.
  */
-function signedWonDeals(snapshot: Snapshot) {
-  const deals = snapshot.deals.filter((d) => d.stage === "won" && d.signed);
-  for (const deal of deals) {
-    const match = snapshot.invoices.find(
-      (i) => i.customerId === deal.customerId && i.amount === deal.amount,
-    );
-    if (match) {
+function uninvoicedSignedDeals(snapshot: Snapshot) {
+  return snapshot.deals.filter((deal) => {
+    if (deal.stage !== "won" || !deal.signed) return false;
+    if (deal.invoiceId === undefined) {
       throw new Error(
-        `ambiguous: signed deal ${deal.id} may already be invoiced as ${match.id} (same customer and amount, no link)`,
+        `unknown invoice mapping: signed won deal ${deal.id} has no invoiceId. Set it to the invoice that bills this deal, or null if it is not invoiced yet.`,
       );
     }
-  }
-  return deals;
+    if (deal.invoiceId !== null && !snapshot.invoices.some((i) => i.id === deal.invoiceId)) {
+      throw new Error(`deal ${deal.id}: linked invoice ${deal.invoiceId} is not in the snapshot`);
+    }
+    return deal.invoiceId === null;
+  });
 }

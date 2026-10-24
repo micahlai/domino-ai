@@ -1,4 +1,9 @@
-import { type CompanyModel, ForecastSchema, type Snapshot } from "@domino/contracts";
+import {
+  type CompanyModel,
+  ForecastSchema,
+  type Snapshot,
+  SnapshotSchema,
+} from "@domino/contracts";
 import { WEEK_STARTS, fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
 import { addDays, weekStarts } from "./dates";
@@ -37,12 +42,8 @@ const outflows = (s: Snapshot, m = noModel, c: Parameters<typeof forecast>[2] = 
 const at = (i: number, amount: number) =>
   Array.from({ length: 13 }, (_, j) => (j === i ? amount : 0));
 
-// The fixture's signed Acme renewal has a same-amount invoice and no link, so it is ambiguous.
-// Tests that use the fixture remove that deal.
-const kestrel: Snapshot = {
-  ...fixtures.snapshot,
-  deals: fixtures.snapshot.deals.filter((d) => d.id !== "deal_acme_renewal"),
-};
+// C1: the signed Acme renewal is explicitly linked to inv_acme_2027, so the raw fixture forecasts.
+const kestrel: Snapshot = fixtures.snapshot;
 
 describe("dates", () => {
   it("starts on the Monday after asOf", () => {
@@ -137,14 +138,91 @@ describe("cash in", () => {
       expectedClose: "2026-11-01",
       signed: true,
     });
-    const s = { ...tiny, deals: [deal("won"), deal("open"), deal("lost")] };
+    // Open and lost deals never add cash, so they need no invoice mapping.
+    const s = { ...tiny, deals: [{ ...deal("won"), invoiceId: null }, deal("open"), deal("lost")] };
     // 2026-11-01 + 30 + 5 = Sun 2026-12-06 -> week of 2026-11-30 (index 4)
     expect(inflows(s, m)).toEqual(at(4, 7000));
   });
-  it("rejects a signed won deal that may already be invoiced (original fixture)", () => {
-    expect(() => forecast(fixtures.snapshot, fixtures.model, [])).toThrow(
-      /ambiguous.*deal_acme_renewal.*inv_acme_2027/,
-    );
+});
+
+describe("deal to invoice links (C1)", () => {
+  const deal = (invoiceId?: string | null) => ({
+    id: "d1",
+    customerId: "c1",
+    amount: 1000,
+    stage: "won" as const,
+    expectedClose: "2026-11-01",
+    signed: true,
+    ...(invoiceId !== undefined ? { invoiceId } : {}),
+  });
+  const linked = (paid?: string): Snapshot => ({
+    ...withInvoice("2026-11-10", 1000, paid),
+    deals: [deal("i1")],
+  });
+  it("a linked deal never adds a second receipt, whether its invoice is unpaid or paid", () => {
+    expect(SnapshotSchema.parse(linked())).toEqual(linked());
+    expect(inflows(linked())).toEqual(at(1, 1000)); // only the invoice, due Tue 11-10
+    expect(inflows(linked("2026-10-20"))).toEqual(at(0, 0)); // paid: already in cashOnHand
+  });
+  it("an explicitly uninvoiced (null) signed won deal adds cash exactly once", () => {
+    const s = { ...tiny, deals: [deal(null)] };
+    // 2026-11-01 + 30 terms + 0 delay = Tue 2026-12-01 -> week of 2026-11-30 (index 4)
+    expect(inflows(s)).toEqual(at(4, 1000));
+  });
+  it("a signed won deal with no invoiceId fails with an actionable unknown-mapping error", () => {
+    const s = { ...withInvoice("2026-11-10"), deals: [deal()] };
+    expect(SnapshotSchema.parse(s)).toEqual(s); // contract-valid legacy input
+    expect(() => forecast(s, noModel, [])).toThrow(/unknown invoice mapping.*d1.*invoiceId/);
+    // Unsigned or not-won legacy deals still add nothing and need no mapping.
+    const unsigned = {
+      ...s,
+      deals: [
+        { ...deal(), signed: false },
+        { ...deal(), stage: "open" as const },
+      ],
+    };
+    expect(inflows(unsigned)).toEqual(at(1, 1000));
+  });
+  it("a legacy copy of the Kestrel fixture without links fails instead of guessing", () => {
+    const legacy: Snapshot = {
+      ...fixtures.snapshot,
+      deals: fixtures.snapshot.deals.map(({ invoiceId: _, ...d }) => d),
+    };
+    expect(SnapshotSchema.parse(legacy)).toEqual(legacy);
+    expect(() => forecast(legacy, fixtures.model, [])).toThrow(/deal_acme_renewal/);
+  });
+  it("the raw Kestrel fixture parses and forecasts; its linked renewal adds no cash", () => {
+    expect(SnapshotSchema.parse(fixtures.snapshot)).toEqual(fixtures.snapshot);
+    const f = forecast(fixtures.snapshot, fixtures.model, []);
+    expect(ForecastSchema.parse(f)).toEqual(f);
+    const withoutRenewal = {
+      ...fixtures.snapshot,
+      deals: fixtures.snapshot.deals.filter((d) => d.id !== "deal_acme_renewal"),
+    };
+    expect(f).toEqual(forecast(withoutRenewal, fixtures.model, []));
+  });
+  it.each([
+    ["dangling", { invoiceId: "nope" }],
+    ["customer mismatch", { customerId: "c2" }],
+    ["amount mismatch", { amount: 999 }],
+  ])("SnapshotSchema rejects a malformed %s link", (_name, patch) => {
+    const s = {
+      ...linked(),
+      customers: [...tiny.customers, { id: "c2", name: "C2", paymentTermsDays: 30 }],
+      deals: [{ ...deal("i1"), ...patch }],
+    };
+    expect(SnapshotSchema.safeParse(s).success).toBe(false);
+  });
+  it("SnapshotSchema rejects two deals claiming one invoice; forecast rejects an unparsed dangling link", () => {
+    const shared = { ...linked(), deals: [deal("i1"), { ...deal("i1"), id: "d2" }] };
+    expect(SnapshotSchema.safeParse(shared).success).toBe(false);
+    expect(() => forecast({ ...linked(), deals: [deal("nope")] }, noModel, [])).toThrow(/nope/);
+  });
+  it("does not mutate a linked snapshot", () => {
+    const s = linked();
+    const copy = structuredClone(s);
+    forecast(s, noModel, []);
+    expect(s).toEqual(copy);
   });
 });
 
