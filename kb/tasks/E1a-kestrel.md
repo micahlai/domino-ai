@@ -8,6 +8,7 @@
 - **Launch:** Codex, GPT-6 Sol, high; branch `E1a-kestrel`, sibling worktree `domino-E1a`. Offline S0 gate only; 90-minute limit, then report/split.
 - **Coordination:** You are not alone. Preserve others' changes; do not edit board, handoffs, contracts, shared lockfile or other cards. Report follow-ups in Result.
 ## Result (worker fills this in when done)
-- Done:
-- What changed (files):
-- Watch out:
+- Done: Seeded `createCompany("kestrel", seed)` yields 300 customers, canonical dated records across 26 Monday bank buckets (2026-05-04 through the current 2026-10-26 bucket), `week=25`, `today=asOf=2026-10-30`, and pending events at weeks 26 and 29. Seed 42 opening cash $2,062,531.40 plus net bank flow $2,437,468.60 equals ending cash $4,500,000.00; restricted cash is $600,000.00. Paid invoices use a 1-3 day payout lag and Acme's historical mean stays in the 18-24 day range. `pnpm sim:print` prints counts, range, and balances.
+- What changed (files): `packages/sim/src/create.ts`, `src/create.test.ts`, `src/summary.ts`, `src/print.ts`, `src/index.ts`, `packages/sim/package.json`, `packages/sim/tsconfig.json`; this Result section.
+- Checks: `PATH=/Users/jaydenl/.nvm/versions/node/v24.11.1/bin:$PATH pnpm install --frozen-lockfile` passed with the existing lockfile after sandbox network resolution failed and an approved normal-access retry. `PATH=... pnpm --filter @domino/sim test` passed 5 tests. `PATH=... pnpm sim:print` passed. `PATH=... TURBO_FORCE=true pnpm check` passed four package typechecks, 5 sim tests, 13 contract tests, and lint after sandboxed Turbo TLS initialization failed and an approved normal-access retry passed. Node 24.11.1, pnpm 9.12.0.
+- Watch out: Profile amounts, fees, billing mix, seasonality, and cash history are synthetic demo assumptions, not EDGAR calibration or forecast accuracy evidence. `advanceWeek`, `answerKey`, Tally/Orbit, raw-source planted errors, mock seeding, and a real forecast CLI remain later slices. The opening balance is derived from observed bank net flow because `Snapshot` has no opening-balance field.

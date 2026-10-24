@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:03 Codex brain (E1a/E6a complete)
+- Done: E1a 2540e74 and E6a d16ece3 completed on isolated branches, each independently reviewed by GPT-6.1 Sol with no blockers. Lead reran forced checks: E1a 5 sim + 13 contract tests and CLI; E6a 20 routing + 13 contract tests; both typechecks/lint passed. Reports and worker Results recorded in main.
+- Next: human glances at both diffs; integrate reviewed branches with fresh combined checks and resolve newer origin/main work without rewriting history. Full E1/E6 follow-up slices remain open. Claude owns E3a repairs.
+- Watch out: no merge or push performed. Data is synthetic; agent tests use injected providers, not live integrations. Concurrent sponsors.md/nessie-api.md changes were preserved and not staged. origin/main advanced two commits during work; branch checks predate integration with them.
+
 ## 2026-10-24 00:55 Codex brain (E1a/E6a dispatch)
 - Done: user authorized launch; synchronized the two clean worktrees to 9830b93 and dispatched build_e1a and build_e6a on GPT-6 Sol/high. E3a remains with Claude.
 - Next: workers implement their cards, verify, fill their own Results and commit locally; brain reviews and records outcomes.
