@@ -18,6 +18,7 @@ import { FixtureCompany } from "@/components/company/FixtureCompany";
 import { HistoricalReplay } from "@/components/historical/HistoricalReplay";
 import { previewView } from "@/components/historical/preview";
 import type { HistoricalView } from "@/components/historical/types";
+import { InvestigateWorkspace } from "@/components/investigate/InvestigateWorkspace";
 import { ParticleMotionPreview } from "@/components/multiverse/ParticleMotionPreview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const sections = [
   "MultiverseTimeline",
   "StyleComparison",
   "ActivityPanel",
+  "AgentCanvas",
   "ParticleMotion",
   "HistoricalReplay",
   "RiskList",
@@ -217,6 +219,14 @@ export function Playground() {
         description="Real activity events in a stable list. Here the events are a clearly labelled simulation: Step delivers a few at a time, Replay starts over."
       >
         <ActivitySimulation />
+      </PreviewSection>
+      <PreviewSection
+        name="AgentCanvas"
+        description="Visual checkpoint of the investigate workspace: one idle Domino node on a pan and zoom canvas, with a conversation panel. Nothing runs here and no company data is loaded. The full page is at /investigate."
+      >
+        <div data-style="original" className="h-[560px] overflow-hidden rounded-lg border">
+          <InvestigateWorkspace />
+        </div>
       </PreviewSection>
       <PreviewSection
         name="ParticleMotion"
