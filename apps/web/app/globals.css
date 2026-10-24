@@ -4,26 +4,29 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 221 39% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 221 39% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 221 39% 11%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 17% 98%;
-    --secondary-foreground: 221 39% 11%;
-    --muted: 210 17% 98%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 210 17% 98%;
-    --accent-foreground: 221 39% 11%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --safe: 142 76% 36%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 221 83% 53%;
+    --background: 158.18 14.67% 14.71%;
+    --foreground: 40.0 29.03% 93.92%;
+    --card: 161.25 15.69% 20.00%;
+    --card-foreground: 40.0 29.03% 93.92%;
+    --popover: 161.25 15.69% 20.00%;
+    --popover-foreground: 40.0 29.03% 93.92%;
+    --primary: 160.0 36.65% 56.67%;
+    --primary-foreground: 156.92 22.03% 11.57%;
+    --secondary: 22.5 15.69% 20.00%;
+    --secondary-foreground: 40.0 29.03% 93.92%;
+    --muted: 152.31 13.98% 18.24%;
+    --muted-foreground: 145.71 10.77% 74.51%;
+    --accent: 22.5 15.69% 20.00%;
+    --accent-foreground: 40.0 29.03% 93.92%;
+    --destructive: 1.46 37.27% 56.86%;
+    --destructive-foreground: 135.0 7.69% 10.20%;
+    --safe: 160.0 36.65% 56.67%;
+    --border: 150.0 9.21% 29.80%;
+    --input: 150.0 9.21% 29.80%;
+    --ring: 160.0 36.65% 56.67%;
+    --clay: 22.68 37.27% 56.86%;
+    color-scheme: dark;
+    --danger-text: 2 49% 71%;
     --radius: 0.5rem;
   }
   * {
@@ -47,5 +50,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}
+
+@layer utilities {
+  .text-destructive {
+    color: hsl(var(--danger-text));
   }
 }

@@ -2,6 +2,7 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: default to the supplied dark palette and reuse the calhacks-2026 Domino mark. Why: explicit user direction supersedes the light-only design spec.
 - 2026-10-24 Micah: P2 company relationships use Convex document IDs while fixture payloads retain canonical contract IDs. Why: database relationships stay typed without changing shared contracts. The seed returns the ID for UI routing.
 - 2026-10-24 Micah: seed fixtures once and preserve approvals on rerun; unpulled sources have null lastPull and pending tie-out. Why: sample data must not reset human decisions or claim a connector ran.
 - 2026-10-24 Micah: remove Figma from frontend scope. Why: user direction; use the Next.js playground, screenshot reviews and Vercel instead. P7 now covers usability testing and demo materials.
