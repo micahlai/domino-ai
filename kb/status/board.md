@@ -10,7 +10,7 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
 | G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |
 | G2b durable investigation | doing | Claude42092 in domino-G2b fromdca5d11; Codex audit/local runtime gate follows |
-| R1 canvas presentation | todo | Moved to local domino-R1 by user; launch pending |
+| R1 canvas presentation | doing | Local Claude66496/exec7438 in domino-R1; single UI writer, no children; Codex serializes full checks |
 | CREAO complete cycle | blocked | Account credential/entitlement verification pending; independent backend/UI continue |
 | G3 complete canvas journey | todo | Real operations drive graph, node details open chart/proof; no fake execution; waits on accepted G2 |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |

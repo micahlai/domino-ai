@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex local UI reassignment
+- User canceled the other computer. R1 now runs locally: exec7438/PID66496, cwd domino-R1 verified, baseb48d13f. Frozen dependencies installed. G2b42092 continues backend. No duplicate remote branch found on fetch.
+- One UI process without children; G2b may use one child, total cap3. Full checks/build/browser serialized by Codex. Monitor and ownership docs updated. Main untouched.
+- CREAO account key remains absent on presence-only check; user has official Developer Console instructions. Continue independent implementation.
+
 ## 2026-10-24 Codex G2a acceptance and G2b dispatch
 - Done: repaired specialist boundary independently accepted2db9a8b, integrated77127d3, combined919tests/typechecks/lint pass. Ready previewdca5d11/G1/G2a pushed. Main untouched.
 - Next: Claude42092 verified in domino-G2b, durable backend phase. Remote R1 UI prompt pushed and ownership reserved; launch unconfirmed. Audit before integration/wiring.
