@@ -23,13 +23,14 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | --- | --- | --- | --- | --- | --- | --- |
 | S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | CREAO local setup complete: all five .env fields, three private agents, API mock runs and checks pass; other service access remains unverified |
 | P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
-| P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | todo | | |
-| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | todo | | Prototype in /playground |
-| P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | todo | | |
+| P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | done | codex/p2-convex | 14 tables/queries, 5 mutations; seed and live queries verified; 56 tests/check/build pass |
+| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | done | codex/p3-multiverse | SVG fan, stable fix morph, selection and keyboard access; desktop/mobile verified |
+| P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | done | codex/p4-main-screen | Live subscriptions, exact branch selection, proof and confirmed approval; 67 tests/check and browser pass |
 | P5 | Branch detail, connect screen, add event, next week | `prompts/product/P5-flows.md` | P4 | todo | | |
 | P6 | Learning + record screens; taste pass | `prompts/product/P6-learning-record-polish.md` | P5 | todo | | |
 | P7 | Usability test and demo materials | `prompts/product/P7-user-test.md` | P6 | todo | | |
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
+| T1 | Dark palette and original Domino logo | User request | P1 | done | codex/dark-theme | Shared tokens, header mark and favicon; checks/build/screenshot pass |
 
 ## Shared
 

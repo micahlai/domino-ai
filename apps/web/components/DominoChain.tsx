@@ -1,3 +1,4 @@
+import { ProofDrawer } from "@/components/ProofDrawer";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Domino } from "@domino/contracts";
@@ -22,6 +23,15 @@ export function DominoChain({ dominoes }: { dominoes: Domino[] }) {
             <p className="mt-1 text-sm text-muted-foreground">
               Week of {formatDate(step.weekStart)}
             </p>
+            {step.evidence.length ? (
+              <div className="mt-2">
+                <ProofDrawer evidence={step.evidence} />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                No source record attached to this step.
+              </p>
+            )}
           </div>
         </li>
       ))}

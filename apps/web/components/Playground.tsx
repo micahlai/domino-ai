@@ -12,6 +12,7 @@ import { ProofDrawer } from "@/components/ProofDrawer";
 import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
+import { FixtureCompany } from "@/components/company/FixtureCompany";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +24,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 const sections = [
+  "CompanyWorkspace",
   "Headline",
   "ResilienceBar",
   "MultiverseTimeline",
@@ -81,8 +83,12 @@ function PreviewSection({
 
 export function Playground() {
   const [showFixes, setShowFixes] = useState(false);
+  const [selectedFutureKey, setSelectedFutureKey] = useState<string>();
   const [selectedRiskId, setSelectedRiskId] = useState(fixtures.risks[0]?.id);
   const report = showFixes ? fixtures.resilienceWithFixes : fixtures.resilience;
+  const selectedFuture = report.universes.find(
+    (future) => [...future.riskIds].sort().join("|") === selectedFutureKey,
+  );
   const eventBranch = fixtures.branches.find((branch) => branch.id === "br_acme_late");
   const limit =
     fixtures.constraints.find((constraint) => constraint.kind === "min_cash")?.limit ?? 0;
@@ -139,6 +145,12 @@ export function Playground() {
         ))}
       </nav>
       <PreviewSection
+        name="CompanyWorkspace"
+        description="The assembled main screen. Sample approvals only; no records change."
+      >
+        <FixtureCompany />
+      </PreviewSection>
+      <PreviewSection
         name="ResilienceBar"
         description="A quick answer to how many possible futures survive."
       >
@@ -158,6 +170,18 @@ export function Playground() {
           pastEvents={fixtures.pastEvents}
           today={fixtures.snapshot.asOf}
           report={report}
+          comparisonReport={showFixes ? fixtures.resilience : fixtures.resilienceWithFixes}
+          selectedUniverseId={selectedFuture?.id}
+          onSelectUniverse={(id) =>
+            setSelectedFutureKey(
+              report.universes
+                .find((future) => future.id === id)
+                ?.riskIds.slice()
+                .sort()
+                .join("|"),
+            )
+          }
+          showFixes={showFixes}
           limit={limit}
         />
       </PreviewSection>
@@ -224,8 +248,7 @@ export function Playground() {
         </PreviewSection>
       </div>
       <p className="pb-4 text-sm text-muted-foreground">
-        Component previews only. The next product tasks add interactive charts, live data and
-        approval flows.
+        Component previews only. The next product tasks connect live data and approval flows.
       </p>
     </div>
   );

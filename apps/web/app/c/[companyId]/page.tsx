@@ -1,11 +1,8 @@
-import { PageStub } from "@/components/PageStub";
+import { CompanyScreen } from "@/components/company/CompanyScreen";
 
-export default function Page() {
-  return (
-    <PageStub
-      label="Possible futures"
-      title="See which futures your company can survive."
-      description="Explore cash over the next 13 weeks, the risks that start a chain reaction, and fixes you can try."
-    />
-  );
+export const metadata = { title: "Possible futures" };
+
+export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
+  const { companyId } = await params;
+  return <CompanyScreen key={companyId} companyId={companyId} />;
 }

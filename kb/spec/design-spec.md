@@ -1,7 +1,7 @@
 # Domino design spec
 
 Status: v1, 2026-10-24. Owner: Micah. Read with `build-spec.md`.
-Style: clean, calm, light. One accent color. A person with no finance knowledge must understand
+Style: clean, calm, dark. Mint is the primary accent. A person with no finance knowledge must understand
 the main screen in 10 seconds.
 
 ---
@@ -72,15 +72,15 @@ type MultiverseTimelineProps = {
 
 | Element | Look |
 | --- | --- |
-| Past line | Solid, 2 px, dark grey. Area below it lightly filled. |
+| Past line | Solid, 2 px, orange. Area below it lightly filled. |
 | Past event markers | Small circles on the line. Red outline for bad events, green for good. Label on hover. |
-| Today line | Vertical, 1 px, dashed. Label "Today" at the top. |
-| Base future | 2 px, dark grey, continues the past line. |
-| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: grey-green. Breaks: red after the break point, grey before it. |
-| Break marker | Small red cross at `breaksAt`, on the line. |
+| Today line | Vertical, 1 px, dashed. Label "Today" and its date at the bottom. |
+| Base future | 2 px, off-white, continues the past line. |
+| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: muted green. Breaks: pink after the break point, muted before it. |
+| Break marker | Small pink cross at `breaksAt`, on the line. |
 | Survive marker | Small green check at the right end. |
-| Selected future | 3 px, accent blue, label at the right end. Others fade to 0.15. |
-| Lender's limit | Red dashed line on the future side only, label "Lender's limit $3M". |
+| Selected future | 3 px, mint green, label at the right end. Others fade to 0.15. |
+| Lender's limit | Pink dashed line on the future side only, label "Lender's limit $3M". |
 | Y axis | Usable cash in $M, 4 ticks, light grid. No x-axis title; month labels only. |
 
 ### 3.3 Motion (this is the wow)
@@ -117,19 +117,22 @@ All components live in `apps/web/components/`. Each has a playground section wit
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | white `#FFFFFF` | Page |
-| Surface | `#F8F9FA` | Panels |
-| Border | `#E5E7EB` | Card and panel borders |
-| Text | `#111827` | Main text |
-| Text muted | `#6B7280` | Labels, captions |
-| Accent | `#2563EB` | Selected future, primary button |
-| Danger | `#DC2626` | Broken rules, lender's limit, breaking futures |
-| Safe | `#16A34A` | Surviving futures, working fixes |
-| Font | Inter (or Geist) | Everything |
+| Background | `#15110F` | Near-black brown page background |
+| Surface | `#211B17` | Dark brown panels and popovers |
+| Warm surface | `#3B312B` | Secondary controls and selected supporting areas |
+| Border | `#493B32` | Subtle separators |
+| Text | `#F4F1EB` | Main text |
+| Text muted | `#BEB3AA` | Labels, captions |
+| Accent / safe | `#68B99E` | Primary actions, selected future, surviving futures |
+| Clay | `#D6A17E` | Supporting chart and history accents |
+| Danger | `#D991A8` | Broken rules, lender's limit, breaking futures |
+| Font | Inter | Everything |
 | Radius | 8 px | Cards, buttons |
 | Spacing | 4 px steps | Use Tailwind spacing scale |
 
-Dark mode is not in scope.
+Pink warning text is lightened to `#E6A5B9` for small text contrast. Green remains the primary color; pink and orange are supporting accents.
+
+Dark mode uses a near-black brown base per Micah's revised direction. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
 
 ---
 

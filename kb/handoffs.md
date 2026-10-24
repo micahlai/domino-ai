@@ -3,10 +3,35 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:30 Micah (Codex, P4)
+- Done: assembled the company workspace with reactive Convex reports, history, constraints, ranked risks, branches and selected-branch fixes. Exact risk combinations select matching event branches; unsaved combinations show honest empty states. Fix cards display backend scores and saved simulations, require confirmation, and persist approvals through the existing mutation. Browser checked cancel/confirm, persisted Approved after reload, proof, preview toggle and selection; phone sample layout at 390 px has no page overflow. All 67 tests, typecheck and lint pass; production build checked before merge.
+- Next: P5 implements branch detail and full connection/event/week flows. E7 replaces internal action placeholders, then enables the corresponding readiness flags in LiveCompany.tsx. Demo shortcut can use NEXT_PUBLIC_DEMO_COMPANY_ID with the actual seed company document ID.
+- Watch out: approval saves a decision only; anonymous demo decisions are explicitly unverified. One local seed fix was approved during QA and remains recorded. /c/kestrel is labeled sample data unless a demo company ID is configured. New simulations/events/weeks stay disabled. Computed chain steps without attached evidence say so. Screenshots: /tmp/domino-p4-desktop.png and /tmp/domino-p4-mobile.png.
+
+## 2026-10-24 01:20 Micah (Codex, P3)
+- Done: custom SVG history/futures with D3 and Motion, probability opacity, break/survival markers, keyboard future selection, event details, and fix comparison matched by risk IDs with stable axes. Chrome verified 64% to 93%, selection across toggle, recorded events and 390 px layout without page overflow. Reduced-motion server render and 30-future geometry regression coverage added. All 61 tests, typecheck, lint and production build pass. Screenshot: `/tmp/domino-p3.png`.
+- Next: P4 wires reviewed props-only components to live Convex queries. Pass comparisonReport to preserve the vertical scale across fix previews.
+- Watch out: IAB preview did not hydrate in the earlier session; Chrome verification passed. Reduced-motion skip is verified through a mocked preference server-render test; OS preference was not changed. Thirty-future geometry passes; 60 fps GPU performance has not been measured.
+
+## 2026-10-24 01:10 Micah / Codex — revised theme
+- Done: Changed the base to near-black brown, green primary, pink warnings and orange history accents. Logo retained from calhacks-2026.
+- Next: Finish P3, then P4.
+- Watch out: This replaces the earlier green background direction.
+
 ## 2026-10-24 01:10 Micah (Codex, CREAO agents and environment)
 - Done: created three private Domino agents in Chrome, saved the shared local key and all three IDs in ignored root `.env`, and completed mock API runs for every job. Mapping JSON and corrected constraint content pass contract validators; brief content cites the supplied grade/model. All agents have Ask first autonomy, no connectors and no schedules. `pnpm check` passes (35 tests, typecheck, lint).
 - Next: E6 implements the adapter using the endpoint and response-format findings in `kb/research/sponsors.md`. Public judging share links remain outstanding; owner-access test runs are linked there.
 - Watch out: `result.text` contains memory metadata. Actual outputs vary between JSON attachments and narrated `chatText`, so strict raw output is not reliable. The corrected Constraint Reader v1.1.0 keeps the same ID and uses the literal source category `document`. Other S0 account/integration access remains unverified.
+
+## 2026-10-24 01:07 Micah (Codex, dark theme and logo)
+- Done: applied the supplied mint/clay/rose/green/brown palette as the default dark theme, with readable off-white text and accessible warning text. Reused the original two-tile Domino SVG from calhacks-2026 for the header and favicon; preserved geometry and wordmark dot. Checks (56 tests), build and desktop screenshot review pass.
+- Next: P3 and P4 use these semantic tokens; continue sequential worktrees and merge each task.
+- Watch out: mint is both selection and survival, so chart labels and outcome symbols must distinguish them. Rose fills/strokes stay #BA6A68; small warning text uses a lighter derived shade for contrast.
+
+## 2026-10-24 00:57 Micah (Codex, P1 merge/P2)
+- Done: merged P1 with the latest mocks-only main and pushed merge `20ba4ed`. P2 adds all 14 tables and query functions, five mutations, contract parsing, transactional approvals, action placeholders, and `pnpm convex:fixtures`. 21 new backend/parser tests; `pnpm check` (56 total), `pnpm build`, frozen install and all 14 live local queries pass. Seed rerun creates no duplicates and preserves decisions. Kestrel is visible as ready in the local Convex dashboard.
+- Next: P3 builds the hero; P4 wires screens to these queries. Use the company ID returned by the seed, not the literal route stub `kestrel`. Jayden replaces the internal action placeholders in E5/E7; see `kb/spec/convex-api.md` and `apps/web/convex/README.md`. P2 is on `codex/p2-convex`.
+- Watch out: `sources.lastPull` is null until an actual pull. Fixture tie-outs are pending; approvals/grades/explanations stay empty until real results. Action placeholders throw `not built`; no money moves. Anonymous demo decisions are labeled unverified; production company access controls remain outside this demo. P2 changes are isolated from unrelated local edits in the primary checkout.
 
 ## 2026-10-24 00:56 Micah (Codex, CREAO environment)
 - Done: inspected CREAO in Chrome and populated only `CREAO_API_BASE_URL` in ignored root `.env` with the documented app API prefix, `https://agent.creao.ai/api/v1`. `pnpm check` passes (35 tests, typecheck, lint).
