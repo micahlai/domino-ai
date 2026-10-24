@@ -19,7 +19,7 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Workers and runtimes
 
-G6 is being dispatched locally in domino-G6 / G6-company-map, sole UI writer. G7-company-knowledge is reserved for the friend computer, only two new lib files and its card. G8 product shell/knowledge wiring is queued after both gates. Do not launch G7 locally or duplicate the G6 writer. Unrelated Claude sessions in the workspace root and Karoake are not ours.
+G6 Claude Sonnet/high is running locally in domino-G6 / G6-company-map, sole UI writer. PID3183, exec49931, log /tmp/domino-G6-claude.log, base9864858. Process and cwd verified. Locked dependencies installed; no feature acceptance yet. G7-company-knowledge is reserved for the friend computer, only two new lib files and its card. G8 product shell/knowledge wiring is queued after both gates. Do not launch G7 locally or duplicate the G6 writer. Unrelated Claude sessions in the workspace root and Karoake are not ours.
 
 | Runtime | Ownership | State |
 | --- | --- | --- |

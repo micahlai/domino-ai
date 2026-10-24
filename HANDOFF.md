@@ -1,6 +1,6 @@
 # Domino handoff
 
-Current authority: kb/coordination/historical/active-run.md. Latest user revision is kb/spec/company-map-2026-10-24.md. G6 grouped canvas is the next local Claude UI phase in domino-G6; friend G7-company-knowledge owns only the pure frozen knowledge projector files. G8 shell cleanup and knowledge wiring is queued after both audits. Preserve one UI writer, preview-only integration and current 3102 accepted preview. CREAO setup uses the existing signed-in native Chrome session. No main merge.
+Current authority: kb/coordination/historical/active-run.md. Latest user revision is kb/spec/company-map-2026-10-24.md. G6 grouped canvas Claude Sonnet/high is verified running in domino-G6 (PID3183, exec49931, /tmp/domino-G6-claude.log); friend G7-company-knowledge owns only the pure frozen knowledge projector files. G8 shell cleanup and knowledge wiring is queued after both audits. Preserve one UI writer, preview-only integration and current 3102 accepted preview. CREAO setup uses the existing signed-in native Chrome session. No main merge.
 
 Latest15:06: G5cleanup accepted/integratedc40552a,1049tests/build and actualbrowser detail/earlyalternativechecks pass. Stable3102 servescleanup, no Claudeimplementationactive. CREAOsignin/config missing forsecondaudit; userasked, gateOFF/no livecalls. Preparedcreao-live-acceptance.md. FullCREAOcoordinatorjourneyincomplete; next requires accountUIaccess, not moreidleworkers. Mainuntouched.
 
