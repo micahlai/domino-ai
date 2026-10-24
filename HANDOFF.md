@@ -1,5 +1,9 @@
 # Domino handoff
 
+## Latest checkpoint: old CREAO selected, repairs active
+
+Use existing app-scoped CREAO only. New developer key remains unused; no top-up or new paid fallback. G2b candidatec185500 and R1 candidate2d57610 each pass930tests but independent audits block acceptance. Three isolated Claude workers verified: G2b repair14827/exec47892, R1 Sonnet repair15437/exec90404, G2c app adapter7172/exec88483. No children. Read active-run for exact findings, logs and next audit gates. Current preview remains early visual; no full journey claim. Scheduled reports after every20minute audit. Main unchanged.
+
 ## Current priority: full CREAO agent-canvas journey
 
 G1 visual285d7de and G2a specialist repair9d7d6e6/acceptance2db9a8b are audited, integrated and pushed on preview/historical-overnight. Combined919tests/typechecks/lint pass. Main694ab2a is untouched. G2b Claude42092 now implements durable investigation in ../domino-G2b fromdca5d11; cwd verified, no duplicate worker. Read active-run.md and C1 supervisor before acting. User canceled the other computer. R1 presentation now belongs to local domino-R1, one writer; the existing prompt was updated for local ownership and serialized Codex checks. See active-run for verified launch state. All UI uses taste/UIUX Max plus orchestrator/ponytail. Codex audits and integrates only checked work.

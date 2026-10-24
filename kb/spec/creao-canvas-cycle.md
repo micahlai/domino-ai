@@ -1,5 +1,9 @@
 # Current architecture: CREAO-driven company investigation
 
+## Selected integration: existing app-scoped CREAO
+
+User explicitly chose the older app-scoped integration. Use capi credentials and https://agent.creao.ai/api/v1/apps/{appId}/runs. Do not use the developer/account key, developer v1/v2 or separate USD wallet. Keep new key unused without deleting/changing it. G2c implements the historical adapter using existing bounded transport. Actual historical agent configuration, compatible instruction profiles, memory isolation and CREAO coordinator cycle still require verification. Document coarse API lifecycle honestly; no invented internal tool/agent nodes. Preserve the source/engine/conversation workflow in Domino.
+
 ## Correction: verified v2 project key, October24
 
 The supplied CREAO_ACCOUNT_API_KEY variable currently contains a valid Developer Platform v2 PROJECT key. Read-only GET https://developer.creao.ai/v2/me returned200 with project/key identity resolved; no IDs or key exposed. Earlier v1 agents/usage401 resulted from API-generation mismatch, not proof of an invalid key. Do not ask user to replace it or retry v1 with it. The shared cr_sk_ prefix does not distinguish v1 Account keys from v2 project keys.

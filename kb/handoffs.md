@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex old CREAO route and audit repairs
+- User selects existing app-scoped CREAO only; new developer key unused. G2c adapter launched in isolated domino-G2c, exec88483/PID7172. No live calls by worker.
+- G2b and R1 each pass930tests/typechecks/lint but independent reviews found4backend and3UI blockers. Repairs verified in original worktrees: G2b14827/47892 and R115437/90404. Three processes total, no children.
+- Next: reuse reviewers after repairs, fullchecks/build/live local/browser then integration; G2c independent provider audit and dedicated profile/real execution gate. Main untouched, current canvas visual-only.
+
 ## 2026-10-24 Codex CREAO v2 correction
 - Read current Developer Platform docs in browser: v2 project keys and USD wallet are separate from v1 Account keys/consumer credits. Same key prefix; old docs linked a console now issuing v2 keys.
 - Supplied key PASSED read-only GET /v2/me200. Earlier401 was wrong API generation. Retract replacement request. User screenshot confirms Team Pro Plus, not its remaining balance. No paid v2 actions/top-ups.
