@@ -13,9 +13,6 @@ import { CompanyWorkspace } from "./CompanyWorkspace";
 import { UnavailableAction } from "./UnavailableAction";
 import { matchingFixBranch } from "./selection";
 
-// E7 enables these after replacing the corresponding internal action placeholders.
-const computeActions = { addEvent: false, nextWeek: false, simulate: false };
-
 export function CompanyConnectionStatus() {
   const connection = useConvexConnectionState();
   if (connection.isWebSocketConnected || !connection.connectionRetries) return null;
@@ -39,7 +36,11 @@ export function CompanyLoading() {
   );
 }
 
-function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] }) {
+function LiveFixes({
+  branch,
+  branches,
+  canSimulate,
+}: { branch: Branch; branches: Branch[]; canSimulate: boolean }) {
   const candidates = useQuery(api.fixes.forBranch, { branchId: branch.id });
   const simulate = useMutation(api.fixes.simulate);
   const decide = useMutation(api.approvals.decide);
@@ -65,7 +66,7 @@ function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] })
             gain={gain}
             simulatedBranch={saved}
             onSimulate={
-              computeActions.simulate
+              canSimulate
                 ? async () => {
                     await simulate({ branchId: branch.id, fixId: fix.id });
                   }
@@ -93,6 +94,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
   const constraints = useQuery(api.constraints.list, { companyId });
   const risks = useQuery(api.risks.list, { companyId });
   const branches = useQuery(api.branches.list, { companyId });
+  const capabilities = useQuery(api.companies.capabilities, { companyId });
   const addEvent = useMutation(api.events.add);
   const nextWeek = useMutation(api.week.next);
   const [message, setMessage] = useState("");
@@ -104,7 +106,8 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
     history === undefined ||
     constraints === undefined ||
     risks === undefined ||
-    branches === undefined
+    branches === undefined ||
+    capabilities === undefined
   )
     return <CompanyLoading />;
   if (!company)
@@ -123,7 +126,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
       </div>
     );
   async function advance() {
-    if (pending || !computeActions.nextWeek) return;
+    if (pending || !capabilities?.nextWeek) return;
     setPending(true);
     try {
       await nextWeek({ companyId });
@@ -142,7 +145,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
         actions={
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              {computeActions.addEvent ? (
+              {capabilities.addEvent ? (
                 <AddEventDialog
                   risks={risks}
                   onAdd={async (risk) => {
@@ -155,23 +158,32 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
                   reason="New events are not available until live forecasting is ready."
                 />
               )}
-              {computeActions.nextWeek ? (
+              {capabilities.nextWeek ? (
                 <Button disabled={pending} variant="outline" onClick={advance}>
                   {pending ? "Preparing…" : "Next week"}
                 </Button>
               ) : (
                 <UnavailableAction
                   label="Next week"
-                  reason="Advancing weeks is not available until live forecasting is ready."
+                  reason="Advancing to the next week is not available yet."
                 />
               )}
             </div>
             <p className="max-w-xs text-xs text-muted-foreground">
-              New events and weeks are not available yet. Review the saved forecasts below.
+              {capabilities.addEvent
+                ? "You can add events and simulate fixes. Advancing to the next week is not available yet."
+                : "New events and weeks are not available yet. Review the saved forecasts below."}
             </p>
           </div>
         }
-        renderFixes={(branch) => <LiveFixes key={branch.id} branch={branch} branches={branches} />}
+        renderFixes={(branch) => (
+          <LiveFixes
+            key={branch.id}
+            branch={branch}
+            branches={branches}
+            canSimulate={capabilities.simulate}
+          />
+        )}
       />
     </div>
   );

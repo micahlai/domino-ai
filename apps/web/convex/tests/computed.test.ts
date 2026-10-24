@@ -943,3 +943,56 @@ async function insertCompany(t: T, rules: Constraint[]) {
     return companyId;
   });
 }
+
+describe("companies.capabilities", () => {
+  const off = { addEvent: false, simulate: false, nextWeek: false };
+
+  it("enables events and fixes only for the current computed base", async () => {
+    const { t, companyId } = await seeded();
+    expect(await t.query(api.companies.capabilities, { companyId })).toEqual({
+      addEvent: true,
+      simulate: true,
+      nextWeek: false,
+    });
+    // A newer snapshot makes the saved base stale until it is recomputed.
+    await t.run((ctx) =>
+      ctx.db.insert("snapshots", {
+        companyId,
+        asOf: "2099-01-05",
+        data: { ...snapshot, asOf: "2099-01-05" },
+      }),
+    );
+    expect(await t.query(api.companies.capabilities, { companyId })).toEqual(off);
+  });
+
+  it("stays off for the fixture company and unavailable companies", async () => {
+    const t = convexTest(schema, modules);
+    const fixture = await t.mutation(internal.dev.seedFixtures.seed, {});
+    expect(await t.query(api.companies.capabilities, { companyId: fixture.companyId })).toEqual(
+      off,
+    );
+    const gone = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("companies", {
+        name: "Gone",
+        profile: "kestrel",
+        currentWeek: 0,
+        today: asOf,
+        status: "ready",
+      });
+      await ctx.db.delete(id);
+      return id;
+    });
+    expect(await t.query(api.companies.capabilities, { companyId: gone })).toEqual(off);
+    // A company with no snapshot or base yet.
+    const empty = await t.run((ctx) =>
+      ctx.db.insert("companies", {
+        name: "Empty",
+        profile: "kestrel",
+        currentWeek: 0,
+        today: asOf,
+        status: "connecting",
+      }),
+    );
+    expect(await t.query(api.companies.capabilities, { companyId: empty })).toEqual(off);
+  });
+});
