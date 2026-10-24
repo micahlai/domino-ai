@@ -13,7 +13,11 @@ import {
 import type { Evidence } from "@domino/contracts";
 import { FileText } from "lucide-react";
 
-export function ProofDrawer({ evidence }: { evidence: Evidence[] }) {
+export function ProofDrawer({
+  evidence,
+  description = "Source records behind this result.",
+}: { evidence: Evidence[]; description?: string }) {
+  const records = [...new Map(evidence.map((item) => [JSON.stringify(item), item])).values()];
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -25,11 +29,16 @@ export function ProofDrawer({ evidence }: { evidence: Evidence[] }) {
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>The records behind the forecast</SheetTitle>
-          <SheetDescription>Sample Kestrel records from the shared fixtures.</SheetDescription>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         <div className="mt-8 space-y-8">
-          {evidence.map((item) => (
-            <div key={`${item.source}:${item.ref}`} className="space-y-3">
+          {!records.length ? (
+            <p className="text-sm text-muted-foreground">
+              No source records have been attached to this result yet.
+            </p>
+          ) : null}
+          {records.map((item) => (
+            <div key={JSON.stringify(item)} className="space-y-3">
               <Badge variant="secondary">{item.source}</Badge>
               <p className="break-words text-sm font-medium">{item.ref}</p>
               {item.quote ? (

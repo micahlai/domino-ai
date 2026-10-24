@@ -12,6 +12,7 @@ import { ProofDrawer } from "@/components/ProofDrawer";
 import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
+import { FixtureCompany } from "@/components/company/FixtureCompany";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +24,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 const sections = [
+  "CompanyWorkspace",
   "Headline",
   "ResilienceBar",
   "MultiverseTimeline",
@@ -142,6 +144,12 @@ export function Playground() {
           </a>
         ))}
       </nav>
+      <PreviewSection
+        name="CompanyWorkspace"
+        description="The assembled main screen. Sample approvals only; no records change."
+      >
+        <FixtureCompany />
+      </PreviewSection>
       <PreviewSection
         name="ResilienceBar"
         description="A quick answer to how many possible futures survive."

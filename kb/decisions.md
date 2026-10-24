@@ -17,3 +17,5 @@ Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 - 2026-10-23 Team: not entering Anthropic "Claude for Public Benefit" or Cartesia. Why: no real fit.
 
 - 2026-10-24: Micah revised dark theme to near-black brown surfaces, green primary, pink and orange accents.
+
+- 2026-10-24 P4: Match the entire selected risk change set to an event branch; never show an unrelated single-risk chain for a combination. Approve only a matching saved fix branch, after confirmation. Keep compute mutations disabled until E7 action readiness is explicitly enabled.
