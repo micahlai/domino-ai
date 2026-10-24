@@ -20,6 +20,9 @@ import {
   IDLE_DOMINO,
   KIND_LABEL,
   STATUS_LABEL,
+  deliver,
+  graphFit,
+  loneFit,
   safeHref,
   toFlowNodes,
 } from "./graph";
@@ -58,10 +61,6 @@ const flowStyle = {
   "--xy-attribution-background-color": "hsl(var(--card) / 0.8)",
   "--xy-edge-stroke": "hsl(var(--muted-foreground) / 0.5)",
 } as CSSProperties;
-
-// Shared by the initial fit and the Fit View button so a lone node never jumps to maxZoom.
-const loneFit = { padding: 0.8, maxZoom: 1 };
-const graphFit = { padding: 0.2, maxZoom: 1 };
 
 const DEFAULT_NODES = [IDLE_DOMINO];
 const NO_EDGES: CanvasEdge[] = [];
@@ -161,7 +160,11 @@ function CanvasNodeView({ data, selected }: NodeProps<FlowNode>) {
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
       <Handle type="target" position={Position.Left} isConnectable={false} className="!opacity-0" />
-      <NodeCard node={data.node} selected={selected} animateStatus={mounted.current && !reduced} />
+      <NodeCard
+        node={data.node}
+        selected={selected}
+        animateStatus={mounted.current && data.live && !reduced}
+      />
       <Handle
         type="source"
         position={Position.Right}
@@ -186,6 +189,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function emptyText(node: CanvasNode) {
   if (node.status === "queued") return "Waiting to start.";
   if (node.status === "running") return "Running now. Results appear here when it finishes.";
+  if (node.status === "succeeded") return "Finished, but there is nothing to show for it.";
+  if (node.status === "failed") return "Failed, and no reason was given.";
   return "Nothing has run yet.";
 }
 
@@ -374,7 +379,8 @@ function Workspace({
   canAlternative,
   renderOutput,
 }: InvestigateWorkspaceProps) {
-  const incoming = supplied?.length ? supplied : DEFAULT_NODES;
+  // Omitted means the G1 preview Domino. An explicit [] is a real, empty investigation.
+  const incoming = supplied ?? DEFAULT_NODES;
   // The first snapshot is restored history: it appears without motion.
   const [initial] = useState(() => toFlowNodes([], incoming, edges, true));
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initial);
@@ -390,17 +396,13 @@ function Workspace({
     const quiet = connection === "loading" || lastConnection.current === "loading";
     lastConnection.current = connection;
     setNodes((current) => {
-      const next = toFlowNodes(current, incoming, edges, quiet);
-      const added = next.some((node) => !current.some((known) => known.id === node.id));
       // Follow new work until the person moves the view themselves. fitView waits for measurement.
-      if (added && !userMoved.current) {
-        queueMicrotask(() =>
-          flowRef.current?.fitView({
-            ...(next.length > 1 ? graphFit : loneFit),
-            duration: reduced ? 0 : 300,
-          }),
-        );
-      }
+      const { nodes: next, fit } = deliver(current, incoming, edges, {
+        quiet,
+        follow: !userMoved.current,
+        reduced: !!reduced,
+      });
+      if (fit) queueMicrotask(() => flowRef.current?.fitView(fit));
       return next;
     });
   }, [incoming, edges, connection, setNodes, reduced]);
@@ -487,6 +489,11 @@ function Workspace({
               />
             </ReactFlow>
           </div>
+          {nodes.length === 0 ? (
+            <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+              {connection === "loading" ? "Loading the investigation." : "No steps to show yet."}
+            </p>
+          ) : null}
         </div>
         <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5">
           <Link

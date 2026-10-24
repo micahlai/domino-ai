@@ -2,8 +2,13 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ConversationPanel } from "./ConversationPanel";
-import { DominoNodeCard, NodeCard, NodeDetails } from "./InvestigateWorkspace";
-import { IDLE_DOMINO, layout, safeHref, toFlowNodes } from "./graph";
+import {
+  DominoNodeCard,
+  InvestigateWorkspace,
+  NodeCard,
+  NodeDetails,
+} from "./InvestigateWorkspace";
+import { IDLE_DOMINO, deliver, layout, safeHref, toFlowNodes } from "./graph";
 import type { CanvasNode } from "./types";
 
 const noop = () => {};
@@ -121,6 +126,42 @@ describe("Domino node", () => {
   });
 });
 
+describe("Truthful empty states", () => {
+  const bare = (status: CanvasNode["status"]): CanvasNode => ({
+    id: "n",
+    kind: "source",
+    title: "Filing",
+    status,
+  });
+  const render = (status: CanvasNode["status"]) =>
+    renderToStaticMarkup(
+      createElement(NodeDetails, { node: bare(status), onClose: noop, connection: "live" }),
+    );
+
+  it("never says nothing has run for a node that finished or failed", () => {
+    expect(render("succeeded")).not.toContain("Nothing has run yet");
+    expect(render("succeeded")).toContain("Finished");
+    expect(render("failed")).not.toContain("Nothing has run yet");
+    expect(render("failed")).toContain("Failed, and no reason was given");
+    expect(render("idle")).toContain("Nothing has run yet");
+  });
+
+  it("tells an explicit empty investigation from an omitted nodes prop", () => {
+    const empty = renderToStaticMarkup(
+      createElement(InvestigateWorkspace, { nodes: [], connection: "live" }),
+    );
+    expect(empty).toContain("No steps to show yet");
+    const loading = renderToStaticMarkup(
+      createElement(InvestigateWorkspace, { nodes: [], connection: "loading" }),
+    );
+    expect(loading).toContain("Loading the investigation");
+    const omitted = renderToStaticMarkup(createElement(InvestigateWorkspace));
+    expect(omitted).not.toContain("No steps to show yet");
+    expect(omitted).not.toContain("Loading the investigation");
+    expect(omitted).toContain("Preview");
+  });
+});
+
 describe("Canvas nodes", () => {
   it("labels each kind and status in plain words", () => {
     const html = renderToStaticMarkup(createElement(NodeCard, { node: agent, selected: false }));
@@ -206,6 +247,98 @@ describe("graph", () => {
     expect(kept?.position).toEqual({ x: 999, y: -5 });
     expect(kept?.selected).toBe(true);
     expect(kept?.data.node.status).toBe("failed");
+  });
+
+  describe("incremental delivery", () => {
+    const root = { source: "domino" };
+    const first = [IDLE_DOMINO, source];
+    const firstEdges = [{ id: "e1", ...root, target: "src-1" }];
+    const second = { ...source, id: "src-2", title: "Second filing" };
+    const allEdges = [...firstEdges, { id: "e2", ...root, target: "src-2" }];
+    // Cards are about 66 to 86px tall, so anything closer than 100px would overlap.
+    const MIN_GAP = 100;
+
+    it("places a sibling delivered later below the first without moving it", () => {
+      const one = toFlowNodes([], first, firstEdges, true);
+      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const a = two.find((node) => node.id === "src-1");
+      const b = two.find((node) => node.id === "src-2");
+      expect(a?.position).toEqual(one.find((node) => node.id === "src-1")?.position);
+      expect(Math.abs((b?.position.y ?? 0) - (a?.position.y ?? 0))).toBeGreaterThanOrEqual(MIN_GAP);
+      expect(b?.position.x).toBe(a?.position.x);
+    });
+
+    it("steers around a card the person dragged into the slot", () => {
+      const one = toFlowNodes([], first, firstEdges, true).map((node) =>
+        node.id === "src-1" ? { ...node, position: { x: 300, y: 60 } } : node,
+      );
+      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const a = two.find((node) => node.id === "src-1");
+      const b = two.find((node) => node.id === "src-2");
+      expect(a?.position).toEqual({ x: 300, y: 60 });
+      expect(Math.abs((b?.position.y ?? 0) - 60)).toBeGreaterThanOrEqual(MIN_GAP);
+    });
+
+    it("keeps every sibling apart across several single-record deliveries", () => {
+      let current = toFlowNodes([], [IDLE_DOMINO], [], true);
+      let nodes: CanvasNode[] = [IDLE_DOMINO];
+      let edges: { id: string; source: string; target: string }[] = [];
+      for (const n of [1, 2, 3, 4]) {
+        nodes = [...nodes, { ...source, id: `s${n}` }];
+        edges = [...edges, { id: `e${n}`, source: "domino", target: `s${n}` }];
+        current = toFlowNodes(current, nodes, edges, false);
+      }
+      const ys = current
+        .filter((node) => node.id !== "domino")
+        .map((node) => node.position.y)
+        .sort((x, y) => x - y);
+      for (let i = 1; i < ys.length; i++) {
+        expect((ys[i] ?? 0) - (ys[i - 1] ?? 0)).toBeGreaterThanOrEqual(MIN_GAP);
+      }
+    });
+  });
+
+  describe("quiet history versus live work", () => {
+    const edges = [{ id: "a", source: "domino", target: "src-1" }];
+    const idleOnly = toFlowNodes([], [IDLE_DOMINO], [], true);
+    const fresh = { quiet: false, follow: true, reduced: false };
+
+    it("fits instantly when saved history adds nodes", () => {
+      const out = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      expect(out.fit?.duration).toBe(0);
+    });
+
+    it("animates the fit for a real new node, but not under reduced motion", () => {
+      expect(deliver(idleOnly, [IDLE_DOMINO, source], edges, fresh).fit?.duration).toBe(300);
+      const reduced = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, reduced: true });
+      expect(reduced.fit?.duration).toBe(0);
+    });
+
+    it("does not touch the view once the person has moved it, or when nothing was added", () => {
+      expect(
+        deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, follow: false }).fit,
+      ).toBeNull();
+      const same = deliver(idleOnly, [IDLE_DOMINO], [], fresh);
+      expect(same.fit).toBeNull();
+    });
+
+    it("lets a status change on a mounted node animate only when the delivery is live", () => {
+      const shown = toFlowNodes([], [IDLE_DOMINO, source], edges, true);
+      const done = { ...source, status: "failed" as const };
+      const quiet = deliver(shown, [IDLE_DOMINO, done], edges, { ...fresh, quiet: true });
+      expect(quiet.nodes.find((node) => node.id === "src-1")?.data.live).toBe(false);
+      const live = deliver(shown, [IDLE_DOMINO, done], edges, fresh);
+      expect(live.nodes.find((node) => node.id === "src-1")?.data.live).toBe(true);
+    });
+
+    it("fades a new node in only on a live delivery, and never replays it for old nodes", () => {
+      const quiet = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      expect(quiet.nodes.every((node) => !node.data.enter)).toBe(true);
+      const live = deliver(quiet.nodes, [IDLE_DOMINO, source, agent], edges, fresh);
+      expect(live.nodes.filter((node) => node.data.enter).map((node) => node.id)).toEqual([
+        "agent-7f3a",
+      ]);
+    });
   });
 
   it("rejects non-http evidence links", () => {
