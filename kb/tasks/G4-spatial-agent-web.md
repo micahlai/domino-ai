@@ -18,3 +18,9 @@
 - Fixture: `/playground/agent-canvas` has "New branching web session (fixture)": three sources, two specialists (one reads two sources), two tools (one fails), three results, delivered manually step by step. The original chain fixture and manual delivery controls are kept.
 - Checks run: `vitest run components/investigate` (63 pass, including new tests for determinism, curved 5-chain, branching spread, shared/cycle/disconnected/missing-anchor/empty/lone-anchor, new-node separation incl. dragged slot and 14 sequential deliveries, edges and records preserved), `tsc --noEmit`, `biome check` on touched files.
 - Not done: no full suite, build, server or browser. No visual pass is claimed. Unverified in a browser: label legibility at the 0.6 fit floor, how the fixture web looks (its sparse far-out outputs), and mobile layout. Codex should check desktop and mobile.
+
+## Repair1, paired with G3-live-canvas-repair1
+
+Independent audit and actual browser block two presentation issues: (1) graphFit minZoom0.6 clips most of the graph on390x844 after FitView. Full-fit must actually fit; use existing zoom/detail to read, no forced floor. Prefer compact cluster placement to avoid unnecessarily distant outputs, but no broad layout rewrite. (2) NODE_BOX reserves116px height while rendered two-line node is126px before spacing. Probe/tmp/domino-g4-audit.cjs: root+oldsource dragged(-72,270), newtwo-line sibling placed(-72,154) overlaps its text with old circle. Reserve actual bounds+gap and independent regression. Keep circles/spatialweb, topology, stablepositions/quiet/reducedmotion intact.
+
+Same sole UI worker now also performs the two fixes in G3-live-canvas-repair1.md, ownership extended only to existing live/** plus G4 originalfiles. No separate UI worker. Four bounded fixes total, no newfeatures. Focusedchecks thencommit and stop. Fullsuite/build/browser belongtoCodex.
