@@ -1,8 +1,10 @@
 # Domino handoff
 
-## Current priority: agent canvas, October24 12:27 PDT
+## Current priority: full CREAO agent-canvas journey
 
-User corrected scope: agent canvas plus persistent conversation is the centerpiece. Prior completion applies only to historical dashboard. Follow prompts/shared/C1-canvas-supervisor.md and kb/spec/agent-canvas-2026-10-24.md. G1 visual285d7de independently accepted and merged previewdcfb1ab; combined820tests/build/browser pass. Open http://127.0.0.1:3102/investigate. G2a candidate973dac3 passed863tests but independent audit found context-integrity gaps. Claude repair1 now runs exec94944/PID69311 from1a1cb90; re-review before G2b durable real operations and G3 full journey. Read G1-accepted.md and active-run for exact state. UI phases must additionally load taste + ui-ux-pro-max. Claude /orchestrator + /ponytail implements, Codex audits. No main merge, no more themes. Current work/process ownership remains in active-run.md.
+G1 visual285d7de and G2a specialist repair9d7d6e6/acceptance2db9a8b are audited, integrated and pushed on preview/historical-overnight. Combined919tests/typechecks/lint pass. Main694ab2a is untouched. G2b Claude42092 now implements durable investigation in ../domino-G2b fromdca5d11; cwd verified, no duplicate worker. Read active-run.md and C1 supervisor before acting. R1 presentation is reserved for the other computer; prompt prompts/product/R1-other-computer-canvas.md is pushed, launch not yet confirmed. All UI uses taste/UIUX Max plus orchestrator/ponytail. Codex audits and integrates only checked work.
+
+Next exact step: collect and audit G2b, full check/local smoke, then audited R1 plus G3 wiring. CREAO account API access is pending user configuration; do not mistake the existing app-scoped key or Claude specialist for the requested CREAO cycle. Current /investigate is an accepted early visual with disabled Send, not the complete journey. Automation is active every20minutes, latest CREAO scope supersedes all completion/deferral claims below. Preserve backend, UI, local data and main.
 
 ## Current checkpoint: overnight preview complete, 08:49 PDT
 

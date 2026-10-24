@@ -2,13 +2,16 @@
 
 ## Current scope: agent canvas centerpiece, supervised Claude implementation
 
-Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
+Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Current integration uses `preview/historical-overnight` in `../domino-preview`.
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
-| G2 actual specialist operations | doing | G2a973dac3 passes863tests but audit blocks context integrity; repair1 running94944/PID69311; G2b waits for acceptance |
+| G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |
+| G2b durable investigation | doing | Claude42092 in domino-G2b fromdca5d11; Codex audit/local runtime gate follows |
+| R1 canvas presentation | todo | Other computer reserved, prompt pushed; launch not confirmed |
+| CREAO complete cycle | blocked | Account credential/entitlement verification pending; independent backend/UI continue |
 | G3 complete canvas journey | todo | Real operations drive graph, node details open chart/proof; no fake execution; waits on accepted G2 |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
 | H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |

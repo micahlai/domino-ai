@@ -1,21 +1,23 @@
 # Active run: agent canvas centerpiece
 
-Updated October24 12:46 PDT. New user direction supersedes old dashboard completion and11:15 deadline. Automation domino-overnight-audit ACTIVE every20minutes with C1 prompt. No main merge. Entry prompts/shared/C1-canvas-supervisor.md; scope kb/spec/agent-canvas-2026-10-24.md.
+Current checkpoint: October24, G2a accepted and G2b launched. Automation domino-overnight-audit ACTIVE every20minutes with C1 and CREAO scope. No main merge. Entry prompts/shared/C1-canvas-supervisor.md. Latest scope kb/spec/creao-canvas-cycle.md. Old11:15 deadline is superseded.
 
 ## Current workers and next exact step
 
-| Phase | Checkout / branch | Exec / verified PID | Status / log |
+| Phase | Checkout / branch | Verified process | Status / log |
 | --- | --- | --- | --- |
-| G1 visual skill repair | domino-G1 / G1-agent-canvas-visual | 27436 / finished | Accepted285d7de, merged previewdcfb1ab; see G1-accepted.md |
-| G2a specialist repair1 | domino-G2a / G2a-historical-specialists | 94944 / 69311 | Opus/high plus at most one Sonnet builder; /tmp/domino-G2a-repair-claude.log |
+| G1 visual | domino-G1 / G1-agent-canvas-visual | finished | Accepted285d7de, integrated and pushed |
+| G2a specialist boundary | domino-G2a / G2a-historical-specialists | finished | Repair9d7d6e6 accepted2db9a8b, integrated77127d3 and pushed |
+| G2b durable investigation | domino-G2b / G2b-durable-investigation | Claude42092, caffeinate42141, cwd verified | Base dca5d11; /tmp/domino-G2b-claude.log; prompt /tmp/domino-G2b-prompt.txt |
+| R1 presentation | other computer / R1-canvas-presentation | not yet confirmed launched | Reserved UI ownership; prompts/product/R1-other-computer-canvas.md pushed |
 
-G2a initial worker49171/PID29046 finished at973dac3. Candidate full863tests/typechecks/lint passed, but independent Astra audit blocked acceptance. Repair1 launched from1a1cb90, cwd verified12:45; only this lead/child may implement. G1 finished. Maximum three implementation processes including child. No other Domino implementation worker. Other Claude processes belong to unrelated/user work; do not touch them. Current prompt /tmp/domino-G2a-repair-prompt.txt. Earlier prompts /tmp/domino-G1-repair-prompt.txt and /tmp/domino-G2a-prompt.txt are history. Both scoped phases use /orchestrator and /ponytail full. G1 additionally uses skills/taste/SKILL.md and /Users/jaydenl/.agents/skills/ui-ux-pro-max/SKILL.md per latest user request. Claude skills paths /Users/jaydenl/.claude/skills/orchestrator/SKILL.md and /Users/jaydenl/.claude/plugins/cache/ponytail/ponytail/4.7.0/skills/ponytail/SKILL.md. No main edits, full suites, servers, push or shared coordinator notes by workers.
-
-- G1 candidate90da27c: full820tests/typechecks/lint/build pass, logs/tmp/domino-G1-{check,build}.log, exec3467 completed. Initial sandbox TLS failure16303 was resolved by normal escalated check. Prior worker47940/PID4552 finished; do not resume it.
-- Early actual screenshot WAS SHOWN to user before G2 launch. Browser verified desktop1280x800/mobile375x812, Enter node detail, dragging, draft restoration and no errors. Evidence screenshots/canvas-{early-desktop,early-mobile,mobile-details}.png. Current accepted visual-only preview http://127.0.0.1:3102/investigate serves285d7de via integrationdcfb1ab, exec25391/PID41317. Temporary3103 stopped after cwd verification. Send is honestly disabled pending real wiring.
-- G1 repair accepted285d7de: mobile detail below canvas, capped fit control, close restores node focus. Skills confirmed in Result. Full820tests/build and browser passed, merged previewdcfb1ab, combined820tests/build pass. Logs/tmp/domino-G1-repair-{check,build}.log and/tmp/domino-canvas-preview-{install,check,build}.log. Claude git calls were denied; Codex safely staged only the two reviewed files and committed. No feature edits by Codex.
-- G2a starts from11f0cdb with frozen dependencies and installed locked packages. Read card/reuse report. Add narrow historical specialist input/output and real single-call provider support, no invented weekly data, no live network calls by worker. Preserve five existing jobs. Collect and independently audit provider/citation/time boundaries; run full checks. Then prepare G2b persisted conversation/tasks and actual execution, isolated worktree, followed by G3 UI wiring after API packet review.
-- G3 MUST use taste + ui-ux-pro-max in addition to /orchestrator + /ponytail. Do not substitute an activity list for graph. No extra themes. Completion requires actual visible progressive graph with real specialist outputs, persistent conversation, readable chart via output/detail, reveal and one costed alternative.
+- G2a repair passed914tests/typechecks/lint. Independent Astra audit_g2a passed162focused tests plus8probes and real-case positive packets; original context-integrity findings closed. Combined preview passed919tests/typechecks/lint, /tmp/domino-G2a-preview-check.log. No live provider call, no CREAO implementation claim. Report kb/reviews/G2a-specialists-audit.md.
+- G2b locked install succeeded. Opus lead may use at most one Sonnet child; total implementation cap3 includes remote R1. No duplicate UI writer. Claude uses /orchestrator and /ponytail. Owns Convex and narrow API packet only. Worker runs focused checks; Codex serializes full check/build/runtime audits. No main, UI, provider-package or shared coordination edits by worker.
+- G2b next gate: inspect Result/diff and independently test durability, idempotency, source/cutoff isolation, true operation lifecycle, errors and explicit development provider mode. Then full check and isolated local smoke. Do not claim browser-independent execution merely from mocked tests.
+- Remote R1 owns components/investigate/** and app/playground/agent-canvas/**, uses orchestrator/ponytail/taste/ui-ux-pro-max. Fetch its pushed checkpoint for review; do not overwrite it or launch locally. G3 local wiring waits for audited API and R1, owns app/investigate/page.tsx plus adapter.
+- CREAO required final gate: current configured credential is app-scoped. User was asked to add CREAO_ACCOUNT_API_KEY to ignored domino-ai/.env.local, never chat. Account metadata/entitlement and memory isolation still unverified. No incompatible endpoint calls, no automatic paid fallback. Continue independent durable/UI work while pending.
+- Latest ready preview commit dca5d11 is pushed along with G1 and G2a. Main694ab2a stays frozen. Node profile details show safe app-authored instructions, working style/version and actual provider. Hidden reasoning is excluded.
+- Early canvas screenshot was shown before backend dispatch. Current http://127.0.0.1:3102/investigate remains visual-only with Send disabled. Full visible real-agent journey is not complete. Existing historical dashboard is preserved.
 
 ## Inspection and decisions
 
@@ -32,10 +34,3 @@ Call: bounded curated2U investigation with actual specialist jobs and existing e
 - Old bounded awake guard expired around11:13; new Claude wrapped with caffeinate -i for its own lifetime. App/computer must remain available, AC/lid open recommended; no power settings changed.
 - Automation ACTIVE, same thread and20minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
 - All scopes require exact statuses/output evidence and frozen publication boundaries. Existing2U case remains retrospective cash miss, not validated bankruptcy warning. Preserve explicit costs, unknown benefit/downside. Agent graph execution does not make financial conclusions more validated.
-
-## G2a audit gate, 12:46 PDT
-
-- Candidate973dac3 adds bounded historical provider entry and schemas, preserving old five jobs. Full863tests/typechecks/lint pass, /tmp/domino-G2a-check.log, exec98767 completed. This base predates G1, so combined expected count differs. No live call. Candidate not accepted or merged/pushed.
-- Astra audit_g2a independently ran111focused tests and6offline probes. Found unclosed run/rule inputs and hindsight assumptions, forged comparison money/period/reference acceptance, self-referencing alternative baseline, valid negated caveats rejected, and diagnostic ID echo. Report kb/reviews/G2a-specialists-audit.md. Probe/tmp/g2a-independent-audit.test.ts/config/tmp/g2a-audit.config.mjs.
-- Claude repair1 exec94944/PID69311, base1a1cb90 (audit/card), /tmp/domino-G2a-repair-claude.log. Reuse actual canonical case/RunContext/ComparisonContext validation, no invented metadata, add real2U positive packet coverage, retain bounded single-call provider. All changes in original contracts/agents scope.
-- Next: collect repair1, reuse audit_g2a for independent re-review (focus new diff plus regressions), full check, then only on acceptance integrate with G1/preview and prepare G2b durable messages/operations. At most two repairs per gate. Do not launch G2b/G3 early. Existing canvas3102 remains visual-only.

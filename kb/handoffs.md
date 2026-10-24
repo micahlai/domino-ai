@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex G2a acceptance and G2b dispatch
+- Done: repaired specialist boundary independently accepted2db9a8b, integrated77127d3, combined919tests/typechecks/lint pass. Ready previewdca5d11/G1/G2a pushed. Main untouched.
+- Next: Claude42092 verified in domino-G2b, durable backend phase. Remote R1 UI prompt pushed and ownership reserved; launch unconfirmed. Audit before integration/wiring.
+- Watch out: CREAO account credential pending; current key is app-scoped. No real investigation connected to canvas yet. Monitor remains active; node profiles are in scope.
+
 ## 2026-10-24 12:46 Codex specialist audit
 - Done: G2a973dac3 full863tests/typechecks/lint pass. Independent Astra audit reproduced invalid context reaching provider despite tests. No live provider call or integration.
 - Next: Claude repair1 verified exec94944/PID69311 from1a1cb90, original worktree/scope. Re-review with audit_g2a, then combined check before G2b.
