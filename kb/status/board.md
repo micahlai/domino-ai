@@ -35,6 +35,8 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | done | E3b-dominoes | aa1d876 independently reviewed and integrated; original worktree retained |
 | E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | done | E4-multiverse | 87de4f6 reviewed and integrated; ../domino-E4 retained |
 
+| I2 | `kb/tasks/I2-computed-prototype.md` | E4, P4 | doing | I2-computed-prototype | Claude Opus in ../domino-I2; computed Convex slice |
+
 ## Product (Micah)
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
