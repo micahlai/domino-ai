@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex brain (historical pivot assessment)
+- Done: dedicated integration/historical-case-study worktree at main694ab2a; saved user scope, source comparison and minimal plan. P5 connect/detail remain stubs, main timeline/components reusable. E3c blocked despite657 passing tests; E2a blocked by three independent defects despite 650 passing tests. E1b repair 9ab358a independently approved as a preserved checkpoint; 661 tests and sim:print pass.
+- Next: review the proposed historical plan and provisional company choice before H1. H1-H3 are proposed only; all prior workers and audits finished. No new implementation, main merge, push or deployment.
+- Watch out: prior backend-completion instructions below are superseded. Keep reported facts, assumptions, financial periods and publication dates distinct. Existing weekly grade/learn cannot grade quarterly reports. Main remains694ab2a with all unrelated changes preserved.
+
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 

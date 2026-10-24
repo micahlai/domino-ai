@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import {SnapshotSchema} from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E3c/packages/contracts/src/index.ts';
+import {forecast,cashSchedule} from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E3c/packages/engine/src/forecast.ts';
+import {scanRisks} from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E3c/packages/engine/src/risks.ts';
+import {evaluateRules} from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E3c/packages/engine/src/rules.ts';
+import {fundingDays} from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E3c/packages/engine/src/funding.ts';
+const model={version:0,customerDelayDays:{},recurringSpend:[],rules:[]};
+const base={companyId:'x',asOf:'2026-10-30',cashOnHand:0,restrictedCash:0,customers:[{id:'c',name:'C',paymentTermsDays:0}],invoices:[],bankTxns:[],bills:[],cardTxns:[],payroll:[],deals:[]};
+const evidence={source:'document' as const,ref:'agreement',note:'Pay by the original due date'};
+const rule=(id:string)=>({id:'r',label:'Deadline',kind:'pay_by_date' as const,limit:0,billId:id,evidence});
+const s=SnapshotSchema.parse({...base,invoices:[{id:'i',customerId:'c',amount:100,issued:'2026-10-30',due:'2026-11-25'}],bills:[{id:'b',vendor:'V',amount:100,due:'2026-11-16',critical:false}]});
+const m={...model,customerDelayDays:{c:{mean:-40,p90:-10,samples:3}}};
+const risks=scanRisks(s,m,[rule('b')]);
+console.log('clamp-baseline',cashSchedule(s,m,[]).items.find(i=>i.kind==='invoice'));
+console.log('clamp-generated-risk',risks[0]);
+console.log('clamp-generated-receipt',cashSchedule(s,m,risks[0]?.changes??[]).items.find(i=>i.kind==='invoice'));
+console.log('clamp-generated-rule',evaluateRules(s,forecast(s,m,risks[0]?.changes??[]),[rule('b')],{model:m,changes:risks[0]?.changes??[]})[0]?.status);
+const expectedChanges=[{kind:'delay_invoice' as const,invoiceId:'i',days:16}];
+console.log('clamp-p90-date-rule',evaluateRules(s,forecast(s,m,expectedChanges),[rule('b')],{model:m,changes:expectedChanges})[0]?.status);
+assert.equal(cashSchedule(s,m,expectedChanges).items.find(i=>i.kind==='invoice')?.date,'2026-11-15');
+const max=Number.MAX_SAFE_INTEGER;
+const large=SnapshotSchema.parse({...base,cashOnHand:max,restrictedCash:max,
+ invoices:[{id:'settled',customerId:'c',amount:max,issued:'2026-10-01',due:'2026-10-01',paid:'2026-10-29'}],
+ pendingPayouts:[{id:'payout',amount:max,expectedArrival:'2026-11-16',invoiceIds:['settled']}],
+ billingPlans:[{id:'plan',customerId:'c',amount:2,anchorDate:'2026-11-10',nextInvoiceDate:'2026-11-10',endDate:'2026-11-10',everyMonths:1,paymentTermsDays:0}],
+ payroll:[{id:'pr1',date:'2026-11-02',amount:2},{id:'pr2',date:'2026-11-09',amount:max}],
+ bills:[{id:'bill',vendor:'V',amount:1,due:'2026-11-16',critical:false}]});
+const f=forecast(large,model,[]);
+console.log('safe-weekly-closes',f.weeks.slice(0,3).map(w=>({closing:w.closing,usable:w.usable})));
+console.log('unsafe-daily-funding',fundingDays(large,cashSchedule(large,model,[])).get('bill'));
+console.log('unsafe-daily-rule',evaluateRules(large,f,[rule('bill')],{model,changes:[]})[0]?.status);
+const exactUsable=0n-2n-BigInt(max)+2n+BigInt(max);
+console.log('exact-usable-before-one-cent-bill',String(exactUsable));
+assert.equal(exactUsable,0n);

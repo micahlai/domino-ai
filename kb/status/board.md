@@ -1,5 +1,20 @@
 # Status board
 
+## Current scope: historical case study, implementation held
+
+Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Proposed plan: `../spec/historical-case-study-plan.md`. Prior rows below are retained as implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
+
+| Work | Checkpoint | Decision |
+| --- | --- | --- |
+| Historical assessment | review | 2U provisional; WeWork/Appgate alternatives; H1-H3 proposed only |
+| E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |
+| E2a 29de286 | blocked | 650 tests/typecheck/lint pass; pagination, payout and OpenAPI defects independently reproduced; parked |
+| E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |
+| P1-P4, I1/I3, particles/crosshair | preserved | Reuse timeline, selection, proof, risk/fix presentation |
+| P5 | rescope | Connect/detail are stubs; preserve interfaces and E5/E7 dependencies; reveal disclosure replaces simulated Next week |
+| I4, E2b, broad E5/E7, E8, agent canvas | deferred | No implementation launch under the old plan |
+
+
 Update your rows at the start and end of every task. Status: `todo`, `doing`, `review`, `done`, `blocked`.
 Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 

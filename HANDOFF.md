@@ -1,4 +1,18 @@
 # Domino handoff
+
+## Current goal: historical case study assessment, 2026-10-24
+
+- User pivot supersedes the backend-completion goal below. Source: kb/context/historical-case-study-2026-10-24.md. Plan and P5 dependency map: kb/spec/historical-case-study-plan.md. Sources: kb/research/historical-case-candidates.md.
+- Checkout: ../domino-case-study, branch integration/historical-case-study, based on main 694ab2a. Main and its unrelated edits are preserved. Do not integrate on main, dispatch new implementation, push or deploy during assessment.
+- Done: inspected P5 and current routes/actions; researched 2U, WeWork, Appgate; saved scope and proposed minimal H1-H3 sequence. Completed UI and existing contracts remain intact. No feature code in this branch.
+- Checkpoints: E3c ffeea88 blocked by two independent defects despite 657 passing tests; review/probe preserved in kb/reviews. E2a 29de286 blocked by three independently reproduced pagination/payout/OpenAPI defects despite 650 passing tests/typechecks/lint; review/probes preserved. E1b-r1 completed 9ab358a in ../domino-E1b; 661 tests/typechecks/lint and sim:print pass, independent review approved the preserved checkpoint. Original 2741000 remains superseded by repair. No combined engine/consumer integration approval.
+- Next exact step: review the proposed historical plan and source comparison with the user before dispatching H1. H2 follows audited evidence/contracts; H3 adapts the existing UI. No follow-on repairs, new implementation, main merge, push or deployment have been dispatched. Assessment and audits are committed on this branch; use git log -1 for the checkpoint hash.
+- Open questions: company/cutoff, evidenced warning threshold, one feasible costed intervention. 2U is provisional, Amplitude not selected. No public weekly actuals or claim of preventing bankruptcy.
+- Existing runtime: Next development server on http://127.0.0.1:3000 from ../domino-ai, session91256, log/tmp/domino-prototype-web.log. /c/kestrel resolves to synthetic computed company via ignored public demo ID. Development Convex previously deployed; do not call this historical data. No production deployment.
+- All Claude workers are finished: E1b session53151 log/tmp/domino-E1b-r1-claude.log, E2a session69934, E3c session68750. All three independent audits are complete. E1b is approved as a preserved checkpoint; E3c and E2a are blocked. Preserve worktrees and changes. Do not read or print environment/auth files.
+
+## Prior handoff history, superseded where it conflicts
+
 ## 2026-10-24: computed prototype deployed
 - Goal: finish backend while user is away; latest priority is merge Micah and make first working prototype. Claude implements, Codex audits/integrates. Direct Claude execution authorized. No production deployment or push.
 - Integrated: Micah origin/main77d0df6, E3/E4, C2, E7a9efe1d8 at6c0bd2b, E6b8f095c6 at234fdc3, I2e0b1871 at052e942. Independent Sol/Astra reviews passed. Main522 tests, five typechecks, lint and fresh production build pass. Generated bindings committedc62dd3e.

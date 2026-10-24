@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-24 Codex brain: user changed direction to a historical public-company replay. Freeze new implementation dispatch; checkpoint existing workers and keep future integration off main. Propose a curated case, period cash model, immutable forecast/reveal and one costed alternative. Counterargument: less weekly detail, but public data cannot substantiate synthetic weekly actuals. Company selection remains open.
+
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
 - 2026-10-24 03:14 Codex brain: user requested merging Micah's ready code for the first prototype, so integrate origin/main 77d0df6 including V1/V2. This supersedes the earlier particle deferral. Continue backend work; keep fixture and computed results distinguishable.

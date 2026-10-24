@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Current scope (2026-10-24): historical public-company case study. Read `kb/context/historical-case-study-2026-10-24.md` and `kb/spec/historical-case-study-plan.md` before applying the original product description below. Implementation dispatch is held for assessment. Work only in the dedicated integration worktree; do not merge into main. Preserve completed UI and existing interfaces.
+
 Rules for every AI coding agent in this repo (Claude Code, Codex, Cursor, CREAO).
 Read this file fully before you write any code.
 

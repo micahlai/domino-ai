@@ -1,5 +1,7 @@
 # Domino build spec
 
+Scope update (2026-10-24): the original synthetic operational demo below is preserved as reference. The user-approved direction is `../context/historical-case-study-2026-10-24.md`; the proposed replacement plan is `historical-case-study-plan.md`. Old gates do not authorize further dispatch.
+
 Status: v1, 2026-10-24. Owners: Jayden (engine), Micah (product).
 Language: Simplified Technical English. Short sentences. One idea per line.
 UI design details are in `design-spec.md`. Convex functions are in `convex-api.md`.

@@ -1,0 +1,12 @@
+import { SnapshotSchema } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/packages/contracts/src/index.ts';
+import { fixtures } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/packages/contracts/src/fixtures/index.ts';
+import { createMockHandler } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/apps/mocks/src/handler.ts';
+const s = SnapshotSchema.parse({...fixtures.snapshot, bankTxns: [{id:'stripe_debit',date:fixtures.snapshot.asOf,amount:-1500,counterparty:'Stripe',description:'Stripe fee debit'}],cardTxns:[{id:'a',date:fixtures.snapshot.asOf,amount:100,merchant:'First',category:'A'},{id:'a',date:fixtures.snapshot.asOf,amount:200,merchant:'Second',category:'B'},{id:'b',date:fixtures.snapshot.asOf,amount:300,merchant:'Third',category:'C'}]});
+const h = createMockHandler({apiKey:'test',snapshot:()=>s});
+const get = async (p:string) => (await h(new Request('http://mocks.test'+p,{headers:{'x-api-key':'test'}}))).json();
+console.log('payout',JSON.stringify(await get('/stripe/v1/payouts')));
+let next:string|null=null;
+for(let i=0;i<4;i++){const p:any=await get('/cards/developer/v1/transactions?page_size=1'+(next?'&start='+next:''));console.log('page',i,JSON.stringify(p));next=p.page.next;}
+const large=SnapshotSchema.parse({...fixtures.snapshot,cardTxns:[{id:'large',date:fixtures.snapshot.asOf,amount:9007199254740974,merchant:'M',category:'C'}]});
+const hl=createMockHandler({apiKey:'test',snapshot:()=>large});
+console.log('money',await (await hl(new Request('http://mocks.test/cards/developer/v1/transactions',{headers:{'x-api-key':'test'}}))).text());
