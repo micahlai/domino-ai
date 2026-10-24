@@ -302,7 +302,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <svg width="12" height="12" aria-hidden="true">
-                <circle cx="6" cy="6" r="5" fill="hsl(var(--primary))" />
+                <circle cx="6" cy="6" r="5" fill="hsl(var(--primary-ink))" />
               </svg>
               Reported balance
             </span>
@@ -314,7 +314,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
                     cy="6"
                     r="4.5"
                     fill="hsl(var(--card))"
-                    stroke="hsl(var(--primary))"
+                    stroke="hsl(var(--primary-ink))"
                     strokeWidth="1.5"
                     strokeDasharray="2 2"
                   />
@@ -331,7 +331,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
                   height="7"
                   transform="rotate(45 6 6)"
                   fill="hsl(var(--card))"
-                  stroke="hsl(var(--primary))"
+                  stroke="hsl(var(--primary-ink))"
                   strokeWidth="1.5"
                 />
               </svg>

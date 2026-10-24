@@ -9,7 +9,7 @@ import type { CashPoint, HistoricalView } from "./types";
 
 const W = 720;
 const H = 320;
-const M = { left: 64, right: 24, top: 28, bottom: 44 };
+const M = { left: 64, right: 24, top: 44, bottom: 44 };
 
 type Kind = "reported" | "nowcast" | "projected" | "observed" | "alternative";
 
@@ -145,19 +145,19 @@ export function HistoricalChart({
         {[
           { date: dates.knowledgeCutoff, label: "Knowledge cutoff" },
           ...(dates.revealedOn ? [{ date: dates.revealedOn, label: "Disclosure published" }] : []),
-        ].map((mark) => (
+        ].map((mark, row) => (
           <g key={mark.label}>
             <line
               x1={x(utc(mark.date))}
               x2={x(utc(mark.date))}
-              y1={M.top - 8}
+              y1={M.top - 24 + row * 14}
               y2={H - M.bottom}
               stroke="hsl(var(--muted-foreground))"
               strokeDasharray="4 3"
             />
             <text
               x={x(utc(mark.date)) + 4}
-              y={M.top - 12}
+              y={M.top - 28 + row * 14}
               className="fill-muted-foreground text-[10px]"
             >
               {mark.label}
@@ -173,7 +173,7 @@ export function HistoricalChart({
                   x2={px(p)}
                   y1={y(p.low)}
                   y2={y(p.high)}
-                  stroke="hsl(var(--primary))"
+                  stroke="hsl(var(--primary-ink))"
                   strokeOpacity={0.45}
                   strokeWidth={6}
                   strokeLinecap="round"
@@ -197,7 +197,7 @@ export function HistoricalChart({
           <motion.path
             d={line(projectedPath)}
             fill="none"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(var(--primary-ink))"
             strokeWidth={2}
             strokeDasharray="6 4"
             {...sweep}
@@ -219,7 +219,7 @@ export function HistoricalChart({
           const label = `${kindLabel[p.kind]}, ${formatReportDate(p.date)}: ${formatCents(p.cash)}`;
           const projected = p.kind === "projected" || p.kind === "alternative";
           const modeled = p.kind === "nowcast";
-          const colour = p.kind === "alternative" ? "hsl(var(--clay))" : "hsl(var(--primary))";
+          const colour = p.kind === "alternative" ? "hsl(var(--clay))" : "hsl(var(--primary-ink))";
           return (
             <motion.g
               key={`${p.kind}-${p.id}`}

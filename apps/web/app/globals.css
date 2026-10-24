@@ -28,6 +28,101 @@
     color-scheme: dark;
     --danger-text: 341.54 56.52% 77.45%;
     --radius: 0.5rem;
+    /* Accent for text, lines and chart marks. Original uses the mint directly. */
+    --primary-ink: var(--primary);
+    --particle-blend: lighter;
+  }
+  /* Style tokens. Set on <html data-style>; the same variables feed Tailwind colors, SVG,
+     canvas and Radix portals (which render under <body>). Ramp and Hyphenate hex values were
+     read from the public sites' CSS; the rest of each palette is inferred (see ui-styles-result.md). */
+  [data-style="ramp"] {
+    --background: 30 11% 95%;
+    --foreground: 30 25% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 25% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 25% 4%;
+    --primary: 63 88% 55%;
+    --primary-foreground: 30 25% 4%;
+    --primary-ink: 148 70% 26%;
+    --secondary: 30 12% 91%;
+    --secondary-foreground: 30 25% 4%;
+    --muted: 30 12% 93%;
+    --muted-foreground: 28 6% 38%;
+    --accent: 30 12% 90%;
+    --accent-foreground: 30 25% 4%;
+    --destructive: 358 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --danger-text: 358 72% 40%;
+    --safe: 148 70% 28%;
+    --border: 24 8% 80%;
+    --input: 24 8% 80%;
+    --ring: 30 25% 10%;
+    --clay: 22 82% 48%;
+    --radius: 0.75rem;
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  [data-style="hyphenate"] {
+    --background: 38 38% 94%;
+    --foreground: 358 100% 24%;
+    --card: 40 33% 98%;
+    --card-foreground: 358 100% 24%;
+    --popover: 40 33% 98%;
+    --popover-foreground: 358 100% 24%;
+    --primary: 20 100% 54%;
+    --primary-foreground: 358 100% 14%;
+    --primary-ink: 20 100% 33%;
+    --secondary: 38 30% 89%;
+    --secondary-foreground: 358 100% 24%;
+    --muted: 38 30% 91%;
+    --muted-foreground: 358 30% 34%;
+    --accent: 38 40% 87%;
+    --accent-foreground: 358 100% 24%;
+    --destructive: 340 80% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --danger-text: 340 80% 38%;
+    --safe: 140 45% 27%;
+    --border: 12 28% 80%;
+    --input: 12 28% 80%;
+    --ring: 20 100% 40%;
+    --clay: 200 35% 36%;
+    --radius: 0.25rem;
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  [data-style="shadcn"] {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --danger-text: 0 72% 45%;
+    --safe: 142 60% 28%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --clay: 25 85% 45%;
+    --radius: 0.5rem;
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  /* Hyphenate's public pages use fine structured lines; a quiet grid is the inferred equivalent. */
+  [data-style="hyphenate"] body {
+    background-image: linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.35) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
   * {
     @apply border-border;
@@ -61,5 +156,8 @@
 @layer utilities {
   .text-destructive {
     color: hsl(var(--danger-text));
+  }
+  .text-primary {
+    color: hsl(var(--primary-ink));
   }
 }

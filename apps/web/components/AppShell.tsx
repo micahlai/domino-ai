@@ -1,5 +1,6 @@
 "use client";
 
+import { StyleSelector } from "@/components/StyleSelector";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, CircleHelp, PanelLeftClose } from "lucide-react";
 import Image from "next/image";
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="flex min-h-20 items-center justify-between gap-4 border-b px-6 md:px-10">
+      <header className="flex min-h-20 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-6 py-2 md:px-10">
         <Link
           href="/"
           aria-label="Domino home"
@@ -39,8 +40,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             domino<span className="text-primary">.</span>
           </span>
         </Link>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">Plan cash needs before you act.</span>
+        <div className="flex flex-wrap items-center justify-end gap-x-4 text-sm text-muted-foreground">
+          <span className="hidden xl:inline">Plan cash needs before you act.</span>
+          <StyleSelector />
           <Link
             href="/playground"
             className="flex min-h-11 items-center gap-2 rounded px-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
