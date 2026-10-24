@@ -1,17 +1,40 @@
-import type { Change, CompanyModel, Forecast, ForecastWeek, Snapshot } from "@domino/contracts";
+import type {
+  Change,
+  CompanyModel,
+  Forecast,
+  ForecastWeek,
+  ISODate,
+  Snapshot,
+} from "@domino/contracts";
 import { applyChanges } from "./changes";
 import { weekStarts } from "./dates";
-import { baseSchedule, bucketOf } from "./schedule";
+import { type CashItem, baseSchedule, bucketOf } from "./schedule";
 
 const WEEKS = 13;
 
+/** The dated cash schedule after `changes`. forecast and the rule evaluator both read this. */
+export type CashSchedule = { weeks: ISODate[]; items: CashItem[] };
+
+export function cashSchedule(
+  snapshot: Snapshot,
+  model: CompanyModel,
+  changes: Change[],
+): CashSchedule {
+  const weeks = weekStarts(snapshot.asOf, WEEKS);
+  const items = applyChanges(baseSchedule(snapshot, model, weeks), changes, snapshot, weeks);
+  return { weeks, items };
+}
+
 /** Build-spec §6.1: 13 weekly buckets of the dated cash schedule after `changes`. */
 export function forecast(snapshot: Snapshot, model: CompanyModel, changes: Change[]): Forecast {
-  const starts = weekStarts(snapshot.asOf, WEEKS);
-  const items = applyChanges(baseSchedule(snapshot, model, starts), changes, snapshot, starts);
-  const inflow = new Array<number>(WEEKS).fill(0);
-  const outflow = new Array<number>(WEEKS).fill(0);
-  for (const item of items) {
+  return forecastFromSchedule(snapshot, cashSchedule(snapshot, model, changes));
+}
+
+export function forecastFromSchedule(snapshot: Snapshot, schedule: CashSchedule): Forecast {
+  const starts = schedule.weeks;
+  const inflow = new Array<number>(starts.length).fill(0);
+  const outflow = new Array<number>(starts.length).fill(0);
+  for (const item of schedule.items) {
     const i = bucketOf(item.date, starts);
     if (i === null) continue;
     if (item.amount >= 0) inflow[i] = (inflow[i] ?? 0) + item.amount;

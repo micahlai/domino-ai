@@ -23,3 +23,5 @@
 Brain audit: e77474d passes 169 tests but is blocked on three reproduced correctness defects. See kb/reviews/E3b-e77474d.md and kb/tasks/E3b-r1-funding-causes.md. Not merged; E4 remains gated.
 
 Repair update: 565c3fa clears the funding/identity findings but retains one causal-scope defect. Continue with kb/tasks/E3b-r2-causal-scope.md; review kb/reviews/E3b-r1-565c3fa.md.
+
+Final repair: aa1d876 passes independent causal review and 181 branch tests. Earlier audit notes above describe historical blockers, now resolved. Combined integration verification is recorded in kb/reviews/E3b-r2-aa1d876.md.

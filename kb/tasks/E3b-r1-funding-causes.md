@@ -26,3 +26,5 @@
   - Not fixed (out of scope): duplicate invoice/deal IDs are not rejected; add_cash/remove_cash/shift_hire still produce no markers and cannot be named as causes.
 
 Brain audit: 565c3fa passes 178 branch tests. Daily savings and duplicate identities are independently cleared. One customer-churn causal-scope blocker remains; see kb/reviews/E3b-r1-565c3fa.md and E3b-r2-causal-scope.md. Not merged.
+
+Final repair: aa1d876 passes independent causal review and 181 branch tests. Earlier audit notes above describe historical blockers, now resolved. Combined integration verification is recorded in kb/reviews/E3b-r2-aa1d876.md.

@@ -10,8 +10,8 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | S0 | Machine setup | `prompts/shared/00-setup.md` | — | doing | main | Offline check gate verified with Node 24; credentials/accounts remain unverified |
 | E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | doing | main | E1a merged at 5762475; later E1 slices remain open |
 | E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
-| E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | doing | E3b-dominoes | E3a and C1 merged; E3b repair 565c3fa passes 178 branch tests; one causal-scope blocker remains, E3b-r2 ready |
-| E4 | Engine: risks, fix scoring, history, stress test | `kb/tasks/E4-multiverse.md` | E3b merged | blocked | | Card prepared; launch after E3b review/integration |
+| E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | done | main | E3a/C1 plus independently reviewed E3b aa1d876 integrated; combined 197 tests/check/build pass |
+| E4 | Engine: risks, fix scoring, history, stress test | `kb/tasks/E4-multiverse.md` | E3b merged | todo | E4-multiverse | E3b gate passed; Codex preparing direct Claude launch |
 | E5 | Connectors + tie-out (Convex actions) | `prompts/engine/E5-connectors.md` | E2, P2 | todo | | |
 | E6 | Agents: CREAO + Claude adapters | `prompts/engine/E6-agents.md` | S0 | doing | main | E6a merged at 63366ae; live adapters remain open |
 | E7 | Wire actions: connect.run, recompute, week.advance; grade + learn | `prompts/engine/E7-wiring-learning.md` | E4, E5, E6 | todo | | |
@@ -20,7 +20,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 ### First slices
 
 Plan: `kb/tasks/launch-plan-2026-10-24.md`. These slices need the verified offline S0 gate, not live credentials.
-Parent E1/E3/E6 remain incomplete. Claude's reviewed E3a repair is merged at 59fe62d alongside C1. Combined main after P3/P4 integration and the I1 compatibility fix passes 147 tests, typechecks, lint and a fresh production build. Claude completed E3b repair 565c3fa; independent review cleared daily funding and duplicate IDs but found a remaining customer-churn causal-scope blocker. Branch passes 178 tests; repair card E3b-r2 is ready in main and E4 remains gated. No second engine worker.
+E1 and E6 follow-up slices remain open. E3a, C1 and independently reviewed E3b aa1d876 are integrated with P3/P4 and I1. Combined checks pass 197 tests, five typechecks, lint and a fresh production build. E4 can launch after the post-merge check. Only one engine writer at a time.
 
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
@@ -32,8 +32,8 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | ID | Task card | Dependency | Status | Planned branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
-| E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | doing | E3b-dominoes | Claude Opus directly dispatched by Codex for E3b-r2 on 565c3fa |
-| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | blocked | E4-multiverse | Not created; Codex dispatches Claude Code after review/integration gate |
+| E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | done | E3b-dominoes | aa1d876 independently reviewed and integrated; original worktree retained |
+| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | todo | E4-multiverse | Direct Claude launch next, after post-merge checks |
 
 ## Product (Micah)
 

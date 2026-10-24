@@ -1,10 +1,10 @@
 # E3b and E4 implementation brief
 
-Status: prepared, independently reviewed with no remaining blocker, no feature worker launched. C1 is merged at 3c54e67. Claude's reviewed E3a repair 4a9be26 is merged at 59fe62d; combined 131-test check passes. Claude implements both cards; Codex audits and integrates each before the next starts.
+Status: E3b final repair aa1d876 independently reviewed and integrated with current UI; combined 197-test check and production build pass. C1 and E3a are merged. Claude implements E4; Codex dispatches, audits and integrates under explicit user authorization.
 
 Decision: serialize E3b then E4. Both own packages/engine and E4 must reuse one rule evaluator. Counterargument: parallel implementation could start sooner, but duplicates cash/date logic and creates integration risk.
 
-This brief and the scoped task cards supersede conflicting instructions in the original E3/E4 prompts. [C1](engine-context-contract-proposal.md) defines authoritative contexts, links and targets. No shared contract edits are authorized by these cards. The brain integrates dependencies, creates worktrees from passing main and records readiness before the human launches either worker. Do not run a rebase or copy uncommitted work to meet a gate.
+This brief and the scoped task cards supersede conflicting instructions in the original E3/E4 prompts. [C1](engine-context-contract-proposal.md) defines authoritative contexts, links and targets. No shared contract edits are authorized by these cards. The brain integrates dependencies, creates worktrees from passing main and records readiness before Codex directly launches Claude. Do not run a rebase or copy uncommitted work to meet a gate.
 
 ## E3b: receipts and rule evaluation
 

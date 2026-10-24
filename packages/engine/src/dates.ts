@@ -40,3 +40,10 @@ export function weekIndexOf(date: ISODate, weeks: ISODate[]): number {
   if (!first) throw new Error("no weeks");
   return Math.floor(daysBetween(first, date) / 7);
 }
+
+/** The last forecast day: the Sunday that closes the final week. */
+export function horizonEnd(weeks: ISODate[]): ISODate {
+  const last = weeks[weeks.length - 1];
+  if (!last) throw new Error("no weeks");
+  return addDays(last, 6);
+}

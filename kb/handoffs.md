@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:44 Codex brain (E3b integration)
+- Done: directly dispatched Claude Opus for r2, audited aa1d876 with independent GPT-6.1 Sol, and reproduced both corrected churn cases. Branch check passes 181 tests; combined main passes 197 tests, five typechecks, lint and fresh production build. Task-card conflicts preserve Results and audit history.
+- Next: post-merge check, then create ../domino-E4 from passing main and directly dispatch Claude for kb/tasks/E4-multiverse.md. Independent review before E4 integration.
+- Watch out: conservative causal omissions remain intentional. No particles, provider calls, data reset, push or deployment. Unrelated local environment/web tooling files preserved. Original worktrees retained.
+
 ## 2026-10-24 02:28 Codex brain (E3b-r1 review)
 - Done: independently audited clean 565c3fa; full branch check passes 178 tests/typechecks/lint. Lead reproduced 320 passing daily/weekly rounding cases, 15 duplicate-bill rejections and four receipt-loss cases. Original unrelated-expense false arrow is fixed. One remaining blocker: whole-customer churn removal falsely proves a record/drop cause; two exact cases are in the new review.
 - Next: Claude continues the existing E3b worktree using kb/tasks/E3b-r2-causal-scope.md copied from main. Scope proof to the candidate's cash effect or omit ambiguous arrows. Re-review before E3b merge or E4 launch.
