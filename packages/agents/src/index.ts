@@ -12,8 +12,20 @@ export {
   createClaudeClient,
 } from "./claude";
 export type { ClaudeOptions } from "./claude";
-export { CREAO_API_BASE_URL, creaoAgentEnv, creaoDefaults, createCreaoClient } from "./creao";
-export type { CreaoOptions } from "./creao";
+export {
+  CREAO_API_BASE_URL,
+  artifactCategories,
+  creaoAgentEnv,
+  creaoDefaults,
+  creaoDiagnosticStages,
+  createCreaoClient,
+} from "./creao";
+export type {
+  ArtifactCategory,
+  CreaoDiagnosticStage,
+  CreaoDiagnostics,
+  CreaoOptions,
+} from "./creao";
 export type { TransportRuntime } from "./http";
 export { canonicalJson, hashInput, hashJobInput } from "./hash";
 export { AGENT_SCHEMA_VERSION, outputJsonSchema, outputSchemas, structuredJobs } from "./schemas";

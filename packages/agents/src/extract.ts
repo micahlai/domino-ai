@@ -36,7 +36,11 @@ export function acceptCandidate(
   return { value: parsed.data };
 }
 
-export type Selection = { kind: "one"; value: unknown } | { kind: "none" } | { kind: "ambiguous" };
+export type Selection = (
+  | { kind: "one"; value: unknown }
+  | { kind: "none" }
+  | { kind: "ambiguous" }
+) & { validated: number; distinct: number };
 
 /** Exactly one distinct valid answer wins; identical repeats (fence plus artifact) count once. */
 export function selectOne(
@@ -46,13 +50,17 @@ export function selectOne(
   options: { bareArray: boolean },
 ): Selection {
   const distinct = new Map<string, unknown>();
+  let validated = 0;
   for (const candidate of candidates) {
     const accepted = acceptCandidate(job, input, candidate, options);
-    if (accepted) distinct.set(canonicalJson(accepted.value), accepted.value);
+    if (!accepted) continue;
+    validated++;
+    distinct.set(canonicalJson(accepted.value), accepted.value);
   }
-  if (distinct.size === 0) return { kind: "none" };
-  if (distinct.size > 1) return { kind: "ambiguous" };
-  return { kind: "one", value: [...distinct.values()][0] };
+  const counts = { validated, distinct: distinct.size };
+  if (distinct.size === 0) return { kind: "none", ...counts };
+  if (distinct.size > 1) return { kind: "ambiguous", ...counts };
+  return { kind: "one", value: [...distinct.values()][0], ...counts };
 }
 
 function tryJson(text: string): Candidate | undefined {
@@ -75,25 +83,51 @@ function unfence(body: string): string {
   return match?.[1] ?? body;
 }
 
+/** Candidates plus format counts for diagnostics. Counts only, never text. */
+export interface ChatTextScan {
+  candidates: Candidate[];
+  delimitedBlocks: number;
+  /** Delimited bodies that look like JSON but do not parse; never read as prose. */
+  malformedDelimited: number;
+  fences: number;
+  wholeJson: boolean;
+}
+
 /**
  * Candidates from CREAO chat text: own-line delimited blocks, JSON code fences, or the
  * whole text when it is standalone JSON. Braces inside narration are never guessed at.
  * Delimited plain text is a candidate only for text jobs; acceptCandidate enforces that.
  */
-export function chatTextCandidates(chatText: string): Candidate[] {
-  const candidates: Candidate[] = [];
+export function scanChatText(chatText: string): ChatTextScan {
+  const scan: ChatTextScan = {
+    candidates: [],
+    delimitedBlocks: 0,
+    malformedDelimited: 0,
+    fences: 0,
+    wholeJson: false,
+  };
   for (const match of chatText.matchAll(delimited)) {
+    scan.delimitedBlocks++;
     const body = unfence(match[1] ?? "").trim();
-    candidates.push(tryJson(body) ?? { text: body });
+    const candidate = tryJson(body);
+    if (candidate) scan.candidates.push(candidate);
+    // A broken JSON answer, or a fence unfence could not strip, must not slip through as a
+    // plain-text brief.
+    else if (/^(?:[{[]|```)/.test(body)) scan.malformedDelimited++;
+    else scan.candidates.push({ text: body });
   }
   for (const match of chatText.matchAll(fenced)) {
+    scan.fences++;
     const candidate = tryJson((match[1] ?? "").trim());
-    if (candidate) candidates.push(candidate);
+    if (candidate) scan.candidates.push(candidate);
   }
   const whole = chatText.trim();
   if (whole.startsWith("{") || whole.startsWith("[")) {
     const candidate = tryJson(whole);
-    if (candidate) candidates.push(candidate);
+    if (candidate) {
+      scan.wholeJson = true;
+      scan.candidates.push(candidate);
+    }
   }
-  return candidates;
+  return scan;
 }
