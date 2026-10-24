@@ -116,7 +116,15 @@ export default defineSchema({
     revealedThrough: v.string(),
     revealedAt: v.string(),
     comparisons: v.any(),
+    // Optional only so pre-repair local rows still validate; reads fail closed without them.
+    view: v.optional(v.any()),
+    revealHash: v.optional(v.string()),
   })
     .index("by_runId", ["runId"])
     .index("by_requestId", ["requestId"]),
+  // One per accepted reveal requestId, so a key stays bound to its first runId.
+  historicalRevealReceipts: defineTable({ requestId: v.string(), runId: v.string() }).index(
+    "by_requestId",
+    ["requestId"],
+  ),
 });

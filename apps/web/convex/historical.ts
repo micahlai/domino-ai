@@ -48,11 +48,12 @@ const PROJECTION_ASSUMPTIONS = [
 const RISK_RULES_NOTE = "No verified threshold, so no risk rule is applied. Risk is unknown.";
 
 const at = (ts: string) => Date.parse(ts);
-/** The next publication after the cutoff. Server-owned so the client never names it. */
-const REVEAL_THROUGH = CASE.sources
-  .map((s) => s.publishedAt)
-  .filter((p) => at(p) > at(CUTOFF))
-  .sort((a, b) => at(a) - at(b))[0];
+/** The next publication after a run's cutoff. Server-owned so the client never names it. */
+const revealThrough = (cutoff: string) =>
+  CASE.sources
+    .map((s) => s.publishedAt)
+    .filter((p) => at(p) > at(cutoff))
+    .sort((a, b) => at(a) - at(b))[0];
 
 function fail(code: string, message: string): never {
   throw new ConvexError({ code, message });
@@ -103,26 +104,57 @@ function requireCase(caseId: string) {
 const rowHash = (row: Pick<Doc<"historicalRuns">, "run" | "snapshot" | "summary">) =>
   hashInput({ run: row.run, snapshot: row.snapshot, summary: row.summary });
 
-/** Load a run, re-check its integrity and that the case it was built from has not drifted. */
-async function loadRun(ctx: QueryCtx, runId: string) {
+const ids = (items: { id: string }[]) => items.map((item) => item.id);
+const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
+
+/**
+ * Load a saved run and check it against its own frozen snapshot, never the current CASE:
+ * a later case edit must not make a saved run unreadable. Drift only blocks new computations.
+ */
+async function loadRun(ctx: QueryCtx, runId: string, caseId?: string) {
   const row = await ctx.db
     .query("historicalRuns")
     .withIndex("by_runId", (q) => q.eq("runId", runId))
     .unique();
-  if (!row) fail("NOT_FOUND", "Unknown run");
+  if (!row || (caseId !== undefined && row.caseId !== caseId)) fail("NOT_FOUND", "Unknown run");
   const run = HistoricalRunSchema.parse(row.run);
   const snapshot = row.snapshot as Snapshot;
+  const linked =
+    run.id === row.runId &&
+    run.caseId === row.caseId &&
+    snapshot.caseId === row.caseId &&
+    run.branch.kind === row.kind &&
+    (run.branch.kind === "alternative" ? run.branch.baselineRunId : undefined) ===
+      row.baselineRunId &&
+    same(snapshot.method, run.method) &&
+    snapshot.roles.knowledgeCutoff === run.knowledgeCutoff &&
+    snapshot.roles.originBalanceDate === run.originBalanceDate &&
+    same(ids(snapshot.sources), run.inputs.sourceIds) &&
+    same(ids(snapshot.facts), run.inputs.factIds) &&
+    same(ids(snapshot.assumptions), run.inputs.assumptionIds) &&
+    same((row.summary as { run: unknown }).run, run);
   if (
+    !linked ||
     (await rowHash(row)) !== row.rowHash ||
-    (await hashInput(snapshot)) !== run.inputHash ||
-    run.id !== row.runId ||
-    run.caseId !== CASE.id
+    (await hashInput(snapshot)) !== run.inputHash
   )
     fail("INTEGRITY", "Stored run failed its integrity check");
-  const current = snapshotOf(run.inputs);
-  if (canonicalJson(current) !== canonicalJson(snapshot))
-    fail("CASE_CHANGED", "The case changed since this run was saved; save a new run");
-  return { row, run };
+  const baseline =
+    run.branch.kind === "alternative"
+      ? (await loadRun(ctx, run.branch.baselineRunId)).run
+      : undefined;
+  // The frozen inputs alone must still form a valid run context (cutoff, closure, origin).
+  const frozenCase = {
+    ...CASE,
+    id: snapshot.caseId,
+    currency: snapshot.currency,
+    sources: snapshot.sources,
+    facts: snapshot.facts,
+    assumptions: snapshot.assumptions,
+  };
+  if (!HistoricalRunContextSchema.safeParse({ case: frozenCase, run, baseline }).success)
+    fail("INTEGRITY", "Stored run failed its integrity check");
+  return { row, run, snapshot };
 }
 
 async function insertRun(
@@ -161,23 +193,26 @@ async function newRun(
   return { run, snapshot };
 }
 
-/** Case as known at the cutoff, or through a run's reveal. */
+/** Case as known at the cutoff, or the evidence view frozen at a run's reveal. */
 export const getCase = query({
   args: { caseId: v.string(), runId: v.optional(v.string()) },
   handler: async (ctx, { caseId, runId }) => {
     requireCase(caseId);
-    let through = CUTOFF;
+    let cutoff = CUTOFF;
+    let reveal: Doc<"historicalReveals"> | null = null;
     if (runId) {
-      await loadRun(ctx, runId);
-      const reveal = await revealFor(ctx, runId);
-      if (reveal) through = reveal.revealedThrough;
+      const { run } = await loadRun(ctx, runId, caseId);
+      cutoff = run.knowledgeCutoff;
+      reveal = await loadReveal(ctx, run);
     }
+    const through = reveal?.revealedThrough ?? cutoff;
     return {
-      case: visibleCase(through),
-      knowledgeCutoff: CUTOFF,
+      // After reveal, the view frozen with the comparisons, never a re-filter of today's CASE.
+      case: reveal ? (reveal.view as HistoricalCase) : visibleCase(cutoff),
+      knowledgeCutoff: cutoff,
       originBalanceDate: protocol.originBalanceDate,
       visibleThrough: through,
-      revealed: through !== CUTOFF,
+      revealed: reveal !== null,
       disclosure: protocol.disclosure,
       method: { ...QUARTER_BRIDGE_METHOD },
       projectionAssumptions: PROJECTION_ASSUMPTIONS,
@@ -185,6 +220,12 @@ export const getCase = query({
       riskRulesNote: RISK_RULES_NOTE,
     };
   },
+});
+
+/** Stored summary of a saved run, for reload. Read-only. */
+export const getRun = query({
+  args: { caseId: v.string(), runId: v.string() },
+  handler: async (ctx, { caseId, runId }) => (await loadRun(ctx, runId, caseId)).row.summary,
 });
 
 /** Server computes and saves the baseline from the cutoff view. Idempotent on requestId. */
@@ -235,9 +276,13 @@ export const computeAlternative = mutation({
         fail("CONFLICT", "requestId already used for a different request");
       return (await loadRun(ctx, prior.runId)).row.summary;
     }
-    const { run: baseline } = await loadRun(ctx, baselineRunId);
+    const { run: baseline, snapshot: frozen } = await loadRun(ctx, baselineRunId);
     if (baseline.branch.kind !== "baseline")
       fail("INVALID_BRANCH", "An alternative must start from a baseline run");
+    // A new alternative is computed from the current cutoff view, so it needs the baseline's
+    // frozen inputs and method to still match. Old runs stay readable; only this call refuses.
+    if (!same(snapshotOf(baseline.inputs), frozen) || baseline.knowledgeCutoff !== CUTOFF)
+      fail("CASE_CHANGED", "The case changed since this baseline was saved; save a new baseline");
     const known = visibleCase(CUTOFF);
     const alt = quarterAlternative({ ...ROLES, case: known }, DECISION);
     const inputs = {
@@ -286,6 +331,37 @@ async function revealFor(ctx: QueryCtx, runId: string) {
     .unique();
 }
 
+type RevealFields = Pick<
+  Doc<"historicalReveals">,
+  "runId" | "revealedThrough" | "revealedAt" | "comparisons" | "view"
+>;
+const revealHash = (r: RevealFields) =>
+  hashInput({
+    runId: r.runId,
+    revealedThrough: r.revealedThrough,
+    revealedAt: r.revealedAt,
+    comparisons: r.comparisons,
+    view: r.view,
+  });
+
+/** Reveal record for a run, checked against its hash and the run it belongs to. */
+async function loadReveal(ctx: QueryCtx, run: HistoricalRun) {
+  const r = await revealFor(ctx, run.id);
+  if (!r) return null;
+  const comparisons = r.comparisons as { runId: string }[];
+  const view = r.view as HistoricalCase | undefined;
+  // Rows saved before the evidence view was frozen have no hash and fail closed.
+  if (
+    !r.revealHash ||
+    (await revealHash(r)) !== r.revealHash ||
+    view?.id !== run.caseId ||
+    comparisons.length !== run.predictions.length ||
+    comparisons.some((c) => c.runId !== run.id)
+  )
+    fail("INTEGRITY", "Stored reveal failed its integrity check");
+  return r;
+}
+
 const revealView = (r: Doc<"historicalReveals">) => ({
   runId: r.runId,
   revealedThrough: r.revealedThrough,
@@ -293,32 +369,51 @@ const revealView = (r: Doc<"historicalReveals">) => ({
   comparisons: r.comparisons,
 });
 
-/** Reveal the next publication for a baseline and store actual-minus-forecast once. */
+/** Receipt for a reveal requestId, binding it to its original runId. */
+async function revealReceipt(ctx: QueryCtx, requestId: string) {
+  return ctx.db
+    .query("historicalRevealReceipts")
+    .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+    .unique();
+}
+
+/**
+ * Reveal the next publication for a baseline and freeze actual-minus-forecast plus the
+ * evidence view once per run. Every accepted requestId gets a receipt bound to its runId.
+ */
 export const reveal = mutation({
   args: { requestId: v.string(), runId: v.string() },
   handler: async (ctx, { requestId, runId }) => {
     requireRequestId(requestId);
-    const prior = await ctx.db
-      .query("historicalReveals")
-      .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
-      .unique();
-    if (prior) {
-      if (prior.runId !== runId) fail("CONFLICT", "requestId already used for a different request");
-      return revealView(prior);
-    }
+    // Pre-receipt rows recorded only the first requestId on the reveal itself.
+    const bound =
+      (await revealReceipt(ctx, requestId)) ??
+      (await ctx.db
+        .query("historicalReveals")
+        .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+        .unique());
+    if (bound && bound.runId !== runId)
+      fail("CONFLICT", "requestId already used for a different request");
     const { run } = await loadRun(ctx, runId);
     if (run.branch.kind !== "baseline")
       fail("INVALID_BRANCH", "Only a baseline run is compared with disclosures");
-    const existing = await revealFor(ctx, runId);
+    const existing = await loadReveal(ctx, run);
+    if (!bound) await ctx.db.insert("historicalRevealReceipts", { requestId, runId });
     if (existing) return revealView(existing);
-    if (!REVEAL_THROUGH) fail("NOTHING_TO_REVEAL", "No later publication in this case");
-    const comparisons = compareRun(CASE, run, REVEAL_THROUGH);
-    const id = await ctx.db.insert("historicalReveals", {
+    const through = revealThrough(run.knowledgeCutoff);
+    if (!through) fail("NOTHING_TO_REVEAL", "No later publication in this case");
+    // Saved predictions against the observations published by `through`; the run is not recomputed.
+    const fields = {
       runId,
-      requestId,
-      revealedThrough: REVEAL_THROUGH,
+      revealedThrough: through,
       revealedAt: new Date().toISOString(),
-      comparisons,
+      comparisons: compareRun(CASE, run, through),
+      view: visibleCase(through),
+    };
+    const id = await ctx.db.insert("historicalReveals", {
+      ...fields,
+      requestId,
+      revealHash: await revealHash(fields),
     });
     return revealView((await ctx.db.get(id))!);
   },
@@ -328,8 +423,8 @@ export const reveal = mutation({
 export const getReveal = query({
   args: { runId: v.string() },
   handler: async (ctx, { runId }) => {
-    await loadRun(ctx, runId);
-    const r = await revealFor(ctx, runId);
+    const { run } = await loadRun(ctx, runId);
+    const r = await loadReveal(ctx, run);
     return r ? revealView(r) : null;
   },
 });
