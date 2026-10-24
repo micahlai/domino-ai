@@ -68,9 +68,82 @@ export function keyedInt(seed: number, key: string, low: number, high: number): 
   return drawInt(rng(hash), low, high);
 }
 
-/** Synthetic 2.9% processor fee, rounded once. */
+/** Synthetic 2.9% processor fee, rounded half up once, exact in BigInt past 2^53 / 29. */
 export function netOfFees(gross: number): number {
-  return gross - Math.round((gross * 29) / 1000);
+  const exact = BigInt(gross);
+  return Number(exact - (exact * 29n + 500n) / 1000n);
+}
+
+/** Last Sunday of the 13 forecast weeks, which start on the first Monday after asOf. */
+export function lastForecastSunday(asOf: string): string {
+  const dow = new Date(Date.parse(`${asOf}T00:00:00Z`)).getUTCDay();
+  return addDays(asOf, ((8 - dow) % 7 || 7) + 13 * 7 - 1);
+}
+
+export function planInvoice(plan: BillingPlan, issued: string): Invoice {
+  return {
+    // JSON pair encoding cannot collide however plan IDs are spelled.
+    id: `inv_${JSON.stringify([plan.id, issued])}`,
+    customerId: plan.customerId,
+    amount: plan.amount,
+    issued,
+    due: addDays(issued, plan.paymentTermsDays),
+    billingPlanId: plan.id,
+  };
+}
+
+const OBLIGATIONS = [
+  {
+    key: "ops",
+    vendor: "Operations vendors",
+    amount: 3_500_000,
+    anchor: FIRST_MONDAY,
+    critical: false,
+  },
+  {
+    key: "rent",
+    vendor: "Office landlord",
+    amount: 6_200_000,
+    anchor: "2026-11-05",
+    critical: true,
+  },
+  {
+    key: "cloud",
+    vendor: "Cloud provider",
+    amount: 21_000_000,
+    anchor: "2027-01-01",
+    critical: true,
+  },
+] as const;
+
+/**
+ * Known obligations at the existing rates and cadences through horizon: weekly operations
+ * (Mondays), monthly rent on the 5th, quarterly cloud from the fixture's Jan 1 bill, and
+ * biweekly payroll at the given baseline. Existing vendor/due pairs are never duplicated.
+ * Returns the new unpaid bills so the caller can queue them.
+ */
+export function extendObligations(
+  snapshot: Snapshot,
+  after: string,
+  horizon: string,
+  payrollBaseline: number,
+): Bill[] {
+  const added: Bill[] = [];
+  for (const { key, vendor, amount, anchor, critical } of OBLIGATIONS) {
+    const next = (due: string) =>
+      key === "ops" ? addDays(due, 7) : nextOccurrence(anchor, due, key === "rent" ? 1 : 3);
+    for (let due: string = anchor; due <= horizon; due = next(due)) {
+      if (due <= after || snapshot.bills.some((b) => b.vendor === vendor && b.due === due))
+        continue;
+      const bill = { id: `bill_${key}_${due}`, vendor, amount, due, critical };
+      snapshot.bills.push(bill);
+      added.push(bill);
+    }
+  }
+  const last = snapshot.payroll.reduce((a, b) => (b.date > a.date ? b : a)).date;
+  for (let date = addDays(last, 14); date <= horizon; date = addDays(date, 14))
+    snapshot.payroll.push({ id: `pay_${date}`, date, amount: payrollBaseline });
+  return added;
 }
 
 function drawInt(random: Random, low: number, high: number): number {
@@ -309,6 +382,25 @@ function billingPlans(people: Customer[], invoices: Invoice[], seed: number): Bi
   });
 }
 
+/**
+ * Plan occurrences after the last known issuance through today (cus_006 Oct 5) are
+ * outstanding, not skipped. Their dues fall after today, so no payment history is invented.
+ */
+function outstandingOccurrences(plans: BillingPlan[]): Invoice[] {
+  const invoices: Invoice[] = [];
+  for (const plan of plans)
+    for (
+      let issued = nextOccurrence(plan.anchorDate, plan.anchorDate, plan.everyMonths);
+      issued <= TODAY;
+      issued = nextOccurrence(plan.anchorDate, issued, plan.everyMonths)
+    ) {
+      const invoice = planInvoice(plan, issued);
+      if (invoice.due <= TODAY) throw new Error(`outstanding occurrence ${invoice.id} is overdue`);
+      invoices.push(invoice);
+    }
+  return invoices;
+}
+
 /** Private settlement outcome for an unpaid invoice, from seed and invoice identity. */
 export function scheduleCollection(seed: number, invoice: Invoice) {
   const late = invoice.customerId === "cus_acme" ? [18, 24] : [0, 10];
@@ -365,6 +457,8 @@ export function createCompany(profile: CompanyProfile, seed: number): WorldState
   };
   // Forward fields come after every history draw, so seeded history is unchanged.
   snapshot.billingPlans = billingPlans(people, history.invoices, seed);
+  snapshot.invoices.push(...outstandingOccurrences(snapshot.billingPlans));
+  extendObligations(snapshot, TODAY, lastForecastSunday(TODAY), 60_000_000);
   snapshot.pendingPayouts = [];
   return {
     companyId: "kestrel",
