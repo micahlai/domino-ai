@@ -1,5 +1,13 @@
 # Current architecture: CREAO-driven company investigation
 
+## Correction: verified v2 project key, October24
+
+The supplied CREAO_ACCOUNT_API_KEY variable currently contains a valid Developer Platform v2 PROJECT key. Read-only GET https://developer.creao.ai/v2/me returned200 with project/key identity resolved; no IDs or key exposed. Earlier v1 agents/usage401 resulted from API-generation mismatch, not proof of an invalid key. Do not ask user to replace it or retry v1 with it. The shared cr_sk_ prefix does not distinguish v1 Account keys from v2 project keys.
+
+Current official docs inspected in browser: https://developer.creao.ai/docs/, https://developer.creao.ai/docs/get-started/authentication, https://developer.creao.ai/docs/models-and-pricing. v2 uses a separate USD wallet; consumer/team Pro Plus chat credits do not fund it. v1 CLI is separately documented as consumer-credit funded. User screenshot shows Team plan Pro Plus in agent.creao.ai, but remaining balance was not read. User reports developer wallet empty. No purchases, top-ups, agent creation or paid v2 execution authorized/performed. Do not switch to new paid fallback.
+
+v2 hosted agents are project-scoped and separate from consumer agents; documented current v2 routes are me/agents/runs/realtime. Skills/secrets/workspaces/files and Super Agent route family are not exposed there. Do not port v1 memory API assumptions to v2. Assess whether existing app-scoped CREAO integration can satisfy the bounded coordinator/research journey using the existing subscription before proposing separate spend. Account-wide v1 memory/realtime entitlement remains unknown; v2 authentication alone proves neither funding nor these capabilities.
+
 Latest user direction: keep working until the full canvas journey works; CREAO coordinator/research is product architecture, not optional after dashboard. Preserve main. User moved R1 to this computer; local isolated worktree, one UI writer. Show app-authored agent instructions/profiles, not secret prompts or hidden reasoning.
 
 ## First complete cycle

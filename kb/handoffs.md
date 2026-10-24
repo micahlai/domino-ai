@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex CREAO v2 correction
+- Read current Developer Platform docs in browser: v2 project keys and USD wallet are separate from v1 Account keys/consumer credits. Same key prefix; old docs linked a console now issuing v2 keys.
+- Supplied key PASSED read-only GET /v2/me200. Earlier401 was wrong API generation. Retract replacement request. User screenshot confirms Team Pro Plus, not its remaining balance. No paid v2 actions/top-ups.
+- Next: assess existing app-scoped integration against bounded coordinator/research needs before separate spend. Do not invent v2 memory/workspace/Super Agent support from v1 docs. Backend/UI workers continue independently.
+
 ## 2026-10-24 Codex credential check and audit reporting
 - User clarified: send a chat report after every scheduled coding audit, not development activity in the product canvas. Automation and C1 updated; no extra UI feature dispatched.
 - Account-format key present and correctly parsed, but Node24 GET usage/agents returns401 AUTHENTICATION_REQUIRED. Python client earlier hit signature403. No paid runs, creations or memory edits. User asked for freshly copied key; do not retry unchanged value.
