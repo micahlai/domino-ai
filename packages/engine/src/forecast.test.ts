@@ -7,7 +7,7 @@ import {
 import { WEEK_STARTS, fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
 import { addDays, weekStarts } from "./dates";
-import { forecast } from "./forecast";
+import { cashSchedule, forecast } from "./forecast";
 
 // Minimal hand-checkable company. Every expected number below is computed by hand.
 const tiny: Snapshot = {
@@ -426,5 +426,55 @@ describe("purity", () => {
   });
   it("same inputs give identical outputs", () => {
     expect(forecast(kestrel, fixtures.model, all)).toEqual(forecast(kestrel, fixtures.model, all));
+  });
+});
+
+describe("E3b-r1: hire savings on real days", () => {
+  const hire = (monthlyCost: number, fromDate: string, toDate: string) => ({
+    kind: "shift_hire" as const,
+    label: "Eng",
+    monthlyCost,
+    fromDate,
+    toDate,
+  });
+  const daily = (monthlyCost: number, fromDate: string, toDate: string) =>
+    cashSchedule(tiny, noModel, [hire(monthlyCost, fromDate, toDate)])
+      .items.filter((i) => i.kind === "change")
+      .map((i) => [i.date, i.amount]);
+
+  it("r1: conserves the weekly total across a month boundary, with a half cent", () => {
+    // Nov 30 (1000/30) + Dec 1-6 (6 * 1000/31) = 226.88 -> 227. Cumulative rounded:
+    // 33, 66, 98, 130, 162, 195, 227, so the days carry 33, 33, 32, 32, 32, 33, 32.
+    expect(daily(1000, "2026-11-30", "2026-12-07")).toEqual([
+      ["2026-11-30", 33],
+      ["2026-12-01", 33],
+      ["2026-12-02", 32],
+      ["2026-12-03", 32],
+      ["2026-12-04", 32],
+      ["2026-12-05", 33],
+      ["2026-12-06", 32],
+    ]);
+    expect(inflows(tiny, noModel, [hire(1000, "2026-11-30", "2026-12-07")])).toEqual(at(4, 227));
+    // 465 * (1/30 + 6/31) = 105.5 exactly -> 106; cumulative 15.5, 30.5, ... rounds half up.
+    expect(daily(465, "2026-11-30", "2026-12-07")).toEqual([
+      ["2026-11-30", 16],
+      ["2026-12-01", 15],
+      ["2026-12-02", 15],
+      ["2026-12-03", 15],
+      ["2026-12-04", 15],
+      ["2026-12-05", 15],
+      ["2026-12-06", 15],
+    ]);
+    expect(inflows(tiny, noModel, [hire(465, "2026-11-30", "2026-12-07")])).toEqual(at(4, 106));
+  });
+
+  it("r1: week zero keeps pre-Monday days after asOf on their real dates", () => {
+    // [10-29, 11-03): asOf and earlier excluded; 10-31 = 300000/31 = 9677.42 -> 9677, then
+    // cumulative 19677.42 -> 19677 and 29677.42 -> 29677. Weekly total unchanged at 29,677.
+    expect(daily(300_000, "2026-10-29", "2026-11-03")).toEqual([
+      ["2026-10-31", 9677],
+      ["2026-11-01", 10000],
+      ["2026-11-02", 10000],
+    ]);
   });
 });

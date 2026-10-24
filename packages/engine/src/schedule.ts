@@ -31,6 +31,7 @@ export function baseSchedule(
 ): CashItem[] {
   const last = weeks[weeks.length - 1];
   if (!last) throw new Error("no weeks");
+  assertUniqueBillIds(snapshot);
   const horizonEnd = toMs(addDays(last, 7));
   const items: CashItem[] = [];
   for (const inv of snapshot.invoices) {
@@ -99,4 +100,18 @@ function uninvoicedSignedDeals(snapshot: Snapshot) {
     }
     return deal.invoiceId === null;
   });
+}
+
+/**
+ * Bill targets, delays and funding days are keyed by bill ID, so a repeated ID would silently
+ * select or merge the wrong bill. Refuse instead of deduplicating.
+ */
+export function assertUniqueBillIds(snapshot: Snapshot): void {
+  const seen = new Set<string>();
+  for (const bill of snapshot.bills) {
+    if (seen.has(bill.id)) {
+      throw new Error(`ambiguous bill id ${bill.id}: more than one bill in the snapshot uses it`);
+    }
+    seen.add(bill.id);
+  }
 }

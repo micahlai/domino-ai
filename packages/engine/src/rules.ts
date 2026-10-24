@@ -13,7 +13,7 @@ import { addDays, horizonEnd } from "./dates";
 import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
 import { compareIds, fundingDays } from "./funding";
 import { decimalRatio } from "./money";
-import { bucketOf } from "./schedule";
+import { assertUniqueBillIds, bucketOf } from "./schedule";
 
 /** C1 calculation context: the complete ordered scenario, each change exactly once. */
 export type RuleContext = { model: CompanyModel; changes: Change[] };
@@ -95,6 +95,7 @@ export function compareBreaches(a: RuleBreach, b: RuleBreach): number {
 }
 
 function checkConstraints(snapshot: Snapshot, constraints: Constraint[], hasContext: boolean) {
+  assertUniqueBillIds(snapshot);
   const ids = new Set<string>();
   for (const c of constraints) {
     if (ids.has(c.id)) throw new Error(`duplicate constraint id ${c.id}`);

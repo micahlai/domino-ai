@@ -79,7 +79,10 @@ function discounted(amount: number, percent: number): number {
 /**
  * Daily rate is monthlyCost / days in that calendar month, over [fromDate, toDate).
  * Days on or before asOf are already reflected in opening cash, so they save nothing now.
- * Each week's exact total is rounded to cents once. Savings are money not spent, so they count as cash in.
+ * Savings are money not spent, so they count as cash in, on the day they are not spent:
+ * each day carries the change in its week's rounded cumulative exact total. The days of a
+ * week therefore sum to that week's exact total rounded once, and the daily funding replay
+ * sees savings on their real dates (week zero keeps pre-Monday days after asOf).
  */
 function hireSavings(
   change: Extract<Change, { kind: "shift_hire" }>,
@@ -88,19 +91,19 @@ function hireSavings(
 ): CashItem[] {
   if (change.toDate < change.fromDate)
     throw new Error(`shift_hire ${change.label}: toDate before fromDate`);
-  const perWeek = new Map<number, Ratio>();
+  const perWeek = new Map<number, { exact: Ratio; rounded: number }>();
+  const items: CashItem[] = [];
   for (let day = change.fromDate; day < change.toDate; day = addDays(day, 1)) {
     const week = day > asOf ? bucketOf(day, weeks) : null;
     if (week === null) continue;
-    const daily = ratio(change.monthlyCost, daysInMonth(day));
-    perWeek.set(week, addRatio(perWeek.get(week) ?? ratio(0), daily));
+    const prior = perWeek.get(week) ?? { exact: ratio(0), rounded: 0 };
+    const exact = addRatio(prior.exact, ratio(change.monthlyCost, daysInMonth(day)));
+    const rounded = roundCents(exact);
+    perWeek.set(week, { exact, rounded });
+    const amount = rounded - prior.rounded;
+    if (amount !== 0) items.push({ kind: "change", id: change.label, date: day, amount });
   }
-  return [...perWeek].map(([week, saved]) => ({
-    kind: "change" as const,
-    id: change.label,
-    date: weeks[week] ?? change.fromDate,
-    amount: roundCents(saved),
-  }));
+  return items;
 }
 
 const isItem = (i: CashItem, kind: CashItem["kind"], id: string) => i.kind === kind && i.id === id;

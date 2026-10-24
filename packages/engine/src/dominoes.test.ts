@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { dominoes } from "./dominoes";
 import { cashSchedule, forecast } from "./forecast";
 import { fundingDays } from "./funding";
-import { evaluateRules } from "./rules";
+import { evaluateOnSchedule, evaluateRules } from "./rules";
 
 // asOf Friday 2026-10-30: daily replay runs 2026-10-31 .. Sunday 2027-01-31 (WEEK_STARTS[12] + 6).
 const W = WEEK_STARTS;
@@ -480,5 +480,112 @@ describe("Kestrel fixture", () => {
   it("checks the lender's minimum without context", () => {
     const out = dominoes(baseline, [fixtures.constraints[0]!], kestrel);
     for (const d of out) expect(DominoSchema.parse(d)).toEqual(d);
+  });
+});
+
+describe("E3b-r1 regressions (review e77474d)", () => {
+  const hire = (monthlyCost: number, fromDate: string, toDate: string): Change => ({
+    kind: "shift_hire",
+    label: "Eng",
+    monthlyCost,
+    fromDate,
+    toDate,
+  });
+
+  it("r1: future hire savings are not available before their real day (Nov 6)", () => {
+    const s = snap(0, { bills: [bill("b1", 100, "2026-11-02")] });
+    const changes = [hire(3000, "2026-11-06", "2026-11-07")]; // 3000 / 30 = 100 on Nov 6
+    expect(funded(s, changes)).toEqual({ b1: "2026-11-06" });
+    expect(status(s, payBy("b1", 0), changes)?.status).toBe("breached");
+  });
+
+  it("r1: pre-Monday hire savings are available on their real day (Oct 31)", () => {
+    const s = snap(0, { bills: [bill("b1", 100, "2026-10-31")] });
+    const changes = [hire(3100, "2026-10-31", "2026-11-01")]; // 3100 / 31 = 100 on Oct 31
+    expect(funded(s, changes)).toEqual({ b1: "2026-10-31" });
+    expect(status(s, payBy("b1", 0), changes)?.status).toBe("clear");
+  });
+
+  const floor = minCash("floor", 50_000);
+  const shock = (date: string): Change => ({
+    kind: "remove_cash",
+    date,
+    amount: 70_000,
+    label: "Shock",
+  });
+
+  it("r1: an unrelated beneficial event gets no blame for a breach", () => {
+    // Base usable 100,000 / 110,000 / 110,000; the shock alone takes week 2 to 40,000.
+    const s = snap(100_000, { invoices: [inv("i", 10_000, "2026-11-10")] });
+    const changes: Change[] = [
+      { kind: "delay_invoice", invoiceId: "i", days: -1 },
+      shock("2026-11-20"),
+    ];
+    const out = domino(s, [floor], changes, { baseline: true });
+    expect(out.map((d) => [d.order, d.weekStart, d.constraintId, d.causedBy])).toEqual([
+      [1, W[1], undefined, undefined],
+      [2, W[2], "floor", undefined],
+    ]);
+  });
+
+  it("r1: an earlier unrelated cash drop gets no blame for a later separate shock", () => {
+    // Delaying i1 a week drops week 1 to 80,000 (a real, caused drop); it is back by week 2.
+    // The 11-25 shock alone takes week 3 to 40,000, with or without the delay.
+    const s = snap(100_000, {
+      invoices: [inv("i1", 30_000, "2026-11-10")],
+      payroll: [run("p1", 20_000, "2026-11-12")],
+    });
+    const changes: Change[] = [
+      { kind: "delay_invoice", invoiceId: "i1", days: 7 },
+      shock("2026-11-25"),
+    ];
+    const out = domino(s, [floor], changes, { baseline: true });
+    expect(out.map((d) => [d.order, d.weekStart, d.constraintId, d.causedBy])).toEqual([
+      [1, W[1], undefined, undefined],
+      [2, W[1], undefined, 1],
+      [3, W[3], "floor", undefined],
+    ]);
+  });
+
+  it("r1: the delayed-receipt chain still links past an unrelated beneficial event", () => {
+    // Base usable: wk1 1.2M, wk3 0.95M. With i1 delayed 21 days: wk1 0.7M, wk3 0.45M < 0.5M.
+    // i2 moving one day earlier inside week 3 changes nothing weekly.
+    const s = snap(1_000_000, {
+      invoices: [inv("i1", 500_000, "2026-11-10"), inv("i2", 50_000, "2026-11-24")],
+      payroll: [run("p1", 300_000, "2026-11-13"), run("p2", 300_000, "2026-11-27")],
+    });
+    const changes: Change[] = [
+      { kind: "delay_invoice", invoiceId: "i1", days: 21 },
+      { kind: "delay_invoice", invoiceId: "i2", days: -1 },
+    ];
+    const out = domino(s, [minCash("con_floor", 500_000)], changes, { baseline: true });
+    expect(
+      out.map((d) => [d.order, d.weekStart, d.constraintId, d.causedBy, d.evidence[0]?.ref]),
+    ).toEqual([
+      [1, W[1], undefined, undefined, "i1"],
+      [2, W[1], undefined, 1, "i1"],
+      [3, W[3], undefined, undefined, "i2"],
+      [4, W[3], "con_floor", 2, "loan.pdf#7"],
+    ]);
+  });
+
+  const twoB = (secondDue: string, invoices: Invoice[] = []) =>
+    snap(100, { bills: [bill("b", 100, "2026-11-02"), bill("b", 100, secondDue)], invoices });
+  const single = snap(100, { bills: [bill("b", 100, "2026-11-02")] });
+
+  it.each([
+    ["the same due date", twoB("2026-11-02")],
+    ["Nov 2 and Nov 3 with a Nov 3 receipt", twoB("2026-11-03", [inv("i1", 100, "2026-11-03")])],
+  ])("r1: duplicate bill IDs throw on every path (%s)", (_name, dup) => {
+    const ctx = { model: noModel, changes: [] };
+    expect(() => forecast(dup, noModel, [])).toThrow(/ambiguous bill id b/);
+    expect(() => cashSchedule(dup, noModel, [])).toThrow(/ambiguous bill id b/);
+    const f = forecast(single, noModel, []);
+    const schedule = cashSchedule(single, noModel, []);
+    expect(() => evaluateOnSchedule(dup, f, [payBy("b", 0)], schedule)).toThrow(
+      /ambiguous bill id b/,
+    );
+    expect(() => dominoes(f, [minCash("floor", 0)], dup)).toThrow(/ambiguous bill id b/);
+    expect(() => dominoes(f, [payBy("b", 0)], dup, ctx)).toThrow(/ambiguous bill id b/);
   });
 });

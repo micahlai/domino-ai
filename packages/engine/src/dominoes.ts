@@ -1,5 +1,6 @@
 import type {
   Cents,
+  Change,
   Constraint,
   Domino,
   DominoContext,
@@ -9,7 +10,7 @@ import type {
   Snapshot,
 } from "@domino/contracts";
 import { addDays, horizonEnd } from "./dates";
-import { type CashSchedule, cashSchedule } from "./forecast";
+import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
 import { compareIds } from "./funding";
 import { type RuleBreach, evaluateOnSchedule, verifiedSchedule, weeklyBreach } from "./rules";
 import { type CashItem, bucketOf } from "./schedule";
@@ -26,7 +27,12 @@ type Draft = {
   constraintId?: string;
   evidence: Evidence[];
   cause?: (earlier: Draft[]) => Draft | undefined;
+  /** Indices into context.changes behind this event or drop; removing them is its counterfactual */
+  own?: number[];
 };
+
+/** The forecast with the given changes removed from the context's ordered scenario. */
+type Without = (own: number[]) => Forecast;
 
 /** A snapshot record whose scheduled cash differs between the base and the scenario. */
 type RecordChange = {
@@ -41,9 +47,12 @@ type RecordChange = {
 
 /**
  * Build-spec §6.2 with C1 context. Emits the first breach of each constraint, plus event and
- * cash-drop markers only for real effective changes with schedule evidence. causedBy is set
- * only when supported: drops and weekly breaches need the context's baseline counterfactual;
- * a consequence follows its own breach because the constraint's metadata says so.
+ * cash-drop markers only for real effective changes with schedule evidence. causedBy needs a
+ * baseline (the caller asking for causal comparison) and is then proven per candidate: the
+ * candidate's own changes are removed and the scenario re-forecast; the link is kept only if
+ * that removes the drop, or removes or delays the breach, and exactly one candidate does so.
+ * Chronology alone never assigns blame. A consequence follows its own breach because the
+ * constraint's metadata says so.
  */
 export function dominoes(
   forecast: Forecast,
@@ -55,16 +64,47 @@ export function dominoes(
   const results = evaluateOnSchedule(snapshot, forecast, constraints, schedule);
   const changed =
     context && schedule
-      ? recordChanges(snapshot, cashSchedule(snapshot, context.model, []), schedule)
+      ? recordChanges(
+          snapshot,
+          cashSchedule(snapshot, context.model, []),
+          schedule,
+          context.changes,
+        )
       : [];
+  const without = context?.baseline ? counterfactuals(snapshot, context) : undefined;
   const drafts = [
     ...changed.map((c) => c.draft),
-    ...dropDrafts(snapshot, forecast, changed, context?.baseline),
+    ...dropDrafts(snapshot, forecast, changed, without),
     ...results.flatMap((r) =>
-      r.breach ? breachDrafts(r.constraint, r.breach, snapshot, context?.baseline) : [],
+      r.breach ? breachDrafts(r.constraint, r.breach, snapshot, without) : [],
     ),
   ];
   return finalize(drafts);
+}
+
+function counterfactuals(snapshot: Snapshot, context: DominoContext): Without {
+  const memo = new Map<string, Forecast>();
+  return (own) => {
+    const key = own.join(",");
+    const known = memo.get(key);
+    if (known) return known;
+    const removed = new Set(own);
+    const changes = context.changes.filter((_, i) => !removed.has(i));
+    const f = forecastFromSchedule(snapshot, cashSchedule(snapshot, context.model, changes));
+    memo.set(key, f);
+    return f;
+  };
+}
+
+/** The single earlier candidate of `rank` whose counterfactual removes the effect, if unique. */
+function provenCause(
+  earlier: Draft[],
+  rank: 0 | 1,
+  gone: (f: Forecast) => boolean,
+  without: Without,
+) {
+  const proven = earlier.filter((d) => d.rank === rank && d.own?.length && gone(without(d.own)));
+  return proven.length === 1 ? proven[0] : proven.length > 1 ? null : undefined;
 }
 
 function finalize(drafts: Draft[]): Domino[] {
@@ -103,6 +143,7 @@ function recordChanges(
   snapshot: Snapshot,
   base: CashSchedule,
   scenario: CashSchedule,
+  changes: Change[],
 ): RecordChange[] {
   const first = addDays(snapshot.asOf, 1);
   const end = horizonEnd(scenario.weeks);
@@ -122,6 +163,7 @@ function recordChanges(
     const kind = item.kind;
     const lessCashWeeks = lessCash(b, a, first, scenario.weeks);
     const draft = eventDraft(kind, item.id, b, a, date, snapshot, scenario.weeks);
+    draft.own = changes.flatMap((c, i) => (touches(c, kind, item) ? [i] : []));
     return [
       {
         kind,
@@ -133,6 +175,22 @@ function recordChanges(
       },
     ];
   });
+}
+
+/** Changes that target this record directly, or through its customer for churn. */
+function touches(change: Change, kind: RecordChange["kind"], item: CashItem): boolean {
+  switch (change.kind) {
+    case "delay_invoice":
+    case "lose_invoice":
+    case "discount_early_pay":
+      return kind === "invoice" && change.invoiceId === item.id;
+    case "delay_bill":
+      return kind === "bill" && change.billId === item.id;
+    case "churn":
+      return kind !== "bill" && change.customerId === item.customerId;
+    default:
+      return false;
+  }
 }
 
 const recordItems = (items: CashItem[]) =>
@@ -218,16 +276,14 @@ function dropDrafts(
   snapshot: Snapshot,
   forecast: Forecast,
   changed: RecordChange[],
-  baseline?: Forecast,
+  without?: Without,
 ): Draft[] {
   const start = snapshot.cashOnHand - snapshot.restrictedCash;
   const prior = (f: Forecast, i: number) => (i === 0 ? start : (f.weeks[i - 1]?.usable ?? start));
   return forecast.weeks.flatMap((w, i) => {
     const causes = changed.filter((c) => c.lessCashWeeks.has(i));
     if (!causes.length || !bigDrop(prior(forecast, i), w.usable)) return [];
-    const base = baseline?.weeks[i];
-    const counterfactual = baseline && base ? !bigDrop(prior(baseline, i), base.usable) : false;
-    const only = causes.length === 1 ? causes[0] : undefined;
+    const gone = (f: Forecast) => !bigDrop(prior(f, i), f.weeks[i]?.usable ?? 0);
     const draft: Draft = {
       key: `drop:${String(i).padStart(2, "0")}`,
       week: i,
@@ -240,8 +296,9 @@ function dropDrafts(
         ref: c.id,
         note: "Less cash this week than in the schedule before changes",
       })),
+      own: [...new Set(causes.flatMap((c) => c.draft.own ?? []))].sort((a, b) => a - b),
     };
-    if (counterfactual && only) draft.cause = (earlier) => earlier.find((d) => d === only.draft);
+    if (without) draft.cause = (earlier) => provenCause(earlier, 0, gone, without) ?? undefined;
     return [draft];
   });
 }
@@ -252,7 +309,7 @@ function breachDrafts(
   constraint: Constraint,
   breach: RuleBreach,
   snapshot: Snapshot,
-  baseline?: Forecast,
+  without?: Without,
 ): Draft[] {
   const draft: Draft = {
     key: `breach:${constraint.id}`,
@@ -264,7 +321,9 @@ function breachDrafts(
     constraintId: constraint.id,
     evidence: breach.evidence,
   };
-  if (causedByScenario(constraint, breach, snapshot, baseline)) draft.cause = latestCause;
+  if (without && constraint.kind !== "pay_by_date") {
+    draft.cause = breachCause(constraint, breach, snapshot, without);
+  }
   if (!constraint.consequence) return [draft];
   const { constraintId: _, ...rest } = draft;
   const consequence: Draft = {
@@ -279,26 +338,25 @@ function breachDrafts(
 }
 
 /**
- * Supported only for weekly rules with a baseline that does not break the same rule by the
- * same week. A weekly baseline cannot replay daily bill funding, so pay_by_date gets no link.
+ * The breach is caused by a candidate when removing the candidate's changes removes the breach
+ * or moves it later. A proven drop is preferred (it continues the chain to its event); two or
+ * more proven candidates of one kind are ambiguous, so no link. pay_by_date gets no link.
  */
-function causedByScenario(
+function breachCause(
   constraint: Constraint,
   breach: RuleBreach,
   snapshot: Snapshot,
-  baseline?: Forecast,
-): boolean {
-  if (!baseline || constraint.kind === "pay_by_date") return false;
-  const without = weeklyBreach(constraint, snapshot, baseline);
-  return !without || without.week > breach.week;
-}
-
-/** The latest earlier cash drop, else the only earlier event; otherwise no claim. */
-function latestCause(earlier: Draft[]): Draft | undefined {
-  const drops = earlier.filter((d) => d.rank === 1);
-  if (drops.length) return drops[drops.length - 1];
-  const events = earlier.filter((d) => d.rank === 0);
-  return events.length === 1 ? events[0] : undefined;
+  without: Without,
+): (earlier: Draft[]) => Draft | undefined {
+  const gone = (f: Forecast) => {
+    const after = weeklyBreach(constraint, snapshot, f);
+    return !after || after.week > breach.week;
+  };
+  return (earlier) => {
+    const drop = provenCause(earlier, 1, gone, without);
+    if (drop !== undefined) return drop ?? undefined;
+    return provenCause(earlier, 0, gone, without) ?? undefined;
+  };
 }
 
 function breachLabel(constraint: Constraint, breach: RuleBreach): string {
