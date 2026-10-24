@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CentsSchema, EvidenceSchema, ISODateSchema, IdSchema } from "./core";
+import { CentsSchema, CompanyModelSchema, EvidenceSchema, ISODateSchema, IdSchema } from "./core";
 
 /**
  * Branches of the timeline. The base branch is the normal forecast.
@@ -59,6 +59,21 @@ export const ForecastSchema = z.object({
 });
 export type Forecast = z.infer<typeof ForecastSchema>;
 
+export const DominoContextSchema = z.object({
+  model: CompanyModelSchema,
+  /** Complete ordered scenario, including ancestor and current changes exactly once. */
+  changes: z.array(ChangeSchema),
+  /** Counterfactual forecast used for comparison. */
+  baseline: ForecastSchema.optional(),
+});
+export type DominoContext = z.infer<typeof DominoContextSchema>;
+
+export const FixScoreContextSchema = z.object({
+  /** Root-to-parent order, excluding parent.changes and fix.changes. */
+  ancestorChanges: z.array(ChangeSchema),
+});
+export type FixScoreContext = z.infer<typeof FixScoreContextSchema>;
+
 export const DominoSchema = z.object({
   order: z.number().int().positive(),
   weekStart: ISODateSchema,
@@ -78,6 +93,10 @@ export type BranchKind = z.infer<typeof BranchKindSchema>;
 export const BranchStatusSchema = z.enum(["draft", "proposed", "approved", "rejected"]);
 export type BranchStatus = z.infer<typeof BranchStatusSchema>;
 
+const RiskIdsSchema = z.array(IdSchema).refine((ids) => new Set(ids).size === ids.length, {
+  message: "risk IDs must not contain duplicates",
+});
+
 export const BranchSchema = z.object({
   id: IdSchema,
   parentId: IdSchema.nullable(),
@@ -89,6 +108,8 @@ export const BranchSchema = z.object({
   forecast: ForecastSchema,
   dominoes: z.array(DominoSchema),
   status: BranchStatusSchema,
+  /** Cumulative known risks; missing = unknown legacy context; [] = base/no risks. */
+  riskIds: RiskIdsSchema.optional(),
 });
 export type Branch = z.infer<typeof BranchSchema>;
 
@@ -113,6 +134,8 @@ export const FixCandidateSchema = z.object({
   costNote: z.string(),
   risk: FixRiskSchema,
   evidence: z.array(EvidenceSchema),
+  /** Missing = unknown legacy target; [] = global; otherwise applies to any listed risk. */
+  targetRiskIds: RiskIdsSchema.optional(),
 });
 export type FixCandidate = z.infer<typeof FixCandidateSchema>;
 
@@ -169,11 +192,11 @@ export type BreakingPoint = z.infer<typeof BreakingPointSchema>;
 
 export const ResilienceReportSchema = z.object({
   universes: z.array(UniverseSchema),
-  /** Probability-weighted share of universes that survive, 0 to 1 */
+  /** Weighted scenario index, 0 to 1; overlapping universes are not a calibrated survival probability. */
   survivalRate: z.number().min(0).max(1),
   survivedCount: z.number().int().nonnegative(),
   breakingPoints: z.array(BreakingPointSchema),
-  /** Fixes applied to every universe in this report (empty = no fixes) */
+  /** Fixes selected for this report, applied only to matching universes (empty = no fixes). */
   appliedFixIds: z.array(IdSchema),
 });
 export type ResilienceReport = z.infer<typeof ResilienceReportSchema>;

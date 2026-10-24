@@ -161,6 +161,8 @@ export const snapshot: Snapshot = {
   deals: [
     {
       id: "deal_acme_renewal",
+      invoiceId: "inv_acme_2027",
+      kind: "renewal",
       customerId: "cus_acme",
       amount: K(240),
       stage: "won",
@@ -169,6 +171,8 @@ export const snapshot: Snapshot = {
     },
     {
       id: "deal_nw_expansion",
+      invoiceId: null,
+      kind: "expansion",
       customerId: "cus_northwind",
       amount: K(120),
       stage: "won",
@@ -271,6 +275,7 @@ const eventDominoes: Domino[] = [
 export const branches: Branch[] = [
   {
     id: "br_base",
+    riskIds: [],
     parentId: null,
     kind: "base",
     label: "Base forecast",
@@ -283,6 +288,7 @@ export const branches: Branch[] = [
   },
   {
     id: "br_acme_late",
+    riskIds: ["risk_acme_late"],
     parentId: "br_base",
     kind: "event",
     label: "Acme pays 45 days late",
@@ -296,6 +302,7 @@ export const branches: Branch[] = [
   },
   {
     id: "br_fix_early_pay",
+    riskIds: ["risk_acme_late"],
     parentId: "br_acme_late",
     kind: "fix",
     label: "Offer Acme 2% to pay now",
@@ -310,6 +317,7 @@ export const branches: Branch[] = [
   },
   {
     id: "br_fix_delay_hire",
+    riskIds: ["risk_acme_late"],
     parentId: "br_acme_late",
     kind: "fix",
     label: "Delay one hire by a month",
@@ -338,9 +346,10 @@ export const branches: Branch[] = [
   },
   {
     id: "br_renewal_churn",
+    riskIds: ["risk_nw_churn"],
     parentId: "br_base",
     kind: "event",
-    label: "Northwind does not renew",
+    label: "Hypothetical loss of Northwind's invoice",
     probability: 0.25,
     changes: [{ kind: "lose_invoice", invoiceId: "inv_nw_q4" }],
     forecast: forecastFromUsable([
@@ -362,15 +371,15 @@ export const risks: RiskEvent[] = [
   },
   {
     id: "risk_nw_churn",
-    label: "Northwind does not renew",
+    label: "Hypothetical loss of Northwind's invoice",
     probability: 0.25,
     impactLowPoint: K(250),
     changes: [{ kind: "lose_invoice", invoiceId: "inv_nw_q4" }],
     evidence: [
       {
-        source: "crm",
-        ref: "deal_nw_expansion",
-        note: "Marked won, but the contract is not signed",
+        source: "stripe",
+        ref: "inv_nw_q4",
+        note: "Demo assumption: hypothetical loss of this $250K invoice, not an observed renewal signal",
       },
     ],
   },
@@ -379,6 +388,7 @@ export const risks: RiskEvent[] = [
 export const fixes: FixCandidate[] = [
   {
     id: "fix_early_pay",
+    targetRiskIds: ["risk_acme_late"],
     label: "Offer Acme 2% to pay now",
     changes: [
       { kind: "discount_early_pay", invoiceId: "inv_acme_2027", percent: 2, payOn: "2026-11-20" },
@@ -389,6 +399,7 @@ export const fixes: FixCandidate[] = [
   },
   {
     id: "fix_delay_hire",
+    targetRiskIds: ["risk_acme_late"],
     label: "Delay one hire by a month",
     changes: [
       {
@@ -497,11 +508,17 @@ const FIX_K: Record<string, number[]> = {
 };
 
 function universe(riskIds: string[], fixIds: string[], allRisks: RiskEvent[]): Universe {
+  const applicableFixIds = [...new Set(fixIds)].filter((id) => {
+    const targets = fixes.find((fix) => fix.id === id)?.targetRiskIds;
+    return (
+      targets !== undefined &&
+      (targets.length === 0 || targets.some((risk) => riskIds.includes(risk)))
+    );
+  });
   const usable = BASE_USABLE_K.map((v, w) => {
     let u = v;
     for (const r of riskIds) u += SHOCK_K[r]?.[w] ?? 0;
-    // A fix only helps in universes that contain the risk it targets.
-    if (riskIds.includes("risk_acme_late")) for (const f of fixIds) u += FIX_K[f]?.[w] ?? 0;
+    for (const f of applicableFixIds) u += FIX_K[f]?.[w] ?? 0;
     return u;
   });
   const forecast = forecastFromUsable(usable);
@@ -512,10 +529,10 @@ function universe(riskIds: string[], fixIds: string[], allRisks: RiskEvent[]): U
     1,
   );
   return {
-    id: `u_${riskIds.join("+") || "base"}${fixIds.length ? `_with_${fixIds.join("+")}` : ""}`,
+    id: `u_${riskIds.join("+") || "base"}${applicableFixIds.length ? `_with_${applicableFixIds.join("+")}` : ""}`,
     label: labels.length ? labels.join(" + ") : "Base forecast",
     riskIds,
-    fixIds,
+    fixIds: applicableFixIds,
     probability,
     survives: !firstBreak,
     ...(firstBreak ? { breaksAt: firstBreak.weekStart, brokenConstraintId: "con_lender_min" } : {}),

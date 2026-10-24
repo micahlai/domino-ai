@@ -2,7 +2,9 @@ import type {
   Branch,
   Change,
   Domino,
+  DominoContext,
   FixCandidate,
+  FixScoreContext,
   Forecast,
   HistoryWeek,
   PastEvent,
@@ -42,15 +44,22 @@ export interface Connector {
 /** packages/engine. Pure functions: no AI, no network, no clock, no randomness. */
 export interface Engine {
   forecast(snapshot: Snapshot, model: CompanyModel, changes: Change[]): Forecast;
-  dominoes(forecast: Forecast, constraints: Constraint[], snapshot: Snapshot): Domino[];
+  /** Without context, only directly supported weekly min_cash rules may be evaluated. */
+  dominoes(
+    forecast: Forecast,
+    constraints: Constraint[],
+    snapshot: Snapshot,
+    context?: DominoContext,
+  ): Domino[];
   scanRisks(snapshot: Snapshot, model: CompanyModel, constraints: Constraint[]): RiskEvent[];
-  /** Builds a fix branch under `parent` and scores it. */
+  /** Builds a relative fix branch. Non-root parents require explicit ancestor context. */
   scoreFix(
     parent: Branch,
     fix: FixCandidate,
     snapshot: Snapshot,
     model: CompanyModel,
     constraints: Constraint[],
+    context?: FixScoreContext,
   ): Branch;
   /** Compares last week's forecast with what the bank actually shows. */
   grade(previous: Forecast, actualBank: BankTxn[]): { errorPct: number; misses: Evidence[] };
