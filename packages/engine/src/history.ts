@@ -5,8 +5,6 @@ import { compareIds } from "./funding";
 import { spikeExtra } from "./risks";
 
 const LATE_DAYS = 14;
-/** Build-spec §6.6: won deals over $50K. */
-const BIG_DEAL = 5_000_000;
 
 /** The Monday on or before a date. */
 function mondayOf(date: ISODate): ISODate {
@@ -35,16 +33,12 @@ export function history(snapshot: Snapshot, weeks: number): HistoryWeek[] {
 
 /**
  * Build-spec §6.6 markers from observable dated records only (on or before asOf). Churn and
- * usage need signals the inputs do not carry, so they are omitted. A payroll increase is shown
- * as a payroll change: it alone does not prove a hire.
+ * usage need signals the inputs do not carry, so they are omitted. Big-deal signings are omitted
+ * too: Deal.expectedClose is a plan, not an actual signing date, and no such timestamp exists yet.
+ * A payroll increase is shown as a payroll change: it alone does not prove a hire.
  */
 export function pastEvents(snapshot: Snapshot, _model: CompanyModel): PastEvent[] {
-  const events = [
-    ...latePaid(snapshot),
-    ...bigDeals(snapshot),
-    ...payrollSteps(snapshot),
-    ...spendSpikes(snapshot),
-  ];
+  const events = [...latePaid(snapshot), ...payrollSteps(snapshot), ...spendSpikes(snapshot)];
   return events.sort((a, b) =>
     a.date === b.date ? compareIds(a.id, b.id) : a.date < b.date ? -1 : 1,
   );
@@ -65,30 +59,6 @@ function latePaid(snapshot: Snapshot): PastEvent[] {
         amount: inv.amount,
         evidence: [
           { source: "stripe" as const, ref: inv.id, note: `Due ${inv.due}, paid ${inv.paid}` },
-        ],
-      },
-    ];
-  });
-}
-
-function bigDeals(snapshot: Snapshot): PastEvent[] {
-  return snapshot.deals.flatMap((deal) => {
-    const closed = deal.stage === "won" && deal.signed && deal.expectedClose <= snapshot.asOf;
-    if (!closed || deal.amount <= BIG_DEAL) return [];
-    const name = snapshot.customers.find((c) => c.id === deal.customerId)?.name ?? deal.customerId;
-    return [
-      {
-        id: `past_deal_${deal.id}`,
-        date: deal.expectedClose,
-        label: `${name} signed a ${money(deal.amount)} deal`,
-        kind: "big_deal" as const,
-        amount: deal.amount,
-        evidence: [
-          {
-            source: "crm" as const,
-            ref: deal.id,
-            note: `Won and signed, close date ${deal.expectedClose}`,
-          },
         ],
       },
     ];

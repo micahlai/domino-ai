@@ -11,9 +11,10 @@ import type {
 } from "@domino/contracts";
 import { addDays, daysBetween, toMs, weekStarts } from "./dates";
 import { money } from "./dominoes";
-import { forecast } from "./forecast";
+import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
 import { compareIds } from "./funding";
 import { decimalRatio } from "./money";
+import { evaluateOnSchedule } from "./rules";
 
 const MAX_RISKS = 5;
 const LATE_DAYS = 14;
@@ -29,15 +30,21 @@ type Candidate = Omit<RiskEvent, "impactLowPoint">;
 
 /**
  * Build-spec §6.3 from real snapshot records and the learned model (never an answer key).
- * Impact runs through forecast; candidates whose changes leave the forecast unchanged are
- * omitted. Constraints are accepted for the interface but do not change the chances.
+ * Impact runs through forecast. A candidate is omitted only when it changes neither the weekly
+ * totals nor any rule outcome: equal weeks can still move a bill past its daily deadline.
+ * Constraints decide that check only; they do not change the chances.
  */
 export function scanRisks(
   snapshot: Snapshot,
   model: CompanyModel,
-  _constraints: Constraint[],
+  constraints: Constraint[],
 ): RiskEvent[] {
-  const base = forecast(snapshot, model, []);
+  const outcomes = (changes: Change[]) => {
+    const schedule = cashSchedule(snapshot, model, changes);
+    const f = forecastFromSchedule(snapshot, schedule);
+    return { forecast: f, rules: ruleOutcomes(snapshot, f, constraints, schedule) };
+  };
+  const base = outcomes([]);
   const candidates = [
     ...latePayments(snapshot, model),
     ...nonRenewals(snapshot),
@@ -45,9 +52,11 @@ export function scanRisks(
   ];
   return candidates
     .flatMap((c) => {
-      const scenario = forecast(snapshot, model, c.changes);
-      if (sameWeeks(base, scenario)) return [];
-      return [{ ...c, impactLowPoint: base.lowPoint.usable - scenario.lowPoint.usable }];
+      const scenario = outcomes(c.changes);
+      const same = sameWeeks(base.forecast, scenario.forecast) && base.rules === scenario.rules;
+      if (same) return [];
+      const impact = base.forecast.lowPoint.usable - scenario.forecast.lowPoint.usable;
+      return [{ ...c, impactLowPoint: impact }];
     })
     .sort(compareRisks)
     .slice(0, MAX_RISKS);
@@ -67,6 +76,17 @@ function sameWeeks(a: Forecast, b: Forecast): boolean {
   return a.weeks.every(
     (w, i) => w.inflow === b.weeks[i]?.inflow && w.outflow === b.weeks[i]?.outflow,
   );
+}
+
+/** Each rule's status and first breach day from the shared evaluator, as one comparable key. */
+function ruleOutcomes(
+  snapshot: Snapshot,
+  f: Forecast,
+  constraints: Constraint[],
+  schedule: CashSchedule,
+): string {
+  const results = evaluateOnSchedule(snapshot, f, constraints, schedule);
+  return JSON.stringify(results.map((r) => [r.constraint.id, r.status, r.breach?.date ?? null]));
 }
 
 // ---------- Late payment ----------

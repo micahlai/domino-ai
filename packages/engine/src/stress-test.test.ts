@@ -70,13 +70,13 @@ describe("stressTest universes", () => {
     const report = stressTest(tiny, noModel, [minCash(500_000)], [rG, rB, rA], []);
     expect(ResilienceReportSchema.parse(report)).toEqual(report);
     expect(report.universes.map((u) => [u.id, u.survives, u.probability])).toEqual([
-      ["u_base", true, 1],
-      ["u_rA", false, 0.5], // 1,000,000 + 100,000 - 700,000 = 400,000 < 500,000
-      ["u_rB", true, 0.2],
-      ["u_rG", true, 0.4],
-      ["u_rA+rB", false, 0.1], // 300,000; also the all-adverse set, kept once
-      ["u_rA+rG", true, 0.2], // exactly 500,000 is not below
-      ["u_rB+rG", true, 0.4 * 0.2],
+      ["u_[]", true, 1],
+      ['u_["rA"]', false, 0.5], // 1,000,000 + 100,000 - 700,000 = 400,000 < 500,000
+      ['u_["rB"]', true, 0.2],
+      ['u_["rG"]', true, 0.4],
+      ['u_["rA","rB"]', false, 0.1], // 300,000; also the all-adverse set, kept once
+      ['u_["rA","rG"]', true, 0.2], // exactly 500,000 is not below
+      ['u_["rB","rG"]', true, 0.4 * 0.2],
     ]);
     const rA_ = report.universes[1];
     expect(rA_).toMatchObject({
@@ -91,10 +91,10 @@ describe("stressTest universes", () => {
 
   it("handles zero, one and five risks", () => {
     const c = [minCash(0)];
-    expect(stressTest(tiny, noModel, c, [], []).universes.map((u) => u.id)).toEqual(["u_base"]);
+    expect(stressTest(tiny, noModel, c, [], []).universes.map((u) => u.id)).toEqual(["u_[]"]);
     expect(stressTest(tiny, noModel, c, [rA], []).universes.map((u) => u.id)).toEqual([
-      "u_base",
-      "u_rA",
+      "u_[]",
+      'u_["rA"]',
     ]);
     const five = [1, 2, 3, 4, 5].map((n) =>
       risk(`r${n}`, 0.5, [
@@ -104,9 +104,9 @@ describe("stressTest universes", () => {
     const report = stressTest(tiny, noModel, c, five, []);
     // base + 5 singles + C(4,2)=6 pairs of the top four (r5..r2) + all five adverse = 13
     expect(report.universes).toHaveLength(13);
-    expect(report.universes.map((u) => u.id)).toContain("u_r2+r5");
-    expect(report.universes.map((u) => u.id)).not.toContain("u_r1+r5");
-    expect(report.universes.at(-1)?.id).toBe("u_r1+r2+r3+r4+r5");
+    expect(report.universes.map((u) => u.id)).toContain('u_["r2","r5"]');
+    expect(report.universes.map((u) => u.id)).not.toContain('u_["r1","r5"]');
+    expect(report.universes.at(-1)?.id).toBe('u_["r1","r2","r3","r4","r5"]');
     expect(report.survivedCount).toBe(13);
     expect(report.survivalRate).toBe(1);
   });
@@ -117,15 +117,36 @@ describe("stressTest universes", () => {
     const report = stressTest(tiny, noModel, [minCash(500_000)], [rA, rB], fixes);
     expect(report.universes.map((u) => u.id)).toEqual(without.universes.map((u) => u.id));
     expect(report.universes.map((u) => [u.id, u.fixIds, u.survives])).toEqual([
-      ["u_base", ["fix_global"], true],
-      ["u_rA", ["fix_global", "fix_a"], true], // 400,001 + 150,000
-      ["u_rB", ["fix_global"], true],
-      ["u_rA+rB", ["fix_global", "fix_a"], false], // 300,001 + 150,000 = 450,001
+      ["u_[]", ["fix_global"], true],
+      ['u_["rA"]', ["fix_global", "fix_a"], true], // 400,001 + 150,000
+      ['u_["rB"]', ["fix_global"], true],
+      ['u_["rA","rB"]', ["fix_global", "fix_a"], false], // 300,001 + 150,000 = 450,001
     ]);
     expect(report.universes[1]?.forecast.lowPoint.usable).toBe(550_001);
     expect(report.appliedFixIds).toEqual(["fix_global", "fix_a"]);
     const reversed = stressTest(tiny, noModel, [minCash(0)], [rA, rB], [...fixes].reverse());
     expect(reversed.universes[1]?.fixIds).toEqual(["fix_a", "fix_global"]);
+  });
+
+  it("gives every canonical risk set a distinct, stable ID, even for IDs like base and a+b (E4-r1)", () => {
+    // Review E4-2340ff8 #2: [] vs [base] and [a+b] vs [a, b] used to collide.
+    const odd = ["a", "b", "a+b", "base"].map((id, n) =>
+      risk(id, 0.5, [
+        { kind: "remove_cash", date: "2026-11-03", amount: (n + 1) * 1000, label: id },
+      ]),
+    );
+    const c = [minCash(0)];
+    const report = stressTest(tiny, noModel, c, odd, []);
+    const ids = report.universes.map((u) => u.id);
+    // base + 4 singles + 6 pairs + the all-adverse set
+    expect(ids).toHaveLength(12);
+    expect(new Set(ids).size).toBe(12);
+    expect(ids).toEqual(expect.arrayContaining(["u_[]", 'u_["base"]', 'u_["a+b"]', 'u_["a","b"]']));
+    const byId = (r: typeof report) => r.universes.map((u) => [u.id, u.riskIds]);
+    const reordered = stressTest(tiny, noModel, c, [...odd].reverse(), []);
+    const withFix = stressTest(tiny, noModel, c, odd, [fix("f", ["a"])]);
+    expect(byId(reordered)).toEqual(byId(report));
+    expect(byId(withFix)).toEqual(byId(report));
   });
 
   it("rejects missing or unknown targets and duplicate IDs", () => {
@@ -322,7 +343,7 @@ describe("stressTest on Kestrel", () => {
     const ids = report.universes.map((u) => u.id);
     expect(new Set(ids).size).toBe(ids.length);
     // The positive scenario is a universe but never part of the all-adverse set.
-    expect(ids).toContain("u_risk_big_deal_early");
+    expect(ids).toContain('u_["risk_big_deal_early"]');
     expect(report.universes.at(-1)?.riskIds).not.toContain("risk_big_deal_early");
   });
 });

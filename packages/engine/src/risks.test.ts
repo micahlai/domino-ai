@@ -1,5 +1,6 @@
 import {
   type CompanyModel,
+  type Constraint,
   RiskEventSchema,
   type Snapshot,
   SnapshotSchema,
@@ -100,6 +101,46 @@ describe("scanRisks late payments", () => {
     expect(
       scanRisks({ ...s, invoices: [late] }, model({ c1: { mean: 0, p90: 30, samples: 5 } }), []),
     ).toEqual([]);
+  });
+
+  describe("daily deadline rules (E4-r1)", () => {
+    // Review E4-2340ff8 #1: weekly totals match, but the two-day delay funds b on 11-04, after 11-03.
+    const s: Snapshot = {
+      ...tiny,
+      cashOnHand: 0,
+      customers: [{ id: "c1", name: "One Co", paymentTermsDays: 30 }],
+      invoices: [
+        { id: "i", customerId: "c1", amount: 100, issued: "2026-10-01", due: "2026-11-02" },
+      ],
+      bills: [{ id: "b", vendor: "V", amount: 100, due: "2026-11-03", critical: false }],
+    };
+    const m = model({ c1: { mean: 0, p90: 2, samples: 0 } });
+    const payB: Constraint = {
+      id: "con_pay_b",
+      label: "Pay b on time",
+      kind: "pay_by_date",
+      limit: 0,
+      billId: "b",
+      evidence: { source: "document", ref: "doc#1", note: "rule" },
+    };
+
+    it("keeps a risk that breaks a deadline even when weekly totals are equal", () => {
+      SnapshotSchema.parse(s);
+      const delayed = forecast(s, m, [{ kind: "delay_invoice", invoiceId: "i", days: 2 }]);
+      expect(JSON.stringify(delayed.weeks)).toBe(JSON.stringify(forecast(s, m, []).weeks));
+      const risks = scanRisks(s, m, [payB]);
+      expect(risks.map((r) => [r.id, r.impactLowPoint, r.probability])).toEqual([
+        ["risk_late_i", 0, 0.1],
+      ]);
+      expect(risks[0]?.changes).toEqual([{ kind: "delay_invoice", invoiceId: "i", days: 2 }]);
+      for (const r of risks) expect(RiskEventSchema.parse(r)).toEqual(r);
+    });
+
+    it("still omits a delay that leaves the deadline met", () => {
+      const later = { ...s, bills: [{ ...s.bills[0]!, due: "2026-11-04" }] };
+      expect(scanRisks(later, m, [payB])).toEqual([]);
+      expect(scanRisks(s, m, [])).toEqual([]);
+    });
   });
 
   it("computes impact through forecast", () => {

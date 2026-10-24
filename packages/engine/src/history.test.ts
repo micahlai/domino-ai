@@ -143,12 +143,32 @@ describe("pastEvents", () => {
 
   it("reports only observable, dated evidence", () => {
     const events = pastEvents(s, noModel);
+    // Deals are absent: expectedClose is a plan, not an observed signing date.
     expect(events.map((e) => [e.id, e.kind, e.date, e.amount])).toEqual([
-      ["past_deal_big", "big_deal", "2026-09-01", 5_000_001],
       ["past_late_late", "late_payment", "2026-09-16", 5_000],
       ["past_payroll_p2", "other", "2026-09-18", -60_000],
     ]);
     for (const e of events) expect(PastEventSchema.parse(e)).toEqual(e);
+  });
+
+  it("does not present expectedClose as an actual signing date (E4-r1)", () => {
+    // Review E4-2340ff8 #3: the contract has no actual close timestamp, only a plan.
+    const won: Snapshot = {
+      ...tiny,
+      customers: [{ id: "c", name: "Cee", paymentTermsDays: 30 }],
+      deals: [
+        {
+          id: "won",
+          customerId: "c",
+          amount: 5_000_001,
+          stage: "won",
+          expectedClose: "2026-09-01",
+          signed: true,
+          invoiceId: null,
+        },
+      ],
+    };
+    expect(pastEvents(won, noModel)).toEqual([]);
   });
 
   it("labels a payroll increase as a payroll change, not a hire", () => {

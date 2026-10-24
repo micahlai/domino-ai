@@ -114,8 +114,9 @@ function universe(
   const forecast = forecastFromSchedule(snapshot, schedule);
   const breach = survivalBreach(snapshot, constraints, schedule);
   return {
-    // Stable when fixes toggle: the ID depends only on the risk set.
-    id: ids.length ? `u_${ids.join("+")}` : "u_base",
+    // JSON of the canonical sorted array: injective for any IDs (including "base" and "a+b"),
+    // covers the empty set, and is stable when fixes toggle.
+    id: `u_${JSON.stringify(ids)}`,
     label: ids.length ? chosen.map((r) => r.label).join(" + ") : "Base forecast",
     riskIds: ids,
     fixIds: applied.map((f) => f.id),
