@@ -9,8 +9,8 @@ Skill files (in skills/): kb-sync.
 Read and follow these skill files: skills/kb-sync/SKILL.md. Read AGENTS.md, kb/spec/build-spec.md §8, kb/spec/convex-api.md.
 
 In apps/web/convex/connectors/ (Convex actions; do not edit schema.ts, ask Micah via kb/requests.md if needed):
-1. One module per source: stripe.ts (Stripe API, test key), nessie.ts (Nessie API), crm.ts, cards.ts, books.ts,
-   payroll.ts (mocks via MOCKS_BASE_URL + MOCKS_API_KEY), docs.ts (fetch documents as text).
+1. One module per source: stripe.ts, crm.ts, cards.ts, books.ts, payroll.ts, docs.ts (all our mock servers via
+   MOCKS_BASE_URL + MOCKS_API_KEY) and nessie.ts (Nessie API). Each takes a base URL, so a real API can replace a mock later.
 2. Each one: pull raw records, apply the saved FieldMapping[] from the sources table (applyMapping in
    connectors/mapping.ts: dotted field paths, dollars-string to cents, date normalisation), then parse with the
    canonical Zod schemas. Records that fail parsing are counted and logged, never silently dropped.

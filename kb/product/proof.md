@@ -22,9 +22,8 @@ Fill this table with real numbers on Saturday evening (prompt E8). Never invent 
 | Part | Status |
 | --- | --- |
 | Companies, events, contracts | Simulated, based on public filings (see `kb/research/public-companies.md`) |
-| Billing | Stripe sandbox, real API in test mode |
-| Bank | Capital One Nessie API |
-| CRM, cards, books, payroll | Mock servers that copy each tool's data shape |
+| Billing, CRM, cards, books, payroll | Our mock servers that copy each real tool's API shape (Stripe, HubSpot, Ramp, NetSuite/QuickBooks, Gusto) |
+| Bank | Capital One Nessie hackathon API |
 | Controller, customers, vendors | Played by people in the demo, or by models |
 | Forecast, dominoes, multiverse, learning | Real code with tests |
 

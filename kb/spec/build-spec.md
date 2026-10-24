@@ -110,7 +110,7 @@ Seven modules. Each has one owner. Modules talk only through `packages/contracts
 | --- | --- | --- | --- |
 | Contracts | `packages/contracts` | Both | Types, Zod schemas, fixtures |
 | Simulator | `packages/sim` | Jayden | Generates companies, events, planted errors, answer key |
-| Data tools | `apps/mocks` + Stripe sandbox + Nessie | Jayden | Serve simulated data in each tool's real format |
+| Data tools | `apps/mocks` (Stripe, CRM, Ramp, books, payroll, docs) + Nessie | Jayden | Serve simulated data in each tool's real format |
 | Connectors | `apps/web/convex/connectors/` | Jayden | Pull from tools, map to canonical records, tie out to bank |
 | Engine | `packages/engine` | Jayden | Forecast, dominoes, risk scan, fix scoring, grading, learning |
 | Agents | `packages/agents` | Jayden (explain wording: Micah) | CREAO and Claude behind one interface |
@@ -119,7 +119,7 @@ Seven modules. Each has one owner. Modules talk only through `packages/contracts
 
 Data flow:
 
-1. `sim` creates Kestrel and writes its records to Stripe (test mode), Nessie, and the mock servers (`pnpm seed`).
+1. `sim` creates Kestrel and writes its records to the mock servers and to Nessie (`pnpm seed`).
 2. Connectors pull from the tools, use the learned field mappings, and save a `Snapshot` in Convex.
 3. A Convex action runs the engine on the snapshot. It writes branches, risks and dominoes.
 4. Convex actions call agents for fix proposals and explanations. The engine scores every fix.
@@ -287,7 +287,7 @@ Duplicate vendor bill. Vendor bank details changed one day before a large paymen
 
 | Source | Plays | Built with | Messy part on purpose |
 | --- | --- | --- | --- |
-| Billing | Stripe | Stripe sandbox, test mode | Payouts net of fees, several payments per payout |
+| Billing | Stripe | `apps/mocks` `/stripe` (copies Stripe's API shape) | Payouts net of fees, several payments per payout |
 | Bank | Business bank | Capital One Nessie | Deposits land 1 to 3 days after the Stripe payout |
 | Sales pipeline | HubSpot-like CRM | `apps/mocks` `/crm` | Amounts as strings in dollars; "closedwon" before contract signed |
 | Cards | Ramp-like | `apps/mocks` `/cards` | Merchant names differ from vendor names |
@@ -296,6 +296,12 @@ Duplicate vendor bill. Vendor bank details changed one day before a large paymen
 | Documents | PDFs | `apps/mocks` `/docs` (static files) | Loan defines cash differently from the books |
 
 Each mock endpoint has its own field names and units, so the mapping agent has real work to do. Each one serves an `/openapi.json`.
+
+**Why mocks.** Every tool except the bank is our own mock server that copies the real tool's API shape (field names, units, paging). Nessie is Capital One's hackathon bank API.
+
+- No accounts or keys needed. Same data on every run.
+- We control the messy parts and keep a perfect answer key.
+- Path to production: point a connector at the real API's base URL. The mapping agent learns the real field names the same way.
 
 ### 8.2 Connectors
 

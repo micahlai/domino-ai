@@ -13,7 +13,7 @@ Read the task card, then the diff. Answer each item. Block the merge on any "no"
 - Money is integer cents everywhere. No float math on money.
 - Engine code is pure: no network, AI, `Date.now()` or randomness.
 - Outside inputs are parsed with Zod.
-- No secrets, no live Stripe keys, no answer-key imports.
+- No secrets, no calls to real payment/card/CRM/payroll APIs, no answer-key imports.
 - Tests exist for new engine/sim logic. `pnpm check` passes.
 
 ## Should pass

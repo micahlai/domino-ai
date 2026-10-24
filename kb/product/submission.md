@@ -14,7 +14,7 @@
 ## Microsoft "Built for the Real World"
 - [ ] Customer understanding: notes from talks with Hyphenate and a finance person (quotes)
 - [ ] Measurable usefulness: proof table
-- [ ] Path to production: same connectors on real Stripe and bank accounts; read-only access
+- [ ] Path to production: swap each mock base URL for the real API (Stripe, Ramp, HubSpot, Gusto, bank); the mapping agent re-learns fields; read-only access
 - [ ] Responsible design: propose-only agents, approvals, no auto-send, record
 - [ ] Confirm whether a Microsoft product is required
 

@@ -9,7 +9,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | --- | --- | --- | --- | --- | --- | --- |
 | S0 | Machine setup | `prompts/shared/00-setup.md` | — | todo | | |
 | E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | todo | | |
-| E2 | Mock servers + Stripe/Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
+| E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
 | E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | todo | | Can run in parallel with E1 |
 | E4 | Engine: risks, fix scoring, history, stress test | `prompts/engine/E4-multiverse.md` | E3 | todo | | Powers the hero visual |
 | E5 | Connectors + tie-out (Convex actions) | `prompts/engine/E5-connectors.md` | E2, P2 | todo | | |

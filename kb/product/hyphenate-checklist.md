@@ -10,7 +10,7 @@
 | Working with others | Approvals; rejections become learned rules | build-spec §1.5 |
 | Limits | Read-only access; agents only propose; requester is never the approver | AGENTS.md |
 | Explainable and accountable | Proof on every number; full record | design-spec §4 |
-| Is it real enough? | Sandboxes, messy data, answer key | proof.md |
+| Is it real enough? | Mock copies of real tools' APIs, messy data, answer key | proof.md |
 | Would you hire it? | Named seat, limited access, record, asks when unsure | overview.md |
 | Something new? | The multiverse of futures with a resilience score; learns a new company by itself | overview.md |
 | The moment | Lease collateral moves the breach from week 9 to week 5; fixes take survival from 64% to 93% | demo-script.md |

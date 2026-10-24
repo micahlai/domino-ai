@@ -35,7 +35,7 @@ Full spec: `kb/spec/build-spec.md`. Read the section for your task before you st
    from engine, agents, connectors, or web code. Only `packages/sim/eval` may use it.
 8. **Validate at boundaries.** Parse every outside input (APIs, agent output, JSON) with
    the Zod schemas in `@domino/contracts`.
-9. **Stripe keys must be test keys** (`sk_test_`). Refuse to run otherwise.
+9. **Mocks only.** Billing, CRM, cards, books and payroll come from our mock servers. Never call a real payment, card, CRM or payroll API. The bank is Capital One Nessie.
 10. **No secrets in code or commits.** Read keys from environment variables only.
 
 ## 4. Done means
