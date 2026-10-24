@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 06:27 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
+Updated: 2026-10-24 06:29 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
 
 ## Execution limits
 
@@ -31,7 +31,7 @@ Updated: 2026-10-24 06:27 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-d
 
 | Phase | Worktree / branch | Model | Exec / last verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
-| H2b repair1 | domino-H2 / H2-historical-backend | Opus high | 96517 / 14618 | /tmp/domino-H2b-r1-claude.log | Running; pure engine repairs, synthetic only |
+| H2b repair1 | domino-H2 / H2-historical-backend | Opus high | 96517 / former14618 | /tmp/domino-H2b-r1-claude.log | Completed a75406d; full702tests/check passed, independent re-review running |
 | H4b activity presentation | domino-H4 / H4-ui-styles-motion | Sonnet high | 33272 / 21312 | /tmp/domino-H4b-claude.log | Running; typed panel, labelled simulation preview and motion semantics, no live API |
 
 H1 and all prior phases are stopped. Verify current PID/cwd before assuming ownership. Full-check slot is free.
@@ -53,3 +53,9 @@ Four desktop screenshots: /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-deskt
 - audit_e3b_causality: evidence normalization reviewed; reuse for real-case data adoption.
 - audit_e3b_rules: engine review complete; reuse for repair and persistence boundaries.
 - audit_ui_integration: style review complete; reuse for activity/live wiring. May send a final note about the Motion dash issue.
+
+## Latest review handoff
+
+- Engine repair a75406d is complete and full check passed (exec91887, /tmp/domino-H2b-r1-check.log). Independent reviewer audit_e3b_rules is checking the five repairs, including the documented two-stage rounding choice. Do not accept or merge evidence until that review returns.
+- Convex local runtime preparation: installed CLI supports CONVEX_AGENT_MODE=anonymous and explicit local ports; source inspected, not launched. Never run default convex dev against a shared deployment. Configure an isolated project-local runtime only after H2c is reviewable.
+- Browser confirmed the inherited Motion issue: saved forecast path has stroke-dasharray=1 1 and pathLength=1 despite source6 4. H4b owns the fix; observed/alternative legend and chart must agree.
