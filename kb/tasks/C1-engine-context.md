@@ -8,6 +8,6 @@
 - **Launch:** GPT-6.1 Sol/high in sibling `domino-contract-engine-context`, branch `contract-engine-context`; user authorized preparation, not contract merge.
 - **Coordination:** You are not alone. Do not edit main, board/handoffs or this card. Commit only your owned folder and report exact verification/limits; no merge/push/team messages.
 ## Result (brain records worker result)
-- Done:
-- What changed (files):
-- Watch out:
+- Done: prepared local f80401d on contract-engine-context; independent GPT-6 Astra review found no blockers. Lead reran full forced check: 103 tests, five typechecks and lint passed under Node 24.
+- What changed (files): packages/contracts/src/core.ts, branches.ts, modules.ts, fixtures/index.ts and engine-context.test.ts. Contracts-only diff; 22 new tests, 35 contract tests total.
+- Watch out: not merged or pushed. Engine enforcement and seeded-data backfill remain later work. One-to-one invoice links intentionally reject split billing. Claude's E3a branch is untouched. See kb/reviews/C1-f80401d.md.

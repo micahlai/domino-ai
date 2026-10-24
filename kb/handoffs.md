@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:21 Codex brain (integration complete, C1 ready)
+- Done: E1a/E6a integrated on main at 5762475/63366ae; combined 81 tests, typechecks, lint, summary CLI and production build passed. Prepared C1 f80401d in its own contracts-only worktree; independent Astra review and lead's full 103-test check passed. Proposal, review and task Result recorded.
+- Next: Jayden/Micah review C1 before shared-contract merge. Claude remains on E3a repairs. E3b then consumes explicit invoice links and calculation contexts; E4 uses targeted fixes and common rule evaluation.
+- Watch out: C1 does not implement engine enforcement or backfill existing seeded payloads. Original Kestrel guard remains until engine adoption. No push, deployment, data reset or E3a worktree change. Untracked web tooling files were preserved.
+
 ## 2026-10-24 01:14 Codex brain (integration and C1 preparation)
 - Done: integrated latest product work, preserving both sides of knowledge-base insert conflicts; merged E1a at 5762475 and E6a at 63366ae under user authorization. Checks passed after each merge; final main has 81 tests plus typechecks/lint, production build and sim summary passing under Node 24.
 - Next: build_contract_c1 prepares the contracts-only patch in domino-contract-engine-context; review_contract_design audits it. Proposal and card are in kb/spec and kb/tasks. Review before shared-contract merge.

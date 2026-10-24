@@ -1,5 +1,5 @@
 # C1: Engine context contract proposal
-Status: draft for Jayden and Micah review. Prepared separately from main. No production or seeded data is changed.
+Status: prepared at f80401d on contract-engine-context for Jayden and Micah review. Independent review and 103-test workspace check passed. Not merged; no production or seeded data is changed.
 Scope: optional payload fields, new Zod context schemas, optional trailing Engine arguments, fixtures and contract tests. Claude continues E3a repairs on its existing branch.
 Decision: use explicit record relationships and calculation context rather than infer them from names or matching amounts. Counterargument: one-to-one invoice linkage does not cover split billing; reject that unsupported case in v1 rather than silently approximate it.
 
@@ -8,6 +8,7 @@ Decision: use explicit record relationships and calculation context rather than 
 - invoiceId missing means unknown legacy mapping; null explicitly means not invoiced; a string identifies the full invoice for that deal. A linked invoice may already be paid: the deal must still never add a second receipt.
 - Snapshot validation rejects an explicit dangling link, duplicate invoice ID for a linked target, customer mismatch, amount mismatch, or two deals claiming one invoice. Null/omitted fields remain valid legacy inputs.
 - Link deal_acme_renewal to inv_acme_2027 and mark it renewal. Mark deal_nw_expansion as expansion and explicitly uninvoiced; do not link its $120K to the unrelated $250K invoice.
+- Preserve stable Northwind branch/risk IDs and illustrative cash paths, but relabel their supposed non-renewal as a hypothetical invoice-loss scenario. Its evidence references inv_nw_q4 with an assumption note; the unsigned expansion must not be used as proof of losing that invoice.
 - E3b must replace the temporary ambiguous-match guard with these rules: linked deals add no cash; explicitly uninvoiced signed won deals add cash once; unknown mappings never guess and may require review.
 - E4 must not infer renewals from customer IDs or amounts. Missing kind is unknown. Unsupported renewal/churn signals are omitted, not manufactured.
 
