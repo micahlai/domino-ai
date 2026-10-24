@@ -12,6 +12,7 @@ import { ProviderError } from "../../../packages/agents/src/errors";
 import { hashInput } from "../../../packages/agents/src/hash";
 import {
   buildHistoricalCreaoPrompt,
+  creaoHistoricalEnv,
   historicalCreaoOutputFormat,
   historicalSystemPrompt,
   runCreaoHistoricalSpecialist,
@@ -107,10 +108,13 @@ const sentCreaoRules = (packet: HistoricalSpecialistInput) => {
  * claude-dev: instructions is the exact app-authored system prompt. creao: instructions is only
  * the per-run rules Domino sends; the remote app's own instructions and memory are unknown here.
  * The version is a hash, so a later edit gets a new version while stored operations keep theirs.
+ * creao also freezes the role's remote app id (not a secret, it is in the run URL; never the key),
+ * so a queued step cannot go to a different app than the one verified.
  */
 async function profileOf(role: Role, mode: ProviderMode) {
   const creao = mode === "creao";
   const instructions = creao ? creaoRules(role) : historicalSystemPrompt(role);
+  const appId = creao ? process.env[creaoHistoricalEnv[role].appId]?.trim() : undefined;
   return {
     role,
     workingStyle: WORKING_STYLE[role],
@@ -121,6 +125,7 @@ async function profileOf(role: Role, mode: ProviderMode) {
     ...(creao
       ? {
           provider: "creao",
+          ...(appId ? { appId } : {}),
           instructionsScope:
             "Rules Domino sends with each run. The CREAO app's own instructions, skills and memory also apply and are not visible to Domino.",
         }
@@ -820,11 +825,13 @@ export const expireTurn = internalMutation({
 
 class ProviderUnverified extends Error {}
 class ProfileMismatch extends Error {}
+class AppChanged extends Error {}
 class NoBudget extends Error {}
 
 /**
- * Server-side gate, default off: the CREAO profile versions Codex has verified against the
- * dedicated remote apps' own instructions and memory. A version not listed sends nothing.
+ * Server-side gate, default off: `appId/profileVersion` pairs Codex has verified against that
+ * dedicated remote app's own instructions and memory (the version names the role). A pair not
+ * listed sends nothing, so verifying app A never authorizes app B.
  */
 const verifiedCreaoProfiles = () =>
   (process.env.DOMINO_CREAO_VERIFIED_PROFILES ?? "").split(",").map((s) => s.trim());
@@ -849,19 +856,26 @@ async function dispatchSpecialist(
     profile.version !== current.version
   )
     throw new ProfileMismatch();
+  if (profile.appId !== current.appId) throw new AppChanged();
   if (mode === "claude-dev") {
     const { output, provider, model, usage } = await runHistoricalSpecialist(process.env, packet);
     return { output, provider, model, usage };
   }
   if (sentCreaoRules(packet) !== profile.instructions) throw new ProfileMismatch();
-  if (!verifiedCreaoProfiles().includes(profile.version)) throw new ProviderUnverified();
+  // Gate off reads as unverified even when config is also missing; gate on, a missing app is config.
+  const verified = verifiedCreaoProfiles();
+  if (!profile.appId && verified.some(Boolean))
+    throw new ProviderError("creao", "historicalSpecialist", "config");
+  if (!verified.includes(`${profile.appId}/${profile.version}`)) throw new ProviderUnverified();
   const budget = Math.min(
     creaoDefaults.runDeadlineMs,
     (leaseUntil ?? 0) - Date.now() - FINISH_MARGIN_MS,
   );
   if (budget < MIN_CREAO_BUDGET_MS) throw new NoBudget();
-  // Only the role's app id and app key are read; no account key and no fallback.
-  const { output, provider, runId } = await runCreaoHistoricalSpecialist(process.env, packet, {
+  // Only the role's app id and app key are read; no account key and no fallback. The app id is
+  // pinned to the frozen, verified one rather than re-read.
+  const env = { ...process.env, [creaoHistoricalEnv[packet.role].appId]: profile.appId };
+  const { output, provider, runId } = await runCreaoHistoricalSpecialist(env, packet, {
     runDeadlineMs: budget,
     onRunCreated,
   });
@@ -897,6 +911,11 @@ function failureOf(e: unknown) {
     return failed(
       "profile_mismatch",
       "The saved specialist profile no longer matches the deployed instructions. No model call was made.",
+    );
+  if (e instanceof AppChanged)
+    return failed(
+      "app_changed",
+      "The CREAO app for this specialist changed after this step was queued. No call was made.",
     );
   if (e instanceof ProviderUnverified)
     return failed(

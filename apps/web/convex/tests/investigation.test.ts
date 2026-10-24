@@ -630,10 +630,11 @@ const creaoConfig = () => {
   vi.stubEnv("CREAO_ACCOUNT_API_KEY", "account-key-not-real");
   vi.stubEnv("CREAO_API_KEY", "legacy-key-not-real");
 };
-/** Open the server-side gate for exactly the stored analyst profile version. */
+/** Open the server-side gate for exactly the stored analyst app and profile version. */
 const verify = async (t: T, conversationId: string) => {
   const { profile } = await opOf(t, conversationId, "specialist");
-  vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", (profile as { version: string }).version);
+  const p = profile as { appId: string; version: string };
+  vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `${p.appId}/${p.version}`);
 };
 /** Like drain, but advances fake time so the adapter's poll sleeps resolve. */
 const drainPolls = async (t: T) => {
@@ -668,6 +669,32 @@ describe("CREAO specialist dispatch", () => {
     expect(p.instructions).not.toContain("<domino_input>");
     expect(p.instructions.endsWith(historicalCreaoOutputFormat)).toBe(true);
     expect(p.instructionsScope).toMatch(/own instructions, skills and memory/);
+    expect(p).not.toHaveProperty("appId");
+  });
+
+  it("verification binds to the frozen app: a swapped or unverified app gets zero calls", async () => {
+    creaoConfig();
+    const t = setup();
+    const f = creao();
+    const { conversationId } = await ask(t);
+    expect((await opOf(t, conversationId, "specialist")).profile).toMatchObject({
+      appId: "app-analyst",
+    });
+    await verify(t, conversationId);
+    vi.stubEnv("CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID", "app-b");
+    await drain(t);
+    const swapped = await opOf(t, conversationId, "specialist");
+    expect([swapped.status, swapped.error?.code]).toEqual(["failed", "app_changed"]);
+
+    // Queued on app B while only app A's binding for the same version is verified.
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    const { version } = (await opOf(t2, c2, "specialist")).profile as { version: string };
+    vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `app-analyst/${version},${version}`);
+    await drain(t2);
+    const unverified = await opOf(t2, c2, "specialist");
+    expect([unverified.status, unverified.error?.code]).toEqual(["failed", "provider_unverified"]);
+    expect(f.fetch).not.toHaveBeenCalled();
   });
 
   it("gate off or missing app config: zero calls, honest failure", async () => {
@@ -684,7 +711,8 @@ describe("CREAO specialist dispatch", () => {
     vi.stubEnv("CREAO_API_KEY", "legacy-key-not-real");
     const t2 = setup();
     const c2 = (await ask(t2, "req-inv-2")).conversationId;
-    await verify(t2, c2);
+    const { version } = (await opOf(t2, c2, "specialist")).profile as { version: string };
+    vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `app-analyst/${version}`);
     await drain(t2);
     const missing = await opOf(t2, c2, "specialist");
     expect([missing.status, missing.error?.code]).toEqual(["failed", "config"]);

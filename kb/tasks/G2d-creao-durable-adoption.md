@@ -24,3 +24,12 @@
 ## Repair1: bind verification to the remote app
 
 Independent audit blocks70d0379: version-only verification permits queued operation to dispatch to a different, unverified app after APP_ID env changes. Freeze non-secret remote app identity with operation/profile, bind verification to appId+role+profileVersion, reject app drift before any create. Existing missing-config/default-off safe behavior must remain. No secret snapshot. Add regression for queue on appA, change to appB, zero POST; verification for A must not authorize B; unchanged verified binding positive. Probe /tmp/g2d-independent.test.ts. Update API/gate setup docs, retain all previous guarantees and original ownership. No livecalls/fullsuite/build/cloud/keys. Commit local and stop.
+
+### Repair1 Result
+- Status: offline worker candidate, 2026-10-24. Not live-accepted.
+- The CREAO profile now freezes the role's non-secret `appId` at creation (never the key). Dispatch fails `app_changed` with no call if the role's current app id differs, before the gate, budget or create. The adapter gets the frozen app id pinned.
+- Gate entries are now `appId/profileVersion` pairs. A bare version, or app A's pair, does not authorize app B (`provider_unverified`). Default off is unchanged: gate off still reads `provider_unverified` even with no config; gate on with no app id is `config`. All zero calls.
+- Tests: `apps/web/convex/tests/investigation.test.ts` 22 tests (1 new): queued on app A and verified, app id changed to B means `app_changed` and zero fetches; queued on B with only A's pair and a bare version listed means `provider_unverified` and zero fetches. The snapshot test asserts no `appId` without config. The existing success test (verified binding, unchanged) is the positive case. Mutation check: dropping the app check fails the new test; going back to version-only matching fails 4.
+- Probe `/tmp/g2d-independent.test.ts`: the swap test now fails its "succeeded" expectation (bypass closed). With its `verify` changed to the pair format, the other 4 pass.
+- Verified: vitest investigation + historical (35/35), `tsc --noEmit` (apps/web), biome on the 2 code files. Not run: full suite, build, server, live CREAO.
+- Docs: investigation-api.md gate format and order updated. Open for Codex: when you set the gate, list `appId/version` pairs for each dedicated app. `getConversation` now also returns `profile.appId`; it is not a credential, but strip it there if you want it server-only.
