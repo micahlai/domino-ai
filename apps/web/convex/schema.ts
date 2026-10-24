@@ -127,4 +127,10 @@ export default defineSchema({
     "by_requestId",
     ["requestId"],
   ),
+  // H2d: one feed per baseline, written only in the mutation that commits the outcome.
+  historicalActivity: defineTable({
+    baselineRunId: v.string(),
+    sequence: v.number(),
+    event: v.any(),
+  }).index("by_feed", ["baselineRunId", "sequence"]),
 });

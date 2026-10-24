@@ -1,4 +1,6 @@
 import {
+  type ActivityEvent,
+  ActivityEventSchema,
   type HistoricalCase,
   HistoricalCaseSchema,
   type HistoricalRun,
@@ -275,6 +277,16 @@ export const saveBaseline = mutation({
       snapshot,
       summary,
     });
+    await emit(ctx, run.id, {
+      id: `evt-saved-${run.id}`,
+      occurredAt: run.createdAt,
+      runId: run.id,
+      kind: "run_saved",
+      entity: { kind: "run", id: run.id },
+      label: "Baseline forecast saved",
+      evidenceIds: run.inputs.sourceIds,
+      outputId: run.id,
+    });
     return summary;
   },
 });
@@ -334,7 +346,65 @@ export const computeAlternative = mutation({
       snapshot,
       summary,
     });
+    // Alternative inputs are cutoff-only (HistoricalRunContextSchema above), so safe pre-reveal.
+    await emit(ctx, baselineRunId, {
+      id: `evt-alt-${run.id}`,
+      occurredAt: run.createdAt,
+      runId: run.id,
+      kind: "alternative_computed",
+      entity: { kind: "run", id: run.id },
+      label: "Alternative computed",
+      evidenceIds: run.inputs.sourceIds,
+      outputId: run.id,
+    });
     return summary;
+  },
+});
+
+type NewEvent = Omit<ActivityEvent, "sequence" | "caseId" | "status">;
+
+/**
+ * Append one success event to a baseline's feed inside the mutation that commits the outcome,
+ * so a rollback drops it too. Callers emit only on the first-write path; retries return before
+ * it, so one outcome has one event. Reading the feed's last row makes concurrent writers to the
+ * same feed conflict and retry, so a sequence is never shared.
+ */
+async function emit(ctx: MutationCtx, baselineRunId: string, e: NewEvent) {
+  const last = await ctx.db
+    .query("historicalActivity")
+    .withIndex("by_feed", (q) => q.eq("baselineRunId", baselineRunId))
+    .order("desc")
+    .first();
+  const sequence = (last?.sequence ?? 0) + 1;
+  const event = ActivityEventSchema.parse({ ...e, sequence, caseId: CASE.id, status: "succeeded" });
+  await ctx.db.insert("historicalActivity", { baselineRunId, sequence, event });
+}
+
+const ACTIVITY_LIMIT = 50;
+
+/**
+ * A baseline's feed: its save, its alternatives and its own reveal, oldest first, the latest
+ * ACTIVITY_LIMIT events. Read-only; never writes an event.
+ */
+export const getActivity = query({
+  args: { caseId: v.string(), baselineRunId: v.string() },
+  handler: async (ctx, { caseId, baselineRunId }) => {
+    requireCase(caseId);
+    const { run } = await loadRun(ctx, baselineRunId, caseId);
+    if (run.branch.kind !== "baseline")
+      fail("INVALID_BRANCH", "Activity is listed per baseline run");
+    // ponytail: latest 50 only, add afterSequence paging if a feed ever outgrows it.
+    const rows = await ctx.db
+      .query("historicalActivity")
+      .withIndex("by_feed", (q) => q.eq("baselineRunId", baselineRunId))
+      .order("desc")
+      .take(ACTIVITY_LIMIT);
+    return rows.reverse().map((r) => {
+      const e = ActivityEventSchema.parse(r.event);
+      if (e.caseId !== caseId || e.sequence !== r.sequence)
+        fail("INTEGRITY", "Stored activity failed its integrity check");
+      return e;
+    });
   },
 });
 
@@ -428,6 +498,17 @@ export const reveal = mutation({
       ...fields,
       requestId,
       revealHash: await revealHash(fields),
+    });
+    // Only this baseline's feed gets the newly visible sources; other baselines never see them.
+    const before = new Set(visibleCase(run.knowledgeCutoff).sources.map((s) => s.id));
+    await emit(ctx, runId, {
+      id: `evt-reveal-${runId}`,
+      occurredAt: fields.revealedAt,
+      runId,
+      kind: "disclosure_revealed",
+      entity: { kind: "comparison", id: runId },
+      label: "Next disclosure revealed",
+      evidenceIds: fields.view.sources.map((s) => s.id).filter((s) => !before.has(s)),
     });
     return revealView((await ctx.db.get(id))!);
   },
