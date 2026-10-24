@@ -77,6 +77,19 @@ const NONNEGATIVE: readonly HistoricalMetric[] = [
   "revolver_availability",
 ];
 
+/** Balances are at an instant; flows cover a duration. Shared by facts and predictions. */
+function checkMetricPeriod(ctx: z.RefinementCtx, metric: HistoricalMetric, period: Period): void {
+  const wantInstant = isBalance(metric);
+  if (wantInstant !== (period.kind === "instant"))
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["period"],
+      message: wantInstant
+        ? "a balance metric needs an instant period"
+        : "a flow metric needs a duration period",
+    });
+}
+
 /** A disclosure as published. An amendment is a new source; it never replaces the original. */
 export const HistoricalSourceSchema = z.object({
   id: IdSchema,
@@ -129,15 +142,7 @@ export const HistoricalFactSchema = z
     }),
   ])
   .superRefine((fact, ctx) => {
-    const wantInstant = isBalance(fact.metric);
-    if (wantInstant !== (fact.period.kind === "instant"))
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["period"],
-        message: wantInstant
-          ? "a balance metric needs an instant period"
-          : "a flow metric needs a duration period",
-      });
+    checkMetricPeriod(ctx, fact.metric, fact.period);
     if (NONNEGATIVE.includes(fact.metric) && fact.cents < 0)
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -155,6 +160,14 @@ const RangeSchema = z
   })
   .refine((r) => r.low <= r.high, { message: "low is above high", path: ["high"] });
 
+const CostRangeSchema = z
+  .object({
+    unit: z.literal("cents"),
+    low: SafeCentsSchema.nonnegative(),
+    high: SafeCentsSchema.nonnegative(),
+  })
+  .refine((r) => r.low <= r.high, { message: "low is above high", path: ["high"] });
+
 /**
  * Not evidence. synthetic: invented operational detail; counterfactual: a decision
  * not taken; hindsight: uses information published after the cutoff.
@@ -167,10 +180,11 @@ export const HistoricalAssumptionSchema = z.object({
   basisFactIds: z.array(IdSchema),
   value: RangeSchema,
   effectiveFrom: CalendarDateSchema,
-  /** Upfront cash cost, as a cents range. */
-  oneTimeCost: RangeSchema.optional(),
+  /** Upfront cash cost, as a nonnegative cents range. */
+  oneTimeCost: CostRangeSchema.optional(),
   /** Delay between decision and first benefit. */
   benefitLagDays: z.number().int().nonnegative().optional(),
+  /** Assumptions listed earlier in the case; this keeps dependencies acyclic. */
   dependsOn: z.array(IdSchema).default([]),
   feasibleAtCutoff: z.enum(["yes", "no", "unknown"]),
   /** Chosen or tuned after a reveal; forces the run to be labelled post-hoc. */
@@ -252,12 +266,13 @@ export const HistoricalCaseSchema = z
     }
 
     const factIds = new Set(c.facts.map((f) => f.id));
-    const assumptionIds = new Set(c.assumptions.map((a) => a.id));
+    const earlierAssumptions = new Set<string>();
     for (const [i, a] of c.assumptions.entries()) {
       if (a.basisFactIds.some((id) => !factIds.has(id)))
         issue(["assumptions", i, "basisFactIds"], "basis fact not found");
-      if (a.dependsOn.some((id) => !assumptionIds.has(id) || id === a.id))
-        issue(["assumptions", i, "dependsOn"], "dependency not found");
+      if (a.dependsOn.some((id) => !earlierAssumptions.has(id)))
+        issue(["assumptions", i, "dependsOn"], "dependencies must be listed earlier");
+      earlierAssumptions.add(a.id);
     }
   });
 export type HistoricalCase = z.infer<typeof HistoricalCaseSchema>;
@@ -277,9 +292,14 @@ export const HistoricalPredictionSchema = z
     /** Labelled assumption range, not a statistical interval. */
     range: z.object({ low: SafeCentsSchema, high: SafeCentsSchema }).optional(),
   })
-  .refine((p) => !p.range || (p.range.low <= p.cents && p.cents <= p.range.high), {
-    message: "range must contain the point value",
-    path: ["range"],
+  .superRefine((p, ctx) => {
+    checkMetricPeriod(ctx, p.metric, p.period);
+    if (p.range && !(p.range.low <= p.cents && p.cents <= p.range.high))
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["range"],
+        message: "range must contain the point value",
+      });
   });
 export type HistoricalPrediction = z.infer<typeof HistoricalPredictionSchema>;
 
@@ -359,6 +379,7 @@ function checkRun(ctx: z.RefinementCtx, c: HistoricalCase, run: HistoricalRun, p
   const assumptions = new Map(c.assumptions.map((a) => [a.id, a]));
   const inputSources = new Set(run.inputs.sourceIds);
   const inputFacts = new Set(run.inputs.factIds);
+  const inputAssumptions = new Set(run.inputs.assumptionIds);
 
   for (const [i, id] of run.inputs.sourceIds.entries()) {
     const s = sources.get(id);
@@ -391,12 +412,16 @@ function checkRun(ctx: z.RefinementCtx, c: HistoricalCase, run: HistoricalRun, p
       issue(["inputs", "assumptionIds", i], "assumption not found");
       continue;
     }
+    // Post-reveal selection marks the run post-hoc; only a hindsight label may rest on later facts.
     if (a.label === "hindsight" || a.selectedAfterReveal) hindsight = true;
-    else if (a.basisFactIds.some((f) => !inputFacts.has(f)))
+    if (a.label !== "hindsight" && a.basisFactIds.some((f) => !inputFacts.has(f)))
       issue(
         ["inputs", "assumptionIds", i],
         "assumption basis must be run input facts available at the cutoff",
       );
+    // Each input's dependencies are inputs too, so the closure is validated as a whole.
+    if (a.dependsOn.some((d) => !inputAssumptions.has(d)))
+      issue(["inputs", "assumptionIds", i], "assumption dependencies must be run inputs");
   }
   if (run.branch.kind === "alternative") {
     if (run.branch.decisionAssumptionIds.some((id) => !run.inputs.assumptionIds.includes(id)))
@@ -487,6 +512,12 @@ export const HistoricalComparisonContextSchema = z
   .superRefine(({ case: c, run, revealedThrough, comparisons }, ctx) => {
     const issue = (i: number, message: string) =>
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["comparisons", i], message });
+    if (run.caseId !== c.id)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["run", "caseId"],
+        message: "run belongs to another case",
+      });
     if (ms(revealedThrough) <= ms(run.knowledgeCutoff))
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

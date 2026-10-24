@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { historicalFixtures as fx } from "./fixtures";
 import {
   ActivityEventSchema,
+  HistoricalAssumptionSchema,
   type HistoricalCase,
   HistoricalCaseSchema,
   HistoricalComparisonContextSchema,
   HistoricalFactSchema,
+  HistoricalPredictionSchema,
   type HistoricalRun,
   HistoricalRunContextSchema,
   HistoricalRunSchema,
@@ -182,6 +184,87 @@ describe("runs", () => {
     const alt = clone(fx.alternativeRun);
     if (alt.branch.kind === "alternative") alt.branch.postHoc = true;
     expect(runCtx(alt, c, fx.baselineRun).success).toBe(true);
+  });
+});
+
+describe("audit repair 1", () => {
+  const postHocAlt = (): HistoricalRun => {
+    const alt = clone(fx.alternativeRun);
+    if (alt.branch.kind === "alternative") alt.branch.postHoc = true;
+    return alt;
+  };
+
+  it("does not let post-reveal selection authorize later facts for a non-hindsight label", () => {
+    const c = clone(fx.historicalCase);
+    c.assumptions[0]!.selectedAfterReveal = true;
+    c.assumptions[0]!.basisFactIds = ["f_cash_fy"];
+    expect(messages(runCtx(postHocAlt(), c, fx.baselineRun))).toEqual([
+      "assumption basis must be run input facts available at the cutoff",
+    ]);
+    c.assumptions[0]!.label = "hindsight";
+    expect(runCtx(postHocAlt(), c, fx.baselineRun).success).toBe(true);
+  });
+
+  it("requires assumption dependencies to be run inputs, so hindsight cannot hide", () => {
+    const c = clone(fx.historicalCase);
+    c.assumptions.unshift({
+      ...c.assumptions[0]!,
+      id: "a_future",
+      label: "hindsight",
+      selectedAfterReveal: true,
+      basisFactIds: ["f_cash_fy"],
+    });
+    c.assumptions[1]!.dependsOn = ["a_future"];
+    const base = clone(fx.baselineRun);
+    base.inputs.assumptionIds = ["a_cut"];
+    expect(messages(runCtx(base, c))).toEqual(["assumption dependencies must be run inputs"]);
+    base.inputs.assumptionIds = ["a_future", "a_cut"];
+    expect(messages(runCtx(base, c))).toEqual(["a baseline cannot use hindsight assumptions"]);
+  });
+
+  it("rejects assumption cycles and self dependencies", () => {
+    const c = clone(fx.historicalCase);
+    c.assumptions.push({ ...c.assumptions[0]!, id: "a_second", dependsOn: ["a_cut"] });
+    expect(HistoricalCaseSchema.safeParse(c).success).toBe(true);
+    c.assumptions[0]!.dependsOn = ["a_second"];
+    expect(messages(HistoricalCaseSchema.safeParse(c))).toEqual([
+      "dependencies must be listed earlier",
+    ]);
+    const self = clone(fx.historicalCase);
+    self.assumptions[0]!.dependsOn = ["a_cut"];
+    expect(HistoricalCaseSchema.safeParse(self).success).toBe(false);
+  });
+
+  it("scores a run only against its own case", () => {
+    const c = clone(fx.historicalCase);
+    c.id = "other_case";
+    const result = HistoricalComparisonContextSchema.safeParse({
+      case: c,
+      run: fx.baselineRun,
+      revealedThrough: fx.revealedThrough,
+      comparisons: [fx.comparison],
+    });
+    expect(messages(result)).toEqual(["run belongs to another case"]);
+  });
+
+  it.each([
+    ["days", { unit: "days", low: 1, high: 5 }],
+    ["negative cents", { unit: "cents", low: -5, high: -1 }],
+    ["low above high", { unit: "cents", low: 5, high: 1 }],
+  ])("rejects a one-time cost in %s", (_name, oneTimeCost) => {
+    const a = { ...fx.historicalCase.assumptions[0]!, oneTimeCost };
+    expect(HistoricalAssumptionSchema.safeParse(a).success).toBe(false);
+  });
+
+  it("matches prediction metric and period kind like facts", () => {
+    const p = fx.baselineRun.predictions[1]!;
+    const quarter = { kind: "duration", start: "2031-10-01", end: "2031-12-31" } as const;
+    expect(messages(HistoricalPredictionSchema.safeParse({ ...p, period: quarter }))).toEqual([
+      "a balance metric needs an instant period",
+    ]);
+    const flow = { ...p, metric: "operating_cash_flow", range: undefined };
+    expect(HistoricalPredictionSchema.safeParse(flow).success).toBe(false);
+    expect(HistoricalPredictionSchema.safeParse({ ...flow, period: quarter }).success).toBe(true);
   });
 });
 
