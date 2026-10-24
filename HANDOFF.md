@@ -1,5 +1,7 @@
 # Domino handoff
 
+Latest: spatial canvas accepted/integrated3accfb9,1044tests/build+actualbrowser financialflow pass, stable3102 updated against3214. CREAOgateOFF, bothspecialists honestlyunverified, fullagentjourneynotdone. ClaudeG5cleanup86419/21240 active in domino-G3. CREAOUI sign-in required, userasked; no secrets or livecalls. See active-run for exactcheckpoint/screenshot/nextstep. Mainunchanged.
+
 Latest14:36audit: G2d3738d5c accepted/integrated3ea78ef after998tests and actual3214runtime checks; CREAOgate remainsOFF. G4e7b7944 passes1028tests/build but browser+independentaudit block fitclipping/labeloverlap. SoleUIClaude32944/exec73011 now fixes those plus G3retry/alternative issues. Candidate3418 shows actual localforecast graph, not successfulagents. Read active-run. Mainunchanged.
 
 Scheduled audit14:21 PDT: G4 spatial-map64729 and G2d verification-repair69536 active, cwd verified, changed files in scope, no new commits. G3-live-canvas-repair1.md prepared for AFTER G4; one UI writer only. No acceptance/integration/test rerun this audit. Next collect completed checkpoints, independent review and actual visual verification.

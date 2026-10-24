@@ -1,6 +1,15 @@
 # Active run: agent canvas centerpiece
 
-Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
+Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview1044tests/typechecks/lint/build pass at3accfb9. Automation remains ACTIVE every15minutes. No main merge.
+
+## Scheduled audit, October24 14:51 PDT, accepted spatial preview
+
+- G3/G4 repairs ef019a6+475fe57 independently APPROVED:72focusedtests plus independent /tmp/domino-ui-repair-audit.cjs cover all4blockers, no future values even with postrevealcase. Worker full1037tests/build pass. Integrated3accfb9; combined1044tests/typecheck/lint/build PASS, /tmp/domino-live-web-preview-check.log and -build.log. Resolved only add/add task Result conflict, no feature conflict.
+- Browser verified repaired desktop/mobile fit (all11fixture nodes inside390x844canvas measured), node details, actual question -> archivedsource/forecast/output, earlyalternative chart/costs/noobservedvalues, revealcomparison, reloadsavedgraph, no consoleerrors/warnings. CREAO bothroles honestlyfailedprovider_unverified, gateOFF, no modelcalls. This completes deterministic visual flow, NOT full CREAOagent/coordinator acceptance.
+- Stable3102 now serves3accfb9 against3214, PID86858/exec19805, /tmp/domino-live-web-preview.log. User-visible http://127.0.0.1:3102/investigate?c=conv-35fbe3821ff36131. Screenshot/tmp/domino-accepted-spatial-web.png. Previouscandidate3418 PID73099/exec3407. Preserve existing localbackenddata.
+- Sole UI ClaudeSonnet86419/exec21240 in domino-G3 now G5smallcleanup from730ecd5, /tmp/domino-G5-claude.log. Remove emptyreveal workaround through sharedbuilder, fix alternativejourneywording, surface stored instructionsScope. No graphicalredesign or newdependencies. CardG5-canvas-detail-cleanup.md. Nochildren.
+- CREAOsetup inspected in in-appbrowser: redirected to sign-in. Asked user viaasync to signin agent.creao.ai in thatbrowser and reply signedin, no secrets inchat. Browser tab15 kept forhandoff. Untilaccess available cannot verify/create dedicated historicalprofiles/memory. Existingapp-scopedonly, accountkeyunused. Real coordinatorcapability still unresolved; currentDomino workflowfixed anddisclosed.
+- Next auditG5; independentlyinspect remoteappconfiguration aftersignin; gate staysOFF until appId+profileversion verified. No duplicateworkers, no mainmerge. Older states below are historical.
 
 ## Scheduled audit, October24 14:36 PDT
 

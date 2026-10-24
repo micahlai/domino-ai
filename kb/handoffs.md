@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex spatial preview published
+- PairedG3/G4repairsef019a6/475fe57 accepted3accfb9 afterindependentaudit,1044combinedtests/build, actualdesktop/mobile/financialflow/reloadbrowser checks. Stable3102updated, screenshot/tmp/domino-accepted-spatial-web.png.
+- CREAOgateOFF; no livecalls. UIneeds signin for dedicatedappinstruction/memoryverification; userasked. Fullagent/coordinatorjourneynotcomplete.
+- ClaudeG5cleanup86419/21240 active, soleUIwriter. Nextauditcleanup andCREAOsetupwhenaccessible. Mainuntouched.
+
 ## 2026-10-24 Codex spatial audit and CREAO runtime acceptance
 - G2d3738d5c accepted, integrated3ea78ef;998tests and actual3214bundle/codegen/4APIchecks pass. DefaultgateOFF, no livecalls.
 - G4e7b7944 passed1028tests/build but browser+review foundFitViewclipping and labelbounds overlap. Actual3418localquestion createdrealforecastnodes/chart, providerhonestlyunavailable.
