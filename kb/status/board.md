@@ -6,9 +6,9 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
-| G6 grouped company map | doing | Local Claude; Sources/Toolbox, distinct forms and real-operation pulses; G6-company-map |
+| G6 grouped company map | done | a5d7723 acceptedc6e0a89;1,077tests/build/desktop-mobilebrowser; stable3102 |
 | G7 frozen knowledge projection | todo | Reserved friend computer, G7-company-knowledge; two lib files only |
-| G8a product entry cleanup | todo | Same local UI writer after G6, no G7 dependency; remove primary nav clutter |
+| G8a product entry cleanup | doing | Claude71724 in domino-G8a; shell/landing only, no G7 dependency |
 | G8 knowledge wiring | todo | After audited G6/G7; saved knowledge in node details |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |

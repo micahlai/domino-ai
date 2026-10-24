@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-24 Codex grouped map accepted, cleanup running
+- G6a5d7723 acceptedc6e0a89 after independent reconnect/caption repair review,1,077combinedtests/build and desktop/mobile browser. Stable3102 updated; grouped Sources/Toolbox and knowledge detail shown.
+- G8a Claude71724 is sole UI writer, shell/landing cleanup; friend G7 projection remains separate. Backend3214 restarted with preserved data. Main unchanged, no live CREAO acceptance.
+
 ## 2026-10-24 Codex grouped map and friend handoff
 - User requests grouped tools/sources, central Domino plus inspectable company knowledge, real-operation pulses, differentiated shapes and product cleanup. Spec and G6/G7/G8 cards prepared.
 - G6 local sole UI writer; friend owns G7 pure frozen-run knowledge projection only. G8 shell/wiring queued after both audits. No schema/dependency changes or main merge.

@@ -1,6 +1,6 @@
 # Active run: Domino agent canvas
 
-Updated October 24, 2026 at the 16:02 PDT scheduled audit. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
+Updated October 24, 2026 after grouped-canvas acceptance and cleanup dispatch. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
 
 ## Goal and constraints
 
@@ -10,7 +10,7 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Current accepted result
 
-- Preview feature checkpoint: c40552a. G5 cleanup eaa54d7 accepted after independent review, 1,049 tests, typechecks, lint, production build and targeted browser checks. Logs: /tmp/domino-G5-preview-check.log and /tmp/domino-G5-preview-build.log.
+- Preview feature checkpoint: c6e0a89 (G6 grouped canvas,1,077 tests/build/browser). Prior c40552a: G5 cleanup eaa54d7 accepted after independent review, 1,049 tests, typechecks, lint, production build and targeted browser checks. Logs: /tmp/domino-G5-preview-check.log and /tmp/domino-G5-preview-build.log.
 - Earlier paired G3/G4 repairs ef019a6 and 475fe57 were independently approved. Browser verified all 11 fixture nodes fit the mobile canvas, real local question submission, saved forecast chart, alternative before reveal, comparison after reveal and quiet reload. No console errors/warnings.
 - G5 reuses the shared financial view builder, removes the fake-reveal adapter workaround, fixes alternative availability labels and exposes the stored instruction-scope explanation. Early alternatives contain no observed outcome values, reveal date or future evidence.
 - G2d backend 3738d5c accepted after 43 focused tests, eight independent probes, 998 full tests and actual anonymous-backend smoke. Remote app identity is frozen; verification binds app ID plus role/profile version. Gate remains OFF.
@@ -19,17 +19,19 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Workers and runtimes
 
-Current G6: initial3601a85 passed 1,072 tests, typecheck/lint/build, but independent audit found reconnect catch-up animation and queued-group captions. Repaira18eae7 approved by reviewer after62focused tests; latest101investigate tests pass. Parent actual browser confirmed grouped frames, saved graph and knowledge-source detail. Mobile390x844 exposed header overlapping Sources; final bounded Claude mobile repair is running (exec21300, log /tmp/domino-G6-mobile-claude.log). No G6 integration/visual acceptance yet. Candidate3419 serves initial3601a85 for audit only. Friend G7 still at task-card base on last fetch. G8a shell cleanup may proceed after G6 without waiting for G7; G8 full knowledge wiring still waits for G7. No duplicate UI worker.
+G6 complete and accepted: initial3601a85 plus independently approved reconnect/caption repaira18eae7 and browser-driven mobile repaira5d7723 integrated as c6e0a89. Final and combined preview checks pass1,077 tests/typechecks/lint, builds pass. Actual browser verified grouped frames, source/knowledge details, forecast output, quiet restored history (zero pulse markers), no console errors, mobile390x844 FitView all13records/groups within canvas and no horizontal overflow. Stable3102 serves c6e0a89. Screenshot /tmp/domino-grouped-canvas-accepted.png. This demonstrates real deterministic saved operations; CREAO specialists remain honestly unverified, no provider call.
 
-Owned backend3214 had stopped. Restarted the SAME anonymous deployment from domino-G2d with existing env/ports/data; PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. Saved conversation recovered in actual browser. No provider calls, keys or data reset.
+G8a Claude Sonnet/high now sole UI writer in domino-G8a/G8a-product-entry from c6e0a89; PID71724, exec88882, /tmp/domino-G8a-claude.log. Process/cwd and scoped edits verified. It owns only landing/AppShell and related test/card. G7 remains friend-owned, no implementation on last fetch; G8 knowledge wiring waits for it. Do not duplicate G8a or implement G7 locally.
+
+Owned backend3214 restored from same anonymous deployment with existing data: PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. No reset, credentials or provider calls. Candidate3419 verified owned and stopped after stable refresh.
 
 | Runtime | Ownership | State |
 | --- | --- | --- |
-| Stable web 3102 | domino-preview/apps/web; PID 25635, exec23065 | Running c40552a against backend3214; /tmp/domino-G5-preview.log |
+| Stable web 3102 | domino-preview/apps/web; PID72905, exec60820 | Running c6e0a89 against backend3214; /tmp/domino-G6-stable-preview.log |
 | Current backend 3214/site3215 | domino-G2d/apps/web; PID43364, exec76070 | Accepted G2d restarted with existing data; /tmp/domino-G2d-local-convex-resume.log |
 | Prior backend 3212/site3213 | domino-G2b/apps/web; PID9607, exec95774 | Preserved local data; /tmp/domino-G2b-local-convex.log |
 | Original backend 3210/site3211 | domino-H2/apps/web; PID15546, exec15918 | Preserved historical demo data |
-| Candidate web 3419 | domino-G6/apps/web; PID39378, exec13268 | Initial3601a85, audit only; /tmp/domino-G6-preview.log |
+| Candidate web 3419 | domino-G6/apps/web; finalPID65656/exec56822 | Stopped after accepted stable refresh |
 | Candidate web 3417 and3418 | domino-R1 and domino-G3 | Verified owned PIDs79863/73099 stopped after stable preview acceptance |
 
 Verify PID and cwd before any restart. Preserve local databases. Node24: /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Build/start the preview with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3214.
