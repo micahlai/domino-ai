@@ -7,4 +7,28 @@
 - **Compatibility:** separate schemas/types only; no widening existing branch unions or breaking exports. Exact field names recorded in Result for S3/S4. Do not design a generic disaster language.
 - **Done:** focused schema tests including malformed dates/ranges/graph refs/cycles and existing contracts regression, typecheck/lint. Parent full suite. Commit then stop for independent audit, no push/main/provider.
 ## Result
-- Pending.
+Done on branch `S1-scenario-contracts`. Files: `packages/contracts/src/historical-scenario.ts`, `historical-scenario.test.ts`, one export line in `index.ts`, this card. Existing `historical.ts`, branch union, schema, engine, data, UI and dependencies untouched. Existing historical schemas are reused (`HistoricalPredictionSchema`, `HistoricalAssumptionSchema` shapes, `CurrencySchema`, `TimestampSchema`); the `oneTimeCost` shape is taken from the assumption schema.
+
+**Input API** `HistoricalScenarioInputSchema` (strict; unknown keys are rejected, never dropped):
+- `baselineRunId`, `knowledgeCutoff` (timestamp with offset), `targetDate`, `currency`
+- `event`: `id`, `description`, `additionalOutflowCents {unit:"cents", low, high}` (TOTAL over the interval, safe integer, nonnegative, low <= high), `effectiveFrom`, `effectiveThrough` (inclusive real dates), `uncertainty` (all text nonblank)
+- optional `responseAssumptionId`, optional `selectedAfterReveal` (true needs a response)
+- Checked: cutoff local date < `effectiveFrom` <= `effectiveThrough` <= `targetDate`. The event has no fact, observed-value or threshold field, so none can enter.
+
+**Result API** `HistoricalScenarioResultSchema` (strict):
+- `input` (frozen echo), `method {id, version}`
+- `nowcast[]` (shared, kind nowcast, ends by cutoff local date), `baselinePredictions[]`
+- `event {effectCents {low, point, high}, predictions[]}`: effect is event minus baseline
+- optional `response {assumptionId, label (counterfactual|hindsight), effectiveFrom, oneTimeCost, benefitLagDays, benefitStart, benefitDays, feasibleAtCutoff, effectCents, postHoc, predictions[]}`: effect is response minus EVENT branch, not minus baseline
+- `impact {nodes[], edges[]}`: node `{id, kind: event|response|prediction, refId, label}`; edge `{id, from, to, basis: deterministic|assumption|rule|hypothesis, explanation, refs[{kind: fact|assumption|rule|prediction|event, id}] (min 1)}`
+
+**Schema enforces (internal consistency only):** forecasts are kind forecast ending on `targetDate`; currency equals input; prediction ids unique across ALL groups; `event.effectCents.low/high` equal the negated outflow high/low exactly (counted once); each branch equals the previous branch plus its effect per metric and period (point, low, high, exact integer); response present iff requested, same id, effective after cutoff and by target, `benefitStart = effectiveFrom + lag`, `benefitDays` = inclusive days to target (0 if later), effect is the negated cost range when `benefitDays` is 0, `postHoc` true for hindsight label or `selectedAfterReveal`; graph ids unique, exactly one event node, endpoints exist, event/prediction refs resolve inside the result, hypothesis edges cite an event ref, assumption edges an assumption ref, rule edges a rule ref, acyclic (self loops included). No threshold, default or insolvency field exists.
+
+**Downstream obligations (not provable by schema):**
+- S3 engine: `baselineRunId` exists and its cutoff, origin and currency match; `nowcast` equals the baseline run's nowcast; `targetDate` is the quarter end after the origin; baseline bands come from `quarterBridge`; response uses the existing `quarterAlternative` rules (decision label, cost and lag present, no hidden hindsight dependency) and its effect is independent of baseline. Prediction ids must differ per branch (the existing `target_total`/`target_usable` ids repeat across bridge and alternative, so prefix them). `effectCents.point` rounding (midpoint of the outflow or cost range, as existing `roundCents`) is not pinned by the schema. When `benefitDays` > 0, the effect is only checked as ordered, so the engine must derive it from the assumption value.
+- S3/S4: every `fact`, `assumption` and `rule` ref exists, is available at the cutoff and is a run input; rule refs name an explicit supplied analyst or disclosed rule. Edge truth (that an effect really follows) is not established by a valid graph.
+- S4: hash `input`, store lineage to the baseline run, repeated request ids must match the frozen input, never auto retry unknown provider status. Result is NOT a `HistoricalRun` and does not widen `branch`.
+
+**Compatibility notes:** strict objects mean a later added field is a breaking parse for older readers, so extend by new schema version. `additionalOutflowCents` and `oneTimeCost` reuse the assumption cost shape, which is not strict: extra keys inside those two ranges are stripped, not rejected. `quarterAlternative.effectCents` is alternative minus baseline; here the response effect is minus the event branch, equal only because the response does not depend on the baseline. `index.ts` uses `export *`; new names are all `HistoricalScenario*`, no collisions.
+
+**Verified:** `npx vitest run` in packages/contracts: 7 files, 286 tests pass (17 new: dates, local-date cutoff, ranges, extra fields, response, double counting, post-hoc, graph refs, bases, cycles, closed branch union). `tsc --noEmit` clean. `biome check packages/contracts` clean (one justified `biome-ignore noExplicitAny` on the test mutator type). Full suite, build and browser not run, per instruction. Awaiting Codex audit; no push.
