@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 // Presentation boundary (kb/coordination/historical/canvas-ui-packet.md). Not a persistence schema:
 // the backend owner adapts durable records into these shapes.
 
-export type CanvasNodeKind = "domino" | "agent" | "source" | "tool" | "output";
+export type CanvasNodeKind = "domino" | "agent" | "source" | "tool" | "output" | "knowledge";
 export type CanvasStatus = "idle" | "queued" | "running" | "succeeded" | "failed";
 export type CanvasConnection = "live" | "loading" | "offline" | "unavailable" | "preview";
 
@@ -57,4 +57,6 @@ export type InvestigateWorkspaceProps = {
   canReveal?: boolean;
   canAlternative?: boolean;
   renderOutput?: (node: CanvasNode) => ReactNode;
+  /** Optional detail for the Company knowledge node (G8). Rendered from saved evidence only. */
+  renderKnowledge?: () => ReactNode;
 };

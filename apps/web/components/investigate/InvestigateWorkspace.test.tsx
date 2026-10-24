@@ -11,13 +11,18 @@ import {
 import {
   CIRCLE_ROW,
   IDLE_DOMINO,
+  NODE_H,
   NODE_W,
   deliver,
   graphFit,
+  isHistory,
   layout,
   overlaps,
+  pulsesFor,
   safeHref,
   toFlowNodes,
+  withKnowledge,
+  zones,
 } from "./graph";
 import type { CanvasNode } from "./types";
 
@@ -172,6 +177,18 @@ describe("Truthful empty states", () => {
   });
 });
 
+describe("Workspace map", () => {
+  const render = (nodes: CanvasNode[]) =>
+    renderToStaticMarkup(createElement(InvestigateWorkspace, { nodes, connection: "live" }));
+
+  it("explains that pulses mark recorded activity, only once there is something to connect", () => {
+    expect(render([IDLE_DOMINO])).not.toContain("not data moved");
+    const html = render([IDLE_DOMINO, source]);
+    expect(html).toContain("not data moved");
+    expect(html).not.toMatch(/bytes|transfer|throughput/i);
+  });
+});
+
 describe("Canvas nodes", () => {
   it("labels each kind and status in plain words", () => {
     const html = renderToStaticMarkup(createElement(NodeCard, { node: agent, selected: false }));
@@ -232,8 +249,6 @@ describe("graph", () => {
     x: (p?.x ?? 0) + NODE_W / 2,
     y: (p?.y ?? 0) + CIRCLE_ROW / 2,
   });
-  const ringOf = (p: { x: number; y: number } | undefined) =>
-    Math.hypot(centerOf(p).x, centerOf(p).y);
   const node = (id: string, kind: CanvasNode["kind"] = "source"): CanvasNode => ({
     ...source,
     id,
@@ -247,98 +262,218 @@ describe("graph", () => {
       }
     }
   };
+  // A full company: several sources, specialists, tools and results.
+  const company = (): CanvasNode[] => [
+    IDLE_DOMINO,
+    ...["s0", "s1", "s2", "s3", "s4"].map((id) => node(id, "source")),
+    ...["a0", "a1", "a2", "a3"].map((id) => node(id, "agent")),
+    ...["t0", "t1"].map((id) => node(id, "tool")),
+    ...["o0", "o1", "o2"].map((id) => node(id, "output")),
+  ];
 
-  it("centers Domino and puts farther records on wider rings", () => {
-    const positions = layout([IDLE_DOMINO, source, agent], edges);
-    expect(ringOf(positions.get("domino"))).toBe(0);
-    expect(ringOf(positions.get("src-1"))).toBeGreaterThan(0);
-    expect(ringOf(positions.get("agent-7f3a"))).toBeGreaterThan(ringOf(positions.get("src-1")));
+  it("centers Domino with Sources left, Toolbox right, specialists above and results below", () => {
+    const out = layout(company());
+    expect(centerOf(out.get("domino"))).toEqual({ x: 0, y: 0 });
+    for (const id of ["s0", "s1", "s2", "s3", "s4"])
+      expect(centerOf(out.get(id)).x).toBeLessThan(-NODE_W);
+    for (const id of ["t0", "t1"]) expect(centerOf(out.get(id)).x).toBeGreaterThan(NODE_W);
+    for (const id of ["a0", "a1", "a2", "a3"]) expect(centerOf(out.get(id)).y).toBeLessThan(-200);
+    for (const id of ["o0", "o1", "o2"]) expect(centerOf(out.get(id)).y).toBeGreaterThan(200);
   });
 
-  it("is deterministic", () => {
-    const a = layout([IDLE_DOMINO, source, agent], edges);
-    const b = layout([IDLE_DOMINO, source, agent], edges);
-    expect([...a]).toEqual([...b]);
+  it("is deterministic, never overlaps, and never adds a record", () => {
+    const all = company();
+    const a = layout(all);
+    expect([...a]).toEqual([...layout(all)]);
+    expect(a.size).toBe(all.length);
+    noOverlap([...a.values()]);
   });
 
-  it("curves even a five-node chain instead of lining it up", () => {
-    const ids = ["domino", "a", "b", "c", "d"];
-    const chain = ids.map((id) => (id === "domino" ? IDLE_DOMINO : node(id)));
-    const positions = layout(
-      chain,
-      ids.slice(1).map((id, i) => link(ids[i] as string, id)),
-    );
-    const [p0, p1, p4] = [ids[0], ids[1], ids[4]].map((id) =>
-      centerOf(positions.get(id as string)),
-    );
-    if (!p0 || !p1 || !p4) throw new Error("missing chain positions");
-    // Collinear points have a zero cross product; a curve does not.
-    const cross = (p1.x - p0.x) * (p4.y - p0.y) - (p1.y - p0.y) * (p4.x - p0.x);
-    expect(Math.abs(cross)).toBeGreaterThan(20000);
-    noOverlap([...positions.values()]);
+  it("gives a node the same slot whatever arrives after it", () => {
+    const some = layout([IDLE_DOMINO, node("s0"), node("s1")]);
+    const more = layout(company());
+    expect(more.get("s0")).toEqual(some.get("s0"));
+    expect(more.get("s1")).toEqual(some.get("s1"));
   });
 
-  it("spreads branches around the anchor without adding records", () => {
-    const kids = ["a", "b", "c", "d"].map((id) => node(id));
-    const out = layout(
-      [IDLE_DOMINO, ...kids],
-      kids.map((k) => link("domino", k.id)),
-    );
-    expect(out.size).toBe(5);
-    const angles = kids.map((k) =>
-      Math.atan2(centerOf(out.get(k.id)).y, centerOf(out.get(k.id)).x),
-    );
-    expect(new Set(angles.map((a) => Math.round(a * 10))).size).toBe(4);
-    noOverlap([...out.values()]);
+  it("is safe for empty input and places a lone Domino at the origin", () => {
+    expect(layout([]).size).toBe(0);
+    expect(centerOf(layout([IDLE_DOMINO]).get("domino"))).toEqual({ x: 0, y: 0 });
   });
 
-  it("handles shared dependencies, cycles, disconnected records and a missing anchor", () => {
-    const ids = ["a", "b", "c", "x", "y"];
-    const all = [IDLE_DOMINO, ...ids.map((id) => node(id))];
-    const tangled = [
-      link("domino", "a"),
-      link("domino", "b"),
-      link("a", "c"),
-      link("b", "c"), // shared dependency
-      link("c", "a"), // cycle
-      link("c", "c"), // self loop
-      link("a", "ghost"), // unknown id
-    ];
-    const out = layout(all, tangled);
-    expect(out.size).toBe(all.length);
-    for (const position of out.values()) {
-      expect(Number.isFinite(position.x) && Number.isFinite(position.y)).toBe(true);
-    }
-    expect(ringOf(out.get("x"))).toBeGreaterThan(0); // disconnected, still placed around the anchor
-    const noAnchor = layout([node("a"), node("b")], [link("a", "b")]);
-    expect(ringOf(noAnchor.get("a"))).toBe(0);
-    expect(ringOf(noAnchor.get("b"))).toBeGreaterThan(0);
+  describe("Sources and Toolbox groups", () => {
+    const flow = (all: CanvasNode[]) => toFlowNodes([], all, true);
+    const rect = (z: { position: { x: number; y: number }; width?: number; height?: number }) => ({
+      l: z.position.x,
+      t: z.position.y,
+      r: z.position.x + (z.width ?? 0),
+      b: z.position.y + (z.height ?? 0),
+    });
+    const inside = (z: ReturnType<typeof rect>, n: { position: { x: number; y: number } }) =>
+      n.position.x >= z.l &&
+      n.position.y >= z.t &&
+      n.position.x + NODE_W <= z.r &&
+      n.position.y + NODE_H <= z.b;
+
+    it("draws nothing around a lone idle Domino", () => {
+      expect(zones(flow([IDLE_DOMINO]))).toEqual([]);
+    });
+
+    it("groups real members by kind with counts, and only those", () => {
+      const nodes = flow(company());
+      const [sources, toolbox] = zones(nodes);
+      expect(sources?.data).toEqual({ group: "sources", count: 5 });
+      expect(toolbox?.data).toEqual({ group: "toolbox", count: 2 });
+      for (const n of nodes) {
+        const kind = n.data.node.kind;
+        const inSources = inside(rect(sources as never), n);
+        const inToolbox = inside(rect(toolbox as never), n);
+        expect(inSources).toBe(kind === "source");
+        expect(inToolbox).toBe(kind === "tool");
+      }
+    });
+
+    it("keeps both frames visible and honest when a group is empty", () => {
+      const [sources, toolbox] = zones(flow([IDLE_DOMINO, node("a0", "agent")]));
+      expect(sources?.data.count).toBe(0);
+      expect(toolbox?.data.count).toBe(0);
+      expect(sources?.width).toBeGreaterThan(NODE_W);
+    });
+
+    it("keeps frames apart and out of the way of non-members", () => {
+      const nodes = flow(company());
+      const [a, b] = zones(nodes).map((z) => rect(z));
+      if (!a || !b) throw new Error("missing frames");
+      expect(a.r < b.l || b.r < a.l).toBe(true);
+      for (const n of nodes) {
+        const kind = n.data.node.kind;
+        if (kind === "source" || kind === "tool") continue;
+        expect(inside(a, n) || inside(b, n)).toBe(false);
+        // Not even partly under a frame.
+        for (const z of [a, b])
+          expect(
+            n.position.x < z.r &&
+              n.position.x + NODE_W > z.l &&
+              n.position.y < z.b &&
+              n.position.y + NODE_H > z.t,
+          ).toBe(false);
+      }
+    });
+
+    it("never takes clicks, focus or selection, so it cannot block a child or the drag", () => {
+      for (const z of zones(flow(company()))) {
+        expect(z.selectable).toBe(false);
+        expect(z.draggable).toBe(false);
+        expect(z.focusable).toBe(false);
+        expect(z.className).toContain("pointer-events-none");
+        expect(z.zIndex).toBeLessThan(0);
+      }
+    });
+
+    it("follows a member the person dragged, so the frame still fits it", () => {
+      const moved = flow(company()).map((n) =>
+        n.id === "s0" ? { ...n, position: { x: -1500, y: 40 } } : n,
+      );
+      const sources = zones(moved)[0];
+      expect(inside(rect(sources as never), { position: { x: -1500, y: 40 } })).toBe(true);
+    });
   });
 
-  it("is safe for empty input and places a lone anchor at the origin", () => {
-    expect(layout([], []).size).toBe(0);
-    const lone = layout([IDLE_DOMINO], []);
-    expect(centerOf(lone.get("domino"))).toEqual({ x: 0, y: 0 });
+  describe("company knowledge", () => {
+    it("is absent until a source carries saved evidence", () => {
+      const bare = [IDLE_DOMINO, { ...source, evidence: [] }];
+      expect(withKnowledge(bare)).toBe(bare);
+    });
+
+    it("is a distinct view of the saved evidence, without duplicates or invented facts", () => {
+      const other: CanvasNode = {
+        ...source,
+        id: "src-2",
+        evidence: [
+          { id: "e1", title: "Safe link" },
+          { id: "e3", title: "Another" },
+        ],
+      };
+      const out = withKnowledge([IDLE_DOMINO, source, other]);
+      const view = out.find((n) => n.kind === "knowledge");
+      expect(out).toHaveLength(4);
+      expect(view?.id).not.toBe("domino");
+      expect(view?.evidence?.map((e) => e.id)).toEqual(["e1", "e2", "e3"]);
+      expect(view?.summary).toContain("not an agent");
+    });
+
+    it("sits below Domino and above the results, and has no run status in words", () => {
+      const out = layout(withKnowledge([IDLE_DOMINO, source, node("o0", "output")]));
+      const y = (id: string) => centerOf(out.get(id)).y;
+      expect(y("company-knowledge")).toBeGreaterThan(y("domino"));
+      expect(y("company-knowledge")).toBeLessThan(y("o0"));
+      const html = renderToStaticMarkup(
+        createElement(NodeCard, {
+          node: withKnowledge([source])[1] as CanvasNode,
+          selected: false,
+        }),
+      );
+      expect(html).toContain("Saved evidence · 2");
+      expect(html).not.toMatch(/Running|Done|Failed/);
+    });
+
+    it("details show saved sources, the optional slot, and that no learnings exist", () => {
+      const view = withKnowledge([source])[1] as CanvasNode;
+      const html = renderToStaticMarkup(
+        createElement(NodeDetails, {
+          node: view,
+          onClose: noop,
+          knowledge: createElement("p", null, "slot content"),
+        }),
+      );
+      expect(html).toContain("Saved sources");
+      expect(html).toContain("slot content");
+      expect(html).toContain("No validated learnings are recorded");
+    });
+  });
+
+  describe("node shapes", () => {
+    it("gives each kind its own shape and colour", () => {
+      const kinds = ["agent", "source", "tool", "output", "knowledge"] as const;
+      const shapes = kinds.map((kind) => {
+        const html = renderToStaticMarkup(
+          createElement(NodeCard, {
+            node: { ...node("n", kind), status: "idle" },
+            selected: false,
+          }),
+        );
+        return html.match(/<span class="([^"]+)"/)?.[1];
+      });
+      expect(new Set(shapes).size).toBe(kinds.length);
+      const domino = renderToStaticMarkup(createElement(DominoNodeCard, { selected: false }));
+      expect(domino).toContain("rounded-full");
+      for (const shape of shapes) expect(shape).not.toContain("rounded-full");
+    });
+
+    it("keeps failure and running outlines over the kind colour", () => {
+      const html = (status: CanvasNode["status"]) =>
+        renderToStaticMarkup(
+          createElement(NodeCard, { node: { ...node("n", "tool"), status }, selected: false }),
+        );
+      expect(html("failed")).toContain("border-destructive/70");
+      expect(html("running")).toContain("border-primary");
+      expect(html("succeeded")).toContain("border-amber-400/50");
+    });
   });
 
   it("restored history is quiet and later arrivals animate once", () => {
-    const restored = toFlowNodes([], [IDLE_DOMINO, source], edges, true);
+    const restored = toFlowNodes([], [IDLE_DOMINO, source], true);
     expect(restored.every((node) => !node.data.enter)).toBe(true);
-    const next = toFlowNodes(restored, [IDLE_DOMINO, source, agent], edges, false);
+    const next = toFlowNodes(restored, [IDLE_DOMINO, source, agent], false);
     expect(next.find((node) => node.id === "agent-7f3a")?.data.enter).toBe(true);
     expect(next.find((node) => node.id === "src-1")?.data.enter).toBe(false);
   });
 
   it("keeps dragged positions and selection across deliveries", () => {
-    const moved = toFlowNodes([], [IDLE_DOMINO, source], edges, true).map((node) =>
+    const moved = toFlowNodes([], [IDLE_DOMINO, source], true).map((node) =>
       node.id === "src-1" ? { ...node, position: { x: 999, y: -5 }, selected: true } : node,
     );
-    const next = toFlowNodes(
-      moved,
-      [IDLE_DOMINO, { ...source, status: "failed" }, agent],
-      edges,
-      false,
-    );
+    const next = toFlowNodes(moved, [IDLE_DOMINO, { ...source, status: "failed" }, agent], false);
     const kept = next.find((node) => node.id === "src-1");
     expect(kept?.position).toEqual({ x: 999, y: -5 });
     expect(kept?.selected).toBe(true);
@@ -347,13 +482,11 @@ describe("graph", () => {
 
   describe("incremental delivery", () => {
     const first = [IDLE_DOMINO, source];
-    const firstEdges = [link("domino", "src-1")];
     const second = node("src-2");
-    const allEdges = [...firstEdges, link("domino", "src-2")];
 
     it("places a sibling delivered later clear of the first without moving it", () => {
-      const one = toFlowNodes([], first, firstEdges, true);
-      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const one = toFlowNodes([], first, true);
+      const two = toFlowNodes(one, [...first, second], false);
       const a = two.find((n) => n.id === "src-1");
       const b = two.find((n) => n.id === "src-2");
       expect(a?.position).toEqual(one.find((n) => n.id === "src-1")?.position);
@@ -361,33 +494,32 @@ describe("graph", () => {
     });
 
     it("steers around a node the person dragged into the slot", () => {
-      const ideal = layout([...first, second], allEdges).get("src-2") as { x: number; y: number };
-      const one = toFlowNodes([], first, firstEdges, true).map((n) =>
+      const ideal = layout([...first, second]).get("src-2") as { x: number; y: number };
+      const one = toFlowNodes([], first, true).map((n) =>
         n.id === "src-1" ? { ...n, position: { ...ideal } } : n,
       );
-      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const two = toFlowNodes(one, [...first, second], false);
       const a = two.find((n) => n.id === "src-1");
       const b = two.find((n) => n.id === "src-2");
       expect(a?.position).toEqual(ideal);
       expect(overlaps(a?.position as never, b?.position as never)).toBe(false);
     });
 
-    it("keeps a new two-line node clear of an old circle's actual rendered box", () => {
-      // A node renders 144 x 126 (circle 72 + gap 6 + two-line title 32 + status 16), so the
+    it("keeps a new two-line node clear of an old node's actual rendered box", () => {
+      // A node renders 144 x 126 (shape 72 + gap 6 + two-line title 32 + status 16), so the
       // rectangles themselves, not NODE_BOX, must not intersect.
-      const [W, H] = [144, 126];
+      const [W, H] = [NODE_W, NODE_H];
       const twoLine = (id: string): CanvasNode => ({
         ...node(id),
         title: "A sufficiently long title that wraps onto two lines",
       });
       const nodes = [IDLE_DOMINO, twoLine("old"), twoLine("new")];
-      const all = [link("domino", "old"), link("domino", "new")];
-      const ideal = layout(nodes, all).get("new") as { x: number; y: number };
+      const ideal = layout(nodes).get("new") as { x: number; y: number };
       for (const dy of [-126, -116, 0, 100, 116, 126]) {
-        const one = toFlowNodes([], nodes.slice(0, 2), all.slice(0, 1), true).map((n) =>
+        const one = toFlowNodes([], nodes.slice(0, 2), true).map((n) =>
           n.id === "old" ? { ...n, position: { x: ideal.x, y: ideal.y + dy } } : n,
         );
-        const two = toFlowNodes(one, nodes, all, false);
+        const two = toFlowNodes(one, nodes, false);
         const a = two.find((n) => n.id === "old")?.position as { x: number; y: number };
         const b = two.find((n) => n.id === "new")?.position as { x: number; y: number };
         expect(a).toEqual({ x: ideal.x, y: ideal.y + dy });
@@ -395,81 +527,130 @@ describe("graph", () => {
       }
     });
 
-    it("fits the whole web without its own zoom floor", () => {
+    it("fits the whole map without its own zoom floor", () => {
       expect(graphFit).not.toHaveProperty("minZoom");
     });
 
     it("keeps every node apart across many single-record deliveries", () => {
-      let current = toFlowNodes([], [IDLE_DOMINO], [], true);
+      let current = toFlowNodes([], [IDLE_DOMINO], true);
       let nodes: CanvasNode[] = [IDLE_DOMINO];
-      let all: { id: string; source: string; target: string }[] = [];
-      for (let n = 1; n <= 14; n++) {
-        // Alternate between hanging off Domino and off the previous record: a branching web.
-        const parent = n % 3 === 0 ? `s${n - 1}` : "domino";
-        nodes = [...nodes, node(`s${n}`)];
-        all = [...all, link(parent, `s${n}`)];
-        current = toFlowNodes(current, nodes, all, false);
+      const kinds = ["source", "agent", "tool", "output"] as const;
+      for (let n = 1; n <= 24; n++) {
+        nodes = [...nodes, node(`s${n}`, kinds[n % kinds.length])];
+        current = toFlowNodes(current, nodes, false);
       }
       noOverlap(current.map((n) => n.position));
     });
 
     it("separates a whole delivery that arrives at once", () => {
       const kids = Array.from({ length: 12 }, (_, i) => node(`k${i}`));
-      const out = toFlowNodes(
-        [],
-        [IDLE_DOMINO, ...kids],
-        kids.map((k) => link("domino", k.id)),
-        true,
-      );
+      const out = toFlowNodes([], [IDLE_DOMINO, ...kids], true);
       noOverlap(out.map((n) => n.position));
     });
 
-    it("never adds or drops a record or edge", () => {
-      const out = toFlowNodes([], [IDLE_DOMINO, source, agent], edges, false);
+    it("never adds or drops a record", () => {
+      const out = toFlowNodes([], [IDLE_DOMINO, source, agent], false);
       expect(out.map((n) => n.id)).toEqual(["domino", "src-1", "agent-7f3a"]);
     });
   });
 
   describe("quiet history versus live work", () => {
-    const edges = [{ id: "a", source: "domino", target: "src-1" }];
-    const idleOnly = toFlowNodes([], [IDLE_DOMINO], [], true);
+    const idleOnly = toFlowNodes([], [IDLE_DOMINO], true);
     const fresh = { quiet: false, follow: true, reduced: false };
 
     it("fits instantly when saved history adds nodes", () => {
-      const out = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      const out = deliver(idleOnly, [IDLE_DOMINO, source], { ...fresh, quiet: true });
       expect(out.fit?.duration).toBe(0);
     });
 
     it("animates the fit for a real new node, but not under reduced motion", () => {
-      expect(deliver(idleOnly, [IDLE_DOMINO, source], edges, fresh).fit?.duration).toBe(300);
-      const reduced = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, reduced: true });
+      expect(deliver(idleOnly, [IDLE_DOMINO, source], fresh).fit?.duration).toBe(300);
+      const reduced = deliver(idleOnly, [IDLE_DOMINO, source], { ...fresh, reduced: true });
       expect(reduced.fit?.duration).toBe(0);
     });
 
     it("does not touch the view once the person has moved it, or when nothing was added", () => {
-      expect(
-        deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, follow: false }).fit,
-      ).toBeNull();
-      const same = deliver(idleOnly, [IDLE_DOMINO], [], fresh);
+      expect(deliver(idleOnly, [IDLE_DOMINO, source], { ...fresh, follow: false }).fit).toBeNull();
+      const same = deliver(idleOnly, [IDLE_DOMINO], fresh);
       expect(same.fit).toBeNull();
     });
 
     it("lets a status change on a mounted node animate only when the delivery is live", () => {
-      const shown = toFlowNodes([], [IDLE_DOMINO, source], edges, true);
+      const shown = toFlowNodes([], [IDLE_DOMINO, source], true);
       const done = { ...source, status: "failed" as const };
-      const quiet = deliver(shown, [IDLE_DOMINO, done], edges, { ...fresh, quiet: true });
+      const quiet = deliver(shown, [IDLE_DOMINO, done], { ...fresh, quiet: true });
       expect(quiet.nodes.find((node) => node.id === "src-1")?.data.live).toBe(false);
-      const live = deliver(shown, [IDLE_DOMINO, done], edges, fresh);
+      const live = deliver(shown, [IDLE_DOMINO, done], fresh);
       expect(live.nodes.find((node) => node.id === "src-1")?.data.live).toBe(true);
     });
 
     it("fades a new node in only on a live delivery, and never replays it for old nodes", () => {
-      const quiet = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      const quiet = deliver(idleOnly, [IDLE_DOMINO, source], { ...fresh, quiet: true });
       expect(quiet.nodes.every((node) => !node.data.enter)).toBe(true);
-      const live = deliver(quiet.nodes, [IDLE_DOMINO, source, agent], edges, fresh);
+      const live = deliver(quiet.nodes, [IDLE_DOMINO, source, agent], fresh);
       expect(live.nodes.filter((node) => node.data.enter).map((node) => node.id)).toEqual([
         "agent-7f3a",
       ]);
+    });
+  });
+
+  it("treats loading, offline and unavailable, and the moment after, as history", () => {
+    expect(isHistory("loading", "live")).toBe(true);
+    expect(isHistory("live", "loading")).toBe(true);
+    expect(isHistory("live", "offline")).toBe(true);
+    expect(isHistory("unavailable", "live")).toBe(true);
+    expect(isHistory("live", "live")).toBe(false);
+  });
+
+  describe("operation pulses", () => {
+    const wires = [link("domino", "s0"), link("s0", "a0"), link("s0", "t0")];
+    const run = (status: CanvasNode["status"]) => [
+      IDLE_DOMINO,
+      { ...node("s0"), status: "succeeded" as const },
+      { ...node("a0", "agent"), status },
+    ];
+
+    it("restored history and reconnects stay quiet but are remembered", () => {
+      const restored = pulsesFor(new Set(), run("succeeded"), wires, true);
+      expect(restored.pulses).toEqual([]);
+      // The same snapshot delivered live afterwards is still not news.
+      expect(pulsesFor(restored.seen, run("succeeded"), wires, false).pulses).toEqual([]);
+    });
+
+    it("a new live step pulses the dependency that points at it, once", () => {
+      const quiet = pulsesFor(new Set(), run("queued"), wires, true);
+      const live = pulsesFor(quiet.seen, run("running"), wires, false);
+      expect(live.pulses).toEqual([{ key: "s0-a0:running", edgeId: "s0-a0" }]);
+      // Polling again with nothing new does not repeat it.
+      expect(pulsesFor(live.seen, run("running"), wires, false).pulses).toEqual([]);
+    });
+
+    it("a later recorded transition pulses again, with its own identity", () => {
+      const running = pulsesFor(new Set(), run("running"), wires, true);
+      const done = pulsesFor(running.seen, run("succeeded"), wires, false);
+      expect(done.pulses.map((p) => p.key)).toEqual(["s0-a0:succeeded"]);
+    });
+
+    it("work that finished between polls pulses without inventing a running step", () => {
+      const before = pulsesFor(new Set(), [IDLE_DOMINO, node("s0")], [link("domino", "s0")], true);
+      const after = pulsesFor(before.seen, run("succeeded"), wires, false);
+      expect(after.pulses.map((p) => p.key)).toEqual(["s0-a0:succeeded"]);
+      expect(after.pulses.some((p) => p.key.endsWith(":running"))).toBe(false);
+    });
+
+    it("never celebrates failed or waiting work, and Domino has nothing to pulse", () => {
+      const quiet = pulsesFor(new Set(), [IDLE_DOMINO, node("s0")], wires, true);
+      expect(pulsesFor(quiet.seen, run("failed"), wires, false).pulses).toEqual([]);
+      expect(pulsesFor(quiet.seen, run("queued"), wires, false).pulses).toEqual([]);
+      const dominoRuns = [{ ...IDLE_DOMINO, status: "running" as const }];
+      expect(pulsesFor(new Set(), dominoRuns, wires, false).pulses).toEqual([]);
+    });
+
+    it("follows only actual dependency edges, never a group or an unrelated pair", () => {
+      const live = pulsesFor(new Set(), run("succeeded"), wires, false);
+      const real = new Set(wires.map((w) => w.id));
+      expect(live.pulses.length).toBeGreaterThan(0);
+      for (const pulse of live.pulses) expect(real.has(pulse.edgeId)).toBe(true);
     });
   });
 
