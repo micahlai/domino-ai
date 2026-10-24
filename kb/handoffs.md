@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 05:20 Codex (overnight workers verified)
+- Done: pushed d5b2c94, created H1/H2/H3 worktrees, launched bounded Claude Sonnet/Opus/Sonnet phases; verified live processes and file changes. Codex heartbeat domino-overnight-audit ACTIVE every 20 minutes. Standalone bounded awake guard covers idle gaps.
+- Next: audit completed checkpoints and advance evidence/contracts -> model/persistence -> UI wiring -> styles -> isolated preview checks. See kb/coordination/historical/active-run.md for exact ownership and recovery.
+- Watch out: three workers maximum, one UI writer, serialized full checks; no main merge, secrets, shared cloud writes or billable Apify runs. Stop new dispatch at 11:15 PDT. Fresh chats do not reset usage limits.
+
 ## 2026-10-24 Codex (supervised execution authorization)
 - Done: user authorized direct Claude development with Codex audit/monitoring. C0 supervisor and bounded H1/H2 worker prompts added; H0 becomes manual fallback. UI reuse and four-style/activity requirements retained.
 - Next: start isolated evidence/contracts/presentation phases, record exact process state, then review and advance gates through heartbeat supervision. No duplicate fresh-chat dispatch.

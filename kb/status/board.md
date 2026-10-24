@@ -1,13 +1,13 @@
 # Status board
 
-## Current scope: historical case study, overnight launch handoff
+## Current scope: historical case study, supervised overnight execution
 
 Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Assessment and future integration use `integration/historical-case-study` in `../domino-case-study`.
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
 | Historical assessment | done | 2U provisional; sources and plan independently reviewed |
-| C0/H1/H2/H3/H4 overnight run | doing | User authorized Codex supervision and direct Claude workers; startup tracked in active-run.md |
+| C0/H1/H2/H3/H4 overnight run | doing | H1/H2a/H3 workers launched and process/file progress verified; ACTIVE Codex heartbeat, exact state in active-run.md |
 | H4 visual styles/motion | todo | Separate worktree after H3 ownership handoff; Original/Ramp/Hyphenate/shadcn, existing primitives and Motion |
 | H2d actual activity | todo | Additive backend event feed for H4; no synthetic product agent activity |
 | E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |

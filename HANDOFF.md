@@ -5,7 +5,9 @@
 - Latest user asked Codex to run needed Claude prompts, audit/monitor until return, minimize bloat and reuse existing UI. C0 is the current supervisor entry point; H0 manual coordinator is inactive. Do not launch duplicate orchestration.
 - Current stages include historical evidence/contracts/backend/UI, H2d truthful activity, H4 four reusable styles/Motion, preview verification and continuous independent audits. No main merge/production deployment/shared cloud reset.
 - User reports Apify API token added to .env.local; value/validity not inspected. Prefer existing public references, no new scraper or billable Actor runs without a spending limit. Never read credentials into model context or logs.
-- Next exact step: commit/push launch updates, create isolated H1/H2/H3 worktrees, start bounded Claude evidence/contracts/UI-presentation phases, record process IDs/logs/deadline in kb/coordination/historical/active-run.md, and enable heartbeat supervision. Fresh Codex sessions must inspect that record and actual processes before dispatching.
+- Startup verified 2026-10-24 05:20 PDT: H1 evidence, H2a contracts and H3 presentation Claude workers launched from d5b2c94 in isolated worktrees; actual processes and file progress checked. Codex heartbeat domino-overnight-audit is ACTIVE every 20 minutes on this thread. Exact sessions/logs/process IDs and dependency gates are in kb/coordination/historical/active-run.md.
+- Next exact step: inspect the active-run record and actual worker status, audit completed commits, then advance only accepted dependency gates. No duplicate workers. Deadline 2026-10-24 11:15 PDT; keep the app available, AC connected and lid open. Bounded caffeinate guard session88844/PID14212 covers the gaps between phases.
+- All launch instructions below are archived history where they conflict with this active C0 run. H0 is inactive.
 
 ## Latest addition: clean UI, four styles and activity motion
 
