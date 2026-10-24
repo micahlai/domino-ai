@@ -18,4 +18,4 @@
   - Half-cent ties round toward +infinity, matching the prior Math.round convention. Banker's rounding was not requested.
   - Unchanged and still open: the fixture ambiguity guard, savings-as-inflow, the recurring anchor, dominoes/E3b. No contracts touched.
 
-Brain verification: repair commit 4a9be26 is clean and unmerged. Independent GPT-6 Astra review found both blockers fixed; lead forced pnpm check passed 28 engine + 13 contract tests, four typechecks and lint. See kb/reviews/E3a-r1-4a9be26.md.
+Brain verification: repair commit 4a9be26 is merged at 59fe62d; original worker checkout remains clean. Independent GPT-6 Astra review found both blockers fixed; lead forced pnpm check passed 28 engine + 13 contract tests, four typechecks and lint. Combined main passes 131 tests, typechecks and lint. See kb/reviews/E3a-r1-4a9be26.md.

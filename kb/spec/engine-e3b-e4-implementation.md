@@ -1,6 +1,6 @@
 # E3b and E4 implementation brief
 
-Status: prepared, independently reviewed with no remaining blocker, no feature worker launched. C1 is merged at 3c54e67. Claude's E3a repair 4a9be26 passed independent review and branch checks but is not merged.
+Status: prepared, independently reviewed with no remaining blocker, no feature worker launched. C1 is merged at 3c54e67. Claude's reviewed E3a repair 4a9be26 is merged at 59fe62d; combined 131-test check passes. Claude implements both cards; Codex audits and integrates each before the next starts.
 
 Decision: serialize E3b then E4. Both own packages/engine and E4 must reuse one rule evaluator. Counterargument: parallel implementation could start sooner, but duplicates cash/date logic and creates integration risk.
 

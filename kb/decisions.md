@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Jayden: Claude implements E3b and E4; Codex audits, runs checks and integrates each in sequence. Why: explicit tool ownership preference; E4 waits for the shared E3b rules.
+
 - 2026-10-24 Codex brain: merge reviewed C1 under explicit user direction; keep E3b and E4 sequential behind repaired E3a integration. Why: one shared cash/rule evaluator avoids divergent money logic. See kb/spec/engine-e3b-e4-implementation.md for p90 offsets, evidence limits and bounded sensitivity conventions; automatic good-event discovery is deferred rather than fabricated.
 
 - 2026-10-24 Micah: default to the supplied dark palette and reuse the calhacks-2026 Domino mark. Why: explicit user direction supersedes the light-only design spec.

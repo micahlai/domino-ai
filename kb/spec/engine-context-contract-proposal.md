@@ -1,6 +1,6 @@
 # C1: Engine context contract proposal
 Status: merged on main at 3c54e67 under explicit user authorization after independent review of f80401d. Post-merge forced check passes 103 tests plus typechecks/lint; production build passes. No production or seeded data changed.
-Scope: optional payload fields, new Zod context schemas, optional trailing Engine arguments, fixtures and contract tests. Claude completed E3a repairs at 4a9be26; review and branch checks pass, integration pending.
+Scope: optional payload fields, new Zod context schemas, optional trailing Engine arguments, fixtures and contract tests. Claude completed E3a repairs at 4a9be26; reviewed and merged at 59fe62d with 131 combined tests passing.
 Decision: use explicit record relationships and calculation context rather than infer them from names or matching amounts. Counterargument: one-to-one invoice linkage does not cover split billing; reject that unsupported case in v1 rather than silently approximate it.
 
 ## 1. Deal identity and invoice linkage
@@ -49,5 +49,5 @@ Decision: use explicit record relationships and calculation context rather than 
 - Contract tests cover old-field omission, explicit null, retained metadata, bad links/duplicates, constraint field validity, context schemas and optional Engine signature compatibility.
 - Run focused contracts tests and full pnpm check including web/Convex, simulator and router. Existing malformed-deal fixture tests may need a contract-valid deliberate ambiguous copy in future E3b, not changes to Claude's current worktree.
 - C1 independent review passed; the user explicitly authorized merging it. This authorization superseded the generic pre-merge approval step in skills/contract-change/SKILL.md. No separate Micah approval is claimed.
-- C1 is merged. Next integrate the reviewed E3a repair, then E3b adopts invoice linkage and context, followed by E4 using common rule evaluation and explicit targets. See engine-e3b-e4-implementation.md and the scoped cards. E5/E7 later supplies contexts from Convex.
+- C1 is merged. Reviewed E3a is integrated; next E3b adopts invoice linkage and context, followed by E4 using common rule evaluation and explicit targets. See engine-e3b-e4-implementation.md and the scoped cards. E5/E7 later supplies contexts from Convex.
 - Do not touch Claude's branch, seed live data, deploy, push, create paid calls, or send team messages during this preparation.

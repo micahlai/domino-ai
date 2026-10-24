@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 01:46 Codex brain (Claude implementation handoff)
+- Done: integrated reviewed E3a repair at 59fe62d; combined 131 tests, typechecks, lint and fresh production build pass. User assigned both E3b/E4 implementation to Claude, with Codex auditing/checking. Prepared the E3b branch/worktree from passing main.
+- Next: human launches Claude Code in ../domino-E3b using kb/tasks/E3b-dominoes.md. Return the completed commit to Codex for independent audit and integration; only then launch E4.
+- Watch out: no Claude feature worker launched by Codex. Raw fixture guard remains until E3b. Existing Claude E3a checkout and unrelated README/CREAO/web tooling work preserved. No push/deployment/data reset.
+
 ## 2026-10-24 01:40 Codex brain (C1 merged, Claude repairs verified)
 - Done: merged reviewed C1 at 3c54e67 under user authorization; forced main check passes 103 tests plus typechecks/lint, build passes. Verified Claude repair 4a9be26 with independent Astra review and 41-test branch check. Prepared gated E3b/E4 cards and implementation brief; no feature code written by the brain.
 - Next: integrate reviewed E3a and run combined checks, then human launches E3b in Codex GPT-6.1 Sol/high from a fresh worktree. E4 follows E3b review/merge in Claude Code. Neither next worker is launched.
