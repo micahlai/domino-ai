@@ -1,5 +1,55 @@
 # Handoffs
 
+## 2026-10-24 08:49 Codex final overnight checkpoint
+- Done: H4d code5db5f21 independently accepted at3570989. Final preview assembled in its own worktree, fresh offline install,815tests/typechecks/lint/build and real save/reveal/alternative/reload/activity journey pass. Four desktop/mobile styles captured. All Claude workers finished; monitor paused.
+- Next: review `preview/historical-overnight` at http://127.0.0.1:3102/historical and `kb/coordination/historical/overnight-result.md` before main integration. Preserve isolated backend3210/3211 and all worktrees.
+- Watch out: accepted case is a retrospective cash forecast miss, not validated distress warning. Unknown alternative benefit/downside remains explicit. Main694ab2a unchanged. Forced outage/reduced-motion runtime emulation are unverified; mutation request IDs do not survive reload.
+
+## 2026-10-24 08:26 Codex heartbeat
+- Done: core4d5c86f independently accepted;798tests/build and real browser journey pass. Frozen sources, retrospective miss, cost-only alternative, reload, keyboard and mobile checked. Combined backend/UI90bcbf5 passed806tests and pushed.
+- Next: verified Sonnet H4d wires actual activity using existing panel; audit/build/fresh live journey then final preview branch.
+- Watch out: activity first history must stay quiet and alternatives must survive case-only filtering. Pending mutation IDs do not survive reload; no runtime reduced-motion emulation available in browser tool.
+
+## 2026-10-24 08:02 Codex heartbeat
+- Done: core UI594b185 passes792tests/build; actual browser and independent review found runtime blockers.
+- Next: verified Sonnet repair1 fixes the query render loop, stale completion navigation, uncertain failure wording, malformed response recovery and historical sidebar context. Rebuild/browser before accepting.
+- Watch out: preview3101 serves the crashing candidate. Backend4795d51 is accepted; activity wiring waits for clean core UI.
+
+## 2026-10-24 07:46 Codex heartbeat
+- Done: full historical backend accepted and pushed4795d51. Activity code6498b75 independently approved;734tests and live parallel sequencing/retry/isolation checks passed.
+- Next: collect H4c core UI, audit/build/browser, then adopt accepted activity at a clean checkpoint. Only UI worker remains active.
+- Watch out: activity reducer must reset by baselineRunId but filter by caseId, so alternative events remain visible. Initial historical batch is not new live work.
+
+## 2026-10-24 07:42 Codex heartbeat
+- Done: H2c8389326 independently approved, full726tests and local concurrency/snapshot checks passed, acceptance66b2d2a pushed. H4 dependency integration passed772tests.
+- Next: two verified Claude workers build real activity and core live UI in separate worktrees. Core UI uses only accepted H2c; later activity wiring follows tested H2d.
+- Watch out: saved inputSnapshot and available/revealed evidence have different roles. UI must use retrospective wording and unknown unmodeled downside, not inherited synthetic prospective claims. No main or shared cloud changes.
+
+## 2026-10-24 07:23 Codex heartbeat
+- Done: H2c repair1 passed725tests and local retry/reveal/reload checks. Independent probes cleared availability, request receipts and frozen revealed evidence. Live UI card prepared.
+- Next: final bounded repair2 exposes frozen input objects and saved method/date metadata; re-review then H2d.
+- Watch out: getCase available evidence and saved forecast inputSnapshot are distinct; never replace old input provenance with current values. No main/cloud changes.
+
+## 2026-10-24 07:07 Codex heartbeat
+- Done: H2c candidate passes719tests; isolated anonymous local backend compiled and concurrent save/reveal/alternative smoke passed. Generated bindings0377a9b.
+- Next: Claude repair1 addresses independently reproduced frozen-run/reveal/request-key defects and adds read-only retrieval. Re-audit before H2d and live UI wiring.
+- Watch out: passing tests did not clear persistence audit. No main merge or shared cloud writes; local backend3210/3211 only.
+
+## 2026-10-24 06:46 Codex heartbeat
+- Done: real 2U cash engine validation passed713tests; H4 presentation436878e passed728tests/build and desktop/mobile activity checks. Both branches pushed.
+- Next: Claude H2c builds immutable run/reveal APIs, then audit/local smoke, actual activity, and live UI wiring on H4 ancestry.
+- Watch out: historical model honestly misses by$37.58M; response is cost-only sensitivity with unmodeled downside. No live feed or complete journey yet.
+
+## 2026-10-24 06:02 Codex heartbeat
+- Done: approved H2acontract repair and H3presentation; raw-backed2Ucashsubset independentlyverified. H4foundation buildfailure andURLbugs routedtoClaude.
+- Next: normalizecashsubset, auditpureperiodmodel, repairfourstyles; three boundedworkersverified. Fullstate in active-run.md.
+- Watch out: retrospectivecashforecastmiss, notbankruptcywarning; unverifieddebt andheldoutresearchnotes excluded. CoreAPI/persistence/liveUI notdone.
+
+## 2026-10-24 05:20 Codex (overnight workers verified)
+- Done: pushed d5b2c94, created H1/H2/H3 worktrees, launched bounded Claude Sonnet/Opus/Sonnet phases; verified live processes and file changes. Codex heartbeat domino-overnight-audit ACTIVE every 20 minutes. Standalone bounded awake guard covers idle gaps.
+- Next: audit completed checkpoints and advance evidence/contracts -> model/persistence -> UI wiring -> styles -> isolated preview checks. See kb/coordination/historical/active-run.md for exact ownership and recovery.
+- Watch out: three workers maximum, one UI writer, serialized full checks; no main merge, secrets, shared cloud writes or billable Apify runs. Stop new dispatch at 11:15 PDT. Fresh chats do not reset usage limits.
+
 ## 2026-10-24 Codex (supervised execution authorization)
 - Done: user authorized direct Claude development with Codex audit/monitoring. C0 supervisor and bounded H1/H2 worker prompts added; H0 becomes manual fallback. UI reuse and four-style/activity requirements retained.
 - Next: start isolated evidence/contracts/presentation phases, record exact process state, then review and advance gates through heartbeat supervision. No duplicate fresh-chat dispatch.

@@ -1,11 +1,48 @@
 # Domino handoff
 
+## Current checkpoint: overnight preview complete, 08:49 PDT
+
+- Goal complete: one reviewable historical journey with four styles and actual activity. All Claude workers finished; monitoring is PAUSED. No further dispatch queued.
+- Open http://127.0.0.1:3102/historical from `../domino-preview`, branch `preview/historical-overnight`. Code5db5f21, acceptance3570989; final docs above it. Fresh offline install, 815 tests, typechecks/lint/build and browser journey pass.
+- Read [final report](kb/coordination/historical/overnight-result.md) and [runtime ownership](kb/coordination/historical/active-run.md). Screenshots for all styles, source links, restart commands and known limits are there.
+- Next exact step: user reviews demo and framing before main integration. Main694ab2a and unrelated work are untouched. Final preview3102 and isolated backend3210/3211 remain running; old owned previews stopped.
+- Open question: deepen verified 2U debt/constraint history or keep the cash-miss demo. This is retrospective, not validated warning accuracy. Agent canvas/chat remains deferred. Pending mutation IDs do not persist through reload; forced outage and runtime reduced motion are not browser verified.
+
+All older entries below are historical and superseded by this checkpoint.
+
 ## Active direction: Codex supervision, Claude development
+
+- Latest08:26 PDT: live core4d5c86f accepted after798tests/build, independent review and actual browser save/reveal/alternative/reload. Backend4795d51 merged into H4; combined806tests pass and90bcbf5 pushed. Only H4d activity wiring now runs (exec72525/PID99485). Preview3101 serves working core4d5c86f; final event wiring/browser/preview-branch gates remain.
+
+- Latest08:02 PDT: live UI594b185 passed792tests/build but actual browser found an infinite render loop. Independent review also found stale navigation and error handling defects. Sonnet repair1 verified running (exec63601/PID23935). Backend4795d51 remains accepted; no new backend writer. Preview3101 currently serves the broken candidate, not the repair.
+
+- Latest07:46 PDT: historical backend complete and accepted at4795d51, pushed H2 branch. H2d independent audit,734tests and true concurrent local sequencing/isolation checks pass. Only H4c core UI is writing now. Next collect/audit core UI, then merge4795d51 at its clean checkpoint and wire actual activity. Main unchanged.
+
+- Latest07:42 PDT: H2c accepted and pushed66b2d2a after independent review,726tests and local runtime checks. Accepted H2c merged into H4, combined772tests pass. Two verified Claude workers now run: H2d real activity (Opus) and H4c core live UI (Sonnet), with activity unavailable until its own gate passes. Main remains untouched. Current processes/next steps are in active-run.md.
+
+- Latest07:23 PDT: H2c repair1 passed725tests and live distinct-key retry checks; independent review cleared its main defects. Final repair2 is running (exec75136/PID97297) to expose exact frozen input evidence and saved metadata. H2d/live UI remain gated. UI wiring card0cfd53e is ready; active-run.md records the next exact step.
+
+- Latest07:07 PDT: H2c passed719tests and local concurrency smoke, but independent audit found frozen-read, revealed-evidence and retry-key defects plus missing getRun. Claude repair1 is verified running (exec45241/PID53162). H2d/UI wiring still gated. Current local backend3210/3211 and exact next steps are in active-run.md.
+
+- Latest07:04 PDT: H2c candidate completed at0e33f73, generated bindings0377a9b. Full719tests passed, and isolated local Convex3210/3211 passed concurrent save/reveal/alternative smoke. Independent audit pending; no Claude writer active. UI remains presentation-only. See active-run.md for owned runtime and next gate.
+
+- Latest 06:46 PDT: H4 style/activity presentation436878e passed independent review,728tests/build and mobile/browser checks, and is pushed. Only Claude H2c is writing now. The UI waits for tested immutable run/reveal APIs and real activity; all four styles are preserved. No main merge or cloud deployment.
+
+- Latest 06:43 PDT: real-case engine/evidence gate passed713tests and is pushed at3fd98b6. Claude H2c now implements immutable saved runs and reveal APIs. Activity UI repair436878e is under independent review/fullcheck; live UI wiring waits for tested API readiness. Current sessions and restart instructions are in active-run.md.
+
+- Latest 06:27 PDT: normalized cash evidence accepted at a4e49e0 after source/schema validation and formatting-only lint repair. Four-style foundation accepted at1d7cdf6; desktop/mobile screenshots saved. Claude now repairs five period-engine audit defects and builds the typed activity presentation. Live persistence and historical UI wiring remain pending. Read active-run.md for exact processes, servers and dependency gates.
+
+- Latest06:02: three verifiedworkers now H1cash-subsetnormalization, H2bsyntheticperiodmodel, H4astylerepair1. H2acontracts accepted682tests. H3presentationaccepted656tests/build/desktop. H4initialbuildfailed despite664tests, repairrunning. See compactactive-run.md forcurrentownership; oldnotesbelowarehistory.
+
+- Latest heartbeat05:43: H3repair97925fd presentation accepted after656tests/check/build and desktopbrowser; pushedH3branch. H1source repair and H4astyles now running in isolated worktrees. H2arepair442d23b/packet2ae6e9b now independently approved and fullcheck passed, contracts-only. Exact processes and nextgates in active-run.md. Core live journey is not done.
 
 - Latest user asked Codex to run needed Claude prompts, audit/monitor until return, minimize bloat and reuse existing UI. C0 is the current supervisor entry point; H0 manual coordinator is inactive. Do not launch duplicate orchestration.
 - Current stages include historical evidence/contracts/backend/UI, H2d truthful activity, H4 four reusable styles/Motion, preview verification and continuous independent audits. No main merge/production deployment/shared cloud reset.
 - User reports Apify API token added to .env.local; value/validity not inspected. Prefer existing public references, no new scraper or billable Actor runs without a spending limit. Never read credentials into model context or logs.
-- Next exact step: commit/push launch updates, create isolated H1/H2/H3 worktrees, start bounded Claude evidence/contracts/UI-presentation phases, record process IDs/logs/deadline in kb/coordination/historical/active-run.md, and enable heartbeat supervision. Fresh Codex sessions must inspect that record and actual processes before dispatching.
+- Startup verified 2026-10-24 05:20 PDT: H1 evidence, H2a contracts and H3 presentation Claude workers launched from d5b2c94 in isolated worktrees; actual processes and file progress checked. Codex heartbeat domino-overnight-audit is ACTIVE every 20 minutes on this thread. Exact sessions/logs/process IDs and dependency gates are in kb/coordination/historical/active-run.md.
+- All three initial Claude phases now completed locally: H1 2263a96 provisional evidence, H2a code8bdea82/packet89f8847, H3 db6ac41 presentation. H2a full suite passed; contract/evidence audits continue. H3 audit found source leakage and pre-cutoff branching; bounded Claude repair1 is running (session96920). None is accepted for dependent real-case work yet.
+- Next exact step: inspect the active-run record, collect audits and full-check result, then advance only accepted dependency gates. No duplicate workers. Deadline 2026-10-24 11:15 PDT; keep the app available, AC connected and lid open. Bounded caffeinate guard session88844/PID14212 covers the gaps between phases.
+- All launch instructions below are archived history where they conflict with this active C0 run. H0 is inactive.
 
 ## Latest addition: clean UI, four styles and activity motion
 

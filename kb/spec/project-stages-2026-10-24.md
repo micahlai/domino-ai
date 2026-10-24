@@ -1,5 +1,7 @@
 # Remaining project stages and overnight scope
 
+Current result, October24 08:49 PDT: stages0-4 including3b and the scoped independent stabilization in5 are complete for the accepted cash-only case. Preview is ready for human review; monitor paused and all workers finished. See [overnight result](../coordination/historical/overnight-result.md). Stage6 onward and main integration are not dispatched. Risk-warning validity remains unproven; runtime reduced-motion and forced outage checks are disclosed limitations.
+
 User direction: prepare a fresh Claude orchestrator with evidence/backend subagents and a UI subagent on this same computer, then scope an overnight run. This document supersedes the assessment-only launch hold. It does not authorize main merges or production deployment. Current entry point is prompts/shared/C0-codex-supervisor.md. Codex launches bounded Claude evidence/backend/UI phases and audits them. H0 is a manual alternative only; never launch both.
 
 ## Call
