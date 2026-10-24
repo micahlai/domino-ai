@@ -16,7 +16,7 @@ import "@xyflow/react/dist/style.css";
 import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, useCallback, useEffect } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef } from "react";
 
 type DominoData = { status: "idle" };
 type DominoNode = Node<DominoData, "domino">;
@@ -32,6 +32,9 @@ const flowStyle = {
   "--xy-controls-box-shadow": "none",
   "--xy-attribution-background-color": "hsl(var(--card) / 0.8)",
 } as CSSProperties;
+
+// Shared by the initial fit and the Fit View button so the lone node never jumps to maxZoom.
+const fitOptions = { padding: 0.8, maxZoom: 1 };
 
 export function DominoNodeCard({ selected }: { selected: boolean }) {
   return (
@@ -105,9 +108,12 @@ export function NodeDetails({ onClose }: { onClose: () => void }) {
 export function InvestigateWorkspace() {
   const [nodes, setNodes, onNodesChange] = useNodesState<DominoNode>(initialNodes);
   const open = nodes.some((node) => node.selected);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })));
+    // The Close button unmounts, so hand focus back to the node instead of dropping it to <body>.
+    canvasRef.current?.querySelector<HTMLElement>('.react-flow__node[data-id="domino"]')?.focus();
   }, [setNodes]);
 
   useEffect(() => {
@@ -123,35 +129,38 @@ export function InvestigateWorkspace() {
     <div className="flex h-full flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <section
         aria-label="Canvas"
-        className="relative min-h-[45dvh] flex-1 shrink-0 lg:min-h-0 lg:shrink"
+        className="relative flex flex-1 shrink-0 flex-col lg:min-h-0 lg:shrink"
       >
-        <div className="absolute inset-0">
-          <ReactFlow
-            nodes={nodes}
-            edges={[]}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            colorMode="dark"
-            style={flowStyle}
-            fitView
-            fitViewOptions={{ padding: 0.8, maxZoom: 1 }}
-            minZoom={0.3}
-            maxZoom={2}
-            nodesConnectable={false}
-            deleteKeyCode={null}
-          >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={22}
-              size={1.5}
-              color="hsl(var(--border))"
-            />
-            <Controls
-              showInteractive={false}
-              position="bottom-left"
-              className="overflow-hidden rounded-lg border [&_.react-flow__controls-button]:size-11 [&_.react-flow__controls-button]:border-border"
-            />
-          </ReactFlow>
+        <div ref={canvasRef} className="relative min-h-[45dvh] flex-1 lg:min-h-0">
+          <div className="absolute inset-0">
+            <ReactFlow
+              nodes={nodes}
+              edges={[]}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              colorMode="dark"
+              style={flowStyle}
+              fitView
+              fitViewOptions={fitOptions}
+              minZoom={0.3}
+              maxZoom={2}
+              nodesConnectable={false}
+              deleteKeyCode={null}
+            >
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={22}
+                size={1.5}
+                color="hsl(var(--border))"
+              />
+              <Controls
+                showInteractive={false}
+                position="bottom-left"
+                fitViewOptions={fitOptions}
+                className="overflow-hidden rounded-lg border [&_.react-flow__controls-button]:size-11 [&_.react-flow__controls-button]:border-border"
+              />
+            </ReactFlow>
+          </div>
         </div>
         <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5">
           <Link
@@ -167,8 +176,9 @@ export function InvestigateWorkspace() {
           <h1 className="text-sm font-medium">Investigate</h1>
           <p className="text-xs text-muted-foreground">Preview · not connected yet</p>
         </div>
+        {/* Below the canvas on mobile so it never hides the node or zoom controls; floats top-right on desktop. */}
         {open ? (
-          <div className="absolute inset-x-3 bottom-3 z-10 lg:inset-x-auto lg:right-4 lg:top-4 lg:bottom-auto lg:w-80">
+          <div className="border-t p-3 lg:absolute lg:right-4 lg:top-4 lg:z-10 lg:w-80 lg:border-t-0 lg:p-0">
             <NodeDetails onClose={close} />
           </div>
         ) : null}
