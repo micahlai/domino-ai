@@ -1,6 +1,6 @@
 # Current architecture: CREAO-driven company investigation
 
-Latest user direction: keep working until the full canvas journey works; CREAO coordinator/research is product architecture, not optional after dashboard. Preserve main. Other computer may take the isolated UI assignment R1. Show app-authored agent instructions/profiles, not secret prompts or hidden reasoning.
+Latest user direction: keep working until the full canvas journey works; CREAO coordinator/research is product architecture, not optional after dashboard. Preserve main. User moved R1 to this computer; local isolated worktree, one UI writer. Show app-authored agent instructions/profiles, not secret prompts or hidden reasoning.
 
 ## First complete cycle
 
