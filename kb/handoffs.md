@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 08:02 Codex heartbeat
+- Done: core UI594b185 passes792tests/build; actual browser and independent review found runtime blockers.
+- Next: verified Sonnet repair1 fixes the query render loop, stale completion navigation, uncertain failure wording, malformed response recovery and historical sidebar context. Rebuild/browser before accepting.
+- Watch out: preview3101 serves the crashing candidate. Backend4795d51 is accepted; activity wiring waits for clean core UI.
+
 ## 2026-10-24 07:46 Codex heartbeat
 - Done: full historical backend accepted and pushed4795d51. Activity code6498b75 independently approved;734tests and live parallel sequencing/retry/isolation checks passed.
 - Next: collect H4c core UI, audit/build/browser, then adopt accepted activity at a clean checkpoint. Only UI worker remains active.

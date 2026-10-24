@@ -1,6 +1,6 @@
 # Active overnight run
 
-Updated: 2026-10-24 07:46 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual commits/processes before dispatching. Do not duplicate workers. Earlier audit history remains in Git and kb/reviews.
+Updated: 2026-10-24 08:02 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual commits/processes before dispatching. Do not duplicate workers. Earlier audit history remains in Git and kb/reviews.
 
 ## Limits and ownership
 
@@ -23,14 +23,14 @@ Updated: 2026-10-24 07:46 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-d
 | Phase | Worktree / branch | Model | Exec / verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
 | H2d real activity | domino-H2 / H2-historical-backend | Opus high | 65651 / finished | /tmp/domino-H2d-claude.log | Accepted code6498b75, full backend4795d51 pushed |
-| H4c core live UI | domino-H4 / H4-ui-styles-motion | Sonnet high | 27825 / 62659 | /tmp/domino-H4c-core-claude.log | Running from4eb0ddc; accepted H2c only, activity unavailable |
+| H4c core repair1 | domino-H4 / H4-ui-styles-motion | Sonnet high | 63601 / 23935 | /tmp/domino-H4c-r1-claude.log | Running from594b185; render loop, stale navigation and error handling |
 
-UI process/cwd verified07:42 and07:45, with file progress. H2d completed and accepted; H1 and all earlier writers stopped. Prompts /tmp/domino-H2d-prompt.txt and /tmp/domino-H4c-core-prompt.txt. Each owns its task Result, not shared board/HANDOFF. No nested workers.
+UI repair process/cwd verified08:02. Core worker completed594b185; repair1 is the only writer. H2d completed and accepted; H1 and all earlier writers stopped. Current prompt /tmp/domino-H4c-r1-prompt.txt; earlier prompts /tmp/domino-H2d-prompt.txt and /tmp/domino-H4c-core-prompt.txt. Each owns its task Result, not shared board/HANDOFF. No nested workers.
 
 ## Next exact steps
 
 1. H2d gate complete: code6498b75 independently approved; full734tests/typechecks/lint and live separate-client concurrency/isolation checks passed. Complete accepted backend4795d51 is pushed. Preserve it until the UI worker reaches a clean checkpoint.
-2. Collect H4c core candidate. Independent UI audit plus full check/build and local browser journey. Verify save/reveal/alternative/reload, no future-data client import, authoritative frozen input evidence, retrospective copy, unknown benefit/downside, keyboard/mobile and style-state preservation. It must not call a guessed H2d API.
+2. Collect H4c repair1. Core594b185 passed792tests/build but browser crashed with React301 and independent audit found navigation/error defects. Re-review the repairs, full check/build and local browser journey. Verify save/reveal/alternative/reload, no future-data client import, authoritative frozen input evidence, retrospective copy, unknown benefit/downside, keyboard/mobile and style-state preservation. It must not call a guessed H2d API.
 3. After the core UI checkpoint, merge accepted H2d4795d51 into H4 and launch a small activity wiring phase. First history load quiet; real new events animate once. Agent/tool simulations remain labelled playground only.
 4. Assemble preview/historical-overnight, combined checks/build/browser and reviewable morning result. Preserve main. If another repair fails beyond its two attempts, park that gate with evidence instead of repeated retries.
 
@@ -41,7 +41,7 @@ Core UI now runs in parallel with H2d because its persistence dependency is acce
 - Automation domino-overnight-audit ACTIVE every20minutes; quiet when unchanged. Stop on completion/user stop/deadline. Awake guard exec88844/PID14212, bounded caffeinate from05:20. Keep app open, AC connected, lid open. Do not touch unrelated processes.
 - Isolated anonymous local Convex from domino-H2/apps/web, localhost3210 and site3211. exec80763/backendPID38093, /tmp/domino-H2-local-convex.log. Project-local state/environment only, no shared cloud. Watcher rebundles H2 changes and generates bindings. Never print credentials/env. Pre-repair smoke reveal rows lack frozen evidence and fail closed; use fresh runs, do not reset data.
 - Main server3000 untouched. H3 preview3100 exec68463 serves97925fd, /tmp/domino-H3-preview.log.
-- H4 preview3101 exec89805 serves436878e, /tmp/domino-H4b-r1-preview.log. It does not yet serve live H4c. Build with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210 for the integrated local journey, then restart only verified owned server. Do not run a second Convex watcher in H4.
+- H4 preview3101 exec58933/PID16110 serves594b185, /tmp/domino-H4c-preview.log. Its historical route currently crashes with React301; it does not serve the pending repair. Old owned PID86135 was stopped after cwd verification. Build with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210 for the integrated local journey, then restart only verified owned server. Do not run a second Convex watcher in H4.
 - CUA IAB tab6 styleAuditTab retained, browser styleBrowser. Viewport capability mobileViewport was reset. After compaction call cua.rewriteDocumentation before browser work. Prior screenshots /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-{desktop,mobile}.png and /tmp/domino-H4b-r1-mobile-activity.png. Reduced-motion runtime emulation and final live browser journey remain unverified.
 
 ## Reviewers
@@ -55,3 +55,11 @@ Core UI now runs in parallel with H2d because its persistence dependency is acce
 - H2d actual query getActivity({caseId, baselineRunId}) returns latest50 events oldest first. Same-transaction emission only for successful save/reveal/alternative operations. No fake starts, agent/tools or failure records. Distinct concurrent alternatives have unique sequence; retries and extra reveal keys do not duplicate outcomes/events. Another baseline never receives revealed metadata.
 - Independent review approved code6498b75, probe /tmp/h2d-independent-audit.ts. Lead full734tests/typechecks/lint passed at /tmp/domino-H2d-check.log and live concurrent HTTP probe passed. Acceptance4795d51 pushed. No H2 writer remains.
 - UI activity handoff: reset/key feed state by baselineRunId but filter events by caseId, because alternative events carry their own runId. Initial history must be quiet. H4c core is still running against accepted H2c only; do not merge into its active checkout until a clean checkpoint.
+
+## Live UI audit, 08:02 PDT
+
+- Candidate594b185 adds /historical with existing four-style chart/replay, frozen input provenance, save/reveal/alternative and reload. Full792tests/typechecks/lint and production build passed (/tmp/domino-H4c-check.log, /tmp/domino-H4c-build.log). Candidate not accepted.
+- Actual browser failed immediately with React301: Session recreates useQueries map each render, changing Convex subscription callbacks and causing render-phase state updates. HTTP200 and static tests did not detect it. Source behavior verified in installed Convex use_queries.ts/use_subscription.ts. Screenshot /tmp/domino-H4c-render-crash.png, tab6 retained.
+- Independent Sol review additionally found incorrect certainty after unknown network mutation outcome, stale search params/navigation after an in-flight mutation, invalid alternative response leaving permanent Done state, and inherited Kestrel sidebar context. Financial mapping and pre-reveal filtering had no additional blocker.
+- Claude Sonnet repair1 launched exec63601/PID23935; verified cwd domino-H4. Fix memoized query map, honest uncertainty, current URL plus unmount guard, retryable invalid responses and historical context label. No H2d adoption or extra feature work yet.
+- Next: collect repair1, reuse audit_ui_integration, rerun checks/build then browser on the repaired preview. Do not call live UI verified from unit tests. After core acceptance, merge backend4795d51 and wire activity in a separate bounded phase.
