@@ -255,7 +255,7 @@ Find events the base forecast ignores. Score each one.
 | Loan rule | Usable cash at least $3M at all times | Loan agreement section 7.2 |
 | Board rule | At least 18 months of runway | Board policy |
 
-Calibrate ratios from 3 to 5 public B2B software companies (SEC EDGAR). Record the companies and ratios in `kb/research/public-companies.md`.
+Calibrate ratios from 5 public B2B software companies (SEC EDGAR): Amplitude, PagerDuty, Sprout Social, Freshworks, Box. Record the companies and ratios in `kb/research/public-companies.md`.
 
 ### 7.2 Test companies (held out)
 

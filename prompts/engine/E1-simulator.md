@@ -14,7 +14,8 @@ Build packages/sim so it implements the Simulator interface from @domino/contrac
 2. src/profiles/kestrel.ts: the Kestrel parameters from build-spec §7.1 as one typed config object.
    Also stubs for tally.ts and orbit.ts with different parameters (§7.2).
 3. src/calibrate/edgar.ts: a script (pnpm --filter @domino/sim calibrate) that downloads SEC EDGAR company facts
-   for 3 to 5 public B2B software companies (use SEC_EDGAR_USER_AGENT; endpoint
+   for the 5 companies listed in kb/research/public-companies.md (Amplitude, PagerDuty, Sprout Social, Freshworks, Box;
+   look up each CIK from https://www.sec.gov/files/company_tickers.json) (use SEC_EDGAR_USER_AGENT; endpoint
    https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json), computes the ratios in
    kb/research/public-companies.md, and writes them to src/calibrate/ratios.json. Fill the table in that file
    with the companies, filings and numbers. If the network is blocked, stop and tell me; do not invent numbers.
