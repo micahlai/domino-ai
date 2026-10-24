@@ -1,7 +1,7 @@
 # Figma stage log
 
 Write each entry right after the stage ends (200 words max). Honest about what broke.
-Copy into the Figma Slides deck at the end (prompt P7).
+Archived optional track template. Figma is outside the frontend scope; P7 uses screenshots and demo materials.
 
 ## Template
 ### Stage: Ideation | Prototyping | Handoff | Code generation

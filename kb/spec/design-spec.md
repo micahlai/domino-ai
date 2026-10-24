@@ -150,11 +150,11 @@ Dark mode is not in scope.
 
 ---
 
-## 7. Figma workflow (Figma track)
+## 7. Frontend workflow
 
-1. **Ideation:** sketch the main screen in Figma Design (30 min). Log it.
-2. **Prototyping:** build the multiverse timeline as a clickable prototype in Figma Make (fan-out + fix toggle). Log it.
-3. **Handoff:** turn on Figma's Dev Mode MCP server; coding agents read the frames and tokens. Log it.
-4. **Code generation:** agents build components from the frames; we fix by hand. Log what broke.
+1. Sketch and prototype directly in `/playground` with contract fixtures.
+2. Review desktop and mobile screenshots against `skills/taste/SKILL.md`.
+3. Build reusable props-only components from the tokens and behavior in this spec.
+4. Wire reviewed components to Convex in the task that owns that screen.
 
-Write each stage in `kb/stage-log.md` right after it ends.
+Use Next.js on Vercel. Figma accounts, files, prototypes, and stage logs are outside the frontend scope.

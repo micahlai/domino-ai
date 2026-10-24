@@ -8,6 +8,11 @@ Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 - Next: human glances at both diffs; integrate reviewed branches with fresh combined checks and resolve newer origin/main work without rewriting history. Full E1/E6 follow-up slices remain open. Claude owns E3a repairs.
 - Watch out: no merge or push performed. Data is synthetic; agent tests use injected providers, not live integrations. Concurrent sponsors.md/nessie-api.md changes were preserved and not staged. origin/main advanced two commits during work; branch checks predate integration with them.
 
+## 2026-10-24 00:57 Micah (Codex, P1 merge/P2)
+- Done: merged P1 with the latest mocks-only main and pushed merge `20ba4ed`. P2 adds all 14 tables and query functions, five mutations, contract parsing, transactional approvals, action placeholders, and `pnpm convex:fixtures`. 21 new backend/parser tests; `pnpm check` (56 total), `pnpm build`, frozen install and all 14 live local queries pass. Seed rerun creates no duplicates and preserves decisions. Kestrel is visible as ready in the local Convex dashboard.
+- Next: P3 builds the hero; P4 wires screens to these queries. Use the company ID returned by the seed, not the literal route stub `kestrel`. Jayden replaces the internal action placeholders in E5/E7; see `kb/spec/convex-api.md` and `apps/web/convex/README.md`. P2 is on `codex/p2-convex`.
+- Watch out: `sources.lastPull` is null until an actual pull. Fixture tie-outs are pending; approvals/grades/explanations stay empty until real results. Action placeholders throw `not built`; no money moves. Anonymous demo decisions are labeled unverified; production company access controls remain outside this demo. P2 changes are isolated from unrelated local edits in the primary checkout.
+
 ## 2026-10-24 00:55 Codex brain (E1a/E6a dispatch)
 - Done: user authorized launch; synchronized the two clean worktrees to 9830b93 and dispatched build_e1a and build_e6a on GPT-6 Sol/high. E3a remains with Claude.
 - Next: workers implement their cards, verify, fill their own Results and commit locally; brain reviews and records outcomes.
@@ -22,6 +27,12 @@ Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 - Done: wrote E3a/E1a/E6a cards and the launch plan; reserved separate branches/worktrees. Forced-cache-bypass pnpm check passed with Node 24: typechecks, 13 contract tests, lint. No feature code or implementation worker launched. Preserved the prior local orchestration commit.
 - Next: Jayden launches E3a with Codex GPT-6.1 Sol/high, then E1a and E6a with GPT-6 Sol/high. Full setup credentials are separate from the offline task gate.
 - Watch out: default shell picks Node 19; use installed Node 24. Acme's extra 45 days stays inside the horizon; illustrative forecasts are not test oracles. Contract gaps and temporary forecast guards are in kb/requests.md and the launch plan.
+
+## 2026-10-24 00:33 Micah (Codex, S0/P1)
+- Done: installed 10 active project skills for Codex; Corepack/pnpm 9.12.0 and frozen install verified. P1 web shell, all seven routes, ten shadcn primitives, fixture playground, formatting helpers with 22 tests, local Convex and generated bindings. `pnpm check` (35 tests total) and `pnpm build` pass. Browser reviewed at 582 px and 1280 px; fix toggle, proof drawer and event preview work. Root dev starts both services; Ctrl+C stops both.
+- Next: P2 implements the confirmed tables in `kb/spec/convex-api.md`, queries/mutations and fixture seed. P3 builds the interactive hero from the layout stub. Vercel setup is documented in `apps/web/README.md`.
+- Watch out: S0 local work is complete; cloud team membership and shared integration credentials remain unverified/unfilled. Local `.env.local` and `.convex/` stay ignored. The charts and company screens are P1 stubs; no approvals or external actions are connected. Figma requirements were removed from the frontend scope, including P3/P7/P8 and submission.
+
 
 ## 2026-10-24 00:18 Jayden (S0 check, agent)
 - Done: `pnpm install` and `pnpm check` pass (via corepack; 13 contract tests).

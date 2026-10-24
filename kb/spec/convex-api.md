@@ -12,7 +12,7 @@ and parsed with the Zod schema when read in actions.
 | Table | Fields | Indexes |
 | --- | --- | --- |
 | `companies` | `name`, `profile`, `currentWeek`, `today`, `status` ("connecting" \| "ready") | — |
-| `sources` | `companyId`, `kind` (SourceKind), `baseUrl`, `mappings` (FieldMapping[]), `lastPull`, `tieOut` ("ok" \| "needs_review" \| "pending"), `step` (text shown on connect screen) | `by_company` |
+| `sources` | `companyId`, `kind` (SourceKind), `baseUrl`, `mappings` (FieldMapping[]), `lastPull` (ISODate or null before the first pull), `tieOut` ("ok" \| "needs_review" \| "pending"), `step` (text shown on connect screen) | `by_company` |
 | `snapshots` | `companyId`, `asOf`, `data` (Snapshot) | `by_company_asOf` |
 | `models` | `companyId`, `version`, `data` (CompanyModel) | `by_company_version` |
 | `constraints` | `companyId`, `data` (Constraint) | `by_company` |
@@ -25,6 +25,18 @@ and parsed with the Zod schema when read in actions.
 | `grades` | `companyId`, `week`, `errorPct`, `misses` (Evidence[]) | `by_company` |
 | `explanations` | `branchId`, `inputHash`, `text` | `by_branch` |
 | `log` | `companyId`, `actor` ("person" \| "engine" \| "agent:creao" \| "agent:claude" \| "connector"), `action`, `refs`, `at` | `by_company` |
+
+## Identifier and demo rules
+
+- `companyId` in API arguments and table relationships is the Convex `companies` document ID. `companies.create` and the fixture seed return it. Canonical fixture payloads keep their contract IDs (for example snapshot.companyId `kestrel`).
+- `branchId` and `fixId` are contract IDs, globally unique in this demo. The seed keeps the fixture IDs.
+- Risk lists and resilience reports use the latest `asOf`; model reads use the highest version.
+- Missing singleton data returns `null`; missing collections return `[]`. Writes reject missing or unrelated records.
+- `approvals.decide` takes the ID of a simulated **fix branch**, plus the candidate that produced its changes. It records the decision and updates that branch atomically; it never executes the fix.
+- Approval `by` uses a verified identity when available. This demo has no sign-in UI; anonymous clicks are explicitly recorded as `demo-user (unverified)`. Company access controls belong to production hardening.
+- `currentWeek` and the fixture seed start at week 0. Weeks are Monday ISO dates; `at` is an ISO timestamp.
+- The seed is an internal mutation, creates Kestrel once and preserves existing decisions when rerun. Empty grades, approvals and explanations are valid until real results exist; the seed does not invent them.
+- P2 internal action placeholders throw `not built`. Scheduled work remains visibly unsuccessful until Jayden implements the named action; mutations do not manufacture computed results.
 
 ## Queries (UI reads only these)
 

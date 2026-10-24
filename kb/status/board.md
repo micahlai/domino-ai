@@ -32,14 +32,14 @@ Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; its f9b5ad2 revi
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Machine setup + Figma Edu | `prompts/shared/00-setup.md` | — | todo | | |
-| P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | todo | | |
-| P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | todo | | |
-| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | todo | | Figma Make first |
+| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | codex/p1-web-shell | Local setup verified; team access and integration keys still need Micah |
+| P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
+| P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | done | codex/p2-convex | 14 tables/queries, 5 mutations; seed and live queries verified; 56 tests/check/build pass |
+| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | todo | | Prototype in /playground |
 | P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | todo | | |
 | P5 | Branch detail, connect screen, add event, next week | `prompts/product/P5-flows.md` | P4 | todo | | |
 | P6 | Learning + record screens; taste pass | `prompts/product/P6-learning-record-polish.md` | P5 | todo | | |
-| P7 | Usability test, Figma stage log and slides | `prompts/product/P7-user-test-figma.md` | P6 | todo | | |
+| P7 | Usability test and demo materials | `prompts/product/P7-user-test.md` | P6 | todo | | |
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
 
 ## Shared

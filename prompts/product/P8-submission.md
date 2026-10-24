@@ -7,7 +7,7 @@ Depends on: E8, P7. Skill files (in skills/): demo-check.
 2. Record the demo video (under 3 minutes) following kb/product/demo-script.md. Open with step 3 (the moment).
    Record a second take as backup.
 3. Fill kb/product/submission.md checkboxes. CREAO agent ids and run links in the README.
-4. Devpost: description from kb/product/overview.md, one line on seats, proof table, real vs simulated, repo, video, Figma Slides.
+4. Devpost: description from kb/product/overview.md, one line on seats, proof table, real vs simulated, repo, video, demo screenshots.
    Select every track listed in submission.md.
 5. Rehearse the live demo twice with a timer. Prepare one judge scenario in the Add event dialog.
 

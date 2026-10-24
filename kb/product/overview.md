@@ -22,5 +22,5 @@ future fans out on the right. "Kestrel survives 7 of 11 futures. With two fixes,
 
 **Vertical:** B2B software (SaaS). **Demo company:** Kestrel Data (simulated, based on public filings).
 
-**Tracks:** Hyphenate (main), Microsoft "Built for the Real World", Figma "Idea to Demo",
+**Tracks:** Hyphenate (main), Microsoft "Built for the Real World",
 CREAO "AI-First Disruptor", Convex, Capital One Nessie. Add-ons if time: Apify, CRS.
