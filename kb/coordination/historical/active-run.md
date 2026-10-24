@@ -1,6 +1,6 @@
 # Active run: Domino agent canvas
 
-Updated October 24, 2026 after the user corrected browser access. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
+Updated October 24, 2026 at the 16:02 PDT scheduled audit. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
 
 ## Goal and constraints
 
@@ -18,6 +18,8 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 - Screenshots: /tmp/domino-accepted-spatial-web.png and /tmp/domino-G5-alternative-details.png. These show real deterministic financial operations, but specialist nodes honestly fail provider_unverified. No historical CREAO call has run. Current Domino coordination is a disclosed fixed workflow, not an autonomous CREAO coordinator.
 
 ## Workers and runtimes
+
+16:02 audit: G6 PID3183/cwd verified, still at base9864858 with no changed files or completed output yet (only minutes since launch). No duplicate dispatched or tests repeated. Fetch found G7 still at the task-card base9864858; friend implementation not yet published. Native Chrome control hit a timeout while selecting the CREAO window; no remote setup change or provider call occurred. Reinspect current UI on the next actionable browser attempt. Automation prompt consolidated to remove stale R1/G3 and all-local ownership.
 
 G6 Claude Sonnet/high is running locally in domino-G6 / G6-company-map, sole UI writer. PID3183, exec49931, log /tmp/domino-G6-claude.log, base9864858. Process and cwd verified. Locked dependencies installed; no feature acceptance yet. G7-company-knowledge is reserved for the friend computer, only two new lib files and its card. G8 product shell/knowledge wiring is queued after both gates. Do not launch G7 locally or duplicate the G6 writer. Unrelated Claude sessions in the workspace root and Karoake are not ours.
 
