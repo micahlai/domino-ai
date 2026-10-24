@@ -99,6 +99,12 @@ A single Canvas layer samples curve coordinates on geometry changes and reuses t
 
 The playground's ParticleMotion section repeats sample curves 30 times to exercise rendering; those copies are not additional financial forecasts.
 
+### 3.5 Weekly cash inspection
+
+While the pointer is inside the plot, show dotted vertical and horizontal guides at the nearest supplied weekly point. Hide the guides when it leaves. Show the full date, including year, and exact cash to the cent. Use recorded history on the left and the selected scenario on the right; default to the base forecast when none is selected. Hovering other curves must not change the inspected scenario; clicking still selects them. Never interpolate money or present the synthetic Today anchor as a recorded weekly value.
+
+Keep the last inspected week in the readout when the pointer leaves. An Inspect week range control provides keyboard arrows, Home/End and touch access to the values. Keep its date when changing scenarios or previewing fixes, and update the value from the current report. On narrow screens, choosing a week brings its chart position into the horizontal viewport. Avoid collisions with nearby month and endpoint labels. The existing company and playground timelines include this behavior.
+
 ---
 
 ## 4. Other components

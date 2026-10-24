@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:21 Micah (Codex, weekly inspection)
+- Done: added dotted date/value crosshairs tied to the selected forecast, with full year and exact cash to the cent. Guides appear only while the pointer is inside the plot; hovering another curve does not change the inspected scenario, while clicking still selects it. The last weekly readout remains available outside the plot. Inspect week supports arrows, Home/End and touch; narrow charts reveal the chosen position. Verified hover lock, pointer exit, click selection, history, fix comparison, playground, mobile overflow and production rendering. All 75 tests, typecheck, lint and build pass.
+- Next: review codex/timeline-particles at port 3005; main remains unchanged.
+- Watch out: values snap to supplied weekly records/forecast points. No interpolated cash or synthetic Today values. Keyboard/touch changes the readout without showing pointer-only guides. Screenshot: /tmp/domino-timeline-inspection.png.
+
 ## 2026-10-24 02:12 Micah (Codex, full-line emission)
 - Done: replaced traveling beads with soft particles born across entire curves, drifting outward and fading. Forecast counts follow supplied probabilities with equal lifetimes; stratified origins cover each path. Hard cap is 720 particles/32 tracks, with 234 particles at 390 px. The 30-path desktop playground drew about 0.24 ms/frame at roughly 60 fps; offscreen canvases stop. Pause/resume, scenario selection, fix comparison, clean console and phone overflow checked. All 72 tests and production build pass.
 - Next: review codex/timeline-particles at the port 3005 preview; main remains unchanged.

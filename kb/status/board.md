@@ -35,6 +35,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | C1 | Plain financial timeline copy | User request | P4 | done | codex/plain-timeline-copy | Forecast/scenario language, requirement outcomes and explicit preview copy; checks/browser pass |
 
 | V1 | Timeline particle experiment | User request | P3 | done | codex/timeline-particles | Full-line probability-weighted emission; 72 tests/build pass; browser checked |
+| V2 | Timeline date/value inspection | User request | V1 | done | codex/timeline-particles | Selected-scenario guides only inside plot; weekly values, keyboard/touch; 75 tests/build pass |
 
 ## Shared
 

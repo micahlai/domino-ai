@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: cash crosshairs appear only with the pointer inside the plot, use the selected scenario regardless of hover, and retain the inspected date during fix comparison. Clicking another curve still selects it. Why: user direction; exact weekly values come from supplied data, with keyboard/touch access through a week slider and no interpolated money or synthetic Today readouts.
+
 - 2026-10-24 Micah: emit soft particles along entire curves and allocate their counts by supplied scenario probability, per the user's clarified reference. Use a bounded shared budget and equal lifetimes so more probable scenarios have higher emission rates; keep history at a fixed baseline and financial values unchanged.
 
 - 2026-10-24 Micah: keep the particle experiment on codex/timeline-particles in the primary checkout. Use cached, bounded Canvas filaments over the existing SVG, with explicit pause and visibility/reduced-motion safeguards; no WebGL dependency or new financial encoding.
