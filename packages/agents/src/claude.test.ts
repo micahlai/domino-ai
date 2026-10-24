@@ -86,6 +86,17 @@ describe("Claude request", () => {
     expect(JSON.parse(calls[0]!.body!).max_tokens).toBe(200);
   });
 
+  it("gives short-text jobs a 4096-token budget and still reports truncation", async () => {
+    const briefInput = { grade: { errorPct: 0, misses: [] }, model: fixtures.model };
+    const { claude, calls } = client(() => message({ text: "Short." }));
+    await claude.run("explain", branch);
+    await claude.run("weeklyBrief", briefInput);
+    expect(calls.map((call) => JSON.parse(call.body!).max_tokens)).toEqual([4096, 4096]);
+
+    const cut = client(() => message({ text: "Cut" }, { stop_reason: "max_tokens" }));
+    await expect(categoryOf(cut.claude.run("weeklyBrief", briefInput))).resolves.toBe("truncated");
+  });
+
   it("fails as configuration without a model or key and never invents a model", async () => {
     for (const partial of [{ ANTHROPIC_API_KEY: "sk-secret-claude" }, { ANTHROPIC_MODEL: "m" }]) {
       const fake = fakeRuntime(() => message({ text: "x" }));

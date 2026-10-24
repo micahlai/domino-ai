@@ -6,6 +6,7 @@
  *
  * Credentials come only from the caller's environment. Output is one report line with
  * job, backend, status category and a size summary; no credentials, URLs or raw bodies.
+ * Add SMOKE_DIAGNOSTICS=1 on CREAO to include format counts (enums, booleans, counts only).
  */
 import { expect, it } from "vitest";
 import { runSmoke } from "../src/smoke";

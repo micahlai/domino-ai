@@ -87,6 +87,31 @@ describe("manual smoke", () => {
     expect(prompt.data).toEqual(smokeInputs.readConstraints);
   });
 
+  it("adds CREAO format diagnostics only with SMOKE_DIAGNOSTICS=1", async () => {
+    const chatText = `Private narration.\n${RESULT_START}\n{"text": broken\n${RESULT_END}`;
+    const handler = (call: { method: string }) =>
+      call.method === "POST"
+        ? json({ id: "r", status: "pending" }, 202)
+        : json({ id: "r", status: "completed", result: { chatText } });
+    const smoke = (extra: Record<string, string>) =>
+      runSmoke(
+        { ...env, CREAO_AGENT_ID_BRIEF: "agent-brief", SMOKE_JOB: "weeklyBrief", ...extra },
+        { ...fakeRuntime(handler).runtime, creao: { pollIntervalMs: 1 } },
+      );
+
+    const off = await smoke({ SMOKE_BACKEND: "creao" });
+    expect(off).toMatchObject({ ok: false, category: "no_result" });
+    expect(off).not.toHaveProperty("diagnostics");
+
+    const on = await smoke({ SMOKE_BACKEND: "creao", SMOKE_DIAGNOSTICS: "1" });
+    expect(on).toMatchObject({
+      ok: false,
+      category: "no_result",
+      diagnostics: { stage: "select", delimitedBlocks: 1, malformedDelimited: 1, candidates: 0 },
+    });
+    expect(JSON.stringify(on)).not.toMatch(/Private|broken|secret|capi_|agent-brief|http/);
+  });
+
   it("reports Claude configuration failures without a network call", async () => {
     const fake = fakeRuntime(() => json({}));
     await expect(
