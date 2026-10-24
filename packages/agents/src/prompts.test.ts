@@ -1,4 +1,10 @@
-import type { AgentJob } from "@domino/contracts";
+import {
+  type AgentJob,
+  BillingPlanSchema,
+  FieldMappingSchema,
+  InvoiceSchema,
+  PendingPayoutSchema,
+} from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,6 +12,7 @@ import {
   RESULT_START,
   buildClaudeRequest,
   buildCreaoPrompt,
+  canonicalFields,
   encodeData,
   schemaText,
   systemPrompt,
@@ -39,6 +46,24 @@ describe("prompts", () => {
     expect(systemPrompt("readConstraints")).toContain('evidence.source must be "document"');
     expect(systemPrompt("mapSource")).toContain('"invoices":["id","customerId","amount"');
     expect(systemPrompt("weeklyBrief")).toContain("Do not describe your tools");
+  });
+
+  it("lists canonical fields for every mapping entity, including refined records", () => {
+    expect(Object.keys(canonicalFields)).toEqual(FieldMappingSchema.shape.entity.options);
+    expect(canonicalFields.invoices).toEqual(Object.keys(InvoiceSchema.innerType().shape));
+    expect(canonicalFields.invoices).toEqual(
+      expect.arrayContaining(["billingPlanId", "collection", "paidAmount", "writtenOff"]),
+    );
+    expect(canonicalFields.billingPlans).toEqual(Object.keys(BillingPlanSchema.innerType().shape));
+    expect(canonicalFields.pendingPayouts).toEqual(
+      Object.keys(PendingPayoutSchema.innerType().shape),
+    );
+    const listed = JSON.stringify(canonicalFields);
+    expect(systemPrompt("mapSource")).toContain(listed);
+    expect(JSON.parse(buildCreaoPrompt("mapSource", {})).rules.join("\n")).toContain(listed);
+    expect(systemPrompt("mapSource")).toContain(
+      '"pendingPayouts":["id","amount","expectedArrival"',
+    );
   });
 
   it.each(jobs)("%s exposes the job schema to both providers", (job) => {

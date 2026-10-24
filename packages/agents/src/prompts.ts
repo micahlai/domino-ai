@@ -1,18 +1,23 @@
 import {
   BankTxnSchema,
   BillSchema,
+  BillingPlanSchema,
   CardTxnSchema,
   CustomerSchema,
   DealSchema,
   InvoiceSchema,
   PayrollRunSchema,
+  PendingPayoutSchema,
 } from "@domino/contracts";
 import type { AgentJob } from "@domino/contracts";
+import type { ZodObject, ZodRawShape } from "zod";
 import {
   AGENT_SCHEMA_VERSION,
   type JsonSchema,
+  type MappingEntity,
   type SchemaDialect,
   isStructuredJob,
+  mappingEntities,
   outputJsonSchema,
 } from "./schemas";
 
@@ -20,15 +25,24 @@ import {
 export const RESULT_START = "<<<DOMINO_RESULT>>>";
 export const RESULT_END = "<<<END_DOMINO_RESULT>>>";
 
-const canonicalFields = {
-  customers: Object.keys(CustomerSchema.shape),
-  invoices: Object.keys(InvoiceSchema.shape),
-  bankTxns: Object.keys(BankTxnSchema.shape),
-  bills: Object.keys(BillSchema.shape),
-  cardTxns: Object.keys(CardTxnSchema.shape),
-  payroll: Object.keys(PayrollRunSchema.shape),
-  deals: Object.keys(DealSchema.shape),
+// Refined schemas are ZodEffects; innerType() reads their fields without dropping the checks.
+// The Record type makes a new FieldMapping entity a compile error until it is listed here.
+const entitySchemas: Record<MappingEntity, ZodObject<ZodRawShape>> = {
+  customers: CustomerSchema,
+  invoices: InvoiceSchema.innerType(),
+  bankTxns: BankTxnSchema,
+  bills: BillSchema,
+  cardTxns: CardTxnSchema,
+  payroll: PayrollRunSchema,
+  deals: DealSchema,
+  billingPlans: BillingPlanSchema.innerType(),
+  pendingPayouts: PendingPayoutSchema.innerType(),
 };
+
+/** Canonical fields per entity, in FieldMappingSchema.entity order. Exported for parity tests. */
+export const canonicalFields: Record<MappingEntity, string[]> = Object.fromEntries(
+  mappingEntities.map((entity) => [entity, Object.keys(entitySchemas[entity].shape)]),
+) as Record<MappingEntity, string[]>;
 
 const sharedRules = (dataLocation: string) => [
   "You are one component of Domino, a cash forecasting assistant. You propose and explain. A person approves every action and Domino never moves money.",

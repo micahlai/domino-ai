@@ -8,7 +8,11 @@ import type { AgentJob } from "@domino/contracts";
 import { z } from "zod";
 
 /** Bump when prompts, envelopes or schemas change so cached results are not reused. */
-export const AGENT_SCHEMA_VERSION = "e6b-1";
+export const AGENT_SCHEMA_VERSION = "e6d-1";
+
+/** Entities a FieldMapping may target, read from the contract so prompts and schemas never drift. */
+export const mappingEntities = FieldMappingSchema.shape.entity.options;
+export type MappingEntity = (typeof mappingEntities)[number];
 
 export const structuredJobs = ["mapSource", "readConstraints", "proposeFixes"] as const;
 export type StructuredJob = (typeof structuredJobs)[number];
@@ -130,10 +134,7 @@ function fieldMapping(dialect: SchemaDialect): JsonSchema {
         };
   return object({
     source: { type: "string", enum: [...SourceKindSchema.options] },
-    entity: {
-      type: "string",
-      enum: ["customers", "invoices", "bankTxns", "bills", "cardTxns", "payroll", "deals"],
-    },
+    entity: { type: "string", enum: [...mappingEntities] },
     fields,
     transforms: { type: "array", items: str("Plain note on a conversion") },
     endpoint: str(),
