@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:59 Codex brain (E4 audit)
+- Done: Claude returned clean 2340ff8. Lead check passes 236 tests/typechecks/lint. Independent Sol/Astra reviews and lead probes found three blockers, documented in kb/reviews/E4-2340ff8.md; all tested scoring and sensitivity cases otherwise pass.
+- Next: directly run Claude E4-r1 for daily-risk retention, collision-free IDs and omission of unsupported signing dates. Re-review before merge; main remains at passing E3b integration.
+- Watch out: E4 is unmerged. Worker honestly reported limited test-first coverage; repair requires reproduced red/green evidence. No particles, live data writes, push or deployment.
+
 ## 2026-10-24 02:46 Codex brain (direct E4 dispatch)
 - Done: E3b merged at b7a6d93; post-merge check passes 197 tests/typechecks/lint. Created E4-multiverse in ../domino-E4 from f1ff60d and installed frozen dependencies offline. Claude Opus/high is running E4 directly with a 30-minute checkpoint under explicit user authorization.
 - Next: inspect /tmp/domino-E4-claude.log and worker Result, independently review the returned commit, then check and integrate. User need not relay prompts. Existing main remains verified.
