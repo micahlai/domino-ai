@@ -2,9 +2,45 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ConversationPanel } from "./ConversationPanel";
-import { DominoNodeCard, NodeDetails } from "./InvestigateWorkspace";
+import {
+  DominoNodeCard,
+  InvestigateWorkspace,
+  NodeCard,
+  NodeDetails,
+} from "./InvestigateWorkspace";
+import { IDLE_DOMINO, deliver, layout, safeHref, toFlowNodes } from "./graph";
+import type { CanvasNode } from "./types";
 
 const noop = () => {};
+
+const agent: CanvasNode = {
+  id: "agent-7f3a",
+  kind: "agent",
+  title: "Evidence analyst",
+  status: "running",
+  profile: {
+    role: "Reads saved evidence",
+    workingStyle: "Cites every claim",
+    instructions: "Use only the supplied filings.",
+    version: "v3",
+    tools: ["Evidence reader", "Date filter"],
+    provider: "Acme",
+    model: "acme-large",
+    knowledgeCutoff: "2023-11-08",
+  },
+  metadata: [{ label: "Method", value: "evidence.read" }],
+};
+
+const source: CanvasNode = {
+  id: "src-1",
+  kind: "source",
+  title: "Quarterly filing",
+  status: "succeeded",
+  evidence: [
+    { id: "e1", title: "Safe link", url: "https://example.com/a" },
+    { id: "e2", title: "Unsafe link", url: "javascript:alert(1)" },
+  ],
+};
 
 describe("ConversationPanel", () => {
   const html = renderToStaticMarkup(createElement(ConversationPanel));
@@ -26,6 +62,49 @@ describe("ConversationPanel", () => {
   it("does not claim conversations are saved or stored", () => {
     expect(html).not.toMatch(/\b(saved|stored|history)\b/i);
   });
+
+  it("renders supplied messages as text, never as markup", () => {
+    const out = renderToStaticMarkup(
+      createElement(ConversationPanel, {
+        connection: "live",
+        onSend: noop,
+        messages: [{ id: "1", role: "assistant", text: "<img src=x onerror=alert(1)>" }],
+      }),
+    );
+    expect(out).toContain("&lt;img");
+    expect(out).not.toContain("<img");
+  });
+
+  it("keeps offline, unavailable, loading, pending and errors distinct from empty", () => {
+    const render = (props: Parameters<typeof ConversationPanel>[0]) =>
+      renderToStaticMarkup(createElement(ConversationPanel, props));
+    expect(render({ connection: "offline" })).toContain("offline. Reconnect to send");
+    expect(render({ connection: "unavailable" })).toContain("run investigations right now");
+    const loading = render({ connection: "loading" });
+    expect(loading).toContain("Loading the conversation");
+    expect(loading).not.toContain("Ask Domino to look into a company");
+    expect(render({ connection: "live", pending: true, onSend: noop })).toContain(
+      "Domino is working on your question",
+    );
+    expect(render({ connection: "live", error: "Could not send" })).toMatch(
+      /role="alert"[^>]*>Could not send/,
+    );
+  });
+
+  it("shows reveal and alternative only when the parent allows and handles them", () => {
+    const render = (props: Parameters<typeof ConversationPanel>[0]) =>
+      renderToStaticMarkup(createElement(ConversationPanel, props));
+    expect(render({ canReveal: true })).not.toContain("Show what happened");
+    expect(render({ onReveal: noop })).not.toContain("Show what happened");
+    const both = render({
+      canReveal: true,
+      onReveal: noop,
+      canAlternative: true,
+      onAlternative: noop,
+    });
+    expect(both).toContain("Show what happened");
+    expect(both).toContain("Try an alternative");
+  });
 });
 
 describe("Domino node", () => {
@@ -44,5 +123,230 @@ describe("Domino node", () => {
     expect(html).toContain("no evidence or output to show");
     expect(html).not.toMatch(/\bdomino\b/);
     expect(html).not.toMatch(/method|\bid\b/i);
+  });
+});
+
+describe("Truthful empty states", () => {
+  const bare = (status: CanvasNode["status"]): CanvasNode => ({
+    id: "n",
+    kind: "source",
+    title: "Filing",
+    status,
+  });
+  const render = (status: CanvasNode["status"]) =>
+    renderToStaticMarkup(
+      createElement(NodeDetails, { node: bare(status), onClose: noop, connection: "live" }),
+    );
+
+  it("never says nothing has run for a node that finished or failed", () => {
+    expect(render("succeeded")).not.toContain("Nothing has run yet");
+    expect(render("succeeded")).toContain("Finished");
+    expect(render("failed")).not.toContain("Nothing has run yet");
+    expect(render("failed")).toContain("Failed, and no reason was given");
+    expect(render("idle")).toContain("Nothing has run yet");
+  });
+
+  it("tells an explicit empty investigation from an omitted nodes prop", () => {
+    const empty = renderToStaticMarkup(
+      createElement(InvestigateWorkspace, { nodes: [], connection: "live" }),
+    );
+    expect(empty).toContain("No steps to show yet");
+    const loading = renderToStaticMarkup(
+      createElement(InvestigateWorkspace, { nodes: [], connection: "loading" }),
+    );
+    expect(loading).toContain("Loading the investigation");
+    const omitted = renderToStaticMarkup(createElement(InvestigateWorkspace));
+    expect(omitted).not.toContain("No steps to show yet");
+    expect(omitted).not.toContain("Loading the investigation");
+    expect(omitted).toContain("Preview");
+  });
+});
+
+describe("Canvas nodes", () => {
+  it("labels each kind and status in plain words", () => {
+    const html = renderToStaticMarkup(createElement(NodeCard, { node: agent, selected: false }));
+    expect(html).toContain("Evidence analyst");
+    expect(html).toContain("Agent · Running");
+    expect(html).not.toContain("agent-7f3a");
+  });
+
+  it("agent details show the supplied profile and hide ids in collapsed technical details", () => {
+    const html = renderToStaticMarkup(createElement(NodeDetails, { node: agent, onClose: noop }));
+    expect(html).toContain("Instructions and working style");
+    expect(html).not.toMatch(/personality/i);
+    for (const text of [
+      "Reads saved evidence",
+      "Cites every claim",
+      "Use only the supplied filings.",
+      "version v3",
+      "Evidence reader, Date filter",
+      "Acme · acme-large",
+      "2023-11-08",
+    ]) {
+      expect(html).toContain(text);
+    }
+    expect(html).toContain("<details");
+    expect(html).not.toMatch(/<details[^>]*\bopen\b/);
+    const visible = html.split("<details")[0] ?? "";
+    expect(visible).not.toContain("agent-7f3a");
+    expect(visible).not.toContain("evidence.read");
+  });
+
+  it("links only http(s) evidence and opens it safely", () => {
+    const html = renderToStaticMarkup(createElement(NodeDetails, { node: source, onClose: noop }));
+    expect(html).toContain('href="https://example.com/a"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).not.toContain("javascript:");
+    expect(html).toContain("Unsafe link");
+  });
+
+  it("puts the parent's output slot inside details", () => {
+    const html = renderToStaticMarkup(
+      createElement(NodeDetails, {
+        node: { id: "o", kind: "output", title: "Forecast", status: "succeeded" },
+        onClose: noop,
+        output: createElement("figure", null, "chart"),
+      }),
+    );
+    expect(html).toContain("<figure>chart</figure>");
+  });
+});
+
+describe("graph", () => {
+  const edges = [
+    { id: "a", source: "domino", target: "src-1" },
+    { id: "b", source: "src-1", target: "agent-7f3a" },
+  ];
+
+  it("lays out columns by distance from Domino", () => {
+    const positions = layout([IDLE_DOMINO, source, agent], edges);
+    expect(positions.get("domino")?.x).toBe(0);
+    expect(positions.get("src-1")?.x).toBeGreaterThan(0);
+    expect(positions.get("agent-7f3a")?.x).toBeGreaterThan(positions.get("src-1")?.x ?? 0);
+  });
+
+  it("restored history is quiet and later arrivals animate once", () => {
+    const restored = toFlowNodes([], [IDLE_DOMINO, source], edges, true);
+    expect(restored.every((node) => !node.data.enter)).toBe(true);
+    const next = toFlowNodes(restored, [IDLE_DOMINO, source, agent], edges, false);
+    expect(next.find((node) => node.id === "agent-7f3a")?.data.enter).toBe(true);
+    expect(next.find((node) => node.id === "src-1")?.data.enter).toBe(false);
+  });
+
+  it("keeps dragged positions and selection across deliveries", () => {
+    const moved = toFlowNodes([], [IDLE_DOMINO, source], edges, true).map((node) =>
+      node.id === "src-1" ? { ...node, position: { x: 999, y: -5 }, selected: true } : node,
+    );
+    const next = toFlowNodes(
+      moved,
+      [IDLE_DOMINO, { ...source, status: "failed" }, agent],
+      edges,
+      false,
+    );
+    const kept = next.find((node) => node.id === "src-1");
+    expect(kept?.position).toEqual({ x: 999, y: -5 });
+    expect(kept?.selected).toBe(true);
+    expect(kept?.data.node.status).toBe("failed");
+  });
+
+  describe("incremental delivery", () => {
+    const root = { source: "domino" };
+    const first = [IDLE_DOMINO, source];
+    const firstEdges = [{ id: "e1", ...root, target: "src-1" }];
+    const second = { ...source, id: "src-2", title: "Second filing" };
+    const allEdges = [...firstEdges, { id: "e2", ...root, target: "src-2" }];
+    // Cards are about 66 to 86px tall, so anything closer than 100px would overlap.
+    const MIN_GAP = 100;
+
+    it("places a sibling delivered later below the first without moving it", () => {
+      const one = toFlowNodes([], first, firstEdges, true);
+      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const a = two.find((node) => node.id === "src-1");
+      const b = two.find((node) => node.id === "src-2");
+      expect(a?.position).toEqual(one.find((node) => node.id === "src-1")?.position);
+      expect(Math.abs((b?.position.y ?? 0) - (a?.position.y ?? 0))).toBeGreaterThanOrEqual(MIN_GAP);
+      expect(b?.position.x).toBe(a?.position.x);
+    });
+
+    it("steers around a card the person dragged into the slot", () => {
+      const one = toFlowNodes([], first, firstEdges, true).map((node) =>
+        node.id === "src-1" ? { ...node, position: { x: 300, y: 60 } } : node,
+      );
+      const two = toFlowNodes(one, [...first, second], allEdges, false);
+      const a = two.find((node) => node.id === "src-1");
+      const b = two.find((node) => node.id === "src-2");
+      expect(a?.position).toEqual({ x: 300, y: 60 });
+      expect(Math.abs((b?.position.y ?? 0) - 60)).toBeGreaterThanOrEqual(MIN_GAP);
+    });
+
+    it("keeps every sibling apart across several single-record deliveries", () => {
+      let current = toFlowNodes([], [IDLE_DOMINO], [], true);
+      let nodes: CanvasNode[] = [IDLE_DOMINO];
+      let edges: { id: string; source: string; target: string }[] = [];
+      for (const n of [1, 2, 3, 4]) {
+        nodes = [...nodes, { ...source, id: `s${n}` }];
+        edges = [...edges, { id: `e${n}`, source: "domino", target: `s${n}` }];
+        current = toFlowNodes(current, nodes, edges, false);
+      }
+      const ys = current
+        .filter((node) => node.id !== "domino")
+        .map((node) => node.position.y)
+        .sort((x, y) => x - y);
+      for (let i = 1; i < ys.length; i++) {
+        expect((ys[i] ?? 0) - (ys[i - 1] ?? 0)).toBeGreaterThanOrEqual(MIN_GAP);
+      }
+    });
+  });
+
+  describe("quiet history versus live work", () => {
+    const edges = [{ id: "a", source: "domino", target: "src-1" }];
+    const idleOnly = toFlowNodes([], [IDLE_DOMINO], [], true);
+    const fresh = { quiet: false, follow: true, reduced: false };
+
+    it("fits instantly when saved history adds nodes", () => {
+      const out = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      expect(out.fit?.duration).toBe(0);
+    });
+
+    it("animates the fit for a real new node, but not under reduced motion", () => {
+      expect(deliver(idleOnly, [IDLE_DOMINO, source], edges, fresh).fit?.duration).toBe(300);
+      const reduced = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, reduced: true });
+      expect(reduced.fit?.duration).toBe(0);
+    });
+
+    it("does not touch the view once the person has moved it, or when nothing was added", () => {
+      expect(
+        deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, follow: false }).fit,
+      ).toBeNull();
+      const same = deliver(idleOnly, [IDLE_DOMINO], [], fresh);
+      expect(same.fit).toBeNull();
+    });
+
+    it("lets a status change on a mounted node animate only when the delivery is live", () => {
+      const shown = toFlowNodes([], [IDLE_DOMINO, source], edges, true);
+      const done = { ...source, status: "failed" as const };
+      const quiet = deliver(shown, [IDLE_DOMINO, done], edges, { ...fresh, quiet: true });
+      expect(quiet.nodes.find((node) => node.id === "src-1")?.data.live).toBe(false);
+      const live = deliver(shown, [IDLE_DOMINO, done], edges, fresh);
+      expect(live.nodes.find((node) => node.id === "src-1")?.data.live).toBe(true);
+    });
+
+    it("fades a new node in only on a live delivery, and never replays it for old nodes", () => {
+      const quiet = deliver(idleOnly, [IDLE_DOMINO, source], edges, { ...fresh, quiet: true });
+      expect(quiet.nodes.every((node) => !node.data.enter)).toBe(true);
+      const live = deliver(quiet.nodes, [IDLE_DOMINO, source, agent], edges, fresh);
+      expect(live.nodes.filter((node) => node.data.enter).map((node) => node.id)).toEqual([
+        "agent-7f3a",
+      ]);
+    });
+  });
+
+  it("rejects non-http evidence links", () => {
+    expect(safeHref("https://example.com/x")).toBe("https://example.com/x");
+    expect(safeHref("http://example.com/x")).toBe("http://example.com/x");
+    expect(safeHref("javascript:alert(1)")).toBeUndefined();
+    expect(safeHref("data:text/html,hi")).toBeUndefined();
+    expect(safeHref("not a url")).toBeUndefined();
+    expect(safeHref(undefined)).toBeUndefined();
   });
 });
