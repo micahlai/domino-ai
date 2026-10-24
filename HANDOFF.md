@@ -1,5 +1,7 @@
 # Domino handoff
 
+Update: G5 finished locallyeaa54d7 during this audit. No Claude writer active now. Independent audit_r1 and fullcheck /tmp/domino-G5-check.log running; not yet accepted/pushed. Stable3accfb9preview remains checked.
+
 Latest: spatial canvas accepted/integrated3accfb9,1044tests/build+actualbrowser financialflow pass, stable3102 updated against3214. CREAOgateOFF, bothspecialists honestlyunverified, fullagentjourneynotdone. ClaudeG5cleanup86419/21240 active in domino-G3. CREAOUI sign-in required, userasked; no secrets or livecalls. See active-run for exactcheckpoint/screenshot/nextstep. Mainunchanged.
 
 Latest14:36audit: G2d3738d5c accepted/integrated3ea78ef after998tests and actual3214runtime checks; CREAOgate remainsOFF. G4e7b7944 passes1028tests/build but browser+independentaudit block fitclipping/labeloverlap. SoleUIClaude32944/exec73011 now fixes those plus G3retry/alternative issues. Candidate3418 shows actual localforecast graph, not successfulagents. Read active-run. Mainunchanged.

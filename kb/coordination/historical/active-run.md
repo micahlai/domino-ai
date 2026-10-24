@@ -1,5 +1,7 @@
 # Active run: agent canvas centerpiece
 
+Update: G5 finished locallyeaa54d7 during this audit. No Claude writer active now. Independent audit_r1 and fullcheck /tmp/domino-G5-check.log running; not yet accepted/pushed. Stable3accfb9preview remains checked.
+
 Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview1044tests/typechecks/lint/build pass at3accfb9. Automation remains ACTIVE every15minutes. No main merge.
 
 ## Scheduled audit, October24 14:51 PDT, accepted spatial preview
