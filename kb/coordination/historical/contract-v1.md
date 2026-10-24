@@ -91,3 +91,25 @@ Shape change vs `8bdea82`: `oneTimeCost.unit` narrows to `"cents"`; case assumpt
 - **Consumer rule:** getRun.inputSnapshot is authoritative for saved forecast input sources/facts/assumptions. getCase.case is available or frozen revealed evidence. Do not replace original input objects with current values or merge old basis facts into new derived observation ancestry. getCase with runId returns saved method/origin/cutoff.
 - Existing pre-repair local smoke reveal records lack frozen evidence and fail closed. Use fresh runs; do not reset data. This is a provisional local database only. No shared cloud deployment.
 - H2d actual activity remains pending. API readiness here does not claim an activity feed, complete live UI, prospective accuracy or bankruptcy warning.
+
+## H2d activity readiness (candidate, pending Codex review)
+
+- State: **candidate**, not accepted. Code SHA `6498b752aa6f45549f21ffeca0a2020213ebb66a` on H2-historical-backend (local, not pushed), parent `66b2d2a`. Closure: everything in the H2c acceptance (code 8389326, checkpoint 4a75699: contracts 442d23b, engine a75406d + 41d04e7, evidence a4e49e0, bindings 0377a9b) plus this commit. No contract, engine, evidence or binding change; `_generated/` needed no regeneration (new function is in the existing `historical` module, the data model derives from the schema).
+- Schema (additive): `historicalActivity {baselineRunId, sequence, event}` with index `by_feed [baselineRunId, sequence]`. One feed per baseline.
+
+| Function | Args | Result |
+| --- | --- | --- |
+| `historical:getActivity` (query) | `{caseId, baselineRunId}` | `ActivityEvent[]`, ascending `sequence`, the latest 50 of this baseline's feed. Each row is re-parsed with `ActivityEventSchema` (contract fields only, no storage metadata). `NOT_FOUND` for an unknown case or run or a run of another case, `INVALID_BRANCH` for an alternative run ID, `INTEGRITY` if a stored event names another case or its sequence disagrees with its row. Read-only. No `afterSequence`; not implemented. |
+
+- Emitted events (all `status: "succeeded"`; failures stay client errors and persist nothing):
+
+| Operation | `id` | `kind` | `runId` | `entity` | `label` | `evidenceIds` | `outputId` | `occurredAt` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `saveBaseline`, new save | `evt-saved-<runId>` | `run_saved` | baseline | `{run, runId}` | Baseline forecast saved | run input sources (cutoff, `S7`) | runId | `run.createdAt` |
+| `computeAlternative`, new run | `evt-alt-<altRunId>` | `alternative_computed` | alternative | `{run, altRunId}` | Alternative computed | alternative input sources (cutoff) | altRunId | `run.createdAt` |
+| `reveal`, first reveal of the run | `evt-reveal-<runId>` | `disclosure_revealed` | baseline | `{comparison, runId}` | Next disclosure revealed | sources newly visible at `revealedThrough` (`S8`) | none | `revealedAt` |
+
+- Atomicity and dedupe: each event is inserted in the same mutation as its outcome, only on the first-write path. Retries, repeat or secondary reveal keys and concurrent duplicates return before emission, so one outcome has one event. Sequence = feed's last indexed sequence + 1, starting at 1; that read makes concurrent writers to one feed conflict and retry under Convex OCC. Queries never write.
+- Isolation: a feed holds only its baseline's save, its alternatives and its own reveal. Before that baseline reveals, its feed has only cutoff source IDs, even if another baseline revealed.
+- Consumer note (H4): an alternative event's `runId` is the alternative run, not the baseline. The H4 `ingestActivity` scope `{caseId, runId: baselineRunId}` would drop it. Scope by `caseId` only for this feed (it is already scoped server-side), or include the alternative run IDs.
+- Verification: focused Convex tests `apps/web/convex/tests` 73/73 (8 new in `activity.test.ts`), convex and web `tsc --noEmit`, `biome check apps/web/convex` clean. Not run: full `pnpm check`, build. Live probe on the existing local watcher (127.0.0.1:3210, fresh run): save + retry, alternative, reveal under two keys gave sequences 1, 2, 3 and one event per outcome. Concurrency tests run under convex-test, which serializes mutations; the true parallel conflict is Convex OCC, not separately probed live.

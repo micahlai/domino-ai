@@ -6,7 +6,7 @@
 - **Notes:** Follow kb/spec/ui-styles-motion-2026-10-24.md. Agent/tool lifecycle events only if actual product operations exist; do not create agents, generate tools, expose development workers or call paid providers to fill the UI. Instant operations need no fake running stage.
 - **Handoff:** Sequential backend phase after H2c on H2-historical-backend. Publish an additive activity-ready checkpoint for H4; no shared cloud deployment or main merge.
 ## Result
-- Done:
-- Files and commit:
-- Verification:
-- Watch out / next:
+- Done: `historicalActivity` table (index `by_feed`), internal `emit` in `historical.ts` called in the same mutation as each new outcome (baseline save, alternative computation, first reveal), and `historical:getActivity({caseId, baselineRunId})`, latest 50 events ascending, re-parsed with `ActivityEventSchema`. Stable IDs `evt-saved-/evt-alt-/evt-reveal-<runId>`, per-baseline sequence from the last indexed row + 1. No started/failed, agent, tool or source events. No `afterSequence`.
+- Files and commit: `apps/web/convex/historical.ts`, `apps/web/convex/schema.ts`, `apps/web/convex/tests/activity.test.ts`; code `6498b75`. Packet section "H2d activity readiness" in `kb/coordination/historical/contract-v1.md`. `_generated/` unchanged (not needed).
+- Verification: `vitest run convex/tests` 73/73 (8 new: scope/empty/wrong case/wrong baseline, save+retry+concurrent duplicate, concurrent duplicate and distinct alternatives, reveal with four keys, two-baseline isolation before/after reveal, stable IDs/sequence on requery, rejected mutations write nothing, contract-only fields and fail-closed integrity). Convex and web `tsc --noEmit` pass, `biome check apps/web/convex` clean. Live probe on the existing watcher with a fresh run: sequences 1, 2, 3, one event per outcome. Not run: full `pnpm check`, build.
+- Watch out / next: convex-test serializes mutations, so the concurrency tests prove dedupe logic, not real parallel OCC (Convex guarantees that; not probed live). H4: alternative events carry the alternative `runId`, so `ingestActivity` with `runId: baselineRunId` drops them; scope by `caseId` for this feed. Pending Codex review.
