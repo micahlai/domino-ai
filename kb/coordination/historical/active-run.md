@@ -1,6 +1,6 @@
 # Active run: Domino agent canvas
 
-Updated October 24, 2026 after the 15:06 PDT audit. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
+Updated October 24, 2026 after the 15:21 PDT audit. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
 
 ## Goal and constraints
 
@@ -33,14 +33,14 @@ Verify PID and cwd before any restart. Preserve local databases. Node24: /Users/
 
 ## External gate and next exact step
 
-CREAO sign-in remains unavailable in the in-app browser (tab15), now observed on two scheduled audits. The four dedicated historical app ID/key variables are absent in canonical local env files, checked only for presence. The user was asked to sign in at https://agent.creao.ai in that browser and reply signed in; do not request secrets in chat. Keep that question pending.
+CREAO sign-in remains unavailable in the in-app browser (tab15), now observed on three consecutive scheduled audits. The four dedicated historical app ID/key variables are absent in canonical local env files, checked only for presence. The user was asked to sign in at https://agent.creao.ai in that browser and reply signed in; do not request secrets in chat. Keep that question pending.
 
 Read creao-live-acceptance.md for concrete proposed app instructions and the verification sequence. After sign-in, inspect or create dedicated role identities with compatible output instructions and verified cutoff/memory isolation. Do not reuse contaminated operational brief/mapping agents. Do not clear unrelated memory. Use only app-scoped capi credentials and agent.creao.ai/api/v1/apps/.../runs. CREAO_ACCOUNT_API_KEY is valid for a different platform but intentionally unused.
 
 Keep DOMINO_CREAO_VERIFIED_PROFILES unset until actual app identities, instructions and isolation are verified. Then at most one analyst and one reviewer live acceptance run, durable ID before polling, no retry after uncertain creation. A successful specialist pair still does not implement the requested autonomous CREAO coordinator; assess actual capabilities and scope that bounded next phase honestly.
 
-No further code repair is queued. Do not spawn idle workers or rerun unchanged suites to fill waiting time. On the next audit, inspect access once. If the same external blocker persists and no independent work remains, pause the monitor with an honest user-action report. Never claim the full journey is complete.
+No further code repair is queued. Do not spawn idle workers or rerun unchanged suites to fill waiting time. The 15:21 audit confirmed the same sign-in blocker with no independent work remaining. Monitoring is paused. Resume after the user signs in and requests continuation, then follow the acceptance guide. Never claim the full journey is complete.
 
 ## Monitoring
 
-Automation domino-overnight-audit is ACTIVE every 15 minutes. User explicitly wants a chat report after every scheduled audit: accomplished, verified, running/blocked and next. Never insert coding progress into the product graph. The former 11:15 AM deadline is superseded. Pause on verified full completion, user stop or repeated external blockers; app/computer availability is required.
+Automation domino-overnight-audit is PAUSED, verified from its saved status at the 15:21 audit. Its 15-minute schedule is preserved for resumption. User explicitly wants a chat report after every scheduled audit: accomplished, verified, running/blocked and next. Never insert coding progress into the product graph. The former 11:15 AM deadline is superseded. Pause on verified full completion, user stop or repeated external blockers; app/computer availability is required.
