@@ -1,6 +1,6 @@
 # CREAO live acceptance: prepared, not executed
 
-Status October24: existing consumer app-scoped route only. Developer/account key stays unused. Dedicated historical role configuration absent in canonical local env files (presence-only inspection); in-app browser redirects to sign-in. No real historical specialist run accepted. User was asked to sign in, not to paste secrets.
+Status October24: existing consumer app-scoped route only. Developer/account key stays unused. User authorized native computer use of the existing Google Chrome Jayden (Main) session, visibly signed in to CREAO Pro Plus. Do not request in-app browser sign-in. Dedicated historical role configuration remains absent; the Agents page contains only the three operational agents. No real historical specialist run accepted.
 
 ## Smallest setup after sign-in
 
