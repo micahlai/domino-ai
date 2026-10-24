@@ -73,4 +73,6 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E3c | `kb/tasks/E3c-forward-forecast.md` | C3 | doing | E3c-forward-forecast | Claude pure engine adoption |
 | E1b | `kb/tasks/E1b-week-runtime.md` | C3 | doing | E1b-week-runtime | Claude deterministic simulator |
 | E6c/E6d | provider repairs/C3 consumers | E6b,C3 | done | main | reviewed,635combinedtests; Claude textsmokes pass |
-| E6e | `kb/tasks/E6e-text-artifacts.md` | E6d | doing | E6e-text-artifacts | Claude strict CREAO artifact support |
+| E6e | `kb/tasks/E6e-text-artifacts.md` | E6d | done | E6e-text-artifacts |1bc9761 reviewed/merged,647tests, direct brief pass with intermittent format |
+
+| E2a | `kb/tasks/E2a-mock-sources.md` | C3 | doing | E2a-mock-sources | Claude authenticated source handler/server |

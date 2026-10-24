@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 04:05 Codex brain (first computed prototype verified)
+- Done: Micah UI integrated; computed engine/actions deployed to dev. Browser event/sim actions complete successfully, previews work and approval confirmation remains intact. Standard /c/kestrel now resolves to the computed company through the public demo ID. C3/provider consumers and text repairs reviewed/merged. Main647 tests, typechecks, lint and fresh build pass.
+- Next: Claude E3c forward engine, E1b simulator and E2a mocks run in isolated worktrees; audit each, then retained generations and source/week wiring. Exact sessions in HANDOFF.md.
+- Watch out: all default provider jobs have direct live passes, but CREAO brief formatting is intermittent. Last pass used chat envelope, not Markdown recovery. Current fixture0/11 remains honest. Backend gate and Next week are unfinished. No push or production deploy; only public demo ID changed locally.
+
 ## 2026-10-24 03:52 Codex brain (computed backend deployed)
 - Done: independently reviewed E7a, E6b and I2 repairs merged. Main522 tests/typechecks/lint and production build pass. Deployed configured development Convex and created a separate synthetic computed company. Micah UI is integrated.
 - Next: Claude I3 enables only tested event/fix controls; C3 adds optional forward-data contracts. Audit each before merging. Provider short-text failures need repair before full action wiring.
