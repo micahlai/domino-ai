@@ -1,6 +1,6 @@
 # C3: Optional forward billing and settlement contracts
 
-Prepared for backend completion, not yet dispatched. This freezes the next additive contract slice after the current engine and provider work is reviewed. The reasoning and rollout gate are in forward-data-plan.md. Existing fixtures must remain valid without new fields; no existing required field changes.
+Dispatched after E7a integration and E6b independent approval. This freezes the next additive contract slice for backend completion. The reasoning and rollout gate are in forward-data-plan.md. Existing fixtures must remain valid without new fields; no existing required field changes.
 
 ## Public schemas
 
