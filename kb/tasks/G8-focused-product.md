@@ -9,3 +9,10 @@
 
 ## Result
 - Pending.
+
+## Current dispatch clarification
+- G8a shell cleanup is already acceptedb261057. Do NOT edit shell or landing again. G8 owns only investigate components/tests and this Result; preserve G7 projector as reviewed.
+- G7 projectRunKnowledge requires raw getRun().inputSnapshot.roles. Existing components/historical/live.ts SnapshotSchema strips roles; do not pass its parsed result. Query the saved baseline through existing public getRun, pass raw runId/run/inputSnapshot directly into projector, and handle invalid/loading/error states without showing stale content from a previous session.
+- Obtain baseline run ID from the succeeded forecast operation/output mapping, not a fresh getCase, newest run or alternate run. Before a baseline is saved, show only existing saved-source information and an honest pending structured-data state. After reveal, knowledge remains the baseline snapshot, with its original cutoff; observed results remain in their separate output.
+- Reuse existing formatting/primitives and safeHref validation. Show reported/derived facts with period/value/currency and accessible provenance, sources/publication dates, and assumptions with basis/cost when present. IDs/method/hash stay under technical details. No new chart, knowledge database, facts/math, generic tabs framework or dependency. Avoid duplicating saved-source/learnings sections already in the node details. No invented learning or connected-account claims.
+- /orchestrator is required guidance but does not require child processes; read and apply its bounded planning/review workflow while staying one implementation process. Also /ponytail, taste and ui-ux-pro-max. Parent owns independent audit/fullcheck/build/browser.
