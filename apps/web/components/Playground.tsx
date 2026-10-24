@@ -226,7 +226,7 @@ export function Playground() {
       </PreviewSection>
       <PreviewSection
         name="HistoricalReplay"
-        description="Historical case view. Synthetic preview values for an invented Example Co: layout only, not reported history. Nothing is loaded, saved or revealed here; the buttons only switch which preview state is drawn. Live wiring is pending."
+        description="Historical case view. Synthetic preview values for an invented Example Co: layout only, not reported history. Nothing is loaded, saved or revealed here; the buttons only switch which preview state is drawn. The live journey is at /historical."
       >
         <fieldset className="mb-5 flex flex-wrap gap-2 border-0 p-0">
           <legend className="sr-only">Preview state</legend>

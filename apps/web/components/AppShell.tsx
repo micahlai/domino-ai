@@ -13,6 +13,7 @@ const links = [
   { href: "/c/kestrel", label: "Cash forecast" },
   { href: "/c/kestrel/learning", label: "What we learned" },
   { href: "/c/kestrel/record", label: "Decision record" },
+  { href: "/historical", label: "Historical case (2U)" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

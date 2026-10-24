@@ -84,6 +84,10 @@ export function HistoricalChart({
   const line = (list: CashPoint[]) =>
     list.map((p, i) => `${i ? "L" : "M"}${px(p).toFixed(1)} ${py(p).toFixed(1)}`).join(" ");
   const { projected: projectedPath, alternative: altPath } = forecastPaths(view);
+  // Assumption ranges of the saved forecast and of an alternative, if the backend supplied them.
+  const ranged = points.filter(
+    (p) => (p.kind === "projected" || p.kind === "alternative") && p.low !== undefined,
+  );
   const tickDates = [...new Set(points.map((p) => p.date))].sort();
   // A clip wipes the saved forecast in. pathLength would overwrite strokeDasharray with its own
   // values and draw the forecast solid, hiding the dashed "projected" meaning.
@@ -168,16 +172,16 @@ export function HistoricalChart({
             </text>
           </g>
         ))}
-        {view.projected.some((p) => p.low !== undefined && p.high !== undefined)
-          ? view.projected.map((p) =>
+        {ranged.length
+          ? ranged.map((p) =>
               p.low !== undefined && p.high !== undefined ? (
                 <line
-                  key={`range-${p.id}`}
+                  key={`range-${p.kind}-${p.id}`}
                   x1={px(p)}
                   x2={px(p)}
                   y1={y(p.low)}
                   y2={y(p.high)}
-                  stroke="hsl(var(--primary-ink))"
+                  stroke={p.kind === "alternative" ? "hsl(var(--clay))" : "hsl(var(--primary-ink))"}
                   strokeOpacity={0.45}
                   strokeWidth={6}
                   strokeLinecap="round"

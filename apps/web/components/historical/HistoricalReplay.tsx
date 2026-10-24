@@ -1,6 +1,6 @@
 "use client";
 
-import type { ISODate } from "@domino/contracts";
+import type { Cents, ISODate } from "@domino/contracts";
 import { FileText } from "lucide-react";
 import { useState } from "react";
 import { formatCents } from "../../lib/format";
@@ -50,6 +50,7 @@ export function ProvenanceBadge({ kind }: { kind: Provenance }) {
 const outcomeText: Record<ComparisonRow["outcome"], string> = {
   within_range: "Within the saved range",
   miss: "Missed the saved range",
+  differs: "Differs from the saved forecast",
   unscored: "Not scored",
 };
 
@@ -71,7 +72,9 @@ function DateFacts({ view }: { view: HistoricalView }) {
   const facts = [
     ["Knowledge cutoff", dates.knowledgeCutoff, "Nothing published after this date was used."],
     ["Last reported", dates.lastReportedOn, "Latest balance date in the filings available."],
-    ["Projected through", dates.projectedThrough, "Last period the saved forecast covers."],
+    dates.projectedThrough
+      ? ["Projected through", dates.projectedThrough, "Last period the saved forecast covers."]
+      : null,
     dates.revealedOn
       ? ["Disclosure published", dates.revealedOn, "Revealed after the forecast was saved."]
       : null,
@@ -95,7 +98,7 @@ function EvidenceDetail({ item }: { item: HistoricalEvidence }) {
       <div className="flex flex-wrap items-center gap-2">
         <ProvenanceBadge kind={item.provenance} />
         <span className="text-xs text-muted-foreground">
-          Published {formatReportDate(item.publishedOn)}
+          {item.dateLabel ?? "Published"} {formatReportDate(item.publishedOn)}
         </span>
       </div>
       <p className="break-words text-sm font-medium">{item.label}</p>
@@ -103,6 +106,17 @@ function EvidenceDetail({ item }: { item: HistoricalEvidence }) {
         {item.source}
         {item.locator ? ` · ${item.locator}` : ""}
       </p>
+      {item.ids ? <p className="break-words text-xs text-muted-foreground">{item.ids}</p> : null}
+      {item.url ? (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block min-h-6 break-all text-xs text-primary underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          Open the source
+        </a>
+      ) : null}
       {item.quote ? (
         <blockquote className="border-l-2 pl-4 text-sm leading-6">{item.quote}</blockquote>
       ) : null}
@@ -155,8 +169,8 @@ function Comparison({ rows }: { rows: ComparisonRow[] }) {
           Saved forecast versus what was reported
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          The forecast was saved before these results were published. It is not changed here, and
-          misses stay visible.
+          The forecast was saved before this reveal. It is not changed here, and differences stay
+          visible.
         </p>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -200,16 +214,37 @@ function Comparison({ rows }: { rows: ComparisonRow[] }) {
   );
 }
 
+const isRange = (v: AlternativeView["upfrontCost"]): v is { low: Cents; high: Cents } =>
+  typeof v === "object";
+const signed = (c: Cents) => `${c > 0 ? "+" : ""}${formatCents(c)}`;
+
 function Alternative({ alt }: { alt: AlternativeView }) {
+  const { upfrontCost, delayedBenefit, downside, costRelativeToBaseline: rel } = alt;
   const rows: [string, string, string][] = [
-    ["Cost up front", formatCents(alt.upfrontCost), "Paid before any benefit."],
+    [
+      "Cost up front",
+      isRange(upfrontCost)
+        ? `${formatCents(upfrontCost.low)} to ${formatCents(upfrontCost.high)}`
+        : formatCents(upfrontCost),
+      isRange(upfrontCost) ? "An assumed range, not an estimate." : "Paid before any benefit.",
+    ],
     [
       "Benefit later",
-      formatCents(alt.delayedBenefit),
-      `Starts after ${formatReportDate(alt.benefitFrom)}.`,
+      delayedBenefit === "unknown" ? "Not quantified" : formatCents(delayedBenefit),
+      `${alt.benefitLagDays !== undefined ? `Earliest first benefit comes ${alt.benefitLagDays} days after the decision, ` : ""}starting ${formatReportDate(alt.benefitFrom)}.${delayedBenefit === "unknown" ? " Whether it could be done at all is unknown." : ""}`,
     ],
-    ["Downside", formatCents(alt.downside), alt.downsideNote],
+    [
+      "Downside",
+      downside === "unmodeled" ? "Not modeled" : formatCents(downside),
+      alt.downsideNote,
+    ],
   ];
+  if (rel)
+    rows.unshift([
+      `Cash on ${formatReportDate(rel.date)} versus the saved forecast`,
+      signed(rel.point),
+      `Midpoint of the assumed range (${signed(rel.low)} to ${signed(rel.high)}), not an estimate. Only the cost falls inside this window.`,
+    ]);
   return (
     <Card className="shadow-none">
       <CardHeader>
@@ -217,16 +252,20 @@ function Alternative({ alt }: { alt: AlternativeView }) {
           <CardTitle className="text-sm font-medium">{alt.label}</CardTitle>
           {alt.postHoc ? (
             <Badge variant="outline" className="border-dashed text-clay">
-              Post-hoc: chosen after the reveal
+              Post-hoc: chosen with the outcome known
             </Badge>
           ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
-          Starts from the same evidence as the saved forecast. A projection, not a result.
+          Starts from the same evidence as the saved forecast. A projection, not a result, and it is
+          not compared with what was reported.
         </p>
+        {alt.postHocReason ? (
+          <p className="text-sm text-muted-foreground">{alt.postHocReason}</p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-5">
-        <dl className="grid gap-4 sm:grid-cols-3">
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {rows.map(([label, value, hint]) => (
             <div key={label} className="space-y-1">
               <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -246,6 +285,47 @@ function Alternative({ alt }: { alt: AlternativeView }) {
             ))}
           </ul>
         </div>
+        {alt.caveats?.length ? (
+          <div className="space-y-2">
+            <h4 className="text-xs text-muted-foreground">Limits</h4>
+            <ul className="list-disc space-y-1 pl-5 text-sm leading-6">
+              {alt.caveats.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RunNotes({ view }: { view: HistoricalView }) {
+  const { run } = view;
+  return (
+    <Card className="shadow-none">
+      <CardContent className="space-y-3 p-5 text-sm leading-6">
+        {view.metricLabel ? (
+          <p>
+            <span className="font-medium">Measure: </span>
+            {view.metricLabel}. Every figure on this page uses it.
+          </p>
+        ) : null}
+        {view.disclosure ? <p>{view.disclosure}</p> : null}
+        {view.riskNote ? <p className="text-muted-foreground">{view.riskNote}</p> : null}
+        {view.projectionAssumptions?.length ? (
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            {view.projectionAssumptions.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        ) : null}
+        {run ? (
+          <p className="break-all text-xs text-muted-foreground">
+            Saved {formatReportDate(run.savedOn)} · method {run.methodText} · input hash{" "}
+            {run.inputHash} · run {run.runId}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -298,6 +378,7 @@ export function HistoricalReplay({ view, status = "ready", statusMessage }: Hist
         </ol>
         <DateFacts view={view} />
       </div>
+      {view.metricLabel || view.disclosure ? <RunNotes view={view} /> : null}
       <Card className="shadow-none">
         <CardContent className="space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">

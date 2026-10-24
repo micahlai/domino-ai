@@ -33,7 +33,7 @@ describe("historical replay", () => {
 
   it("labels the alternative as projected and post-hoc with cost, benefit and downside", () => {
     const html = render("response");
-    expect(html).toContain("Post-hoc: chosen after the reveal");
+    expect(html).toContain("Post-hoc: chosen with the outcome known");
     expect(html).toContain("Cost up front");
     expect(html).toContain("Benefit later");
     expect(html).toContain("Downside");

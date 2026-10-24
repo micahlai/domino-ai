@@ -14,6 +14,12 @@ export interface HistoricalEvidence {
   label: string;
   source: string;
   publishedOn: ISODate;
+  /** What `publishedOn` means. Defaults to "Published"; a saved forecast says "Saved". */
+  dateLabel?: string;
+  /** Proof link to the public source, http(s) only. */
+  url?: string;
+  /** Exact source, fact and assumption IDs behind this item. */
+  ids?: string;
   locator?: string;
   quote?: string;
   note: string;
@@ -33,7 +39,8 @@ export interface CashPoint {
 export interface HistoricalDates {
   knowledgeCutoff: ISODate;
   lastReportedOn: ISODate;
-  projectedThrough: ISODate;
+  /** Absent until a forecast is saved: the target date comes from the saved run. */
+  projectedThrough?: ISODate;
   /** Publication date of the disclosure that was revealed. Absent before reveal. */
   revealedOn?: ISODate;
 }
@@ -44,25 +51,58 @@ export interface ComparisonRow {
   observed?: Cents;
   /** Reported minus saved forecast, signed, from the backend. */
   difference?: Cents;
-  outcome: "within_range" | "miss" | "unscored";
+  /** "differs" = compared with no saved range to judge it against. */
+  outcome: "within_range" | "miss" | "differs" | "unscored";
   note?: string;
+}
+
+/** Backend-supplied range in cents. `point` is the backend midpoint, an assumption, not an estimate. */
+export interface CentsRange {
+  low: Cents;
+  point: Cents;
+  high: Cents;
 }
 
 export interface AlternativeView {
   label: string;
-  /** Labelled post-hoc when it was chosen or tuned after the reveal. */
+  /** Post-hoc = the authors knew the outcome when they chose it, whatever the viewer clicked. */
   postHoc: boolean;
-  upfrontCost: Cents;
-  delayedBenefit: Cents;
+  postHocReason?: string;
+  /** A range is shown as a range: the live alternative's cost is an assumption range. */
+  upfrontCost: Cents | { low: Cents; high: Cents };
+  /** "unknown" = not quantified by the backend; never drawn as zero. */
+  delayedBenefit: Cents | "unknown";
   benefitFrom: ISODate;
-  downside: Cents;
+  /** Days between the decision and the earliest first benefit. */
+  benefitLagDays?: number;
+  /** Alternative minus saved baseline at the target date, from the backend. */
+  costRelativeToBaseline?: CentsRange & { date: ISODate };
+  /** "unmodeled" = not in any figure; never drawn as zero. */
+  downside: Cents | "unmodeled";
   downsideNote: string;
+  /** Limits the backend states about this alternative. */
+  caveats?: string[];
   assumptions: { text: string; evidenceId?: string }[];
   path: CashPoint[];
 }
 
+/** Facts about the saved run, shown as proof. Absent in the synthetic preview. */
+export interface RunProof {
+  runId: string;
+  methodText: string;
+  inputHash: string;
+  savedOn: ISODate;
+}
+
 export interface HistoricalView {
   caseName: string;
+  /** The single metric every number on the page uses. */
+  metricLabel?: string;
+  /** Plain statement of how this case was written (retrospective, outcome known). */
+  disclosure?: string;
+  riskNote?: string;
+  projectionAssumptions?: string[];
+  run?: RunProof;
   /** What the viewer is looking at: baseline -> observed -> response. */
   stage: "baseline" | "observed" | "response";
   dates: HistoricalDates;
