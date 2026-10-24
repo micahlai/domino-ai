@@ -14,8 +14,8 @@ export function timelineGeometry(
   comparison: ResilienceReport | undefined,
   limit: number,
   width: number,
+  height = 390,
 ) {
-  const height = 390;
   const left = 62;
   const right = width - 132;
   const top = 44;

@@ -25,6 +25,14 @@ describe("timeline without animation", () => {
     expect(hitPaths).toHaveLength(fixtures.resilience.universes.length);
     expect(hitPaths.every((path) => / d="M/.test(path))).toBe(true);
     expect(html).toContain("Select a scenario");
+    expect(html).toContain('aria-label="Time scale"');
+    expect(html).toContain('aria-label="Cash scale"');
+    expect(html).toContain("Reset scales");
+    expect(html).not.toContain('type="range"');
+    expect(html).not.toContain("Inspect week");
+    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(fixtures.pastEvents.length);
+    expect(html).toContain("Show event details");
+    expect(html).toContain("Focus the chart");
     expect(html).not.toContain('stroke-dasharray="0 1"');
     expect(html).not.toMatch(/NaN|Infinity/);
     expect(html).not.toContain("<canvas");

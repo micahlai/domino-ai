@@ -13,7 +13,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatCents, formatDate } from "../../lib/format";
 import { Button } from "../ui/button";
 import { TimelineCrosshair } from "./TimelineCrosshair";
+import { TimelineEventDialog } from "./TimelineEventDialog";
 import { TimelineParticles } from "./TimelineParticles";
+import { TimelineScaleControls } from "./TimelineScaleControls";
 import { futureKey, timelineGeometry, timestamp } from "./geometry";
 import {
   inspectionCash,
@@ -48,7 +50,14 @@ export function MultiverseTimeline({
 }: MultiverseTimelineProps) {
   const container = useRef<HTMLDivElement>(null);
   const chartViewport = useRef<HTMLElement>(null);
-  const [width, setWidth] = useState(1000);
+  const [baseWidth, setBaseWidth] = useState(1000);
+  const [timeScale, setTimeScale] = useState(1);
+  const [cashScale, setCashScale] = useState(1);
+  const width = Math.round(194 + (baseWidth - 194) * timeScale);
+  const height = Math.round(92 + 298 * cashScale);
+  const previousSize = useRef({ width, height });
+  const [openEventId, setOpenEventId] = useState<string>();
+  const eventTrigger = useRef<HTMLElement | SVGElement | null>(null);
   const [hovered, setHovered] = useState<string>();
   const [eventId, setEventId] = useState<string>();
   const [inspectedDate, setInspectedDate] = useState<ISODate>();
@@ -61,15 +70,38 @@ export function MultiverseTimeline({
     setReady(true);
     if (!container.current) return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setWidth(Math.max(860, Math.round(entry.contentRect.width)));
+      if (entry) setBaseWidth(Math.max(860, Math.round(entry.contentRect.width)));
     });
     observer.observe(container.current);
     return () => observer.disconnect();
   }, []);
   const graph = useMemo(
-    () => timelineGeometry(history, today, report, comparisonReport, limit, width),
-    [history, today, report, comparisonReport, limit, width],
+    () => timelineGeometry(history, today, report, comparisonReport, limit, width, height),
+    [history, today, report, comparisonReport, limit, width, height],
   );
+  useEffect(() => {
+    const viewport = chartViewport.current;
+    const previous = previousSize.current;
+    if (viewport && (previous.width !== width || previous.height !== height)) {
+      // Keep the visible chart position steady while its pixel spacing changes.
+      viewport.scrollLeft = Math.max(
+        0,
+        ((viewport.scrollLeft + viewport.clientWidth / 2 - 62) / (previous.width - 194)) *
+          (width - 194) +
+          62 -
+          viewport.clientWidth / 2,
+      );
+      viewport.scrollTop = Math.max(
+        0,
+        ((viewport.scrollTop + viewport.clientHeight / 2 - 44) / (previous.height - 92)) *
+          (height - 92) +
+          44 -
+          viewport.clientHeight / 2,
+      );
+      setPointerInPlot(false);
+    }
+    previousSize.current = { width, height };
+  }, [width, height]);
   const particleTracks = useMemo<ParticleTrack[]>(
     () => [
       {
@@ -107,11 +139,21 @@ export function MultiverseTimeline({
     const viewport = chartViewport.current;
     if (!point || !viewport) return;
     const x = graph.x(timestamp(point.date));
-    if (x < viewport.scrollLeft + 24 || x > viewport.scrollLeft + viewport.clientWidth - 24) {
-      viewport.scrollTo({ left: Math.max(0, x - viewport.clientWidth / 2), behavior: "auto" });
+    const y = graph.y(point.usable);
+    const outsideX =
+      x < viewport.scrollLeft + 24 || x > viewport.scrollLeft + viewport.clientWidth - 24;
+    const outsideY =
+      y < viewport.scrollTop + 24 || y > viewport.scrollTop + viewport.clientHeight - 24;
+    if (outsideX || outsideY) {
+      viewport.scrollTo({
+        left: outsideX ? Math.max(0, x - viewport.clientWidth / 2) : viewport.scrollLeft,
+        top: outsideY ? Math.max(0, y - viewport.clientHeight / 2) : viewport.scrollTop,
+        behavior: "auto",
+      });
     }
   }
   const pastEvent = pastEvents.find((event) => event.id === eventId);
+  const openEvent = pastEvents.find((event) => event.id === openEventId);
   const months = [
     ...new Map(
       [...graph.past, ...(report.universes[0] ? graph.points(report.universes[0]) : [])].map(
@@ -146,10 +188,20 @@ export function MultiverseTimeline({
           ) : null}
         </div>
       </div>
+      <TimelineScaleControls
+        timeScale={timeScale}
+        cashScale={cashScale}
+        onTimeScale={setTimeScale}
+        onCashScale={setCashScale}
+        onReset={() => {
+          setTimeScale(1);
+          setCashScale(1);
+        }}
+      />
       <section
         ref={chartViewport}
-        className="relative overflow-x-auto rounded-lg bg-background/40"
-        aria-label="Cash timeline. Scroll horizontally on smaller screens."
+        className="relative max-h-[390px] overflow-auto rounded-lg bg-background/40"
+        aria-label="Cash timeline. Scroll to explore the scaled chart."
       >
         {ready && reduced === false ? (
           <TimelineParticles
@@ -164,11 +216,28 @@ export function MultiverseTimeline({
           width={width}
           height={graph.height}
           viewBox={`0 0 ${width} ${graph.height}`}
-          className="block cursor-crosshair"
-          role="img"
+          className="block cursor-crosshair focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: Arrow-key weekly inspection needs a chart focus target.
+          tabIndex={0}
+          aria-describedby={`${id}-inspection-help`}
+          onKeyDown={(event) => {
+            const delta = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+            if (!delta && event.key !== "Home" && event.key !== "End") return;
+            event.preventDefault();
+            setPointerInPlot(false);
+            inspectWeek(
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? inspectable.length - 1
+                  : Math.max(0, Math.min(inspectable.length - 1, inspectedIndex + delta)),
+            );
+          }}
+          // biome-ignore lint/a11y/useSemanticElements: HTML fieldset is invalid inside SVG.
+          role="group"
           aria-labelledby={`${id}-title ${id}-desc`}
           onPointerMove={(event) => {
-            // Touch uses the range control so horizontal chart scrolling stays available.
+            // Touch keeps native chart scrolling; a tap updates the readout below.
             if (event.pointerType === "touch") {
               setPointerInPlot(false);
               return;
@@ -185,6 +254,18 @@ export function MultiverseTimeline({
             );
             setInspectedDate(inspectable[index]?.date);
           }}
+          onPointerUp={(event) => {
+            if (event.pointerType !== "touch") return;
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const x = ((event.clientX - bounds.left) / bounds.width) * width;
+            const y = ((event.clientY - bounds.top) / bounds.height) * graph.height;
+            if (x >= graph.left && x <= graph.right && y >= graph.top && y <= graph.bottom) {
+              const index = nearestInspectionIndex(inspectable, x, (date) =>
+                graph.x(timestamp(date)),
+              );
+              setInspectedDate(inspectable[index]?.date);
+            }
+          }}
           onPointerLeave={() => setPointerInPlot(false)}
         >
           <title id={`${id}-title`}>
@@ -194,7 +275,7 @@ export function MultiverseTimeline({
             Recorded cash is left of Today. Forecast scenarios are on the right. The dashed line
             shows the lender’s limit. Crosses mark the first unmet requirement; checks mean all
             requirements are met. Use the menu below to select a scenario. Move over the chart or
-            use Inspect week below to read exact weekly cash values.
+            focus the chart and use Left/Right arrows, Home or End to read exact weekly cash values.
           </desc>
           <text x={graph.left} y={22} className="fill-muted-foreground text-[11px] tracking-widest">
             HISTORY · {history.length} WEEKS
@@ -423,6 +504,25 @@ export function MultiverseTimeline({
             return (
               <g
                 key={event.id}
+                // biome-ignore lint/a11y/useSemanticElements: SVG marker also has a native button below the chart.
+                role="button"
+                tabIndex={0}
+                aria-label={`${event.label}, ${inspectionDate(event.date)}. Show event details`}
+                aria-haspopup="dialog"
+                className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                onClick={(click) => {
+                  eventTrigger.current = click.currentTarget;
+                  setPointerInPlot(false);
+                  setOpenEventId(event.id);
+                }}
+                onKeyDown={(key) => {
+                  if (key.key === "Enter" || key.key === " ") {
+                    key.preventDefault();
+                    key.stopPropagation();
+                    eventTrigger.current = key.currentTarget;
+                    setOpenEventId(event.id);
+                  }
+                }}
                 onPointerEnter={() => setEventId(event.id)}
                 onPointerLeave={() => setEventId(undefined)}
               >
@@ -440,7 +540,7 @@ export function MultiverseTimeline({
                 <circle
                   cx={graph.x(timestamp(event.date))}
                   cy={graph.y(week.usable)}
-                  r={12}
+                  r={22}
                   fill="transparent"
                 >
                   <title>{`${event.label} · ${formatDate(event.date)}`}</title>
@@ -480,7 +580,7 @@ export function MultiverseTimeline({
           aria-atomic="true"
         >
           <span className="block truncate text-xs text-muted-foreground">
-            {inspected?.label ?? "Move over the chart or choose a week."}
+            {inspected?.label ?? "Move over the chart to inspect a week."}
           </span>
           <span className="mt-1 block min-h-5 tabular-nums">
             {inspected
@@ -488,26 +588,9 @@ export function MultiverseTimeline({
               : "Exact weekly cash values"}
           </span>
         </output>
-        <label className="flex min-h-11 shrink-0 items-center gap-3 text-xs text-muted-foreground">
-          Inspect week
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, inspectable.length - 1)}
-            step={1}
-            disabled={!inspectable.length}
-            aria-controls={`${id}-inspection`}
-            value={Math.max(0, inspectedIndex)}
-            aria-valuetext={
-              inspectable[inspectedIndex]
-                ? `Week of ${inspectionDate(inspectable[inspectedIndex].date)}, ${inspectionCash(inspectable[inspectedIndex].usable)}, ${inspectable[inspectedIndex].label}`
-                : "No weekly data"
-            }
-            className="h-11 w-40 cursor-pointer accent-primary"
-            onFocus={() => inspectWeek(inspectedIndex)}
-            onChange={(event) => inspectWeek(Number(event.target.value))}
-          />
-        </label>
+        <p id={`${id}-inspection-help`} className="max-w-xs text-xs text-muted-foreground">
+          Focus the chart, then use ← / → to inspect weeks. Tap a position on touch screens.
+        </p>
       </div>
       <div className="flex flex-col justify-between gap-4 rounded-lg bg-background/40 p-4 sm:flex-row sm:items-start">
         <div className="min-h-12 max-w-xl text-sm" aria-live="polite">
@@ -576,7 +659,10 @@ export function MultiverseTimeline({
                 type="button"
                 onFocus={() => setEventId(event.id)}
                 onBlur={() => setEventId(undefined)}
-                onClick={() => setEventId(event.id)}
+                onClick={(click) => {
+                  eventTrigger.current = click.currentTarget;
+                  setOpenEventId(event.id);
+                }}
                 className="min-h-11 rounded px-2 text-left hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {formatDate(event.date)} · {event.label}
@@ -585,6 +671,11 @@ export function MultiverseTimeline({
           ))}
         </ul>
       </details>
+      <TimelineEventDialog
+        event={openEvent}
+        onClose={() => setOpenEventId(undefined)}
+        returnFocus={() => eventTrigger.current?.focus()}
+      />
     </div>
   );
 }

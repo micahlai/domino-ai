@@ -6,6 +6,8 @@ Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
 - 2026-10-24 Micah: P5 reads action readiness from the backend and shows configuration/confirmation even when processing is unavailable. Why: product flows can be reviewed now while preserving truthful results until E5/E7 is implemented; unsupported credit-line changes must not be modeled as cash withdrawals.
 
+- 2026-10-24 Micah: replace Inspect week with separate Time/Cash scale controls and pointer, chart-keyboard or touch inspection; open recorded event details in a dialog. Why: user direction; scaling changes pixel spacing while retaining the supplied date/cash domains, and event explanations come only from attached source records.
+
 - 2026-10-24 Micah: cash crosshairs appear only with the pointer inside the plot, use the selected scenario regardless of hover, and retain the inspected date during fix comparison. Clicking another curve still selects it. Why: user direction; exact weekly values come from supplied data, with keyboard/touch access through a week slider and no interpolated money or synthetic Today readouts.
 
 - 2026-10-24 Micah: emit soft particles along entire curves and allocate their counts by supplied scenario probability, per the user's clarified reference. Use a bounded shared budget and equal lifetimes so more probable scenarios have higher emission rates; keep history at a fixed baseline and financial values unchanged.
