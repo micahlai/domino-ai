@@ -1,5 +1,7 @@
 # Domino handoff
 
+Latest15:06: G5cleanup accepted/integratedc40552a,1049tests/build and actualbrowser detail/earlyalternativechecks pass. Stable3102 servescleanup, no Claudeimplementationactive. CREAOsignin/config missing forsecondaudit; userasked, gateOFF/no livecalls. Preparedcreao-live-acceptance.md. FullCREAOcoordinatorjourneyincomplete; next requires accountUIaccess, not moreidleworkers. Mainuntouched.
+
 Update: G5 finished locallyeaa54d7 during this audit. No Claude writer active now. Independent audit_r1 and fullcheck /tmp/domino-G5-check.log running; not yet accepted/pushed. Stable3accfb9preview remains checked.
 
 Latest: spatial canvas accepted/integrated3accfb9,1044tests/build+actualbrowser financialflow pass, stable3102 updated against3214. CREAOgateOFF, bothspecialists honestlyunverified, fullagentjourneynotdone. ClaudeG5cleanup86419/21240 active in domino-G3. CREAOUI sign-in required, userasked; no secrets or livecalls. See active-run for exactcheckpoint/screenshot/nextstep. Mainunchanged.

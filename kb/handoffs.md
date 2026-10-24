@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-24 Codex detail cleanup accepted
+- G5eaa54d7 acceptedc40552a;1049tests/build andactualbrowserinstructionScope/earlyalternativechecks pass. Sharedbuilderreused; misleadingjourneylabel fixed.
+- CREAOUIstilllogin, dedicatedsettingsabsent; gateOFF andno calls. Preparedcreao-live-acceptance.md. NoClaudeimplementationactive; nextaccountsetup/isolationverification. Mainuntouched.
+
 ## 2026-10-24 Codex spatial preview published
 - PairedG3/G4repairsef019a6/475fe57 accepted3accfb9 afterindependentaudit,1044combinedtests/build, actualdesktop/mobile/financialflow/reloadbrowser checks. Stable3102updated, screenshot/tmp/domino-accepted-spatial-web.png.
 - CREAOgateOFF; no livecalls. UIneeds signin for dedicatedappinstruction/memoryverification; userasked. Fullagent/coordinatorjourneynotcomplete.

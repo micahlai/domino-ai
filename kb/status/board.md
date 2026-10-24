@@ -13,7 +13,7 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | R1 canvas presentation | done | Repair0148df5 accepted/integrated79a6e19;940tests/build and desktop/mobile browser pass |
 | G4 spatial agent web | done | Repairsef019a6/475fe57 accepted; integrated3accfb9,1044tests/build+desktop/mobile/browserflow pass |
 | CREAO complete cycle | doing | User selected old app API; G2cabb6d07 and G2d3738d5c accepted;998tests+actualruntime pass, gateOFF, dedicated historical profiles/coordinator/live gates remain; developer key unused |
-| G3 complete canvas journey | doing | Repair475fe57 accepted; deterministic question/forecast/reveal/alternative/reload pass. G5 detailcleanup86419 active; realCREAOgate pending |
+| G3 complete canvas journey | doing | Repair475fe57 accepted; deterministic question/forecast/reveal/alternative/reload pass. G5eaa54d7 accepted;1049tests/build/browserpass; realCREAOgate awaits signin/config |
 | C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
 | H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
 | H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass; final UI wiring accepted5db5f21 |
