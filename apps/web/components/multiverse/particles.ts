@@ -2,13 +2,14 @@
 export interface ParticleTrack {
   key: string;
   path: string;
+  probability: number;
   history?: boolean;
   withinLimits: boolean;
   breakX?: number;
 }
 
 export const MAX_TRACKS = 32;
-export const MAX_PARTICLES = 144;
+export const MAX_PARTICLES = 720;
 export const PATH_SAMPLES = 112;
 
 type Cubic = readonly [number, number, number, number, number, number, number, number];
@@ -72,7 +73,10 @@ export interface SampledTrack extends ParticleTrack {
 export interface Particle {
   track: number;
   phase: number;
-  speed: number;
+  lifespan: number;
+  origin: number;
+  spread: number;
+  drift: number;
   depth: number;
 }
 export interface ParticleField {
@@ -85,6 +89,10 @@ function seed(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index++)
     hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  // Avalanche neighboring emitter IDs so adjacent births don't form traveling dotted waves.
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+  hash ^= hash >>> 16;
   return (hash >>> 0) / 4294967296;
 }
 
@@ -120,18 +128,35 @@ export function prepareParticleField(
     });
   }
   const particles: Particle[] = [];
-  const count = Math.max(
-    0,
-    Math.floor(Math.min(MAX_PARTICLES, budget) / Math.max(1, tracks.length)),
-  );
+  const weights = tracks.map((track) => Math.max(0, Math.min(1, track.probability)));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const capacity = Math.max(0, Math.floor(Math.min(MAX_PARTICLES, budget)));
+  // Largest-remainder allocation preserves relative density while respecting a hard global cap.
+  const quotas = weights.map((weight) => (total ? (weight / total) * capacity : 0));
+  const counts = quotas.map(Math.floor);
+  const ranked = quotas
+    .map((quota, index) => ({ index, remainder: quota - (counts[index] ?? 0) }))
+    .filter(({ index }) => (weights[index] ?? 0) > 0)
+    .sort((a, b) => b.remainder - a.remainder);
+  let remaining = total ? capacity - counts.reduce((sum, count) => sum + count, 0) : 0;
+  for (const { index } of ranked) {
+    if (!remaining) break;
+    counts[index] = (counts[index] ?? 0) + 1;
+    remaining--;
+  }
   tracks.forEach((track, index) => {
-    for (let particle = 0; particle < Math.min(count, track.history ? 5 : 9); particle++) {
+    const count = counts[index] ?? 0;
+    for (let particle = 0; particle < count; particle++) {
       const phase = seed(`${track.key}:${particle}`);
       particles.push({
         track: index,
         phase,
-        speed: 0.035 + seed(`${track.key}:speed:${particle}`) * 0.025,
-        depth: 0.5 + phase * 0.5,
+        // Fixed lifetimes keep particle count and emission rate in the same proportion.
+        lifespan: 2.4,
+        origin: (particle + seed(`${track.key}:origin:${particle}`)) / count,
+        spread: (particle % 2 ? 1 : -1) * (12 + seed(`${track.key}:spread:${particle}`) * 20),
+        drift: (seed(`${track.key}:drift:${particle}`) - 0.5) * 12,
+        depth: 0.45 + phase * 0.55,
       });
     }
   });

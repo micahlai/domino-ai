@@ -11,7 +11,12 @@ import {
   sampleParticlePath,
 } from "./particles";
 
-const original = { key: "sample", path: "M0,0C30,0,60,90,90,90", withinLimits: true };
+const original = {
+  key: "sample",
+  path: "M0,0C30,0,60,90,90,90",
+  probability: 0.7,
+  withinLimits: true,
+};
 
 describe("bounded display-space particles", () => {
   it("samples real D3 paths without changing their endpoints", () => {
@@ -71,6 +76,32 @@ describe("bounded display-space particles", () => {
     expect(after[1]).toBeCloseTo(before[1] ?? 0, 4);
     expect(third.particles).toEqual(first.particles);
   });
+  it("allocates full-line emission in proportion to probability without exceeding the budget", () => {
+    const tracks = [0.7, 0.25, 0.05, 0].map((probability, index) => ({
+      ...original,
+      probability,
+      key: `probability-${index}`,
+    }));
+    const field = prepareParticleField(tracks, undefined, 0, 400);
+    const counts = tracks.map(
+      (_, index) => field.particles.filter((particle) => particle.track === index).length,
+    );
+    expect(counts).toEqual([280, 100, 20, 0]);
+    for (let index = 0; index < 3; index++) {
+      const emitters = field.particles.filter((particle) => particle.track === index);
+      for (let quarter = 0; quarter < 4; quarter++) {
+        expect(
+          emitters.some(
+            (particle) => particle.origin >= quarter / 4 && particle.origin < (quarter + 1) / 4,
+          ),
+        ).toBe(true);
+      }
+      expect(emitters.some((particle) => particle.spread < 0)).toBe(true);
+      expect(emitters.some((particle) => particle.spread > 0)).toBe(true);
+    }
+    expect(prepareParticleField(tracks, undefined, 0, 161).particles).toHaveLength(161);
+  });
+
   it("clamps point reads and morph progress to finite endpoints", () => {
     const field = prepareParticleField([original], undefined, 0);
     const track = field.tracks[0];

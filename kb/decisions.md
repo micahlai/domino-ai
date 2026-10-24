@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: emit soft particles along entire curves and allocate their counts by supplied scenario probability, per the user's clarified reference. Use a bounded shared budget and equal lifetimes so more probable scenarios have higher emission rates; keep history at a fixed baseline and financial values unchanged.
+
 - 2026-10-24 Micah: keep the particle experiment on codex/timeline-particles in the primary checkout. Use cached, bounded Canvas filaments over the existing SVG, with explicit pause and visibility/reduced-motion safeguards; no WebGL dependency or new financial encoding.
 
 - 2026-10-24 Micah: use cash forecast/scenario and meets requirements/outside limits in timeline UI, replacing future/survival/break language per user direction. Label comparison toggles Preview fixes; keep shared contract names unchanged.

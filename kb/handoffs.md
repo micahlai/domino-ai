@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:12 Micah (Codex, full-line emission)
+- Done: replaced traveling beads with soft particles born across entire curves, drifting outward and fading. Forecast counts follow supplied probabilities with equal lifetimes; stratified origins cover each path. Hard cap is 720 particles/32 tracks, with 234 particles at 390 px. The 30-path desktop playground drew about 0.24 ms/frame at roughly 60 fps; offscreen canvases stop. Pause/resume, scenario selection, fix comparison, clean console and phone overflow checked. All 72 tests and production build pass.
+- Next: review codex/timeline-particles at the port 3005 preview; main remains unchanged.
+- Watch out: density represents relative supplied probabilities within a shared visual budget, with integer rounding. History uses a fixed baseline. Browser timings are local measurements. Reduced-motion safeguards and accessible SVG remain in place. Screenshot: /tmp/domino-emission.png.
+
 ## 2026-10-24 02:00 Micah (Codex, particle experiment)
 - Done: created codex/timeline-particles in the primary checkout, without a new worktree. Added a Canvas particle layer following cached D3 curve samples, quiet trails, selected-path glints, and continuous fix morphs. One animation loop, at most 144 particles/32 tracks, pixel ratio capped at 1.5; stops offscreen/hidden/paused and respects reduced motion, with 30 fps on coarse pointers and adaptive backoff. Added a clearly labeled 30-copy playground stress preview. Browser measured roughly 0.14–0.29 ms drawing per frame near 60 fps in that desktop preview; 390 px layout has no page overflow and reduces the field to 31 particles. Pause/resume, selection, fix comparison and clean hydration checked. All 71 tests and production build pass.
 - Next: review the experimental branch at the local port 3005 preview before merging. Main is unchanged.

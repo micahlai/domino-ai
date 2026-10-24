@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import {
+  MAX_PARTICLES,
   type ParticleField,
   type ParticleTrack,
   morphAmount,
@@ -25,7 +26,10 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
   const synchronize = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
-    const budget = Math.min(144, Math.max(48, Math.round(Math.min(width, window.innerWidth) / 10)));
+    const budget = Math.min(
+      MAX_PARTICLES,
+      Math.max(160, Math.round(Math.min(width, window.innerWidth) * 0.6)),
+    );
     field.current = prepareParticleField(tracks, field.current, elapsed.current, budget);
     if (canvas.current)
       canvas.current.dataset.particleCount = String(field.current.particles.length);
@@ -58,6 +62,7 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
       glint: color("--foreground"),
     };
     const scratch = new Float32Array(2);
+    const tangent = new Float32Array(2);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame: number | undefined;
     let lastTime = 0;
@@ -78,53 +83,51 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
       for (const particle of current.particles) {
         const track = current.tracks[particle.track];
         if (!track || time < track.introduced) continue;
-        const progress = (particle.phase + time * particle.speed) % 1;
+        const age = ((time - track.introduced) / particle.lifespan + particle.phase) % 1;
+        const progress = particle.origin;
         const active = selected === track.key;
         const reveal = Math.min(1, (time - track.introduced) / 0.6);
         if (progress > reveal) continue;
-        const alpha =
-          (track.history ? 0.42 : active ? 0.78 : selected ? 0.16 : 0.38) * particle.depth;
         readParticlePoint(track, progress, blend, scratch);
-        const headX = scratch[0] ?? 0;
+        readParticlePoint(track, Math.min(1, progress + 0.006), blend, tangent);
+        const baseX = scratch[0] ?? 0;
+        const baseY = scratch[1] ?? 0;
+        const dx = (tangent[0] ?? baseX + 1) - baseX;
+        const dy = (tangent[1] ?? baseY) - baseY;
+        const length = Math.hypot(dx, dy) || 1;
+        const normalX = -dy / length;
+        const normalY = dx / length;
+        const distance = particle.spread * (age * 0.4 + age * age * 0.6);
+        const travel = particle.drift * age;
+        const x = baseX + normalX * distance + (dx / length) * travel;
+        const y = baseY + normalY * distance + (dy / length) * travel;
+        const envelope = Math.min(1, age * 9) * (1 - age) ** 1.1;
+        const emphasis = track.history ? 0.5 : active ? 0.9 : selected ? 0.38 : 0.66;
+        const alpha = emphasis * envelope * particle.depth;
         const tone = track.history
           ? palette.history
           : active || track.withinLimits
             ? palette.primary
-            : headX >= (track.breakX ?? Number.POSITIVE_INFINITY)
+            : baseX >= (track.breakX ?? Number.POSITIVE_INFINITY)
               ? palette.danger
               : palette.neutral;
-        const edge = Math.min(1, progress * 18, (1 - progress) * 18);
-        context.strokeStyle = tone;
-        context.lineWidth = active ? 1.65 : 0.95;
-        context.globalAlpha = alpha * edge * 0.4;
+        context.fillStyle = tone;
+        context.globalAlpha = alpha;
+        const radius = (0.6 + particle.depth * 0.7) * (1 - age * 0.3);
         context.beginPath();
-        for (let tail = 0; tail < 6; tail++) {
-          const position = progress - tail * 0.007;
-          if (position < 0) break;
-          readParticlePoint(track, position, blend, scratch);
-          const x = scratch[0] ?? 0;
-          const y =
-            (scratch[1] ?? 0) +
-            Math.sin(position * 24 + particle.phase * 12) * (active ? 0.55 : 1.15) * particle.depth;
-          if (!tail) context.moveTo(x, y);
-          else context.lineTo(x, y);
-        }
-        context.stroke();
-        readParticlePoint(track, progress, blend, scratch);
-        const headY =
-          (scratch[1] ?? 0) +
-          Math.sin(progress * 24 + particle.phase * 12) * (active ? 0.55 : 1.15) * particle.depth;
-        context.fillStyle = active ? palette.glint : tone;
-        context.globalAlpha = alpha * edge;
-        context.beginPath();
-        context.arc(headX, headY, (active ? 1.65 : 1.2) * particle.depth, 0, Math.PI * 2);
+        context.arc(x, y, radius, 0, Math.PI * 2);
         context.fill();
-        if (active) {
-          context.fillStyle = tone;
-          context.globalAlpha = alpha * edge * 0.075;
+        // Small scattered halos suggest emissive dust without a full-canvas blur pass.
+        if (particle.phase > 0.82) {
+          context.globalAlpha = alpha * 0.11;
           context.beginPath();
-          context.arc(headX, headY, 4.5, 0, Math.PI * 2);
+          context.arc(x, y, radius * 3.8, 0, Math.PI * 2);
           context.fill();
+        }
+        if (active && particle.phase > 0.7 && age < 0.5) {
+          context.fillStyle = palette.glint;
+          context.globalAlpha = alpha * 0.65;
+          context.fillRect(x - 0.35, y - 0.35, 0.7, 0.7);
         }
       }
       context.globalAlpha = 1;

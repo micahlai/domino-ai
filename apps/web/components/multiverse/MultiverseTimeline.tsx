@@ -62,10 +62,17 @@ export function MultiverseTimeline({
   );
   const particleTracks = useMemo<ParticleTrack[]>(
     () => [
-      { key: "history", path: graph.pastPath, history: true, withinLimits: true },
+      {
+        key: "history",
+        path: graph.pastPath,
+        history: true,
+        probability: 0.28,
+        withinLimits: true,
+      },
       ...report.universes.map((future) => ({
         key: futureKey(future),
         path: graph.path(graph.points(future)) ?? "",
+        probability: future.probability,
         withinLimits: future.survives,
         breakX: future.breaksAt ? graph.x(timestamp(future.breaksAt)) : undefined,
       })),
@@ -461,6 +468,9 @@ export function MultiverseTimeline({
           ? "Showing the forecast with proposed fixes in each scenario. Approvals are recorded separately."
           : "Checks show scenarios within limits. Crosses mark the first unmet requirement."}
       </p>
+      {ready && reduced === false ? (
+        <p className="text-xs text-muted-foreground">More likely scenarios emit more particles.</p>
+      ) : null}
       <details className="text-sm">
         <summary className="cursor-pointer text-muted-foreground">
           View {pastEvents.length} recorded events
