@@ -1,14 +1,21 @@
 # Active run: agent canvas centerpiece
 
-Updated October24 12:32 PDT. New user direction supersedes old dashboard completion and11:15 deadline. Automation domino-overnight-audit ACTIVE every20minutes with C1 prompt. No main merge. Entry prompts/shared/C1-canvas-supervisor.md; scope kb/spec/agent-canvas-2026-10-24.md.
+Updated October24 12:34 PDT. New user direction supersedes old dashboard completion and11:15 deadline. Automation domino-overnight-audit ACTIVE every20minutes with C1 prompt. No main merge. Entry prompts/shared/C1-canvas-supervisor.md; scope kb/spec/agent-canvas-2026-10-24.md.
 
-## Current worker and next exact step
+## Current workers and next exact step
 
-- G1 visual checkpoint: ../domino-G1, branch G1-agent-canvas-visual, basebc1d21f. Claude Opus/high lead instructed to use /orchestrator and /ponytail full with one Sonnet builder, at most two processes in this phase. Exec47940 / verifiedPID4552, launched about12:26 PDT, /tmp/domino-G1-claude.log, prompt/tmp/domino-G1-prompt.txt. Cwd verified. No duplicate launch.
-- G1 owns only /investigate, investigate components, minimal AppShell/playground changes and one graph dependency if needed, plus card Result. No backend/provider calls/full flow/server/full suite. Uses installed Claude skills /Users/jaydenl/.claude/skills/orchestrator/SKILL.md and /Users/jaydenl/.claude/plugins/cache/ponytail/ponytail/4.7.0/skills/ponytail/SKILL.md. User explicitly requested these skills.
-- Offline dependency install missed cached Biome. Locked install retry exec97169 completed successfully, /tmp/domino-G1-install.log. No package versions changed by coordinator.
-- G1 candidate90da27c committed. Lead independently inspected code; full check/build passed exec3467 (sandbox TLS retry from16303), /tmp/domino-G1-{check,build}.log. Claude initial phase completed. User added taste and ui-ux-pro-max for UI: include both skills in all follow-on UI prompts. Early actual desktop screenshot shown to user in commentary before full-flow dispatch. Candidate passed820tests/typechecks/lint/build. Browser verified desktop/mobile, keyboard node details, node drag, draft restore, no console errors. Owned temporary3103 exec99062 serves90da27c. Mobile detail overlaps controls and Fit View overzooms single node; route a small skill-guided repair. G2a contract/provider work may now proceed independently in another worktree.
-- G2a ready after early visual shown; record its PID before claiming running. Other running Claude processes may belong to user/unrelated projects; do not touch them. Three maximum implementation processes including lead and children; one UI writer.
+| Phase | Checkout / branch | Exec / verified PID | Status / log |
+| --- | --- | --- | --- |
+| G1 visual skill repair | domino-G1 / G1-agent-canvas-visual | 27436 / 28494 | Opus/high tightly coupled repair, no child; /tmp/domino-G1-repair-claude.log |
+| G2a specialist contract/provider | domino-G2a / G2a-historical-specialists | 49171 / 29046 | Opus/high plus at most one Sonnet builder; /tmp/domino-G2a-claude.log |
+
+Both cwds verified12:33 PDT. Maximum three implementation processes including child. No other Domino implementation worker. Other Claude processes belong to unrelated/user work; do not touch them. Worker prompts /tmp/domino-G1-repair-prompt.txt and /tmp/domino-G2a-prompt.txt. Both scoped phases use /orchestrator and /ponytail full. G1 additionally uses skills/taste/SKILL.md and /Users/jaydenl/.agents/skills/ui-ux-pro-max/SKILL.md per latest user request. Claude skills paths /Users/jaydenl/.claude/skills/orchestrator/SKILL.md and /Users/jaydenl/.claude/plugins/cache/ponytail/ponytail/4.7.0/skills/ponytail/SKILL.md. No main edits, full suites, servers, push or shared coordinator notes by workers.
+
+- G1 candidate90da27c: full820tests/typechecks/lint/build pass, logs/tmp/domino-G1-{check,build}.log, exec3467 completed. Initial sandbox TLS failure16303 was resolved by normal escalated check. Prior worker47940/PID4552 finished; do not resume it.
+- Early actual screenshot WAS SHOWN to user before G2 launch. Browser verified desktop1280x800/mobile375x812, Enter node detail, dragging, draft restoration and no errors. Evidence screenshots/canvas-{early-desktop,early-mobile,mobile-details}.png. Current visual-only preview http://127.0.0.1:3103/investigate serves90da27c, exec99062/PID22759. Send is honestly disabled pending real wiring.
+- G1 repair addresses mobile details overlay covering controls, Fit View overzoom of singleton, and targeted contrast/focus issues using requested UI skills. No full-flow changes. Collect commit, audit diff/skill result, full check/build serially, restart only owned3103 after cwd confirmation, browser verify fixes, then integrate checked G1 into preview.
+- G2a starts from11f0cdb with frozen dependencies and installed locked packages. Read card/reuse report. Add narrow historical specialist input/output and real single-call provider support, no invented weekly data, no live network calls by worker. Preserve five existing jobs. Collect and independently audit provider/citation/time boundaries; run full checks. Then prepare G2b persisted conversation/tasks and actual execution, isolated worktree, followed by G3 UI wiring after API packet review.
+- G3 MUST use taste + ui-ux-pro-max in addition to /orchestrator + /ponytail. Do not substitute an activity list for graph. No extra themes. Completion requires actual visible progressive graph with real specialist outputs, persistent conversation, readable chart via output/detail, reveal and one costed alternative.
 
 ## Inspection and decisions
 

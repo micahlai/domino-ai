@@ -2,7 +2,7 @@
 
 ## Current priority: agent canvas, October24 12:27 PDT
 
-User corrected scope: agent canvas plus persistent conversation is the centerpiece. Prior completion applies only to historical dashboard. Follow prompts/shared/C1-canvas-supervisor.md and kb/spec/agent-canvas-2026-10-24.md. Start G1 visual checkpoint, show it, then G2 actual operations and G3 full journey. Claude /orchestrator + /ponytail implements, Codex audits. No main merge, no more themes. Current work/process ownership remains in active-run.md.
+User corrected scope: agent canvas plus persistent conversation is the centerpiece. Prior completion applies only to historical dashboard. Follow prompts/shared/C1-canvas-supervisor.md and kb/spec/agent-canvas-2026-10-24.md. Early G1 visual90da27c shown and browser checked;820tests/build pass. Claude G1 skill repair and G2a real specialist contracts are running in isolated worktrees. Next audit both, integrate checked G1, then G2b durable real operations and G3 full journey. UI phases must additionally load taste + ui-ux-pro-max. Claude /orchestrator + /ponytail implements, Codex audits. No main merge, no more themes. Current work/process ownership remains in active-run.md.
 
 ## Current checkpoint: overnight preview complete, 08:49 PDT
 
