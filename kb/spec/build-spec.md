@@ -131,6 +131,9 @@ Data flow:
 
 The source of truth is code: `packages/contracts/src/`.
 
+Draft C1 additions for E3b/E4 are specified in [engine-context-contract-proposal.md](engine-context-contract-proposal.md).
+They are prepared on a separate contract branch and are not effective on main until both owners review and the branch is merged.
+
 | File | Holds |
 | --- | --- |
 | `core.ts` | `Cents`, `ISODate`, `Evidence`, canonical records, `Snapshot`, `Constraint`, `CompanyModel` |

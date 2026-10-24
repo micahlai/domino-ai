@@ -69,6 +69,8 @@ and parsed with the Zod schema when read in actions.
 
 ## Actions (Jayden)
 
+Pending C1: [engine-context-contract-proposal.md](engine-context-contract-proposal.md) defines explicit invoice links, bill targets, branch risk IDs, fix targets and engine calculation contexts. No table-validator migration is needed. After contract approval, actions must load ordered ancestry and pass the model/changes for daily deadline checks. Existing seed records require a separate safe backfill; rerunning the create-once seed does not update them. No backfill has run.
+
 | Function | What it does |
 | --- | --- |
 | `connect.run` | For each source: discover, call `agents.mapSource` (CREAO), pull, tie out, save. Then `agents.readConstraints`, then `engine.recompute`. Updates `sources.step` as it goes so the UI animates. |

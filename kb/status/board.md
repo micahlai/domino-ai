@@ -25,8 +25,10 @@ Parent E1/E3/E6 remain incomplete. E3a is owned by Claude Code; its f9b5ad2 revi
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
 | E3a | `kb/tasks/E3a-forecast.md` | S0 offline checks | review | E3a-forecast | ../domino-E3a |
-| E1a | `kb/tasks/E1a-kestrel.md` | S0 offline checks | review | E1a-kestrel | ../domino-E1a |
-| E6a | `kb/tasks/E6a-agent-feasibility.md` | S0 offline checks; public docs | review | E6a-agent-feasibility | ../domino-E6a |
+| E1a | `kb/tasks/E1a-kestrel.md` | S0 offline checks | done | E1a-kestrel | merged at 5762475 |
+| E6a | `kb/tasks/E6a-agent-feasibility.md` | S0 offline checks; public docs | done | E6a-agent-feasibility | merged at 63366ae |
+
+C1 contract preparation: `kb/tasks/C1-engine-context.md`, branch `contract-engine-context`; pending joint review before contract merge.
 
 ## Product (Micah)
 
