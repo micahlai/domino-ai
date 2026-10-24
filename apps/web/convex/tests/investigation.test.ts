@@ -4,7 +4,10 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashInput } from "../../../../packages/agents/src/hash";
-import { historicalSystemPrompt } from "../../../../packages/agents/src/historical";
+import {
+  historicalCreaoOutputFormat,
+  historicalSystemPrompt,
+} from "../../../../packages/agents/src/historical";
 import { api, internal } from "../_generated/api";
 import { CASE, CUTOFF } from "../historical";
 import schema from "../schema";
@@ -149,7 +152,7 @@ describe("durable investigation (2U)", () => {
     expect(await rows(t)).toHaveLength(0);
   });
 
-  it("default provider fails the agent task honestly; tool outputs stay inspectable", async () => {
+  it("default CREAO mode with the verification gate off fails honestly; tool outputs stay inspectable", async () => {
     const t = setup();
     const { fetch } = claude();
     const { conversationId } = await ask(t);
@@ -167,7 +170,7 @@ describe("durable investigation (2U)", () => {
     expect(source!.output).toMatchObject({ origin: "curated_archive" });
     expect(forecast!.dependsOn).toEqual([source!.operationId]);
     expect(analyst!.dependsOn).toEqual([source!.operationId, forecast!.operationId]);
-    expect(analyst!.error).toMatchObject({ code: "provider_unavailable" });
+    expect(analyst!.error).toMatchObject({ code: "provider_unverified" });
     expect(analyst!.providerMode).toBe("creao");
     expect(analyst!.provider).toBeUndefined();
     expect(analyst!.output).toBeUndefined();
@@ -253,6 +256,7 @@ describe("durable investigation (2U)", () => {
   });
 
   it("claims once; the deadline marks a hung call unknown and a late result cannot overwrite it", async () => {
+    devMode();
     const t = setup();
     const { conversationId, operationIds } = await ask(t);
     const step = () =>
@@ -400,6 +404,7 @@ describe("durable investigation (2U)", () => {
   });
 
   it("profiles are versioned snapshots stored on the operation", async () => {
+    devMode();
     const t = setup();
     const { conversationId } = await ask(t);
     const analyst = await opOf(t, conversationId, "specialist");
@@ -562,5 +567,328 @@ describe("durable investigation (2U)", () => {
     expect(await wake("S99", s7)).toEqual({ status: "unknown_source", queued: 0 });
     expect(await rows(t)).toEqual(before);
     expect(await t.run((ctx) => ctx.db.query("historicalRuns").collect())).toHaveLength(0);
+  });
+});
+
+// ---------- CREAO (default mode), offline fakes only ----------
+
+type Prompt = {
+  rules: string[];
+  outputFormat: string;
+  data: { case: { sources: { id: string }[] }; run: { id: string } };
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+const answer = (p: Prompt) =>
+  `<<<DOMINO_RESULT>>>\n${JSON.stringify({
+    assessment: "The disclosure shows cash falling and the weeks after the cutoff are unobserved.",
+    citations: [
+      { kind: "source", id: p.data.case.sources[0]!.id },
+      { kind: "engine", id: p.data.run.id },
+    ],
+    uncertainties: ["Quarterly filings cannot show weekly timing."],
+  })}\n<<<END_DOMINO_RESULT>>>`;
+
+/** Fake app-scoped CREAO: POST creates run-1, each GET polls it. Records method, url and auth. */
+function creao(
+  opts: {
+    post?: () => Response | Promise<Response>;
+    poll?: (p: Prompt) => Response | Promise<Response>;
+  } = {},
+) {
+  const calls: { method: string; url: string; auth: string }[] = [];
+  let prompt: Prompt | undefined;
+  const fetch = vi.fn(async (url: string, init: RequestInit) => {
+    const method = init.method ?? "GET";
+    calls.push({ method, url, auth: new Headers(init.headers).get("authorization") ?? "" });
+    if (method === "POST") {
+      prompt = JSON.parse(JSON.parse(String(init.body)).inputs.prompt) as Prompt;
+      return opts.post ? opts.post() : json({ id: "run-1", status: "queued" });
+    }
+    return opts.poll
+      ? opts.poll(prompt!)
+      : json({ id: "run-1", status: "completed", result: { chatText: answer(prompt!) } });
+  });
+  vi.stubGlobal("fetch", fetch);
+  return {
+    fetch,
+    calls,
+    posts: () => calls.filter((c) => c.method === "POST").length,
+    prompt: () => prompt,
+  };
+}
+
+const creaoConfig = () => {
+  vi.stubEnv("CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID", "app-analyst");
+  vi.stubEnv("CREAO_HISTORICAL_EVIDENCE_ANALYST_API_KEY", "capi-analyst-not-real");
+  vi.stubEnv("CREAO_HISTORICAL_SCENARIO_REVIEWER_APP_ID", "app-reviewer");
+  vi.stubEnv("CREAO_HISTORICAL_SCENARIO_REVIEWER_API_KEY", "capi-reviewer-not-real");
+  // Present but must never be read or sent.
+  vi.stubEnv("CREAO_ACCOUNT_API_KEY", "account-key-not-real");
+  vi.stubEnv("CREAO_API_KEY", "legacy-key-not-real");
+};
+/** Open the server-side gate for exactly the stored analyst app and profile version. */
+const verify = async (t: T, conversationId: string) => {
+  const { profile } = await opOf(t, conversationId, "specialist");
+  const p = profile as { appId: string; version: string };
+  vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `${p.appId}/${p.version}`);
+};
+/** Like drain, but advances fake time so the adapter's poll sleeps resolve. */
+const drainPolls = async (t: T) => {
+  vi.advanceTimersByTime(1);
+  let done = false;
+  const p = t.finishInProgressScheduledFunctions().finally(() => {
+    done = true;
+  });
+  for (let i = 0; i < 400 && !done; i++) await vi.advanceTimersByTimeAsync(500);
+  await p;
+};
+const row = async (t: T, operationId: string) =>
+  (await rows(t)).find((r) => r.operationId === operationId)!;
+
+describe("CREAO specialist dispatch", () => {
+  it("snapshots the per-run CREAO rules, distinct from the unknown remote instructions", async () => {
+    const t = setup();
+    const { conversationId } = await ask(t);
+    const { profile, providerMode } = await opOf(t, conversationId, "specialist");
+    const p = profile as {
+      provider: string;
+      version: string;
+      instructions: string;
+      instructionsScope: string;
+    };
+    expect(providerMode).toBe("creao");
+    expect(p.provider).toBe("creao");
+    expect(p.version).toBe(
+      `evidence_analyst@creao-${(await hashInput(p.instructions)).slice(0, 12)}`,
+    );
+    expect(p.instructions).toContain("in the data field");
+    expect(p.instructions).not.toContain("<domino_input>");
+    expect(p.instructions.endsWith(historicalCreaoOutputFormat)).toBe(true);
+    expect(p.instructionsScope).toMatch(/own instructions, skills and memory/);
+    expect(p).not.toHaveProperty("appId");
+  });
+
+  it("verification binds to the frozen app: a swapped or unverified app gets zero calls", async () => {
+    creaoConfig();
+    const t = setup();
+    const f = creao();
+    const { conversationId } = await ask(t);
+    expect((await opOf(t, conversationId, "specialist")).profile).toMatchObject({
+      appId: "app-analyst",
+    });
+    await verify(t, conversationId);
+    vi.stubEnv("CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID", "app-b");
+    await drain(t);
+    const swapped = await opOf(t, conversationId, "specialist");
+    expect([swapped.status, swapped.error?.code]).toEqual(["failed", "app_changed"]);
+
+    // Queued on app B while only app A's binding for the same version is verified.
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    const { version } = (await opOf(t2, c2, "specialist")).profile as { version: string };
+    vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `app-analyst/${version},${version}`);
+    await drain(t2);
+    const unverified = await opOf(t2, c2, "specialist");
+    expect([unverified.status, unverified.error?.code]).toEqual(["failed", "provider_unverified"]);
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("gate off or missing app config: zero calls, honest failure", async () => {
+    creaoConfig();
+    const t = setup();
+    const f = creao();
+    const { conversationId } = await ask(t);
+    await drain(t);
+    const off = await opOf(t, conversationId, "specialist");
+    expect([off.status, off.error?.code]).toEqual(["failed", "provider_unverified"]);
+
+    vi.unstubAllEnvs();
+    vi.stubEnv("CREAO_ACCOUNT_API_KEY", "account-key-not-real");
+    vi.stubEnv("CREAO_API_KEY", "legacy-key-not-real");
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    const { version } = (await opOf(t2, c2, "specialist")).profile as { version: string };
+    vi.stubEnv("DOMINO_CREAO_VERIFIED_PROFILES", `app-analyst/${version}`);
+    await drain(t2);
+    const missing = await opOf(t2, c2, "specialist");
+    expect([missing.status, missing.error?.code]).toEqual(["failed", "config"]);
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+
+  it("success: one create, run identity persisted before the first poll, no model or usage", async () => {
+    creaoConfig();
+    const t = setup();
+    const { conversationId } = await ask(t);
+    await verify(t, conversationId);
+    const { operationId } = await opOf(t, conversationId, "specialist");
+    const seenAtPoll: (string | undefined)[] = [];
+    const f = creao({
+      poll: async (p) => {
+        seenAtPoll.push((await row(t, operationId)).remoteRunId);
+        return json({ id: "run-1", status: "completed", result: { chatText: answer(p) } });
+      },
+    });
+    await drainPolls(t);
+    expect(seenAtPoll).toEqual(["run-1"]);
+    expect(f.calls.map((c) => [c.method, c.url, c.auth])).toEqual([
+      [
+        "POST",
+        "https://agent.creao.ai/api/v1/apps/app-analyst/runs",
+        "Bearer capi-analyst-not-real",
+      ],
+      [
+        "GET",
+        "https://agent.creao.ai/api/v1/apps/app-analyst/runs/run-1",
+        "Bearer capi-analyst-not-real",
+      ],
+    ]);
+    const analyst = await opOf(t, conversationId, "specialist");
+    expect(analyst).toMatchObject({
+      status: "succeeded",
+      provider: "creao",
+      providerMode: "creao",
+    });
+    expect(analyst.model).toBeUndefined();
+    expect(analyst.usage).toBeUndefined();
+    expect(analyst).not.toHaveProperty("remoteRunId");
+    expect((analyst.profile as { instructions: string }).instructions).toBe(
+      [...f.prompt()!.rules, f.prompt()!.outputFormat].join("\n"),
+    );
+    expect((await row(t, operationId)).remoteRunId).toBe("run-1");
+    const s = await state(t, conversationId);
+    expect(s.messages.filter((m) => m.role === "assistant")).toHaveLength(1);
+    expect(JSON.stringify(s)).not.toMatch(/not-real|run-1/);
+    // Reload never redispatches.
+    await t.action(internal.investigation.runTurn, { conversationId });
+    expect(f.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("a failed record stops before polling; a late callback or expired lease cannot record", async () => {
+    creaoConfig();
+    const t = setup();
+    const { conversationId, operationIds } = await ask(t);
+    await verify(t, conversationId);
+    const f = creao({
+      // The deadline lands between create and the callback.
+      post: async () => {
+        await t.mutation(internal.investigation.expireTurn, { operationIds });
+        return json({ id: "run-1", status: "queued" });
+      },
+    });
+    await drainPolls(t);
+    expect(f.calls.map((c) => c.method)).toEqual(["POST"]);
+    const analyst = await opOf(t, conversationId, "specialist");
+    expect([analyst.status, analyst.error?.code]).toEqual(["unknown", "outcome_unknown"]);
+    expect((await row(t, analyst.operationId)).remoteRunId).toBeUndefined();
+
+    // Guard: only the live claim of a running CREAO op, once, inside its lease.
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    const step = () =>
+      t2.mutation(internal.investigation.step, { conversationId: c2, providerMode: "creao" });
+    await step();
+    await step();
+    const claimed = (await step())!;
+    const record = (claimedAt: string, runId = "run-1") =>
+      t2.mutation(internal.investigation.recordRemoteRun, {
+        operationId: claimed.operationId,
+        claimedAt,
+        runId,
+        status: "queued",
+      });
+    expect(await record("other-claim")).toBe(false);
+    expect(await record(claimed.claimedAt!)).toBe(true);
+    expect(await record(claimed.claimedAt!, "run-2")).toBe(false);
+    expect((await row(t2, claimed.operationId)).remoteRunId).toBe("run-1");
+    // A result for another run is not accepted as success.
+    expect(
+      await t2.mutation(internal.investigation.finishSpecialist, {
+        operationId: claimed.operationId,
+        result: {
+          ok: true,
+          provider: "creao",
+          runId: "run-2",
+          output: {
+            assessment: "a",
+            citations: [{ kind: "source", id: "S7" }],
+            uncertainties: ["u"],
+          },
+        },
+      }),
+    ).toBe(false);
+    expect((await opOf(t2, c2, "specialist")).error?.code).toBe("run_unrecorded");
+
+    const t3 = setup();
+    const c3 = (await ask(t3, "req-inv-3")).conversationId;
+    const step3 = () =>
+      t3.mutation(internal.investigation.step, { conversationId: c3, providerMode: "creao" });
+    await step3();
+    await step3();
+    const c = (await step3())!;
+    vi.setSystemTime(Date.now() + 181_000);
+    expect(
+      await t3.mutation(internal.investigation.recordRemoteRun, {
+        operationId: c.operationId,
+        claimedAt: c.claimedAt!,
+        runId: "run-1",
+        status: "queued",
+      }),
+    ).toBe(false);
+  });
+
+  it("uncertain create or deadline ends unknown with one create and no retry", async () => {
+    creaoConfig();
+    const t = setup();
+    const { conversationId } = await ask(t);
+    await verify(t, conversationId);
+    const f = creao({
+      post: () => {
+        throw new TypeError("socket closed");
+      },
+    });
+    await drainPolls(t);
+    const lost = await opOf(t, conversationId, "specialist");
+    expect([lost.status, lost.error?.code]).toEqual(["unknown", "network"]);
+    await t.action(internal.investigation.runTurn, { conversationId });
+    expect(f.posts()).toBe(1);
+
+    // The provider deadline sits inside the lease: 100 s in, the run gets 70 s, not 150 s.
+    const t2 = setup();
+    const c2 = (await ask(t2, "req-inv-2")).conversationId;
+    await verify(t2, c2);
+    const f2 = creao({ poll: () => json({ id: "run-1", status: "running" }) });
+    vi.setSystemTime(Date.now() + 100_000);
+    await drainPolls(t2);
+    const hung = await opOf(t2, c2, "specialist");
+    expect([hung.status, hung.error?.code]).toEqual(["unknown", "deadline"]);
+    expect(f2.posts()).toBe(1);
+    expect((await row(t2, hung.operationId)).remoteRunId).toBe("run-1");
+
+    // Too little lease left: nothing is created.
+    const t3 = setup();
+    const c3 = (await ask(t3, "req-inv-3")).conversationId;
+    await verify(t3, c3);
+    const f3 = creao();
+    vi.setSystemTime(Date.now() + 150_000);
+    await drain(t3);
+    const late = await opOf(t3, c3, "specialist");
+    expect([late.status, late.error?.code]).toEqual(["failed", "deadline"]);
+    expect(f3.fetch).not.toHaveBeenCalled();
+  });
+
+  it("a provider switch after queueing fails with no call", async () => {
+    creaoConfig();
+    const t = setup();
+    const { fetch } = claude();
+    const { conversationId } = await ask(t);
+    devMode();
+    await drain(t);
+    const analyst = await opOf(t, conversationId, "specialist");
+    expect([analyst.status, analyst.error?.code]).toEqual(["failed", "provider_changed"]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

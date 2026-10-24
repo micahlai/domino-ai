@@ -192,6 +192,9 @@ export default defineSchema({
     profile: v.optional(v.any()),
     providerMode: v.optional(v.string()),
     provider: v.optional(v.string()),
+    // CREAO run identity and created status, persisted before any poll. Server-only.
+    remoteRunId: v.optional(v.string()),
+    remoteStatus: v.optional(v.string()),
     model: v.optional(v.string()),
     usage: v.optional(v.object({ inputTokens: v.number(), outputTokens: v.number() })),
     outputRef: v.optional(v.object({ kind: v.string(), id: v.string() })),
