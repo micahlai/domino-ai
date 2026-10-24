@@ -1,3 +1,7 @@
+# Current checkpoint, supersedes stale worker text below
+
+G8/S1/U1 are accepted and the early actual product visual has been shown. Stable3102 serves unified Workspace/Company/Simulations. ONLY local Claude S3 engine is active; inspect active-run PID/log before acting. Friend exclusively S2 catalog, no local duplicate. S4 requires acceptedS1/S2/S3 plus explicit audited persistence design; U2 afterS4. Dedicated CREAO evidence app exists, do not duplicate it, but isolation/instructions/visibility are not fully verified and livegate staysOFF. Read active-run for exact states and preserve main.
+
 # Updated product priority
 
 Read kb/spec/product-workspace-2026-10-24.md first, then active-run and actual workers. User expanded to one Workspace/Company/Simulations product and a distinct financial impact chain. G6/G7/G8a accepted; G8 provenance repair in current active-run. S1 local contracts, S2 friend catalog exclusively; no local duplicate or schema collision. U1 sole UI early visual after G8, S3 after S1, S4 after S1/S2/S3 plus reviewed persistence design, U2 after early visual and S4. Show early actual navigation/canvas/detail layout before full wiring. Keep historical replay separate from hypothetical event/response and preserve honest costs/uncertainty. All previous safety/provider/preview/monitor constraints below remain. Update records before ending each run.

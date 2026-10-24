@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex early product checkpoint
+- G8/S1/U1 independently accepted, combined1,185tests/typechecks/lint/build and actualdesktop/mobile/keyboardbrowser. Stable3102 updated; early visual shown. Main unchanged.
+- S3 Claude7799/68959 verified in domino-S3; friendS2 catalog prompt/branch published, no local duplicate. S4 waits explicit design plus accepteddependencies; U2 follows.
+- Dedicated CREAO evidenceapp created, empty appmemory/connectors and zero runs observed. Account/team isolation stillunknown; no APIkey/gate/livecall.
+
 ## 2026-10-24 Codex unified product plan
 - Inspected completed G8, existing frozen runs/operations and quarterly engine. No event branch or historical causal graph yet. Reuse existing persistence and charts.
 - G8 repair owns sole UI; S1 additive contracts local; S2 read-only catalog is independent friend task. U1 early visual precedes full U2 wiring. S3 engine and S4 persistence have explicit gates.

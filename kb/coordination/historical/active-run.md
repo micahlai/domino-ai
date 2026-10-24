@@ -1,67 +1,45 @@
-# Current product expansion checkpoint
+# Active run: unified Domino product
 
-Authority: kb/spec/product-workspace-2026-10-24.md supersedes earlier navigation and delivery scope below. Main694ab2a untouched. Preview5acbb3a clean before coordination changes. Remote fetched successfully.
+Updated October 24 after the accepted early product visual. This is current authority; older process notes are in active-run-history-2026-10-24.md. Read kb/spec/product-workspace-2026-10-24.md and C1 supervisor.
 
-- G8 candidate898ca52 completed; fullcheck passed, independent review found missing assumption basis. Claude repair PID27692/exec32771 in domino-G8, log /tmp/domino-G8-repair-claude.log, owns CompanyKnowledge component/test and card only. Confirm process before further dispatch. No other Domino implementation worker active at this inspection. Unrelated Claude94627/78153 preserved.
-- S1 additive scenario contracts is ready for local Claude. S2 saved catalog reserved exclusively for friend, task/prompt prepared. One schema index owned by S2; no local duplicate.
-- U1 unified navigation and early visual waits for accepted G8. S3 waits for accepted S1; S4 waits S1/S2/S3 and an explicit audited persistence design. U2 waits U1 visual shown and accepted S4. Do not skip gates or claim event support exists today.
-- Stable3102 still b261057; backend3214 PID43364 preserved. G7 projector accepted7ee475b. G8 not integrated. No historical CREAO calls; fixed coordination honestly disclosed, provider setup/coordinator remain open.
-- Next: collect G8 repair, independent re-review/fullchecks/build/browser; publish ready S2 branch and launch S1. Then sole UI U1 and show actual early visual before full redesign.
+## Goal and rules
 
-## Prior detailed runtime and acceptance record
+One coherent Workspace / Company / Simulations product with grouped agent map, persistent conversation, inspectable frozen evidence, engine-computed Baseline -> hypothetical Event -> costed Response, separate observed historical reveal and durable reopen. Financial impact chain is distinct from execution graph. No invented history/causality/learnings/traffic or hidden provider tools. Preserve real quarterly frequency and costs/uncertainty. Claude implements with orchestrator/ponytail, UI taste/ui-ux-pro-max; Codex audits. Preview only, never main. Main694ab2a unchanged. At most3 implementation processes including friend/children, one UI writer; serialized full checks/build/browser. No account/developer CREAO/wallet, new paid fallback, purchases, retry storms or billable Apify without cap. Preserve secrets/localdata/unrelated work.
 
-# Active run: Domino agent canvas
+## Accepted and published
 
-Updated October 24, 2026 after the 16:23 scheduled audit and G8 dispatch. This file is the current authority. Older process IDs and checkpoints are preserved in active-run-history-2026-10-24.md and are not a launch queue.
+- G6 grouped map, G7 frozen projector, G8a cleanup preserved.
+- G8 inspector6364068 acceptedffb7971: assumption basis/dependencies fixed, raw getRun.roles preserved, 1,142 combined tests/typecheck/lint/build and actual saved-data desktop/mobile/quiet reload checks. Screenshot /tmp/domino-knowledge-accepted.png. No provider run.
+- S1 scenario contracts83e2052 accepted48272f1. Independent Astra reproduced and cleared invalid-money throws, event-only post-hoc defect and test any.26focusedtests plus probes, fullcheck and1,168combined tests pass. Existing HistoricalRun branch unchanged.
+- U1 early product visual4600e85 accepted0f87ed2. Independent review cleared tab IDREF bug. Combined G8+S1+U1 passes1,185tests/typechecks/lint/build. Actual browser verifies saved workspace, company facts/assumption provenance, three navigation links preserving conversation, four detail tabs, old chart, mobile390no overflow, keyboard tab selection and resolved Impact chain panel label. No event math or full catalog claimed.
+- Latest pushed preview c72e435 includes scoped engine/coordinator handoffs. Worker branches S1-scenario-contracts and U1-product-visual pushed. Main untouched.
+- Early visual explicitly shown to user BEFORE S3 dispatch: /tmp/domino-product-workspace-early.png and /tmp/domino-product-simulation-early.png. Stable URL http://127.0.0.1:3102/case/2u?c=conv-35fbe3821ff36131. Detail /case/2u/simulations/conv-35fbe3821ff36131. Chart still exposes some technical metadata; U2 card records small presentation cleanup needed, preserving caveats/math.
 
-## Goal and constraints
+## Ownership and next exact steps
 
-Complete one conversation-driven historical investigation: actual source/specialist/tool/output nodes on a spatial web, saved forecast, observed-outcome reveal and one costed alternative. Keep the persistent conversation and clickable evidence/instruction details. User rejected horizontal pipeline layout; two-dimensional branches are accepted. Latest request adds Sources/Toolbox groups, a Company knowledge inspector, distinct node forms, truthful pulses and product navigation cleanup; see kb/spec/company-map-2026-10-24.md.
+1. S3-quarterly-event-engine is the ONLY local Claude implementation now: domino-S3, basec72e435, Sonnet/high PID7799, exec68959, log /tmp/domino-S3-claude.log. Cwd verified. Own new period-scenario.ts/test and index export, card Result. No existing period/contracts/schema/UI edits. Collect checkpoint, independent money/date/causal audit, focused/full checks before accepting.
+2. Friend exclusively owns S2-simulation-catalog. origin branch pushed at1154972, no implementation commit at last fetch. Exact prompt prompts/shared/S2-friend-catalog.md. Scope read-only catalog, tests and ONE by_case_createdAt conversation index. Do not launch a local duplicate or overlap schema. User has been given the launch prompt.
+3. No local UI writer active. U1 early gate is complete; do not duplicate G6/G8/U1. U2 waits S2/S4. S4 waits accepted S1/S2/S3 AND an explicit audited additive persistence/schema/API/hash design. Reuse existing runs/operations, no parallel simulation database. Do not dispatch S4 from vague card alone.
+4. C2-real-coordinator-gate.md records live provider prerequisite. Fixed scheduling stays disclosed; true coordinator not implemented.
 
-Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-pro-max. Codex audits and integrates only preview/historical-overnight. Main remains 694ab2a. At most three implementation processes including children, one UI writer, serialized full checks/build/browser. One local UI writer remains. Friend may implement G7 pure knowledge projection on the other computer, with no UI overlap. No secrets, account/developer CREAO API, new paid fallback, top-up, retry storm or billable Apify without a limit.
+## Runtimes
 
-## Current accepted result
-
-- Preview feature checkpoint: b261057 (G6 grouped canvas plus G8a cleaned entry,1,080 tests/build/browser). Prior c40552a: G5 cleanup eaa54d7 accepted after independent review, 1,049 tests, typechecks, lint, production build and targeted browser checks. Logs: /tmp/domino-G5-preview-check.log and /tmp/domino-G5-preview-build.log.
-- Earlier paired G3/G4 repairs ef019a6 and 475fe57 were independently approved. Browser verified all 11 fixture nodes fit the mobile canvas, real local question submission, saved forecast chart, alternative before reveal, comparison after reveal and quiet reload. No console errors/warnings.
-- G5 reuses the shared financial view builder, removes the fake-reveal adapter workaround, fixes alternative availability labels and exposes the stored instruction-scope explanation. Early alternatives contain no observed outcome values, reveal date or future evidence.
-- G2d backend 3738d5c accepted after 43 focused tests, eight independent probes, 998 full tests and actual anonymous-backend smoke. Remote app identity is frozen; verification binds app ID plus role/profile version. Gate remains OFF.
-- Stable preview: http://127.0.0.1:3102/investigate. Saved full financial journey: ?c=conv-35fbe3821ff36131. Saved early alternative, still unrevealed: ?c=conv-e7c79b20c93eb74b.
-- Screenshots: /tmp/domino-accepted-spatial-web.png and /tmp/domino-G5-alternative-details.png. These show real deterministic financial operations, but specialist nodes honestly fail provider_unverified. No historical CREAO call has run. Current Domino coordination is a disclosed fixed workflow, not an autonomous CREAO coordinator.
-
-## Workers and runtimes
-
-G6 complete and accepted: initial3601a85 plus independently approved reconnect/caption repaira18eae7 and browser-driven mobile repaira5d7723 integrated as c6e0a89. Final and combined preview checks pass1,077 tests/typechecks/lint, builds pass. Actual browser verified grouped frames, source/knowledge details, forecast output, quiet restored history (zero pulse markers), no console errors, mobile390x844 FitView all13records/groups within canvas and no horizontal overflow. Stable3102 serves c6e0a89. Screenshot /tmp/domino-grouped-canvas-accepted.png. This demonstrates real deterministic saved operations; CREAO specialists remain honestly unverified, no provider call.
-
-G8a completed320c42c and independently approved, then integratedb261057. Final combined1,080tests/typecheck/lint and productionbuild pass. Browser checked mobile390px with no horizontal overflow, real Start investigating link to lone-Domino canvas, absent primary Playground/theme/connect/demo links, clean console. Stable3102 now servesb261057 (PID89169, exec12818, /tmp/domino-G8a-stable-preview.log). G7 friend checkpoint42421c6 arrived and was independently approved, including a read-only probe on the actual saved getRun payload:1source,7facts,3assumptions; original cutoff/provenance preserved, injected later metadata excluded. Integrated7ee475b; combined1,128tests/typechecks/lint pass, /tmp/domino-G7-preview-check.log. The pure projector is not UI-wired yet, so stable3102 remains b261057.
-
-G8 now runs as sole local Claude UI writer in domino-G8/G8-knowledge-inspector, PID8943, exec14882, log /tmp/domino-G8-claude.log, base7ee475b. PID/cwd verified. CardG8 Current dispatch clarification limits ownership to investigate components/tests and own Result, raw snapshot.roles preserved. No duplicate G6/G8a/G7 worker. Next audit G8 and verify actual source/fact/assumption detail, cutoff isolation after reveal, errors/reload.
-
-Native Chrome computer use timed out again this audit before inspecting CREAO settings. No setting/credential change or provider call. Independent UI work remains actionable; monitoring stays active.
-
-Owned backend3214 restored from same anonymous deployment with existing data: PID43364, exec76070, /tmp/domino-G2d-local-convex-resume.log. No reset, credentials or provider calls. Candidates3419 and3420 verified owned and stopped after stable refresh.
-
-| Runtime | Ownership | State |
+| Runtime | Verified owner | State |
 | --- | --- | --- |
-| Stable web 3102 | domino-preview/apps/web; PID89169, exec12818 | Running b261057 against backend3214; /tmp/domino-G8a-stable-preview.log |
-| Current backend 3214/site3215 | domino-G2d/apps/web; PID43364, exec76070 | Accepted G2d restarted with existing data; /tmp/domino-G2d-local-convex-resume.log |
-| Prior backend 3212/site3213 | domino-G2b/apps/web | Not running in current process inventory; preserve local data |
-| Original backend 3210/site3211 | domino-H2/apps/web; PID15546, exec15918 | Preserved historical demo data |
-| Candidate web 3419 | domino-G6/apps/web; finalPID65656/exec56822 | Stopped after accepted stable refresh |
-| Candidate web 3417 and3418 | domino-R1 and domino-G3 | Verified owned PIDs79863/73099 stopped after stable preview acceptance |
+| Stable3102 | domino-preview/apps/web, PID4527, exec57306 | c72e435 files with accepted0f87ed2 featurebuild against3214; /tmp/domino-U1-stable-preview.log |
+| Current backend3214/site3215 | domino-G2d/apps/web PID43364, exec76070 | Accepted3738d5c, existing data preserved; /tmp/domino-G2d-local-convex-resume.log |
+| Original3210/site3211 | domino-H2 PID15546 | Preserve original data/runtime |
+| G8candidate3421 | domino-G8 PID48974 | Verified owned and stopped after stable refresh |
+| U1candidate3422 | domino-U1 PID83365, exec77381 | Superseded, verified owned, stop after stable verification |
 
-Verify PID and cwd before any restart. Preserve local databases. Node24: /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Build/start the preview with NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3214.
+Verify actual PID/cwd before actions. Unrelated Claude94627 and78153 preserved. Node24 /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Stable build uses NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3214. No database reset/deployment migration this turn.
 
-## External gate and next exact step
+## CREAO actual progress and gate
 
-Browser blocker corrected: user does not want to log in through IAB. Native computer use verified an existing signed-in CREAO Pro Plus session in Google Chrome, Jayden (Main) profile. Use that session, not IAB. The Agents page visibly lists only the three existing operational agents: weeklyBrief, readConstraints and MapSource. No historical agent exists yet. No credentials were displayed or changed. Create agent navigation changed the URL to /chat but the visible content remained the Agents listing; inspect fresh UI before further action.
+Native Chrome Jayden(Main) signed-in ProPlus now responds. One setup chat created dedicated Domino Historical Evidence, appd949f966-355f-469e-b227-4e72066be8bc. URL https://agent.creao.ai/apps/d949f966-355f-469e-b227-4e72066be8bc; setup chat42ec757b-b206-4d0b-aa1e-c5c3c7e8d020. No financial investigation was run. Actual config visible: connectors:[], memory.persist_fields:[], memory.aggregations:[], only job textarea, version1.0.0, no workspace/schedule, zero sessions/runs. SKILL.md is3.7KB, initial role/output lines read, full instructions still need inspection. Screenshots /tmp/domino-creao-evidence-created.png and /tmp/domino-creao-evidence-config.png.
 
-Read creao-live-acceptance.md for concrete proposed app instructions and the verification sequence. After sign-in, inspect or create dedicated role identities with compatible output instructions and verified cutoff/memory isolation. Do not reuse contaminated operational brief/mapping agents. Do not clear unrelated memory. Use only app-scoped capi credentials and agent.creao.ai/api/v1/apps/.../runs. CREAO_ACCOUNT_API_KEY is valid for a different platform but intentionally unused.
+Creation assistant explicitly could not guarantee account/team context inheritance or clean filesystem snapshots. This is a claim to verify, not proof of isolation. Header displays Team even though private requested; inspect actual visibility before claiming private. No API Trigger enabled, no key generated/read/configured, no gate binding set. Account/developer key remains unused. Later native coordinate scroll failed windowNotFoundAtPosition; do not infer sign-out. Preserve existing agents/tabs; no retry storm. Do not create another evidence agent. Next inspect saved source/memory/visibility, then dedicated scenario/coordinator as justified; keep live gate off unless isolation verified. New credential issuance requires user entry/handling, not printing it in tools.
 
-Keep DOMINO_CREAO_VERIFIED_PROFILES unset until actual app identities, instructions and isolation are verified. Then at most one analyst and one reviewer live acceptance run, durable ID before polling, no retry after uncertain creation. A successful specialist pair still does not implement the requested autonomous CREAO coordinator; assess actual capabilities and scope that bounded next phase honestly.
+## Supervision
 
-New UI work is explicitly authorized: G6 grouped map, G7 friend knowledge projection, then G8 focused product. Audit each before integration. Browser setup can proceed independently in the existing Chrome session. Inspect the remote creation/settings flow, establish historical isolation and compatible instructions, then perform the bounded acceptance sequence. Never claim the full journey is complete.
-
-## Monitoring
-
-Automation domino-overnight-audit is ACTIVE again, confirmed by the automation update result. The 15-minute schedule is preserved, and its prompt now directs native Chrome use instead of IAB login. User explicitly wants a chat report after every scheduled audit: accomplished, verified, running/blocked and next. Never insert coding progress into the product graph. The former 11:15 AM deadline is superseded. Pause on verified full completion, user stop or repeated external blockers; app/computer availability is required.
+Automation domino-overnight-audit ACTIVE every15minutes, updated for the product stages and friend ownership. Report accomplishments/verification/running-or-blocked/next after EVERY audit. Never place coding progress in product canvas. Earlier11:15deadline superseded. Pause only on userstop, verified fullvisiblecompletion or repeatedexternalblockers with noindependentwork. Product remains incomplete: S2/S3/S4/U2 and realCREAO/coordinator gates remain.

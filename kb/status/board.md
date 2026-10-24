@@ -1,5 +1,7 @@
 # Status board
 
+Current unified product: G8/S1/U1 accepted,1,185combinedtests/build/browser. Local S3 engine doing; friend S2 catalog reserved/pushed. S4 design and U2 wiring gated. Real CREAO/coordinator unverified. Read active-run for actual processes.
+
 Latest product authority: `../spec/product-workspace-2026-10-24.md`. G8 candidate898ca52 in provenance repair; S1 contracts ready locally, S2 catalog reserved friend, U1 early visual after G8, S3/S4/U2 gated. Completed G6/G7/G8a preserved.
 
 ## Current scope: agent canvas centerpiece, supervised Claude implementation
