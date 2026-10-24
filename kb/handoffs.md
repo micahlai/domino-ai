@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 00:55 Codex brain (E3a review)
+- Done: reconciled Claude's E3a f9b5ad2 with the prepared worktree; fresh Node 24 pnpm check passed 26 engine and 13 contract tests plus typechecks/lint. Independent GPT-6 Astra review found two valid-input defects; review and repair card saved. No feature code, merge or push.
+- Next: Claude continues E3a-r1 in existing domino-E3a: exclude historical hiring savings and fix exact cent rounding. New Result belongs in that worktree's card. Re-review before merge; E1a/E6a remain prepared.
+- Watch out: tests passed despite the two bugs. Raw fixture ambiguity is the brain's intentional temporary guard and needs a separate shared-contract decision. The original E3a Result was modified in main, not included in f9b5ad2; it is preserved with a reconciliation note.
+
 ## 2026-10-24 00:45 Codex brain (launch preparation)
 - Done: wrote E3a/E1a/E6a cards and the launch plan; reserved separate branches/worktrees. Forced-cache-bypass pnpm check passed with Node 24: typechecks, 13 contract tests, lint. No feature code or implementation worker launched. Preserved the prior local orchestration commit.
 - Next: Jayden launches E3a with Codex GPT-6.1 Sol/high, then E1a and E6a with GPT-6 Sol/high. Full setup credentials are separate from the offline task gate.

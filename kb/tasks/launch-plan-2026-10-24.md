@@ -1,9 +1,9 @@
 # Jayden launch plan: 2026-10-24
-Owner: Codex brain. Prepared work only; no implementation workers launched.
+Owner: Codex brain. Initial preparation is complete. Update: Claude Code implemented E3a at f9b5ad2; independent review blocks merge on two bugs. Use kb/tasks/E3a-r1-money-dates.md for repairs in that existing worktree. Do not launch the E3a prompt below again.
 Current gate: Saturday noon, real engine output in the multiverse. These three slices start that path; they do not satisfy the gate by themselves.
 
 ## Decision
-Launch E3a first, then E1a and E6a concurrently in separate worktrees. Maximum three workers.
+Original plan: launch E3a first, then E1a and E6a concurrently in separate worktrees. Maximum three workers. Actual E3a owner is Claude Code; retain that owner for fixes.
 Use Codex for all three so model selection is explicit and handoffs stay consistent.
 The host exposes GPT-6.1 Sol and GPT-6 Sol. Use GPT-6.1 Sol/high for engine math; GPT-6 Sol/high for simulator and routing.
 Counterargument: completing the original E1/E3/E6 prompts in one pass offers more breadth. Their contract gaps, cross-folder writes and external dependencies make them poor bounded assignments.
