@@ -2,6 +2,8 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest 06:27 PDT: normalized cash evidence accepted at a4e49e0 after source/schema validation and formatting-only lint repair. Four-style foundation accepted at1d7cdf6; desktop/mobile screenshots saved. Claude now repairs five period-engine audit defects and builds the typed activity presentation. Live persistence and historical UI wiring remain pending. Read active-run.md for exact processes, servers and dependency gates.
+
 - Latest06:02: three verifiedworkers now H1cash-subsetnormalization, H2bsyntheticperiodmodel, H4astylerepair1. H2acontracts accepted682tests. H3presentationaccepted656tests/build/desktop. H4initialbuildfailed despite664tests, repairrunning. See compactactive-run.md forcurrentownership; oldnotesbelowarehistory.
 
 - Latest heartbeat05:43: H3repair97925fd presentation accepted after656tests/check/build and desktopbrowser; pushedH3branch. H1source repair and H4astyles now running in isolated worktrees. H2arepair442d23b/packet2ae6e9b now independently approved and fullcheck passed, contracts-only. Exact processes and nextgates in active-run.md. Core live journey is not done.

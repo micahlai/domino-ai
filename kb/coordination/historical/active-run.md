@@ -1,48 +1,55 @@
 # Active overnight run
 
-Updated 2026-10-24 06:02 PDT. Supervisor Codex, thread01a16cd6-e1f1-7823-bf13-da8417c64bcd. Read before dispatch; inspect actual processes and commits, do not duplicate workers. Older phase history is in git and kb/reviews/H1-H2a-H3-historical-initial.md.
+Updated: 2026-10-24 06:27 PDT. Codex supervises thread 01a16cd6-e1f1-7823-bf13-da8417c64bcd. Inspect actual processes and commits before dispatching. Do not duplicate workers. Prior audit history is in kb/reviews and Git.
 
-## Scope and limits
+## Execution limits
 
-- Entry prompts/shared/C0-codex-supervisor.md. Claude implements; Codex audits/checks/integrates. H0 manual coordinator inactive. Three Claude writers maximum, one UI owner, no nested workers. Sonnet evidence/UI, Opus money/contracts/backend. Each launch one bounded30minutephase; max2repairs/gate. Rate limit means checkpoint/wait, no repeated retries or paidfallback. Freshcontexts do not resetlimits.
-- Started05:15PDT; deadline2026-10-24 11:15PDT (18:15UTC). Stop newdispatch then preservecheckpoint. No mainmerge/push/productiondeploy/sharedcloudwrites. Main694ab2a and unrelatedfiles remain untouched.
-- Dedicatedintegration domino-case-study / integration/historical-case-study. All worktrees under /Users/jaydenl/Dev/Hackathon/CalHacks 26. Final provisionalassembly preview/historical-overnight, not createdyet.
-- Serializeinstall/fullcheck/build/browser. Node24 /Users/jaydenl/.nvm/versions/node/v24.11.1/bin; fullcheck TURBO_FORCE=true pnpm check. Fullcheck slot free now. Use existingpackages/primitives/Motion, no newdependencies forstylework.
-- No secrets/envcontents/authfiles. UserreportsApifytoken unverified; no billableActors or unnecessaryscraper.
+- Entry: prompts/shared/C0-codex-supervisor.md. Claude implements; Codex reviews, checks and integrates. H0 is inactive. At most three Claude writers, one UI owner, no nested workers. Use Sonnet for evidence/UI and Opus for money/backend. One bounded phase per launch, 30-minute checkpoint target, at most two repairs per gate. Stop repeated retries at usage limits; no paid fallback. Fresh contexts do not reset account limits.
+- Started 05:15 PDT. Deadline 2026-10-24 11:15 PDT (18:15 UTC). Stop new dispatch then preserve a safe checkpoint. No main merge/push, production deployment, or shared cloud writes. Main 694ab2a and unrelated local changes remain preserved.
+- Integration worktree: domino-case-study / integration/historical-case-study. All worktrees are under /Users/jaydenl/Dev/Hackathon/CalHacks 26. Final preview branch remains reserved as preview/historical-overnight.
+- Serialize installs, full checks, builds and browser verification. Node24: /Users/jaydenl/.nvm/versions/node/v24.11.1/bin. Full check: TURBO_FORCE=true pnpm check. Full-check slot is free. Reuse existing packages, primitives and Motion.
+- Never read/print credentials or environment contents. Apify token availability is user-reported and unverified. No billable Actors or unnecessary crawler.
 
-## Monitoring and runtime
+## Monitoring and owned servers
 
-- domino-overnight-audit ACTIVE every20minutes on thisthread, verifiedconfiguration. Quiet unlessmeaningfulfailure/completion/useraction. Atdeadline/completion stopmonitor and recordremaininggates.
-- Awakeguard exec88844/PID14212, boundedcaffeinate -i -t21180 started05:20. KeepCodexopen/AC/lidopen. No claimexecutionaftersleep/shutdown. Unrelatedcaffeinate91684/olderClaudeprocesses notowned, do notstop.
-- ExistingmainNextserver127.0.0.1:3000 preserved. IsolatedH3productionpreview127.0.0.1:3100/playground, exec68463, /tmp/domino-H3-preview.log, built97925fd. It does NOT reflectH4edits. IABtab5 historicalAuditTab retainedhandoff. /tmp/domino-H3-r1-desktop.png screenshot. No localhistoricalbackend yet.
+- Automation domino-overnight-audit is ACTIVE every 20 minutes on this thread. Quiet when no user action is needed. Stop at completion or deadline and record remaining gates.
+- Awake guard exec88844/PID14212, bounded caffeinate started05:20. Keep Codex open, AC connected and lid open. Do not touch unrelated caffeinate91684 or older Claude processes.
+- Existing main server127.0.0.1:3000 remains untouched.
+- H3 production preview127.0.0.1:3100, exec68463, log /tmp/domino-H3-preview.log, built97925fd. IAB tab5 historicalAuditTab may remain available.
+- H4 production preview127.0.0.1:3101, exec97863, log /tmp/domino-H4-preview.log, built7f2b69e. It does NOT reflect later CSS/activity edits. IAB tab6 styleAuditTab retained for handoff. Browser handle styleBrowser, viewport capability mobileViewport; temporary375x812 override was reset.
+- No local historical backend exists yet. Do not confuse synthetic UI previews with the completed case journey.
 
 ## Accepted checkpoints
 
-- H2acontracts code442d23be1a97aa44261f1cb1d73ff82739c49cec, packet2ae6e9b. IndependentlyapprovedAstra after5repairs, lead682tests/typechecks/lint pass. PushedH2-historical-backend. Packetstill sayscandidatependingaudit, butC0acceptance recordedhere. APIsproposedonly. Assumptions dependencyorder topological; oneTimeCost nonnegativecents.
-- H3presentation97925fdb8d501a810998ee941dee02d16c4b7bb4 approvedSol aftersourceleak/branchingrepair; full656tests/check/build anddesktopbrowserpass. PushedH3-historical-ui. Props/syntheticpreviewonly, nofulljourney. Mobile/reducedmotion pending. UIownership transferredH4.
-- H1source repair5c9b70d reviewed: ONLY raw-backedS7/S8cashsubset approved fornormalization, notentireprovisionalbundle. Cash/hash/publication auditin kb/reviews/H1-cash-subset-5c9b70d.md. Acceptedcontracts2ae6e9b mergedintoH1; no evidenceapprovaluntilnormalizedcasevalidates.
+- Contracts code442d23b, packet2ae6e9b: independently approved after five boundary repairs; lead682tests/typechecks/lint passed. Pushed H2-historical-backend. APIs remain proposed. Assumptions must be in dependency order; upfront costs are nonnegative cents.
+- H3 presentation97925fd: independently approved after source leakage/branching repairs; full656tests/check/build and desktop browser passed. Pushed H3-historical-ui. Live wiring remains pending, UI ownership transferred to H4.
+- H1 normalized cash case807b2e2, formatting checkpoint a4e49e0: source/fact/baseline independently approved; lead inspected the one-field response-manifest repair and reran13 evidence validation tests. Full branch typechecks/tests passed, lint initially found five archived JSON formatting errors. Codex applied whitespace-only formatting, asserted parsed JSON equality, and lint passed. No raw HTML or evidence values changed. H1 branch pushed.
+- Only the S7/S8 raw-backed cash subset is accepted. Unhashed debt/covenants and research narratives remain excluded. This is a retrospective forecast miss plus hypothetical cost sensitivity, not a bankruptcy-warning claim. A1-DOWNSIDE is a visible unmodeled limitation, absent from run inputs.
+- H4 style foundation1d7cdf6: repaired server boundary, URL behavior and scoped tokens. Full671tests/check passed; production build and desktop/mobile browser passed at parent7f2b69e. Last CSS token repair independently inspected and full check passed. Approved as style foundation only, not complete H4. Approved contracts2ae6e9b merged at82432f6 for activity typing.
 
-## Current workers (verified live at06:02)
+## Current workers
 
-| Phase | Worktree/branch | Model | Exec/PID | Log | Ownership/status |
+| Phase | Worktree / branch | Model | Exec / last verified PID | Log | Status |
 | --- | --- | --- | --- | --- | --- |
-| H1 normalization | domino-H1 / H1-historical-evidence | Sonnet high | 92418 / 44093 | /tmp/domino-H1-normalize-claude.log | Running; normalizedcase/protocol/validation underdata, research/card only |
-| H2b synthetic model | domino-H2 / H2-historical-backend | Opus high | 21624 / 37845 | /tmp/domino-H2b-synthetic-claude.log | Running; pureengine withsyntheticfixtures only, realcasestillgated |
-| H4a repair1 | domino-H4 / H4-ui-styles-motion | Sonnet high | 95838 / 44888 | /tmp/domino-H4a-r1-claude.log | Running; fourstylefoundationrepair plusdensity/comparisonpreview, noAPI/activityyet |
+| H2b repair1 | domino-H2 / H2-historical-backend | Opus high | 96517 / 14618 | /tmp/domino-H2b-r1-claude.log | Running; pure engine repairs, synthetic only |
+| H4b activity presentation | domino-H4 / H4-ui-styles-motion | Sonnet high | 33272 / 21312 | /tmp/domino-H4b-claude.log | Running; typed panel, labelled simulation preview and motion semantics, no live API |
 
-- H4a6ec7a15 initialfullcheck664tests passes but productionbuildfails serverlayout imports useSyncExternalStore fromstylemodule. IndependentUIaudit also findsinvalidURLfallback, validURLignoredwhenstorageblocked, noresynconsoftnavigation/backforward. Repair splitserverpure/clientmodules, requestedOriginalfallback, guardedstorage androutebridge. NoH4approvalyet. Logs /tmp/domino-H4a-check.log and /tmp/domino-H4a-build.log.
-- Allpreviousworkerscompleted. InspectactualPID/cwd before acting. Full logs containcompactworkerresults, notprovidertraces. Frozenofflineinstallsdone inH1/H2/H3/H4.
+H1 and all prior phases are stopped. Verify current PID/cwd before assuming ownership. Full-check slot is free.
 
-## Next exact gates
+## Current blockers and next steps
 
-1. CollectH1normalizedcase, independentlyvalidateSchema/sourcehashes/eligiblefactclosure; onlyS7/S8cashfacts inruntime. No F19heldoutnote/R1H10/debtunhashed/C01-C04/X1. Preserve originals asresearcharchive, neverpayload. Freezeprotocol beforeapplicationreveal, acknowledge researchhindsight.
-2. AuditH2bsyntheticmath withAstra, runfocusedprobes/fullcheck. Then mergeacceptednormalizedH1closureintoH2, oneboundedrealcaseadoption phasewithactualnumbers. Nooutcometuning. Realcaseexpectedbaselinecombined35819k vsobserved73399k, a37580kmiss. Explicitlymodelrestrictedcashflat andnowcastuniform, notweeklyobservations.
-3. H2cpersistence/immutableinputhash/reveal thenH2dtrueactivity. OnlytestedimplementedAPI/fullancestry becomesAPI-ready. No sharedcloudwrites; useisolatedlocalbackendforbrowser.
-4. Re-reviewH4repair, fullcheck/build andfourstylebrowser verification. UI staysonH4ancestry; laterH3livewiring isasubsequentphaseinthisUIslot, notstaleH3branch. Activitycomponent canfollowacceptedcontractmerge, butlivewiringawaitsactualfeed; unsupportedagent/tool events idle orlabelledplaygroundonly.
-5. AssembleexactcheckedSHAs onpreviewbranch, combinedchecks/build/browserjourney, publishreviewablebranchandmorningreport. Preservebestcoreifpolishunfinished. No mainmerge.
+1. H2b4c5609f passed full696tests/check but independent money probes found five defects: missing input dependency closure, inconsistent restricted cash accepted, rounded effect not reconciling with displayed forecasts, ignored baseline assumption effective dates, and ambiguous same-time observations depending on array order. Probe /tmp/h2b-period-audit.ts. Collect repair1 and re-review with audit_e3b_rules before acceptance.
+2. After engine approval, merge accepted H1 a4e49e0 into the stopped H2 branch. Run a bounded real-case adoption phase: bind explicit financing/FX assumptions to their modeled quarter, retain restricted-cash and uniform-flow method assumptions, honor post-hoc/cost-only response and unmodeled downside. Expected combined nowcast45,815k, target35,819k, observed73,399k, error37,580k. Do not tune to the outcome.
+3. H2c owns immutable saved runs, input hashes, publication-filtered queries/reveal and comparisons. H2d owns actual activity. Only tested implemented APIs and their complete dependency ancestry become API-ready. Use an isolated local backend; no shared cloud resets or deployments.
+4. H4b activity panel adopts the accepted ActivityEvent schema, dedupes/orders events and keeps unsupported product operations idle. Playground simulation is explicitly labelled and manually controlled. Fix inherited Motion pathLength overriding projected line dashes using opacity/clip instead. No fabricated live agents/tools.
+5. Complete live historical wiring in the same UI slot on H4 ancestry once the backend is ready. Do not return to stale H3 and lose styles. Then assemble exact checked commits into the preview branch, run combined checks/build/browser and publish a reviewable result. No main merge.
+
+## Browser evidence and limits
+
+Four desktop screenshots: /tmp/domino-H4a-{original,ramp,hyphenate,shadcn}-desktop.png. Four375px screenshots use the same names ending -mobile.png. Additional /tmp/domino-H4a-mobile-chart.png. All styles preserved the alternative state and visible miss; source drawer worked, no console errors seen. Header wraps at375px; the chart scrolls horizontally. Inherited projected path rendered solid despite the dashed legend, now assigned to H4b. Reduced-motion runtime emulation and final integrated journey remain unverified. The Ramp/Hyphenate treatments use public references with inferred spacing/fonts, not exact private app copies.
 
 ## Review agents
 
-- audit_e3b_causality: H1cashsubsetauditcomplete; reusefornormalization.
-- audit_e3b_rules: H2acontractauditcomplete; reuseforH2bmoney/highriskreview.
-- audit_ui_integration: H4foundationauditcomplete; reuseforrepair.
+- audit_e3b_causality: evidence normalization reviewed; reuse for real-case data adoption.
+- audit_e3b_rules: engine review complete; reuse for repair and persistence boundaries.
+- audit_ui_integration: style review complete; reuse for activity/live wiring. May send a final note about the Motion dash issue.
