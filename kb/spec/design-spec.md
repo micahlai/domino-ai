@@ -91,6 +91,20 @@ type MultiverseTimelineProps = {
 4. Hover a line: it brightens, a tooltip shows the universe label, chance, and low point.
 5. Respect `prefers-reduced-motion`: skip the animation, show the end state.
 
+### 3.4 Particle experiment (`codex/timeline-particles`)
+
+Soft particles emit outward from the full length of each history and forecast curve, then fade. Allocate forecast particle counts in proportion to the supplied scenario probabilities within a shared budget; history uses a fixed baseline weight. Selection highlights a scenario's particles; fix previews move their emission origins with the chart geometry. Particle positions never change forecast values. Keep financial labels and paths readable; no flashes, portal effects, camera movement or background star field.
+
+A single Canvas layer samples curve coordinates on geometry changes and reuses typed buffers while drawing. Scale the budget with viewport width, capped at 720 particles / 32 tracks. Cap pixel ratio at 1.5 and stop the animation loop offscreen, in hidden tabs, and for reduced motion. Use 30 fps for coarse pointers and back off from 60 fps if drawing is persistently expensive. Offer Pause motion / Resume motion. The SVG remains the accessible, selectable source of forecast data.
+
+The playground's ParticleMotion section repeats sample curves 30 times to exercise rendering; those copies are not additional financial forecasts.
+
+### 3.5 Weekly cash inspection
+
+While the pointer is inside the plot, show dotted vertical and horizontal guides at the nearest supplied weekly point. Hide the guides when it leaves. Show the full date, including year, and exact cash to the cent. Use recorded history on the left and the selected scenario on the right; default to the base forecast when none is selected. Hovering other curves must not change the inspected scenario; clicking still selects them. Never interpolate money or present the synthetic Today anchor as a recorded weekly value.
+
+Keep the last inspected week in the readout when the pointer leaves. An Inspect week range control provides keyboard arrows, Home/End and touch access to the values. Keep its date when changing scenarios or previewing fixes, and update the value from the current report. On narrow screens, choosing a week brings its chart position into the horizontal viewport. Avoid collisions with nearby month and endpoint labels. The existing company and playground timelines include this behavior.
+
 ---
 
 ## 4. Other components

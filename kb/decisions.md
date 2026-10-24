@@ -2,7 +2,17 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 03:14 Codex brain: user requested merging Micah's ready code for the first prototype, so integrate origin/main 77d0df6 including V1/V2. This supersedes the earlier particle deferral. Continue backend work; keep fixture and computed results distinguishable.
+
 - 2026-10-24 Codex brain: E4 history omits dated signing markers because Deal has no actual signing/close timestamp. Counterargument: signed/won status is useful, but assigning it an expected date invents historical precision. No contract expansion in this repair.
+
+- 2026-10-24 Micah: cash crosshairs appear only with the pointer inside the plot, use the selected scenario regardless of hover, and retain the inspected date during fix comparison. Clicking another curve still selects it. Why: user direction; exact weekly values come from supplied data, with keyboard/touch access through a week slider and no interpolated money or synthetic Today readouts.
+
+- 2026-10-24 Micah: emit soft particles along entire curves and allocate their counts by supplied scenario probability, per the user's clarified reference. Use a bounded shared budget and equal lifetimes so more probable scenarios have higher emission rates; keep history at a fixed baseline and financial values unchanged.
+
+- 2026-10-24 Micah: keep the particle experiment on codex/timeline-particles in the primary checkout. Use cached, bounded Canvas filaments over the existing SVG, with explicit pause and visibility/reduced-motion safeguards; no WebGL dependency or new financial encoding.
+
+- 2026-10-24 Micah: use cash forecast/scenario and meets requirements/outside limits in timeline UI, replacing future/survival/break language per user direction. Label comparison toggles Preview fixes; keep shared contract names unchanged.
 
 - 2026-10-24 Codex brain: E4 labels spend-spike probability 0.3 as a demo assumption, compares probability-weighted money using exact ratios, and labels historical usable cash as using current restricted cash. Why: the records do not establish incident probability or historical restricted balances; assumptions must not masquerade as learned facts.
 

@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:14 Codex brain (Micah UI integration)
+- Done: independently reviewed and integrated origin/main 77d0df6, including particle emission and exact weekly inspection. Preserved local Convex guidance and both knowledge histories. Combined check passes 248 tests/typechecks/lint and fresh production build.
+- Next: start the prototype locally and connect real engine outputs to Convex while continuing backend completion through Claude.
+- Watch out: current company seed still has illustrative results; do not call it the completed backend. No provider run, reset, push or remote deployment. User's latest merge instruction supersedes the earlier particle deferral.
+
 ## 2026-10-24 03:09 Codex brain (E4 integration)
 - Done: directly ran Claude E4 and repair; independently reviewed 87de4f6 with Sol/Astra and lead probes. All three blockers resolved. Combined main passes 240 tests, five typechecks, lint and fresh production build. Review: kb/reviews/E4-r1-87de4f6.md.
 - Next: merge c354bcb and its post-merge 240-test check are complete. Move to provider adapters and connector/action wiring with safe seeded-data backfill. Engine calculation methods are implemented; grade/learn and persisted end-to-end flow remain open.
@@ -33,10 +38,25 @@ Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 - Next: finish auditing Claude's E3b repairs when returned, then integrate before E4. E6b provider adapters and safe seed backfill remain separate. Particle branch is explicitly deferred.
 - Watch out: no particle commits or E3b changes included. Environment files, uncommitted .env.example and unrelated web/CREAO files preserved. Browser used sample data and saved no approvals. No push, deployment, reset or worktree deletion.
 
+## 2026-10-24 02:21 Micah (Codex, weekly inspection)
+- Done: added dotted date/value crosshairs tied to the selected forecast, with full year and exact cash to the cent. Guides appear only while the pointer is inside the plot; hovering another curve does not change the inspected scenario, while clicking still selects it. The last weekly readout remains available outside the plot. Inspect week supports arrows, Home/End and touch; narrow charts reveal the chosen position. Verified hover lock, pointer exit, click selection, history, fix comparison, playground, mobile overflow and production rendering. All 75 tests, typecheck, lint and build pass.
+- Next: review codex/timeline-particles at port 3005; main remains unchanged.
+- Watch out: values snap to supplied weekly records/forecast points. No interpolated cash or synthetic Today values. Keyboard/touch changes the readout without showing pointer-only guides. Screenshot: /tmp/domino-timeline-inspection.png.
+
+## 2026-10-24 02:12 Micah (Codex, full-line emission)
+- Done: replaced traveling beads with soft particles born across entire curves, drifting outward and fading. Forecast counts follow supplied probabilities with equal lifetimes; stratified origins cover each path. Hard cap is 720 particles/32 tracks, with 234 particles at 390 px. The 30-path desktop playground drew about 0.24 ms/frame at roughly 60 fps; offscreen canvases stop. Pause/resume, scenario selection, fix comparison, clean console and phone overflow checked. All 72 tests and production build pass.
+- Next: review codex/timeline-particles at the port 3005 preview; main remains unchanged.
+- Watch out: density represents relative supplied probabilities within a shared visual budget, with integer rounding. History uses a fixed baseline. Browser timings are local measurements. Reduced-motion safeguards and accessible SVG remain in place. Screenshot: /tmp/domino-emission.png.
+
 ## 2026-10-24 02:08 Codex brain (E3b independent audit)
 - Done: audited clean Claude commit e77474d with independent Astra rules review and GPT-6.1 Sol causal review; lead forced check passes 169 tests, typechecks and lint. Lead reproduced three defects with schema-valid inputs: weekly hire savings misdate daily funds, causal arrows blame unrelated events, duplicate bill IDs corrupt deadline results. Review and repair card committed in main.
 - Next: Claude copies kb/tasks/E3b-r1-funding-causes.md from main into its existing E3b worktree, implements the scoped repairs and returns a commit for re-review. E4 stays gated.
 - Watch out: E3b not merged; no feature code written or worker checkout modified by Codex. Main still awaits remote UI integration identified earlier. Unrelated environment/README/CREAO/web tooling work preserved.
+
+## 2026-10-24 02:00 Micah (Codex, particle experiment)
+- Done: created codex/timeline-particles in the primary checkout, without a new worktree. Added a Canvas particle layer following cached D3 curve samples, quiet trails, selected-path glints, and continuous fix morphs. One animation loop, at most 144 particles/32 tracks, pixel ratio capped at 1.5; stops offscreen/hidden/paused and respects reduced motion, with 30 fps on coarse pointers and adaptive backoff. Added a clearly labeled 30-copy playground stress preview. Browser measured roughly 0.14–0.29 ms drawing per frame near 60 fps in that desktop preview; 390 px layout has no page overflow and reduces the field to 31 particles. Pause/resume, selection, fix comparison and clean hydration checked. All 71 tests and production build pass.
+- Next: review the experimental branch at the local port 3005 preview before merging. Main is unchanged.
+- Watch out: particles are display-only and do not represent extra financial values or uncertainty. Timing is from this desktop browser, not a device-wide performance guarantee. Reduced-motion initial rendering is regression tested; no OS preferences were changed. The Button helper import is relative so the existing SSR test can resolve it without adding test configuration. Screenshot: /tmp/domino-particles.png.
 
 ## 2026-10-24 01:46 Codex brain (Claude implementation handoff)
 - Done: integrated reviewed E3a repair at 59fe62d; combined 131 tests, typechecks, lint and fresh production build pass. User assigned both E3b/E4 implementation to Claude, with Codex auditing/checking. Prepared the E3b branch/worktree from passing main.

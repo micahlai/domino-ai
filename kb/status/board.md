@@ -53,6 +53,9 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | C1-UI | Plain financial timeline copy | User request | P4 | done | codex/plain-timeline-copy | Integrated from origin/main 687b91f; distinct from engine contracts C1 |
 | I1 | C1-compatible scenario selection | `kb/tasks/I1-ui-risk-selection.md` | P4, contracts C1 | done | integration-ui-selection | Claude helper/test fix independently reviewed; combined 147 tests and browser check pass |
 
+| V1 | Timeline particle experiment | User request | P3 | done | codex/timeline-particles | Full-line probability-weighted emission; 72 tests/build pass; browser checked |
+| V2 | Timeline date/value inspection | User request | V1 | done | codex/timeline-particles | Selected-scenario guides only inside plot; weekly values, keyboard/touch; 75 tests/build pass |
+
 ## Shared
 
 | ID | Task | Prompt | When |
