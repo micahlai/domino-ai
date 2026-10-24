@@ -35,3 +35,19 @@ Status: implemented, committed locally on G6-company-map. Not merged, not pushed
 - The quiet-delivery change to `isHistory` also affects node entrances and the fit duration; reviewer may want to confirm that is wanted.
 
 **API changes inside the folder:** `layout(nodes)`, `toFlowNodes(current, incoming, quiet)` and `deliver(current, incoming, options)` no longer take `edges`.
+
+## Repair 1 requested by independent Codex audit
+- Reconnect catch-up must stay quiet: offline/queued -> live/cached queued -> live/catch-up succeeded currently pulses historical work. Convex reports socket connected before query catch-up. Use a recovery latch keyed by content fingerprint (IDs/statuses), not parsed array identity; consume it only when a changed snapshot arrives, update seen quietly. Without an authoritative freshness marker, conservatively suppress that first changed snapshot and document this tradeoff. Test this exact multi-render sequence, including repeated unchanged cached snapshots and subsequent true live transitions. No backend changes.
+- Group captions claim queued records already ran: Tools this run used and Saved documents loaded for this run. Use neutral concise descriptions of recorded tool/source steps. Counts remain recorded node counts, not connected systems/documents.
+- Preserve the visual design. Parent browser observed the saved graph, frames and knowledge node after restoring3214. Source caption wraps into header space; concise neutral wording must fit without overlapping children. No shell edits yet.
+- Focused tests/typecheck/lint, append Result and commit. No fullsuite/build/browser/provider/push. Codex will rerun acceptance.
+
+## Result: Repair 1
+Status: implemented, committed locally on G6-company-map. Not pushed. Codex still owns full suite, build, browser and visual acceptance.
+
+- **Reconnect latch** (`graph.ts` `settle`, `fingerprint`, `Recovery`; wired in `InvestigateWorkspace.tsx`). Replaces `isHistory`. Loading, offline and unavailable hold the latch. After the connection returns, unchanged snapshots (compared by id:status fingerprint, not array identity) stay quiet and keep it held; the first changed snapshot (catch-up) is also quiet, updates `seen`, and releases it. Later changes pulse normally. Node entrances and fit stay quiet on the same signal.
+- **Conservative tradeoff:** there is no authoritative freshness marker (Convex reports the socket connected before the query catches up), so a genuine live step that is the first change after a reconnect also shows without motion. A missed pulse is preferred over replaying old work as new. Documented in the `settle` comment. No backend change.
+- **Captions** (`MapParts.tsx`): "Recorded source steps" and "Recorded tool steps"; empty groups say "None recorded yet". Counts are recorded node counts. Shorter than before, so the caption should stay on one line in the frame header. Visual design, layout and financial output unchanged.
+- **Tests:** new "reconnect recovery latch" suite runs the offline -> cached queued -> same-content new array -> catch-up -> true live transition sequence through `settle` plus `pulsesFor`; repeated unchanged cached snapshots; away states never release; plain live is not held. Caption test asserts neutral wording.
+- **Verified:** `npx vitest run components/investigate` (apps/web): 5 files, 101 tests pass. `npx tsc --noEmit`: clean. `npx biome check --write` on the two owned folders: clean.
+- **Not verified:** no browser, so caption fit in the frame is unseen. The Workspace effect wiring of `settle` has no DOM test; the pure sequence is tested.

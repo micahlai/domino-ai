@@ -22,13 +22,16 @@ import {
   KIND_LABEL,
   KNOWLEDGE_ID,
   type Pulse,
+  type Recovery,
   STATUS_LABEL,
+  away,
   deliver,
+  fingerprint,
   graphFit,
-  isHistory,
   loneFit,
   pulsesFor,
   safeHref,
+  settle,
   toFlowNodes,
   withKnowledge,
   zones,
@@ -469,7 +472,7 @@ function Workspace({
   const canvasRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<ReactFlowInstance<FlowNode, FlowEdgeType> | null>(null);
   const userMoved = useRef(false);
-  const lastConnection = useRef(connection);
+  const recovery = useRef<Recovery>({ held: away(connection), print: fingerprint(incoming) });
   // Which node statuses were already shown, so a pulse fires once per new recorded transition.
   const seen = useRef<ReadonlySet<string>>(pulsesFor(new Set(), incoming, edges, true).seen);
   const pulseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -478,9 +481,10 @@ function Workspace({
   const fitOptions = nodes.length > 1 ? graphFit : loneFit;
 
   useEffect(() => {
-    // Records delivered while loading or offline, or right as that ends, are history too.
-    const quiet = isHistory(connection, lastConnection.current);
-    lastConnection.current = connection;
+    // Records delivered while loading or offline, and the cached/catch-up ones after, are history.
+    const settled = settle(recovery.current, connection, incoming);
+    recovery.current = settled.recovery;
+    const quiet = settled.quiet;
     const next = pulsesFor(seen.current, incoming, edges, quiet);
     seen.current = next.seen;
     if (next.pulses.length > 0 && !reduced) {

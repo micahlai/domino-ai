@@ -188,11 +188,35 @@ export function withKnowledge(nodes: CanvasNode[]): CanvasNode[] {
   ];
 }
 
-const away = (c: CanvasConnection) => c === "loading" || c === "offline" || c === "unavailable";
+export const away = (c: CanvasConnection) =>
+  c === "loading" || c === "offline" || c === "unavailable";
 
-/** Records delivered while loading or offline, or right as that ends, are history: no motion. */
-export const isHistory = (now: CanvasConnection, before: CanvasConnection) =>
-  away(now) || away(before);
+/** Content identity of a snapshot (ids and statuses), so a re-parsed identical array is not news. */
+export const fingerprint = (nodes: CanvasNode[]) =>
+  nodes.map((node) => `${node.id}:${node.status}`).join("|");
+
+/** Quiet-until-changed latch. `print` is the last snapshot seen; `held` means a recovery is pending. */
+export type Recovery = { held: boolean; print: string };
+
+/**
+ * Decide whether a delivery is history. Loading, offline and unavailable hold a latch. Once the
+ * connection is back, unchanged (cached) snapshots stay quiet, and so does the first changed one
+ * (the catch-up), which then releases the latch. Convex reports the socket connected before the
+ * query catches up and carries no freshness marker, so a genuine live step that is the very first
+ * change after a reconnect is also shown without motion. That is the deliberate conservative
+ * tradeoff: a missed pulse is better than replaying old work as new.
+ */
+export function settle(
+  recovery: Recovery,
+  connection: CanvasConnection,
+  incoming: CanvasNode[],
+): { quiet: boolean; recovery: Recovery } {
+  const print = fingerprint(incoming);
+  const held = recovery.held || away(connection);
+  if (!held) return { quiet: false, recovery: { held: false, print } };
+  const release = !away(connection) && print !== recovery.print;
+  return { quiet: true, recovery: { held: !release, print } };
+}
 
 export type Pulse = { key: string; edgeId: string };
 

@@ -62,8 +62,14 @@ describe("ZoneView", () => {
   });
 
   it("says plainly when a group is empty, without implying use", () => {
-    expect(zone("sources", 0)).toContain("None loaded yet");
-    expect(zone("toolbox", 0)).toContain("None used yet");
-    expect(zone("toolbox", 0)).not.toContain("Tools this run used");
+    expect(zone("sources", 0)).toContain("None recorded yet");
+    expect(zone("toolbox", 0)).toContain("None recorded yet");
+  });
+
+  it("describes recorded steps only, never claiming a queued record already ran", () => {
+    const text = [zone("sources", 2), zone("toolbox", 2)].join(" ");
+    expect(text).toContain("Recorded source steps");
+    expect(text).toContain("Recorded tool steps");
+    expect(text).not.toMatch(/this run|loaded|used/i);
   });
 });

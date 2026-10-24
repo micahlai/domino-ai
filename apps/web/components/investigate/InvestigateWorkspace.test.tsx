@@ -13,18 +13,20 @@ import {
   IDLE_DOMINO,
   NODE_H,
   NODE_W,
+  type Recovery,
   deliver,
+  fingerprint,
   graphFit,
-  isHistory,
   layout,
   overlaps,
   pulsesFor,
   safeHref,
+  settle,
   toFlowNodes,
   withKnowledge,
   zones,
 } from "./graph";
-import type { CanvasNode } from "./types";
+import type { CanvasConnection, CanvasNode } from "./types";
 
 const noop = () => {};
 
@@ -594,12 +596,70 @@ describe("graph", () => {
     });
   });
 
-  it("treats loading, offline and unavailable, and the moment after, as history", () => {
-    expect(isHistory("loading", "live")).toBe(true);
-    expect(isHistory("live", "loading")).toBe(true);
-    expect(isHistory("live", "offline")).toBe(true);
-    expect(isHistory("unavailable", "live")).toBe(true);
-    expect(isHistory("live", "live")).toBe(false);
+  describe("reconnect recovery latch", () => {
+    const wires = [link("domino", "s0"), link("s0", "a0")];
+    const at = (status: CanvasNode["status"]) => [
+      IDLE_DOMINO,
+      { ...node("s0"), status: "succeeded" as const },
+      { ...node("a0", "agent"), status },
+    ];
+    // One render of the workspace effect: settle, then pulse against what was already seen.
+    const sequence = (steps: [CanvasConnection, CanvasNode[]][]) => {
+      const first = steps[0]?.[1] ?? [];
+      let recovery: Recovery = { held: false, print: fingerprint(first) };
+      let seen = pulsesFor(new Set(), first, wires, true).seen;
+      return steps.map(([connection, incoming]) => {
+        const settled = settle(recovery, connection, incoming);
+        recovery = settled.recovery;
+        const next = pulsesFor(seen, incoming, wires, settled.quiet);
+        seen = next.seen;
+        return next.pulses.map((p) => p.key);
+      });
+    };
+
+    it("keeps offline -> cached queued -> catch-up quiet, then pulses true live work", () => {
+      const out = sequence([
+        ["live", at("queued")],
+        ["offline", at("queued")],
+        ["live", at("queued")], // socket back, cached snapshot
+        ["live", [...at("queued")]], // same content, new array identity
+        ["live", at("queued")],
+        ["live", at("succeeded")], // catch-up of work done while away
+        ["live", at("succeeded")],
+      ]);
+      expect(out.every((pulses) => pulses.length === 0)).toBe(true);
+      // The catch-up releases the latch, so the next real transition pulses again.
+      const resumed = sequence([
+        ["offline", at("queued")],
+        ["live", at("queued")],
+        ["live", at("running")],
+        ["live", at("succeeded")],
+      ]);
+      expect(resumed).toEqual([[], [], [], ["s0-a0:succeeded"]]);
+    });
+
+    it("stays held through repeated unchanged cached snapshots", () => {
+      let r: Recovery = { held: false, print: fingerprint(at("queued")) };
+      for (const c of ["offline", "live", "live", "preview"] as const) {
+        const s = settle(r, c, at("queued"));
+        r = s.recovery;
+        expect(s.quiet).toBe(true);
+      }
+      expect(r.held).toBe(true);
+      expect(settle(r, "live", at("running")).recovery.held).toBe(false);
+    });
+
+    it("changes in loading, offline or unavailable never release it", () => {
+      for (const c of ["loading", "offline", "unavailable"] as const) {
+        const s = settle({ held: true, print: "" }, c, at("running"));
+        expect(s).toMatchObject({ quiet: true, recovery: { held: true } });
+      }
+    });
+
+    it("is not held while simply live", () => {
+      const s = settle({ held: false, print: fingerprint(at("queued")) }, "live", at("running"));
+      expect(s.quiet).toBe(false);
+    });
   });
 
   describe("operation pulses", () => {
