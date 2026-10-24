@@ -8,6 +8,6 @@
 - **Launch:** Codex, GPT-6 Sol, high; branch `E6a-agent-feasibility`, sibling worktree `domino-E6a`. Offline tests plus public docs; 60-minute limit, then report/split.
 - **Coordination:** You are not alone. Preserve others' changes; do not edit board, handoffs, contracts or other cards. Record sponsor findings and dependency requests in Result for the brain.
 ## Result (worker fills this in when done)
-- Done:
-- What changed (files):
-- Watch out:
+- Done: Implemented an injected `Agents` facade and `runJob` response with backend identity. Defaults and `AGENT_BACKEND_<JOB>` overrides match the spec. Structured outputs use contract schemas; text must be nonempty; `explain` is limited to three English `Intl.Segmenter` sentences. CREAO gets two attempts, then Claude gets at most two; Claude primary gets two total. Focused 20 tests and `TURBO_FORCE=true pnpm check` passed with Node 24.11.1. The sandboxed full check initially failed at Turbo TLS setup, so it was rerun successfully with normal local access and no system change.
+- What changed (files): `packages/agents/src/index.ts`, `packages/agents/src/routing.test.ts`, `packages/agents/provider-feasibility.md`, this Result. No manifests, lockfile, contracts, or other packages changed.
+- Watch out: This is offline routing, not a live provider integration. Official CREAO docs confirm generic API paths and auth, but three runnable Domino agents, structured output behavior, account access, latency, and mock API reachability remain unverified. Anthropic live credentials and response handling are also untested. E6b needs adapters, prompt construction, agent IDs, and authenticated fixture runs. Explanation segmentation is a mechanical length guard; it does not prove factual quality. The prior unconfigured `agents` singleton was replaced with `createAgentRouter(clients).agents` so construction requires injected clients.
