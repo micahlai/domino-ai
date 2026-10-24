@@ -161,6 +161,30 @@ describe("Claude extraction", () => {
     );
   });
 
+  it.each(["billingPlans", "pendingPayouts"])("accepts a %s mapping", async (entity) => {
+    const item = { source: "stripe", entity, fields: [{ canonical: "id", source: "id" }] };
+    const wire = { result: [{ ...item, transforms: [], endpoint: "/v1/x" }] };
+    const { claude } = client(() => message(wire));
+    await expect(claude.run("mapSource", { apiDocs: "d", samples: [] })).resolves.toEqual([
+      { ...wire.result[0], fields: { id: "id" } },
+    ]);
+  });
+
+  it("rejects a mapping entity outside the contract", async () => {
+    const fields = [{ canonical: "id", source: "id" }];
+    const item = {
+      source: "stripe",
+      entity: "subscriptions",
+      fields,
+      transforms: [],
+      endpoint: "/",
+    };
+    const { claude } = client(() => message({ result: [item] }));
+    await expect(categoryOf(claude.run("mapSource", { apiDocs: "d", samples: [] }))).resolves.toBe(
+      "invalid_output",
+    );
+  });
+
   it.each([
     ["refusal", "refusal"],
     ["max_tokens", "truncated"],

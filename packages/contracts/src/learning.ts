@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BankTxnSchema, ISODateSchema, SnapshotSchema } from "./core";
+import { CalendarDateSchema, isCalendarDate } from "./checks";
+import { BankTxnSchema, SnapshotSchema } from "./core";
 
 /**
  * Explicit observation windows for grading and retrospective learning.
@@ -7,19 +8,6 @@ import { BankTxnSchema, ISODateSchema, SnapshotSchema } from "./core";
  * records were known at the time. Cross-call facts (same company as the current
  * snapshot, cutoff not after it, forecast calendar) are checked by the engine.
  */
-
-const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-function isCalendarDate(date: string): boolean {
-  if (!ISODateSchema.safeParse(date).success) return false;
-  const [year, month, day] = date.split("-").map(Number) as [number, number, number];
-  if (month < 1 || month > 12 || day < 1) return false;
-  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-  return day <= (month === 2 && leap ? 29 : DAYS_IN_MONTH[month - 1]!);
-}
-
-/** Kept local: ISODateSchema stays a shape check so existing records parse unchanged. */
-const CalendarDateSchema = ISODateSchema.refine(isCalendarDate, "expected a real calendar date");
 
 /**
  * The caller asserts it supplied every bank transaction in the window. This is a
@@ -56,6 +44,7 @@ export type GradeContext = z.infer<typeof GradeContextSchema>;
 /** Records whose date means "already happened" and so cannot postdate the origin. */
 const OBSERVED_DATES = [
   ["invoices", "paid"],
+  ["invoices", "writtenOff"],
   ["bills", "paid"],
   ["bankTxns", "date"],
   ["cardTxns", "date"],

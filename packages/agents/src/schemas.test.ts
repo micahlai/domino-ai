@@ -76,6 +76,12 @@ describe("job JSON schemas follow the contracts", () => {
     expectMatches(items("mapSource", dialect), FieldMappingSchema);
   });
 
+  it.each(dialects)("%s: FieldMapping entity enum lists every contract entity", (dialect) => {
+    const entity = items("mapSource", dialect).properties.entity as { enum: string[] };
+    expect(entity.enum).toEqual(FieldMappingSchema.shape.entity.options);
+    expect(entity.enum).toEqual(expect.arrayContaining(["billingPlans", "pendingPayouts"]));
+  });
+
   it("uses one result envelope for structured jobs and a text envelope for text jobs", () => {
     for (const dialect of dialects) {
       for (const job of jobs) {

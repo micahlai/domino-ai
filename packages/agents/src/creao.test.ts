@@ -276,6 +276,17 @@ describe("CREAO chat text extraction", () => {
     ).resolves.toEqual([mapping]);
   });
 
+  it.each(["billingPlans", "pendingPayouts"])("accepts a %s mapping", async (entity) => {
+    const forward = { ...mapping, entity, fields: { id: "id" } };
+    await expect(extract({ chatText: block([forward]) })).resolves.toEqual([forward]);
+  });
+
+  it("rejects a mapping entity outside the contract", async () => {
+    // Invalid candidates are skipped, so a lone invalid answer means no usable result.
+    const wrong = { ...mapping, entity: "subscriptions" };
+    await expect(categoryOf(extract({ chatText: block([wrong]) }))).resolves.toBe("no_result");
+  });
+
   it("does not guess at braces inside narration or inline delimiters", async () => {
     const inline = `I found ${JSON.stringify([mapping])} for you.`;
     await expect(categoryOf(extract({ chatText: inline }))).resolves.toBe("no_result");

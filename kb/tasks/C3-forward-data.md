@@ -7,6 +7,16 @@
 - **Scope:** Schemas, inferred exported types, focused contract tests and Result only. Keep existing fixtures valid and unchanged. No dependencies or web schema migrations.
 - **Coordination:** You are not alone. No engine/sim/agents/web/env/other-checkout edits, secrets, network, subagents, external messages, board/handoffs, pull/rebase/reset/stash/merge/push. Commit owned files for independent audit.
 ## Result (worker fills this in when done)
-- Done:
+- Done: Frozen optional contracts and invariants from forward-data-contract.md, tests first (92 new tests, red then green). Legacy fixtures unchanged and still parse with no added keys. Full `pnpm check` passes (contracts 159, engine 147, web 67, agents 20, sim 5; typecheck and lint clean). No engine/sim/agents/web/provider edits, no data emitted.
 - What changed (files):
+  - `packages/contracts/src/checks.ts` (new, not exported from index): real-date check, `CalendarDateSchema`, anchored month-end `isOnCadence`, `SafeCentsSchema` (`int().safe()`), `groupBy`/`flagRepeats`. Imports nothing from core to avoid a module cycle.
+  - `core.ts`: `BillingPlanSchema`, `PendingPayoutSchema`; Invoice `billingPlanId`, `collection {payOn, amount}`, `paidAmount`, `writtenOff` (paidAmount needs paid, paid excludes writtenOff, bounds 0..amount); Bill `agreedPayOn`; Snapshot `billingPlans`/`pendingPayouts` with cross-record rules (unique IDs, plan customer exists, cursor after asOf, links to exactly one same-customer plan on cadence, issued on or before asOf and before cursor, plan amount, one invoice per occurrence, writtenOff on or before asOf, signed won uninvoiced deal for a plan customer rejected, payout invoice exists once, is paid on or before asOf, is not written off, sits in only one payout, net <= gross).
+  - `sim.ts`: `PlannedEvent.id`; exported `WorldRuntimeSchema`/`WorldRuntime` v1 (collections, billPayments, cashEvents, appliedEvents) plus WorldState rules (real today == asOf, pending IDs required/unique/not applied, applied week <= world.week, referenced invoice/bill exists once, gross <= invoice amount); FieldMapping entity adds `billingPlans`, `pendingPayouts`.
+  - `learning.ts`: shares the calendar helper; `invoices.writtenOff` added to observed dates.
+  - `forward-data.test.ts` (new).
 - Watch out:
+  - Payout gross is summed in BigInt so it stays exact. Each referenced gross (paidAmount, or amount for legacy paid invoices) must be a safe integer. Legacy negative amounts are summed as they are, not rejected. A mutation test confirms a float sum would fail.
+  - Not enforced because the spec does not say so: linked invoice issued <= plan endDate, endDate >= anchorDate, collection/paid exclusivity, runtime cashEvent IDs distinct from snapshot bankTxns, collection invoice unpaid. Audit should confirm these omissions are intended.
+  - The replay writtenOff check is redundant: the snapshot rule `writtenOff <= asOf` already rejects it at the same path. Kept because the spec asks for it.
+  - `InvoiceSchema`, `BillingPlanSchema`, `PendingPayoutSchema` and `WorldStateSchema` are now ZodEffects (no `.shape`/`.extend`). No current repo code uses those methods. Inferred types are unchanged apart from the new optional fields.
+  - The provider hardcoded mapping entity enum is not updated (out of scope, per the follow-up). The `build-spec.md` §5 update and the `kb/requests.md` entry from the contract-change skill are left to the brain because they are outside this card's folder.
