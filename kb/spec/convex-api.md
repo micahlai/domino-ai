@@ -40,6 +40,10 @@ and parsed with the Zod schema when read in actions.
 
 ## Queries (UI reads only these)
 
+P5 adds `capabilities.get({})` returning readiness booleans (`connect`, `addEvent`, `nextWeek`, `simulate`, `explain`). These remain false while the corresponding E5/E7 actions are placeholders. `eventInputs.get({companyId})` returns the latest validated snapshot's invoice/customer choices and its as-of date, or null.
+
+P5 adds `explanations.request({companyId, branchId})`: validate the branch belongs to the company, reuse an existing explanation, otherwise schedule `agents.explain` only when that capability is ready. Returns `{requested}`. It does not claim an explanation was generated.
+
 | Function | Args | Returns |
 | --- | --- | --- |
 | `companies.get` | `{ companyId }` | company row |

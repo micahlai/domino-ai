@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:49 Micah (Codex, P5)
+- Done: separate managed worktree codex/p5-p6-flows from the current timeline branch. Added company create/progress/resume, company-scoped branch comparison with Recharts and weekly table, saved explanations/fixes/proof, configured event review with exact cent parsing, and next-week confirmation/pending states. Added backend readiness and validated event choices plus a scoped explanation request bridge. Browser checked creation/reload, scenario data, supported/unsupported event review and confirmation. All 80 tests, typecheck, lint and production build pass.
+- Next: P6 learning/record screens and weekly brief storage; E5/E7 must implement the scheduled actions before the full P5 demo can run.
+- Watch out: capabilities remain false while actions throw not built. Credit-line changes have no supported Change kind. No forecasts, explanations or connection results were invented. One Flow QA company was created in isolated local Convex port 3220, with pending source processing. Main and the primary checkout remain unchanged.
+
 ## 2026-10-24 02:21 Micah (Codex, weekly inspection)
 - Done: added dotted date/value crosshairs tied to the selected forecast, with full year and exact cash to the cent. Guides appear only while the pointer is inside the plot; hovering another curve does not change the inspected scenario, while clicking still selects it. The last weekly readout remains available outside the plot. Inspect week supports arrows, Home/End and touch; narrow charts reveal the chosen position. Verified hover lock, pointer exit, click selection, history, fix comparison, playground, mobile overflow and production rendering. All 75 tests, typecheck, lint and build pass.
 - Next: review codex/timeline-particles at port 3005; main remains unchanged.

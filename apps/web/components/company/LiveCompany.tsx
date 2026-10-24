@@ -2,19 +2,15 @@
 
 import { AddEventDialog } from "@/components/AddEventDialog";
 import { FixCard } from "@/components/FixCard";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Branch } from "@domino/contracts";
 import { useConvexConnectionState, useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { LiveConnection } from "../flows/ConnectScreen";
+import { NextWeekDialog } from "../flows/NextWeekDialog";
 import { CompanyWorkspace } from "./CompanyWorkspace";
-import { UnavailableAction } from "./UnavailableAction";
 import { matchingFixBranch } from "./selection";
-
-// E7 enables these after replacing the corresponding internal action placeholders.
-const computeActions = { addEvent: false, nextWeek: false, simulate: false };
 
 export function CompanyConnectionStatus() {
   const connection = useConvexConnectionState();
@@ -39,8 +35,9 @@ export function CompanyLoading() {
   );
 }
 
-function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] }) {
+export function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] }) {
   const candidates = useQuery(api.fixes.forBranch, { branchId: branch.id });
+  const capabilities = useQuery(api.capabilities.get, {});
   const simulate = useMutation(api.fixes.simulate);
   const decide = useMutation(api.approvals.decide);
   if (candidates === undefined)
@@ -65,7 +62,7 @@ function LiveFixes({ branch, branches }: { branch: Branch; branches: Branch[] })
             gain={gain}
             simulatedBranch={saved}
             onSimulate={
-              computeActions.simulate
+              capabilities?.simulate
                 ? async () => {
                     await simulate({ branchId: branch.id, fixId: fix.id });
                   }
@@ -93,10 +90,10 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
   const constraints = useQuery(api.constraints.list, { companyId });
   const risks = useQuery(api.risks.list, { companyId });
   const branches = useQuery(api.branches.list, { companyId });
+  const capabilities = useQuery(api.capabilities.get, {});
+  const inputs = useQuery(api.eventInputs.get, { companyId });
   const addEvent = useMutation(api.events.add);
   const nextWeek = useMutation(api.week.next);
-  const [message, setMessage] = useState("");
-  const [pending, setPending] = useState(false);
   if (
     company === undefined ||
     report === undefined ||
@@ -104,7 +101,9 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
     history === undefined ||
     constraints === undefined ||
     risks === undefined ||
-    branches === undefined
+    branches === undefined ||
+    capabilities === undefined ||
+    inputs === undefined
   )
     return <CompanyLoading />;
   if (!company)
@@ -113,6 +112,7 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
         This company could not be found. Check the company link.
       </p>
     );
+  if (company.status === "connecting") return <LiveConnection companyId={companyId} />;
   if (!report || !reportWithFixes || !history)
     return (
       <div className="space-y-3">
@@ -122,49 +122,37 @@ export function LiveCompany({ companyId }: { companyId: Id<"companies"> }) {
         </output>
       </div>
     );
-  async function advance() {
-    if (pending || !computeActions.nextWeek) return;
-    setPending(true);
-    try {
-      await nextWeek({ companyId });
-      setMessage("The next week is being prepared. This view will update when it is ready.");
-    } catch {
-      setMessage("Could not advance the week. Please try again.");
-    } finally {
-      setPending(false);
-    }
-  }
   return (
     <div className="space-y-4">
-      {message ? <output className="text-sm text-muted-foreground">{message}</output> : null}
       <CompanyWorkspace
         data={{ company, history, report, reportWithFixes, constraints, risks, branches }}
+        companyPath={`/c/${companyId}`}
         actions={
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              {computeActions.addEvent ? (
-                <AddEventDialog
-                  risks={risks}
-                  onAdd={async (risk) => {
-                    await addEvent({ companyId, label: risk.label, changes: risk.changes });
-                  }}
-                />
-              ) : (
-                <UnavailableAction
-                  label="Add event"
-                  reason="New events are not available until live forecasting is ready."
-                />
-              )}
-              {computeActions.nextWeek ? (
-                <Button disabled={pending} variant="outline" onClick={advance}>
-                  {pending ? "Preparing…" : "Next week"}
-                </Button>
-              ) : (
-                <UnavailableAction
-                  label="Next week"
-                  reason="Advancing weeks is not available until live forecasting is ready."
-                />
-              )}
+              <AddEventDialog
+                key={`${inputs?.asOf ?? company.today}:${report.universes.map((future) => future.id).join("|")}`}
+                risks={risks}
+                inputs={inputs ?? undefined}
+                unavailableReason="New forecasts cannot be computed yet. You can configure and review an event here."
+                onAdd={
+                  capabilities.addEvent
+                    ? async (risk) => {
+                        await addEvent({ companyId, label: risk.label, changes: risk.changes });
+                      }
+                    : undefined
+                }
+              />
+              <NextWeekDialog
+                currentWeek={company.currentWeek}
+                onAdvance={
+                  capabilities.nextWeek
+                    ? async () => {
+                        await nextWeek({ companyId });
+                      }
+                    : undefined
+                }
+              />
             </div>
             <p className="max-w-xs text-xs text-muted-foreground">
               New events and weeks are not available yet. Review the saved forecasts below.

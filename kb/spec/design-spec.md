@@ -172,6 +172,14 @@ Dark mode uses a near-black brown base per Micah's revised direction. Charts use
 
 ## 7. Frontend workflow
 
+### Company flows (P5)
+
+The connect form creates a mock-profile company and keeps its ID in the connection URL so progress survives reloads. Read source step text live; redirect only when the saved company status is ready. Pending source processing must stay visible.
+
+Scenario detail compares the selected branch with its parent, siblings and saved fixes, with a lender-limit line, accessible weekly table, source proof, explanation and approval cards. Links stay scoped to the company.
+
+Add event supports configured unpaid invoice delays, lost renewals, added cloud cost and early cash. Review the fields before submission; decimal dollar inputs become integer cents exactly. A lower credit line needs contract support and cannot submit. Next week requires a confirmation and waits for an actual new week. Service readiness comes from the backend; unavailable actions never claim a computed result.
+
 1. Sketch and prototype directly in `/playground` with contract fixtures.
 2. Review desktop and mobile screenshots against `skills/taste/SKILL.md`.
 3. Build reusable props-only components from the tokens and behavior in this spec.

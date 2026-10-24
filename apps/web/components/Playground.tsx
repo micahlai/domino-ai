@@ -23,6 +23,9 @@ import { fixtures } from "@domino/contracts/fixtures";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import { BranchDetail } from "./flows/BranchDetail";
+import { ConnectForm, ConnectionProgress } from "./flows/ConnectScreen";
+import { NextWeekDialog } from "./flows/NextWeekDialog";
 
 const sections = [
   "CompanyWorkspace",
@@ -39,6 +42,9 @@ const sections = [
   "LearningChart",
   "RuleCard",
   "AddEventDialog",
+  "ConnectionFlow",
+  "BranchDetail",
+  "NextWeek",
 ];
 const sources: SourcePreview[] = [
   ...fixtures.risks.flatMap((risk) => risk.evidence),
@@ -255,9 +261,75 @@ export function Playground() {
           name="AddEventDialog"
           description="Preview event selection without changing the forecast."
         >
-          <AddEventDialog risks={fixtures.risks} />
+          <AddEventDialog
+            risks={fixtures.risks}
+            inputs={{
+              asOf: fixtures.snapshot.asOf,
+              customers: fixtures.snapshot.customers,
+              invoices: fixtures.snapshot.invoices,
+            }}
+          />
         </PreviewSection>
       </div>
+      <PreviewSection
+        name="ConnectionFlow"
+        description="Company form and source progress preview; no company records change."
+      >
+        <ConnectForm />
+        <div className="mt-8">
+          <ConnectionProgress
+            name="Sample company"
+            ready={false}
+            processingReady
+            sources={[
+              {
+                kind: "stripe",
+                label: "Billing records",
+                status: "learned",
+                step: "Invoice fields mapped",
+              },
+              {
+                kind: "nessie",
+                label: "Demo bank",
+                status: "checked",
+                step: "Cash checked against bank records",
+              },
+              {
+                kind: "crm",
+                label: "Customer records",
+                status: "needs_review",
+                step: "Review one unmatched customer",
+              },
+            ]}
+          />
+        </div>
+      </PreviewSection>
+      <PreviewSection
+        name="BranchDetail"
+        description="Saved scenario comparison, projected impact and proof."
+      >
+        {eventBranch ? (
+          <BranchDetail
+            branch={eventBranch}
+            branches={fixtures.branches}
+            constraints={fixtures.constraints}
+            companyPath="/c/kestrel"
+            explanation={null}
+            sample
+            fixes={
+              <p className="text-sm text-muted-foreground">
+                Review saved fix cards in the main screen preview.
+              </p>
+            }
+          />
+        ) : null}
+      </PreviewSection>
+      <PreviewSection
+        name="NextWeek"
+        description="Confirmation preview. Preparing new weeks requires the live processing service."
+      >
+        <NextWeekDialog currentWeek={0} />
+      </PreviewSection>
       <p className="pb-4 text-sm text-muted-foreground">
         Component previews only. The next product tasks connect live data and approval flows.
       </p>

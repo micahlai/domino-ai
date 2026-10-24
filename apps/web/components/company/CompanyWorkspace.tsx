@@ -16,6 +16,7 @@ import type {
   ResilienceReport,
   RiskEvent,
 } from "@domino/contracts";
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { matchingEventBranch, weekOf } from "./selection";
 
@@ -34,11 +35,13 @@ export function CompanyWorkspace({
   sample = false,
   actions,
   renderFixes,
+  companyPath = "/c/kestrel",
 }: {
   data: WorkspaceData;
   sample?: boolean;
   actions: ReactNode;
   renderFixes: (branch: Branch) => ReactNode;
+  companyPath?: string;
 }) {
   const [showFixes, setShowFixes] = useState(false);
   const [selectedKey, setSelectedKey] = useState(
@@ -182,6 +185,14 @@ export function CompanyWorkspace({
                 : "Select a scenario to review its projected impact."}
             </p>
           )}
+          {branch ? (
+            <Link
+              className="inline-block min-h-9 text-sm text-primary underline"
+              href={`${companyPath}/branch/${encodeURIComponent(branch.id)}`}
+            >
+              Open scenario detail
+            </Link>
+          ) : null}
         </section>
         <section aria-labelledby="fixes-title" className="min-w-0 space-y-4">
           <h2 id="fixes-title" className="text-base font-medium">

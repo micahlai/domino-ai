@@ -3,8 +3,9 @@
 import { FixCard } from "@/components/FixCard";
 import type { Cents } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
+import { AddEventDialog } from "../AddEventDialog";
+import { NextWeekDialog } from "../flows/NextWeekDialog";
 import { CompanyWorkspace, type WorkspaceData } from "./CompanyWorkspace";
-import { UnavailableAction } from "./UnavailableAction";
 import { matchingFixBranch } from "./selection";
 
 const data: WorkspaceData = {
@@ -26,14 +27,15 @@ export function FixtureCompany() {
       sample
       actions={
         <div className="flex flex-wrap gap-2">
-          <UnavailableAction
-            label="Add event"
-            reason="Sample data only. New events will be available when live forecasting is ready."
+          <AddEventDialog
+            risks={fixtures.risks}
+            inputs={{
+              asOf: fixtures.snapshot.asOf,
+              customers: fixtures.snapshot.customers,
+              invoices: fixtures.snapshot.invoices,
+            }}
           />
-          <UnavailableAction
-            label="Next week"
-            reason="Sample data only. Advancing weeks will be available when live forecasting is ready."
-          />
+          <NextWeekDialog currentWeek={0} />
         </div>
       }
       renderFixes={(branch) => {

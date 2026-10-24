@@ -1,11 +1,11 @@
-import { PageStub } from "@/components/PageStub";
+import { BranchScreen } from "@/components/flows/BranchDetail";
 
-export default function Page() {
+export const metadata = { title: "Scenario detail" };
+export default async function Page({
+  params,
+}: { params: Promise<{ companyId: string; branchId: string }> }) {
+  const { companyId, branchId } = await params;
   return (
-    <PageStub
-      label="Future detail"
-      title="Follow one possible chain of events."
-      description="Compare this future with the base forecast, inspect the proof, and try a fix before you approve it."
-    />
+    <BranchScreen key={`${companyId}:${branchId}`} companyId={companyId} branchId={branchId} />
   );
 }
