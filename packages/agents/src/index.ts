@@ -15,6 +15,7 @@ export type { ClaudeOptions } from "./claude";
 export {
   CREAO_API_BASE_URL,
   artifactCategories,
+  artifactKinds,
   creaoAgentEnv,
   creaoDefaults,
   creaoDiagnosticStages,
@@ -22,6 +23,7 @@ export {
 } from "./creao";
 export type {
   ArtifactCategory,
+  ArtifactKind,
   CreaoDiagnosticStage,
   CreaoDiagnostics,
   CreaoOptions,

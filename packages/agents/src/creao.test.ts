@@ -379,8 +379,14 @@ describe("CREAO chat text extraction", () => {
 describe("CREAO format diagnostics", () => {
   const secretText = "Secret brief about Acme";
   const artifacts = [
-    { id: "art_9", title: "secret-title.md", type: "text/markdown", url: "https://x.example/a" },
-    { id: "art_8", title: "notes", type: "text/plain", url: "https://x.example/b" },
+    {
+      id: "art_9",
+      title: "secret-title.md",
+      type: "text/markdown",
+      url: `${artifactPath}?artifactId=art_9`,
+    },
+    // Only plain text and Markdown are downloaded; other text types are counted, not fetched.
+    { id: "art_8", title: "notes", type: "text/csv", url: "https://x.example/b" },
     { id: "art_7", title: "pic", type: "image/png", url: "https://x.example/c" },
     { id: "art_6", title: "untyped", url: "https://x.example/d" },
   ];
@@ -391,7 +397,8 @@ describe("CREAO format diagnostics", () => {
       seen.push(d);
       return callback?.(d);
     };
-    const { creao } = client(scripted(completed(result)), {
+    const download = new Response(`${secretText}\n${RESULT_START}\n`, { status: 200 });
+    const { creao } = client(scripted(completed(result), download), {
       diagnostics: diagnostics as CreaoOptions["diagnostics"],
     });
     return { seen, run: creao.run("weeklyBrief", briefInput) };
@@ -417,8 +424,10 @@ describe("CREAO format diagnostics", () => {
         wholeJson: false,
         envelopes: 0,
         artifacts: { json: 0, markdown: 1, text: 1, other: 1, missing: 1 },
-        jsonArtifacts: 0,
-        jsonArtifactsParsed: 0,
+        recognizedArtifacts: { json: 0, markdown: 1, text: 0 },
+        downloadedArtifacts: { json: 0, markdown: 1, text: 0 },
+        parsedArtifacts: { json: 0, markdown: 0, text: 0 },
+        artifactCandidates: 0,
         candidates: 1,
         validated: 0,
         distinct: 0,
@@ -610,14 +619,14 @@ describe("CREAO artifacts", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("ignores non-JSON artifacts and caps how many JSON artifacts are fetched", async () => {
-    const markdown = artifact({
-      id: "md",
-      title: "notes.md",
-      type: "text/markdown",
+  it("ignores unrecognized artifacts and caps how many recognized artifacts are fetched", async () => {
+    const image = artifact({
+      id: "img",
+      title: "chart.png",
+      type: "image/png",
       url: "https://evil.example/x",
     });
-    const ok = client(scripted(completed({ artifacts: [markdown], chatText: block([mapping]) })));
+    const ok = client(scripted(completed({ artifacts: [image], chatText: block([mapping]) })));
     await expect(ok.creao.run("mapSource", mapInput)).resolves.toEqual([mapping]);
     expect(ok.calls).toHaveLength(2);
 
@@ -629,6 +638,18 @@ describe("CREAO artifacts", () => {
       "too_many_artifacts",
     );
     expect(capped.calls).toHaveLength(2);
+
+    // JSON, Markdown and plain text share one budget.
+    const mixed = [
+      artifact({ id: "a1", url: `${artifactPath}?artifactId=a1`, type: "application/json" }),
+      artifact({ id: "a2", url: `${artifactPath}?artifactId=a2`, type: "text/markdown" }),
+      artifact({ id: "a3", url: `${artifactPath}?artifactId=a3`, type: "text/plain" }),
+    ];
+    const shared = client(scripted(completed({ artifacts: mixed })), { maxArtifacts: 2 });
+    await expect(categoryOf(shared.creao.run("mapSource", mapInput))).resolves.toBe(
+      "too_many_artifacts",
+    );
+    expect(shared.calls).toHaveLength(2);
   });
 
   it("caps artifact size and reports artifact HTTP failures", async () => {
@@ -650,5 +671,119 @@ describe("CREAO artifacts", () => {
       scripted(completed({ chatText: block([other]), artifacts: [artifact()] }), json([mapping])),
     );
     await expect(categoryOf(creao.run("mapSource", mapInput))).resolves.toBe("ambiguous_result");
+  });
+});
+
+describe("CREAO text and Markdown artifacts", () => {
+  const brief = "Cash was close.";
+  const envelopeFence = (text: string) => `\`\`\`json\n${JSON.stringify({ text })}\n\`\`\``;
+  const delimitedText = (text: string) => `${RESULT_START}\n${text}\n${RESULT_END}`;
+  const textArtifact = (overrides = {}) => ({
+    id: "art_1",
+    title: "weekly-brief",
+    type: "text/markdown",
+    url: `${artifactPath}?artifactId=art_1`,
+    ...overrides,
+  });
+
+  function briefRun(result: unknown, body: string, options: CreaoOptions = {}) {
+    const fake = client(scripted(completed(result), new Response(body, { status: 200 })), options);
+    return { ...fake, run: fake.creao.run("weeklyBrief", briefInput) };
+  }
+
+  it("accepts a trusted Markdown artifact with one fenced envelope", async () => {
+    const markdown = `# Weekly brief\n\nSome narration.\n\n${envelopeFence(brief)}\n`;
+    const { run, calls } = briefRun({ chatText: "Done.", artifacts: [textArtifact()] }, markdown);
+    await expect(run).resolves.toBe(brief);
+    expect(calls[2]!.headers.authorization).toBe("Bearer capi_secret_creao");
+  });
+
+  it("accepts plain text with explicit result delimiters, recognized by MIME or title", async () => {
+    for (const overrides of [
+      { type: "text/plain" },
+      { type: "file", title: "brief.txt" },
+      { type: null, title: "brief.md" },
+      { type: "file", title: "Brief.MARKDOWN" },
+    ]) {
+      const { run } = briefRun(
+        { artifacts: [textArtifact(overrides)] },
+        `Preamble.\n${delimitedText(brief)}\n`,
+      );
+      await expect(run).resolves.toBe(brief);
+    }
+  });
+
+  it("never reads unmarked narrative as a brief", async () => {
+    const { run } = briefRun({ artifacts: [textArtifact()] }, `# Brief\n\n${brief}\n`);
+    await expect(categoryOf(run)).resolves.toBe("no_result");
+  });
+
+  it.each([
+    ["an unclosed fence", `\`\`\`json\n${JSON.stringify({ text: brief })}\n`],
+    ["malformed JSON in a fence", `\`\`\`json\n{"text": "${brief}",\n\`\`\``],
+    ["malformed JSON in delimiters", delimitedText(`{"text": "${brief}",`)],
+    ["a start marker without an end", `${RESULT_START}\n${brief}\n`],
+    ["an end marker without a start", `${brief}\n${RESULT_END}\n`],
+  ])("fails on %s", async (_, body) => {
+    const { run } = briefRun({ artifacts: [textArtifact()] }, body);
+    await expect(categoryOf(run)).resolves.toBe("no_result");
+  });
+
+  it("fails when chat text and a text artifact give different answers", async () => {
+    const { run } = briefRun(
+      { chatText: delimitedText("Cash was tight."), artifacts: [textArtifact()] },
+      envelopeFence(brief),
+    );
+    await expect(categoryOf(run)).resolves.toBe("ambiguous_result");
+  });
+
+  it("accepts the same answer from chat text and an artifact", async () => {
+    const { run } = briefRun(
+      { chatText: delimitedText(brief), artifacts: [textArtifact()] },
+      envelopeFence(brief),
+    );
+    await expect(run).resolves.toBe(brief);
+  });
+
+  it("applies the same URL and redirect checks as JSON artifacts", async () => {
+    const untrusted = briefRun(
+      { artifacts: [textArtifact({ url: "https://evil.example/x?artifactId=art_1" })] },
+      delimitedText(brief),
+    );
+    await expect(categoryOf(untrusted.run)).resolves.toBe("untrusted_artifact");
+    expect(untrusted.calls).toHaveLength(2);
+
+    const { creao, calls } = client(
+      scripted(completed({ artifacts: [textArtifact()] }), redirect("https://10.1.2.3/a")),
+    );
+    await expect(categoryOf(creao.run("weeklyBrief", briefInput))).resolves.toBe(
+      "redirect_rejected",
+    );
+    expect(calls).toHaveLength(3);
+  });
+
+  it("reports per-kind artifact counts without any artifact text", async () => {
+    const seen: CreaoDiagnostics[] = [];
+    const { run } = briefRun(
+      {
+        chatText: "Secret narration.",
+        artifacts: [textArtifact(), textArtifact({ type: "image/png", title: "secret.png" })],
+      },
+      `Secret Acme notes.\n${envelopeFence(brief)}`,
+      { diagnostics: (d) => void seen.push(d) },
+    );
+    await expect(run).resolves.toBe(brief);
+    expect(seen[0]).toMatchObject({
+      stage: "done",
+      artifacts: { json: 0, markdown: 1, text: 0, other: 1, missing: 0 },
+      recognizedArtifacts: { json: 0, markdown: 1, text: 0 },
+      downloadedArtifacts: { json: 0, markdown: 1, text: 0 },
+      parsedArtifacts: { json: 0, markdown: 1, text: 0 },
+      artifactCandidates: 1,
+      candidates: 1,
+      validated: 1,
+      distinct: 1,
+    });
+    expect(JSON.stringify(seen)).not.toMatch(/Secret|Acme|secret|art_|http|run_|agent|Cash/);
   });
 });
