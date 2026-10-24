@@ -172,6 +172,33 @@ describe("quarterBridge baseline", () => {
     expect(() => quarterBridge(input(partial))).toThrow("8 months, not whole quarters");
   });
 
+  it("rejects a hindsight assumption hidden behind a dependency", () => {
+    const c = synthCase();
+    c.assumptions.unshift({
+      ...c.assumptions.find((a) => a.id === "a_fin")!,
+      id: "a_hidden",
+      label: "hindsight",
+      basisFactIds: ["f_cash_fy"],
+      selectedAfterReveal: true,
+    });
+    c.assumptions.find((a) => a.id === "a_fin")!.dependsOn = ["a_hidden"];
+    expect(() => quarterBridge(input(c))).toThrow(
+      "baseline cannot use hindsight assumption a_hidden",
+    );
+  });
+
+  it("rejects restricted cash that contradicts total minus usable", () => {
+    const c = synthCase();
+    c.facts.find((f) => f.id === "f_restricted_q3")!.cents = M(10);
+    expect(() => quarterBridge(input(c))).toThrow("restricted cash f_restricted_q3 contradicts");
+  });
+
+  it("rejects financing or FX that starts after the modeled interval begins", () => {
+    const c = synthCase();
+    c.assumptions.find((a) => a.id === "a_fin")!.effectiveFrom = "2032-01-01";
+    expect(() => quarterBridge(input(c))).toThrow("a_fin starts 2032-01-01");
+  });
+
   it("rejects wrong scope, currency and unsafe money", () => {
     expect(() => quarterBridge({ ...input(), usableCashFactId: "f_total_q3" })).toThrow(
       "expected cash_and_equivalents",
@@ -238,6 +265,64 @@ describe("quarterAlternative", () => {
     expect(() => quarterAlternative(input(free), "a_cut")).toThrow("needs cost and lag");
   });
 
+  it("lists the full decision closure as run inputs", () => {
+    const c = synthCase();
+    c.facts.push({
+      ...c.facts.find((f) => f.id === "f_ocf_ytd")!,
+      id: "f_debt",
+      metric: "debt_principal",
+      period: { kind: "instant", date: "2031-09-30" },
+      cents: 1,
+    });
+    c.assumptions.unshift({
+      ...c.assumptions[0]!,
+      id: "a_dep",
+      label: "synthetic",
+      basisFactIds: ["f_debt"],
+      oneTimeCost: undefined,
+      benefitLagDays: undefined,
+    });
+    c.assumptions.find((a) => a.id === "a_cut")!.dependsOn = ["a_dep"];
+    const alt = quarterAlternative(input(c), "a_cut");
+    expect(alt.inputs.factIds).toContain("f_debt");
+    expect(alt.inputs.assumptionIds).toEqual(["a_dep", "a_cut", "a_fin", "a_fx"]);
+    const base = asRun("run_b", alt.baseline.inputs, [...alt.nowcast, ...alt.baseline.forecast], {
+      kind: "baseline",
+    });
+    const run = asRun("run_a", alt.inputs, [...alt.nowcast, ...alt.forecast], {
+      kind: "alternative",
+      baselineRunId: "run_b",
+      decisionAssumptionIds: ["a_cut"],
+      postHoc: alt.postHoc,
+    });
+    expect(HistoricalRunContextSchema.safeParse({ case: c, run, baseline: base }).success).toBe(
+      true,
+    );
+  });
+
+  it("publishes an effect equal to the displayed difference", () => {
+    // Baseline 0.5 cent rounds to 1; benefit 46 * 1/92 = 0.5 cent rounds to 1. Effect +1, alt 2.
+    const c = synthCase();
+    for (const f of c.facts)
+      if (["f_cash_q3", "f_total_q3", "f_restricted_q3", "f_ocf_ytd", "f_icf_ytd"].includes(f.id))
+        f.cents = 0;
+    c.assumptions.find((a) => a.id === "a_fin")!.value = { unit: "cents", low: 0, high: 1 };
+    Object.assign(c.assumptions.find((a) => a.id === "a_cut")!, {
+      value: { unit: "cents", low: 46, high: 46 },
+      oneTimeCost: { unit: "cents", low: 0, high: 0 },
+      effectiveFrom: "2031-12-31",
+      benefitLagDays: 0,
+    });
+    const alt = quarterAlternative(input(c), "a_cut");
+    const base = byId(alt.baseline.forecast, "target_total");
+    const total = byId(alt.forecast, "target_total");
+    expect([base.cents, total.cents, alt.effectCents.point]).toEqual([1, 2, 1]);
+    expect(total.range).toEqual({
+      low: base.range!.low + alt.effectCents.low,
+      high: base.range!.high + alt.effectCents.high,
+    });
+  });
+
   it("labels hindsight decisions post-hoc", () => {
     const c = synthCase();
     c.assumptions.find((a) => a.id === "a_cut")!.selectedAfterReveal = true;
@@ -273,6 +358,23 @@ describe("compareRun", () => {
     // Only usable cash was observed at 12/31: total-cash scope stays unscored.
     expect(reason("target_total")).toBe("incomparable_scope");
     expect(reason("nowcast_usable")).toBe("no_observation");
+  });
+
+  it("leaves conflicting same-instant first observations unscored in any order", () => {
+    const c = synthCase();
+    const orig = c.facts.find((f) => f.id === "f_cash_fy")!;
+    c.facts.push({ ...orig, id: "f_conflict", cents: orig.cents + 10 });
+    const flipped = clone(c);
+    const i = flipped.facts.findIndex((f) => f.id === "f_cash_fy");
+    const j = flipped.facts.findIndex((f) => f.id === "f_conflict");
+    [flipped.facts[i], flipped.facts[j]] = [flipped.facts[j]!, flipped.facts[i]!];
+    for (const k of [c, flipped])
+      expect(
+        compareRun(k, run, fx.revealedThrough).find((x) => x.predictionId === "target_usable"),
+      ).toMatchObject({
+        status: "unscored",
+        reason: "incomparable_scope",
+      });
   });
 
   it("does not score before publication", () => {

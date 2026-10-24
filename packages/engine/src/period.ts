@@ -84,7 +84,6 @@ const times = (r: Ratio, num: number, den: number): Ratio => ({
   num: r.num * BigInt(num),
   den: r.den * BigInt(den),
 });
-const neg = (r: Ratio): Ratio => ({ num: -r.num, den: r.den });
 const addBand = (a: Band, b: Band): Band => ({
   low: addRatio(a.low, b.low),
   mid: addRatio(a.mid, b.mid),
@@ -109,22 +108,43 @@ function fact(input: QuarterBridgeInput, id: string, metric: HistoricalMetric): 
   return f;
 }
 
-function assumption(
-  input: QuarterBridgeInput,
-  id: string,
-  allowHindsight: boolean,
-): HistoricalAssumption {
+function assumption(input: QuarterBridgeInput, id: string): HistoricalAssumption {
   const a = input.case.assumptions.find((x) => x.id === id) ?? fail(`assumption ${id} not found`);
   if (a.value.unit !== "cents") fail(`assumption ${id} is not in cents`);
-  if (!allowHindsight && (a.label === "hindsight" || a.selectedAfterReveal))
-    fail(`baseline cannot use hindsight assumption ${id}`);
-  // Hindsight basis may be later facts by definition; anything else rests on cutoff evidence.
-  if (a.label !== "hindsight")
-    for (const b of a.basisFactIds) {
-      const f = input.case.facts.find((x) => x.id === b);
-      if (!f || !knownBy(input.knowledgeCutoff, f)) fail(`assumption ${id} basis ${b} is late`);
-    }
   return a;
+}
+
+const isPostHoc = (a: HistoricalAssumption): boolean =>
+  a.label === "hindsight" || a.selectedAfterReveal;
+
+/**
+ * The assumptions plus everything they depend on, in case order, each checked: a hidden
+ * hindsight dependency taints the run exactly like a direct one.
+ */
+function closure(
+  input: QuarterBridgeInput,
+  ids: string[],
+  allowHindsight: boolean,
+): HistoricalAssumption[] {
+  const byId = new Map(input.case.assumptions.map((a) => [a.id, a]));
+  const want = new Set<string>();
+  const visit = (id: string): void => {
+    if (want.has(id)) return;
+    want.add(id);
+    (byId.get(id) ?? fail(`assumption ${id} not found`)).dependsOn.forEach(visit);
+  };
+  ids.forEach(visit);
+  const all = input.case.assumptions.filter((a) => want.has(a.id));
+  for (const a of all) {
+    if (!allowHindsight && isPostHoc(a)) fail(`baseline cannot use hindsight assumption ${a.id}`);
+    // Hindsight basis may be later facts by definition; anything else rests on cutoff evidence.
+    if (a.label !== "hindsight")
+      for (const b of a.basisFactIds) {
+        const f = input.case.facts.find((x) => x.id === b);
+        if (!f || !knownBy(input.knowledgeCutoff, f)) fail(`assumption ${a.id} basis ${b} is late`);
+      }
+  }
+  return all;
 }
 
 const band = (a: HistoricalAssumption): Band => ({
@@ -160,35 +180,49 @@ function ytdQuarters(origin: ISODate, flows: HistoricalFact[]): number {
   return months / 3;
 }
 
+/** Published cents. Every displayed difference is integer math on these. */
+type CentsBand = { low: Cents; mid: Cents; high: Cents };
+
+/** Rounding is monotone, so an ordered exact band stays ordered; checked anyway. */
+function roundBand(b: Band): CentsBand {
+  const c = { low: checkedCents(b.low), mid: checkedCents(b.mid), high: checkedCents(b.high) };
+  if (!(c.low <= c.mid && c.mid <= c.high)) fail("range does not contain its point");
+  return c;
+}
+const plusCents = (a: CentsBand, b: CentsBand): CentsBand =>
+  roundBand({
+    low: ratio(BigInt(a.low) + BigInt(b.low)),
+    mid: ratio(BigInt(a.mid) + BigInt(b.mid)),
+    high: ratio(BigInt(a.high) + BigInt(b.high)),
+  });
+
 function prediction(
   id: string,
   kind: HistoricalPrediction["kind"],
   metric: HistoricalMetric,
   date: ISODate,
   currency: string,
-  b: Band,
+  c: CentsBand,
 ): HistoricalPrediction {
-  const low = checkedCents(b.low);
-  const high = checkedCents(b.high);
   const p: HistoricalPrediction = {
     id,
     kind,
     metric,
     period: { kind: "instant", date },
     currency,
-    cents: checkedCents(b.mid),
+    cents: c.mid,
   };
-  return low === high ? p : { ...p, range: { low, high } };
+  return c.low === c.high ? p : { ...p, range: { low: c.low, high: c.high } };
 }
 
-/** Total and usable cash at one date, from total-cash bands. */
+/** Total and usable cash at one date; usable = total - origin restricted, in whole cents. */
 function cashPair(
   prefix: string,
   kind: HistoricalPrediction["kind"],
   date: ISODate,
   currency: string,
-  total: Band,
-  restricted: Ratio,
+  total: CentsBand,
+  restricted: Cents,
 ): HistoricalPrediction[] {
   return [
     prediction(`${prefix}_total`, kind, "cash_including_restricted", date, currency, total),
@@ -198,12 +232,18 @@ function cashPair(
       "cash_and_equivalents",
       date,
       currency,
-      addBand(total, point(neg(restricted))),
+      plusCents(total, { low: -restricted, mid: -restricted, high: -restricted }),
     ),
   ];
 }
 
-type Prepared = { bridge: QuarterBridge; total0: Ratio; restricted: Ratio; quarterFlow: Band };
+type Prepared = {
+  bridge: QuarterBridge;
+  used: HistoricalFact[];
+  restricted: Cents;
+  /** Rounded baseline total at the target; the alternative adds its rounded effect to this. */
+  target: CentsBand;
+};
 
 function prepare(raw: QuarterBridgeInput): Prepared {
   const input = { ...raw, case: HistoricalCaseSchema.parse(raw.case) };
@@ -221,30 +261,51 @@ function prepare(raw: QuarterBridgeInput): Prepared {
   const n = ytdQuarters(origin, [ocf, icf]);
   const targetDate = quarterEndAfter(origin);
   if (!(origin < cutoff && cutoff < targetDate)) fail("cutoff must fall inside the target quarter");
-  const financing = assumption(input, input.financingAssumptionId, false);
-  const fx = assumption(input, input.fxAssumptionId, false);
+  // Reported restricted cash at the origin must agree with the chosen balances; never infer past it.
+  const restrictedFacts = input.case.facts.filter(
+    (f) =>
+      f.metric === "restricted_cash" &&
+      f.period.kind === "instant" &&
+      f.period.date === origin &&
+      knownBy(input.knowledgeCutoff, f),
+  );
+  for (const f of restrictedFacts)
+    if (BigInt(f.cents) !== BigInt(total.cents) - BigInt(usable.cents))
+      fail(`restricted cash ${f.id} contradicts total minus usable at the origin`);
+  const financing = assumption(input, input.financingAssumptionId);
+  const fx = assumption(input, input.fxAssumptionId);
+  // ponytail: no partial-quarter timing; a rate must cover the whole modeled interval or it is rejected.
+  for (const a of [financing, fx])
+    if (a.effectiveFrom > addDays(origin, 1))
+      fail(`assumption ${a.id} starts ${a.effectiveFrom}, after the modeled interval begins`);
+  const assumptions = closure(input, [financing.id, fx.id], false);
 
   const quarterFlow = [band(financing), band(fx)].reduce(
     addBand,
     point(ratio(BigInt(ocf.cents) + BigInt(icf.cents), n)),
   );
   const quarterDays = daysBetween(origin, targetDate);
-  const restricted = ratio(BigInt(total.cents) - BigInt(usable.cents));
-  const total0 = ratio(total.cents);
+  const restricted = checkedCents(ratio(BigInt(total.cents) - BigInt(usable.cents)));
   const at = (date: ISODate) =>
-    addBand(point(total0), scaleBand(quarterFlow, daysBetween(origin, date), quarterDays));
+    roundBand(
+      addBand(
+        point(ratio(total.cents)),
+        scaleBand(quarterFlow, daysBetween(origin, date), quarterDays),
+      ),
+    );
   const cur = input.case.currency;
-  const facts = [usable, total, ocf, icf];
+  const used = [usable, total, ocf, icf, ...restrictedFacts];
+  const target = at(targetDate);
   const bridge: QuarterBridge = {
     method: QUARTER_BRIDGE_METHOD,
     targetDate,
     quarterDays,
     elapsedQuarters: n,
-    inputs: inputsOf(input.case, facts, [financing, fx]),
+    inputs: inputsOf(input.case, used, assumptions),
     nowcast: cashPair("nowcast", "nowcast", cutoff, cur, at(cutoff), restricted),
-    forecast: cashPair("target", "forecast", targetDate, cur, at(targetDate), restricted),
+    forecast: cashPair("target", "forecast", targetDate, cur, target, restricted),
   };
-  return { bridge, total0, restricted, quarterFlow };
+  return { bridge, used, restricted, target };
 }
 
 /** Sources, facts (with derivation inputs) and assumptions a run must list. */
@@ -259,8 +320,9 @@ function inputsOf(
     facts.add(f.id);
     if (f.kind === "derived") for (const d of f.derivedFrom) visit(byId.get(d)!);
   };
-  for (const f of [...used, ...as.flatMap((a) => a.basisFactIds.map((b) => byId.get(b)!))])
-    visit(f);
+  // Hindsight basis is later evidence by definition and cannot be a run input.
+  const basis = as.filter((a) => a.label !== "hindsight").flatMap((a) => a.basisFactIds);
+  for (const f of [...used, ...basis.map((b) => byId.get(b)!)]) visit(f);
   const sources = new Set<string>();
   for (const id of facts) {
     const f = byId.get(id)!;
@@ -288,8 +350,8 @@ export function quarterAlternative(
   input: QuarterBridgeInput,
   decisionAssumptionId: string,
 ): QuarterAlternative {
-  const { bridge, total0, restricted, quarterFlow } = prepare(input);
-  const a = assumption(input, decisionAssumptionId, true);
+  const { bridge, used, restricted, target } = prepare(input);
+  const a = assumption(input, decisionAssumptionId);
   if (a.label === "synthetic") fail("a decision must be counterfactual or hindsight");
   if (!a.oneTimeCost || a.benefitLagDays === undefined) fail("a decision needs cost and lag");
   const cutoff = cutoffDate(input.knowledgeCutoff);
@@ -307,28 +369,26 @@ export function quarterAlternative(
     ),
     high: addRatio(times(ratio(a.value.high), benefitDays, bridge.quarterDays), ratio(-cost.low)),
   };
-  const baseTarget = addBand(point(total0), quarterFlow);
-  const cur = input.case.currency;
+  const assumptions = closure(input, [...bridge.inputs.assumptionIds, a.id], true);
+  // Rounded baseline + rounded effect, so the published effect is exactly the displayed
+  // difference (may sit 1 cent from rounding the exact alternative once).
+  const effectCents = roundBand(effect);
   return {
     baseline: bridge,
-    inputs: { ...bridge.inputs, assumptionIds: [...bridge.inputs.assumptionIds, a.id] },
+    inputs: inputsOf(input.case, used, assumptions),
     nowcast: bridge.nowcast,
     forecast: cashPair(
       "target",
       "forecast",
       bridge.targetDate,
-      cur,
-      addBand(baseTarget, effect),
+      input.case.currency,
+      plusCents(target, effectCents),
       restricted,
     ),
-    effectCents: {
-      low: checkedCents(effect.low),
-      point: checkedCents(effect.mid),
-      high: checkedCents(effect.high),
-    },
+    effectCents: { low: effectCents.low, point: effectCents.mid, high: effectCents.high },
     benefitStart,
     benefitDays,
-    postHoc: a.label === "hindsight" || a.selectedAfterReveal,
+    postHoc: assumptions.some(isPostHoc),
   };
 }
 
@@ -352,7 +412,19 @@ export function compareRun(
     const matches = samePeriod
       .filter((f) => f.metric === p.metric && f.currency === p.currency)
       .sort((x, y) => Date.parse(x.availableAt) - Date.parse(y.availableAt));
-    const f = matches.find(revealed);
+    const first = matches.find(revealed);
+    // Same-instant earliest observations: the first value is ambiguous unless they agree.
+    // Ties pick the smallest id so the result never depends on case array order.
+    const tied = first
+      ? matches
+          .filter((x) => Date.parse(x.availableAt) === Date.parse(first.availableAt))
+          .sort((x, y) => (x.id < y.id ? -1 : 1))
+      : [];
+    // ponytail: the contract has no "conflicting observations" reason; incomparable_scope is the
+    // closest fail-closed label. Add a dedicated reason by contract change if the UI needs it.
+    if (tied.some((x) => x.cents !== first?.cents))
+      return { ...base, status: "unscored", reason: "incomparable_scope" };
+    const f = tied[0];
     if (!f) {
       if (matches.length > 0) return { ...base, status: "unscored", reason: "not_yet_published" };
       const other = samePeriod.some(revealed);
