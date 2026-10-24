@@ -1,0 +1,12 @@
+# G6: grouped company map visual checkpoint
+
+- **Goal:** a readable spatial company map with Sources and Toolbox groups, distinct Domino/agent/tool/source/output forms and truthful event pulses.
+- **Ownership:** local sole UI writer, branch G6-company-map in domino-G6. Only apps/web/components/investigate/**, apps/web/app/playground/agent-canvas/** and this Result. No shell, lib/knowledge, backend, contracts, global styles, dependency or shared coordination edits.
+- **Read:** AGENTS.md, HANDOFF.md, kb/spec/company-map-2026-10-24.md, canvas-ui-packet and investigation-api in kb/coordination/historical. User explicitly permits Claude implementation. /orchestrator and /ponytail full, skills/taste/SKILL.md, /Users/jaydenl/.agents/skills/ui-ux-pro-max/SKILL.md. No children for this bounded checkpoint.
+- **Implement:** spec sections Call/boundary and Truthful motion. Company knowledge is a presentation view of existing saved evidence, distinct from Domino; provide a small optional knowledge-detail render slot for G8, no fabricated facts/learnings or new API. Containers group actual node records, not invented executions. Keep actual edges; any group membership connectors must be visibly distinct from operation dependencies and never pulse. Preserve financial output, instructions, conversation, retry/reload and keyboard accessibility.
+- **Motion contract:** dependency pulses represent new observed operation activity, not byte transfer. Deduplicate across unchanged snapshots; no animation on initial history/reconnect. No looping traffic. Reduced-motion disables travel/pop. Do not infer hidden tools/subagents. Preserve moved nodes, fit all group bounds, no overlapping labels or click-blocking group layers.
+- **Acceptance:** focused tests for group membership/topology, event pulse dedup/quiet restore, reduced motion and retained drag/selection. Existing investigate focused suite, typecheck and touched-file lint pass. Clearly labelled manual fixture exercises multiple groups, failure and unknown provider. Codex owns fullsuite/build/browser and visual acceptance; do not claim those yourself.
+- **Budget:** Sonnet/high, single process, checkpoint within 35 minutes. No live provider, browser, server, full suite/build, secrets, push/merge, purchases or fallback. You are not alone: friend owns new lib/investigation-knowledge files. Preserve others' work. Commit own files and Result, then stop.
+
+## Result
+- Pending.

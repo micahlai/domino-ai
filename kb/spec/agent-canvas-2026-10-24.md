@@ -26,3 +26,7 @@ Latest user expansion: CREAO coordinator/research is required; see kb/spec/creao
 ## Visual correction, October24 afternoon
 
 User reference: https://www.instagram.com/reel/DdzFoJ3xybr/. Codex viewed opening: dark two-dimensional network, compact outlined icon nodes, short labels and thin branches. Use a stable clustered/radial map anchored by Domino, not left-to-right depth columns. Preserve actual edges/statuses, progressive arrivals, dragging, selection, pan/zoom and persistent conversation. No invented graph relationships, fake activity or continuous force-motion. Detailed evidence and profiles belong in click details. Financial output remains a readable chart. G4 implements presentation in the sole UI worktree; independent visual gate required.
+
+## Latest map/product revision
+
+kb/spec/company-map-2026-10-24.md supersedes circle-only presentation and the earlier remote R1 reservation. G6 owns local UI; friend G7 owns only new pure knowledge projection lib files, not UI. G8 shell cleanup follows both audits. Existing completed R1/G3/G4 work is preserved.

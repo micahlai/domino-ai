@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Codex grouped map and friend handoff
+- User requests grouped tools/sources, central Domino plus inspectable company knowledge, real-operation pulses, differentiated shapes and product cleanup. Spec and G6/G7/G8 cards prepared.
+- G6 local sole UI writer; friend owns G7 pure frozen-run knowledge projection only. G8 shell/wiring queued after both audits. No schema/dependency changes or main merge.
+- Existing Chrome session is signed in to CREAO Pro Plus; use native computer use, not IAB login. Live historical agent setup and coordinator remain gates.
+
 ## 2026-10-24 Codex detail cleanup accepted
 - G5eaa54d7 acceptedc40552a;1049tests/build andactualbrowserinstructionScope/earlyalternativechecks pass. Sharedbuilderreused; misleadingjourneylabel fixed.
 - CREAOUIstilllogin, dedicatedsettingsabsent; gateOFF andno calls. Preparedcreao-live-acceptance.md. NoClaudeimplementationactive; nextaccountsetup/isolationverification. Mainuntouched.

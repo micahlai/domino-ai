@@ -6,6 +6,9 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 
 | Work | Checkpoint | Decision |
 | --- | --- | --- |
+| G6 grouped company map | doing | Local Claude; Sources/Toolbox, distinct forms and real-operation pulses; G6-company-map |
+| G7 frozen knowledge projection | todo | Reserved friend computer, G7-company-knowledge; two lib files only |
+| G8 focused product shell | todo | Same local UI writer after audited G6/G7; investigation front door, knowledge details |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
 | G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |

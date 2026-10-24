@@ -4,9 +4,9 @@ Updated October 24, 2026 after the user corrected browser access. This file is t
 
 ## Goal and constraints
 
-Complete one conversation-driven historical investigation: actual source/specialist/tool/output nodes on a spatial web, saved forecast, observed-outcome reveal and one costed alternative. Keep the persistent conversation and clickable evidence/instruction details. User rejected horizontal pipeline layout; circular nodes and two-dimensional branches are now accepted.
+Complete one conversation-driven historical investigation: actual source/specialist/tool/output nodes on a spatial web, saved forecast, observed-outcome reveal and one costed alternative. Keep the persistent conversation and clickable evidence/instruction details. User rejected horizontal pipeline layout; two-dimensional branches are accepted. Latest request adds Sources/Toolbox groups, a Company knowledge inspector, distinct node forms, truthful pulses and product navigation cleanup; see kb/spec/company-map-2026-10-24.md.
 
-Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-pro-max. Codex audits and integrates only preview/historical-overnight. Main remains 694ab2a. At most three implementation processes including children, one UI writer, serialized full checks/build/browser. All work is on this computer. No secrets, account/developer CREAO API, new paid fallback, top-up, retry storm or billable Apify without a limit.
+Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-pro-max. Codex audits and integrates only preview/historical-overnight. Main remains 694ab2a. At most three implementation processes including children, one UI writer, serialized full checks/build/browser. One local UI writer remains. Friend may implement G7 pure knowledge projection on the other computer, with no UI overlap. No secrets, account/developer CREAO API, new paid fallback, top-up, retry storm or billable Apify without a limit.
 
 ## Current accepted result
 
@@ -19,7 +19,7 @@ Claude implements with orchestrator and ponytail; UI also uses taste and ui-ux-p
 
 ## Workers and runtimes
 
-No owned Claude implementation is active. G5 ended at eaa54d7 with a clean worker tree. Do not launch a duplicate. Unrelated Claude sessions in the workspace root and Karoake are not ours.
+G6 is being dispatched locally in domino-G6 / G6-company-map, sole UI writer. G7-company-knowledge is reserved for the friend computer, only two new lib files and its card. G8 product shell/knowledge wiring is queued after both gates. Do not launch G7 locally or duplicate the G6 writer. Unrelated Claude sessions in the workspace root and Karoake are not ours.
 
 | Runtime | Ownership | State |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Read creao-live-acceptance.md for concrete proposed app instructions and the ver
 
 Keep DOMINO_CREAO_VERIFIED_PROFILES unset until actual app identities, instructions and isolation are verified. Then at most one analyst and one reviewer live acceptance run, durable ID before polling, no retry after uncertain creation. A successful specialist pair still does not implement the requested autonomous CREAO coordinator; assess actual capabilities and scope that bounded next phase honestly.
 
-No further code repair is queued. Do not spawn idle workers or rerun unchanged suites. Browser setup can now proceed in the existing Chrome session. Inspect the remote creation/settings flow, establish historical isolation and compatible instructions, then perform the bounded acceptance sequence. Never claim the full journey is complete.
+New UI work is explicitly authorized: G6 grouped map, G7 friend knowledge projection, then G8 focused product. Audit each before integration. Browser setup can proceed independently in the existing Chrome session. Inspect the remote creation/settings flow, establish historical isolation and compatible instructions, then perform the bounded acceptance sequence. Never claim the full journey is complete.
 
 ## Monitoring
 
