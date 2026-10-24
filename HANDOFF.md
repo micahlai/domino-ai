@@ -1,5 +1,7 @@
 # Domino handoff
 
+Scheduled audit14:21 PDT: G4 spatial-map64729 and G2d verification-repair69536 active, cwd verified, changed files in scope, no new commits. G3-live-canvas-repair1.md prepared for AFTER G4; one UI writer only. No acceptance/integration/test rerun this audit. Next collect completed checkpoints, independent review and actual visual verification.
+
 Latest user correction: agent canvas must be a spatial web like the viewed Instagram reference, not horizontal pipeline. ClaudeG4 64729/exec37097 is sole UI writer in domino-G3, presentation-only. G3 candidate5d244d8 has2auditblockers queued after visualcheckpoint. G2d candidate70d0379 has1appidentityverification blocker; Claude69536/exec11213 repairs in domino-G2d. Read active-run for findings/logs. No candidate integrated; main unchanged.
 
 Current: checked integrationcb44894 passes991tests/typechecks/lint; R1 visual repairs shown at3102, G2b real localruntime passes, G2c offline adapter accepted. Claude G3UI18646/exec99532 and G2dbackend18871/exec10780 verified running in separate worktrees. Next inspect their Result/commits, independent audit and serialized checks/browser. Full real CREAO journey still pending dedicated app instructions/memory validation. Main694ab2a unchanged.

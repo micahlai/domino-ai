@@ -2,6 +2,10 @@
 
 Current checkpoint: October24, R1 repairs accepted and integrated79a6e19; G2b repair independently approved, isolated runtime smoke passed; G2c repair independently approved, full check passed. Combined preview991tests/typechecks/lint pass atcb44894. Automation remains ACTIVE every15minutes. No main merge.
 
+## Scheduled audit, October24 14:21 PDT
+
+Both current workers remain active with verified cwd and no children. G4 Claude64729 has changed graph.ts; G2d repairClaude69536 has changed investigation.ts. No finished commit, new acceptance or integration; do not rerun full suites against in-progress edits. Prepared G3-live-canvas-repair1.md for the sole UI worker AFTER G4 ends. Next collect G4 visual checkpoint and G2d repair, reuse independent reviewers, then serialized full checks/build/browser. Existing stable preview remains unchanged; main694ab2a preserved.
+
 ## Latest direction: spatial agent web
 
 User rejects a single-direction line. Reference https://www.instagram.com/reel/DdzFoJ3xybr/ was viewed in browser: opening frame dark spatial network, small outlined circular icons, short labels, thin edges, branching two-dimensional placement. Adopt stable clustered/radial placement around Domino, no fabricated edges or physics drift. G4 card in domino-G3/kb/tasks/G4-spatial-agent-web.md, base179626e after G3 candidate5d244d8. Sole UI Claude64729/exec37097 running in domino-G3, /tmp/domino-G4-claude.log, cwd verified. Requested four skills. Owns presentation graph/primitives/tests/playground only; live/** frozen for repair queue. No second UI writer.
@@ -38,7 +42,7 @@ Call: bounded curated2U investigation with actual specialist jobs and existing e
 - Preserved final dashboard preview4f5432e, current planningbc1d21f in ../domino-preview on preview/historical-overnight. Prior815tests/typechecks/lint/build/browser pass covers dashboard only, NOT new canvas. Main694ab2a frozen. H1a4e49e0, H24795d51, H397925fd and H43570989; see overnight-result.md for exact accepted ancestry; no changes there.
 - After reconnect, recorded preview/backend processes had no listeners. Restored preview3102 now exec25391/PID41317 (/tmp/domino-canvas-preview.log), superseding exec62675/PID15710 and existing isolated backend3210/site3211 exec15918/PID15546 (/tmp/domino-H2-local-convex-resume.log), no data reset. Both listeners and HTTP200 verified12:32; reverify before stopping or restarting. No cloud/main3000 changes.
 - Old bounded awake guard expired around11:13; new Claude wrapped with caffeinate -i for its own lifetime. App/computer must remain available, AC/lid open recommended; no power settings changed.
-- Automation ACTIVE, same thread and20minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
+- Automation ACTIVE, same thread and15minute interval. Stop on visible journey completion/user stop or repeated external blocker. Do not rotate sessions to evade limits or enable paid fallback. Limited real app provider verification is authorized, but no billable Apify without spending limit; no secrets in logs/prompts/commits.
 - All scopes require exact statuses/output evidence and frozen publication boundaries. Existing2U case remains retrospective cash miss, not validated bankruptcy warning. Preserve explicit costs, unknown benefit/downside. Agent graph execution does not make financial conclusions more validated.
 
 ## Scheduled audit reporting
