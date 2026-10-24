@@ -7,6 +7,6 @@
 - **Scope:** Small shared validation helpers are allowed. No broader engine refactor, future billing, contracts, web, simulator, dependencies or environment edits. Preserve context-free legacy learn returning its model unchanged.
 - **Coordination:** You are not alone. No other checkout edits, subagents, secrets, network, external messages, board/handoffs, pull/rebase/reset/stash/merge/push. Commit owned files and Result for independent review.
 ## Result (worker fills this in when done)
-- Done:
-- What changed (files):
-- Watch out:
+- Done: All four review defects have red/green regression tests (I saw them fail before the fix). Full `pnpm check` passes: 306 tests (engine 147), typecheck, biome. Ran /tmp/e7a-independent-audit.ts: the five core cases still pass. In the probe, "pass: false" means the call threw. The probe's balance case now rejects closing 1 and accepts closing 2. Its aggregate case now throws an explicit RangeError.
+- What changed (files): `packages/engine/src/grade.ts`: the balance equation is compared in BigInt. New `safeCents` throws a RangeError (it names the cents and the week) before formatting a weekly total outside the safe range. `assertBank` is now exported inside the package; it is not in `index.ts`. `packages/engine/src/learn.ts`: once a context is supplied, `toMs(current.asOf)` and `toMs` on the origin and window dates run first. `assertExample` runs `assertBank` on every replay bank (dates, safe amounts, unique IDs) before the candidate is built. Tests are in `grade.test.ts` and `learn.test.ts`.
+- Watch out: Bank totals beyond the safe cents range now make `grade` throw only when that week is a miss and needs evidence. Scoring itself stays exact in BigInt, and the Cents domain was not widened. Calling `learn` without a context still returns the same model object, with no validation.
