@@ -5,7 +5,7 @@ Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
 ## 2026-10-24 03:09 Codex brain (E4 integration)
 - Done: directly ran Claude E4 and repair; independently reviewed 87de4f6 with Sol/Astra and lead probes. All three blockers resolved. Combined main passes 240 tests, five typechecks, lint and fresh production build. Review: kb/reviews/E4-r1-87de4f6.md.
-- Next: finish merge/post-merge check, then move to provider adapters and connector/action wiring with safe seeded-data backfill. Engine calculation methods are implemented; grade/learn and persisted end-to-end flow remain open.
+- Next: merge c354bcb and its post-merge 240-test check are complete. Move to provider adapters and connector/action wiring with safe seeded-data backfill. Engine calculation methods are implemented; grade/learn and persisted end-to-end flow remain open.
 - Watch out: generated IDs are opaque; fixture fixes do not automatically target generated risks. No live provider call, data reset, particle integration, push or deployment. Original worktrees and unrelated local files retained; Claude is stopped.
 
 ## 2026-10-24 02:59 Codex brain (E4 audit)
