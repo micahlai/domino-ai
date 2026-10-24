@@ -32,3 +32,4 @@ after work. It lives in git, so `git pull` gives you everything the other person
 | `glossary.md` | Finance words in plain English | When a new word appears |
 | `research/` | Public company data, sponsor notes | When you research something |
 | `tasks/` | Task cards for agents | Before you start an agent |
+| `context/` | Session handoffs that explain why decisions were made (read `context/claude-session-2026-10-23.md` first if you are new) | When a long planning session ends |

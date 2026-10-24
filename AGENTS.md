@@ -11,6 +11,7 @@ event causes (the "dominoes"), and simulates fixes as branches of the timeline.
 A person approves every action. Domino never moves money.
 
 Full spec: `kb/spec/build-spec.md`. Read the section for your task before you start.
+New to the project? Read `kb/context/claude-session-2026-10-23.md` first: it explains why every decision was made.
 
 ## 2. Before you start any task
 
