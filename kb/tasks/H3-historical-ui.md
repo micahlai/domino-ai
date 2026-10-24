@@ -6,7 +6,7 @@
 - **Notes:** Follow prompts/product/H3-historical-ui.md and ui-build/taste skills. No financial math, weekly actual reconstruction, new canvas, extra particle work or wiring to operational week/connect placeholders.
 - **Handoff:** Push H3-historical-ui with exact dependency SHAs and verified versus fixture-only states; lead assembles preview. Preserve P5 interfaces and old routes.
 ## Result
-- Done:
-- Files and commit:
-- Verification:
-- Watch out / next:
+- Done: props-only historical replay (dates, chart on report dates, evidence, comparison, one alternative, loading/error/unavailable) and a labelled synthetic playground preview. Live wiring pending; no backend packet adopted.
+- Files and commit: apps/web/components/historical/*, Playground.tsx, five ui/ import lines, kb/coordination/historical/ui-status.md. Commit SHA: see `git log -1 H3-historical-ui`.
+- Verification: apps/web tsc, biome on components, vitest (103 pass, 5 new). No browser or full check/build run; chart look unseen.
+- Watch out / next: see ui-status.md "Pending for live wiring". Fixture values are invented, not 2U.
