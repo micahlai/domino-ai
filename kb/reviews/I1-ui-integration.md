@@ -1,6 +1,6 @@
 # UI integration review: origin/main 687b91f plus I1
 
-Verdict: ready to merge after the scoped compatibility repair. Particle work and Claude E3b are excluded.
+Verdict: merged locally at 66d5fa2 after the scoped compatibility repair. Post-merge forced check also passes 147 tests, typechecks and lint. Particle work and Claude E3b are excluded; ancestry checks confirm both. No push performed.
 
 - Incoming: eight remote commits covering P3 timeline, P4 live company workspace and approval UI, theme/copy, dependencies and CREAO setup notes. No contracts or engine edits from remote.
 - Independent GPT-6.1 Sol review found matchingEventBranch ignored C1 Branch.riskIds and treated ordered changes as an unordered bag. Identical changes could select another risk's chain/fixes; relative nested changes could hide a valid cumulative branch.
