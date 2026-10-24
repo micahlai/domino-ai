@@ -8,7 +8,16 @@ import {
   NodeCard,
   NodeDetails,
 } from "./InvestigateWorkspace";
-import { IDLE_DOMINO, deliver, layout, safeHref, toFlowNodes } from "./graph";
+import {
+  CIRCLE_ROW,
+  IDLE_DOMINO,
+  NODE_W,
+  deliver,
+  layout,
+  overlaps,
+  safeHref,
+  toFlowNodes,
+} from "./graph";
 import type { CanvasNode } from "./types";
 
 const noop = () => {};
@@ -218,11 +227,97 @@ describe("graph", () => {
     { id: "b", source: "src-1", target: "agent-7f3a" },
   ];
 
-  it("lays out columns by distance from Domino", () => {
+  const centerOf = (p: { x: number; y: number } | undefined) => ({
+    x: (p?.x ?? 0) + NODE_W / 2,
+    y: (p?.y ?? 0) + CIRCLE_ROW / 2,
+  });
+  const ringOf = (p: { x: number; y: number } | undefined) =>
+    Math.hypot(centerOf(p).x, centerOf(p).y);
+  const node = (id: string, kind: CanvasNode["kind"] = "source"): CanvasNode => ({
+    ...source,
+    id,
+    kind,
+  });
+  const link = (a: string, b: string) => ({ id: `${a}-${b}`, source: a, target: b });
+  const noOverlap = (positions: { x: number; y: number }[]) => {
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        expect(overlaps(positions[i] as never, positions[j] as never)).toBe(false);
+      }
+    }
+  };
+
+  it("centers Domino and puts farther records on wider rings", () => {
     const positions = layout([IDLE_DOMINO, source, agent], edges);
-    expect(positions.get("domino")?.x).toBe(0);
-    expect(positions.get("src-1")?.x).toBeGreaterThan(0);
-    expect(positions.get("agent-7f3a")?.x).toBeGreaterThan(positions.get("src-1")?.x ?? 0);
+    expect(ringOf(positions.get("domino"))).toBe(0);
+    expect(ringOf(positions.get("src-1"))).toBeGreaterThan(0);
+    expect(ringOf(positions.get("agent-7f3a"))).toBeGreaterThan(ringOf(positions.get("src-1")));
+  });
+
+  it("is deterministic", () => {
+    const a = layout([IDLE_DOMINO, source, agent], edges);
+    const b = layout([IDLE_DOMINO, source, agent], edges);
+    expect([...a]).toEqual([...b]);
+  });
+
+  it("curves even a five-node chain instead of lining it up", () => {
+    const ids = ["domino", "a", "b", "c", "d"];
+    const chain = ids.map((id) => (id === "domino" ? IDLE_DOMINO : node(id)));
+    const positions = layout(
+      chain,
+      ids.slice(1).map((id, i) => link(ids[i] as string, id)),
+    );
+    const [p0, p1, p4] = [ids[0], ids[1], ids[4]].map((id) =>
+      centerOf(positions.get(id as string)),
+    );
+    if (!p0 || !p1 || !p4) throw new Error("missing chain positions");
+    // Collinear points have a zero cross product; a curve does not.
+    const cross = (p1.x - p0.x) * (p4.y - p0.y) - (p1.y - p0.y) * (p4.x - p0.x);
+    expect(Math.abs(cross)).toBeGreaterThan(20000);
+    noOverlap([...positions.values()]);
+  });
+
+  it("spreads branches around the anchor without adding records", () => {
+    const kids = ["a", "b", "c", "d"].map((id) => node(id));
+    const out = layout(
+      [IDLE_DOMINO, ...kids],
+      kids.map((k) => link("domino", k.id)),
+    );
+    expect(out.size).toBe(5);
+    const angles = kids.map((k) =>
+      Math.atan2(centerOf(out.get(k.id)).y, centerOf(out.get(k.id)).x),
+    );
+    expect(new Set(angles.map((a) => Math.round(a * 10))).size).toBe(4);
+    noOverlap([...out.values()]);
+  });
+
+  it("handles shared dependencies, cycles, disconnected records and a missing anchor", () => {
+    const ids = ["a", "b", "c", "x", "y"];
+    const all = [IDLE_DOMINO, ...ids.map((id) => node(id))];
+    const tangled = [
+      link("domino", "a"),
+      link("domino", "b"),
+      link("a", "c"),
+      link("b", "c"), // shared dependency
+      link("c", "a"), // cycle
+      link("c", "c"), // self loop
+      link("a", "ghost"), // unknown id
+    ];
+    const out = layout(all, tangled);
+    expect(out.size).toBe(all.length);
+    for (const position of out.values()) {
+      expect(Number.isFinite(position.x) && Number.isFinite(position.y)).toBe(true);
+    }
+    expect(ringOf(out.get("x"))).toBeGreaterThan(0); // disconnected, still placed around the anchor
+    const noAnchor = layout([node("a"), node("b")], [link("a", "b")]);
+    expect(ringOf(noAnchor.get("a"))).toBe(0);
+    expect(ringOf(noAnchor.get("b"))).toBeGreaterThan(0);
+  });
+
+  it("is safe for empty input and places a lone anchor at the origin", () => {
+    expect(layout([], []).size).toBe(0);
+    const lone = layout([IDLE_DOMINO], []);
+    expect(centerOf(lone.get("domino"))).toEqual({ x: 0, y: 0 });
   });
 
   it("restored history is quiet and later arrivals animate once", () => {
@@ -250,51 +345,60 @@ describe("graph", () => {
   });
 
   describe("incremental delivery", () => {
-    const root = { source: "domino" };
     const first = [IDLE_DOMINO, source];
-    const firstEdges = [{ id: "e1", ...root, target: "src-1" }];
-    const second = { ...source, id: "src-2", title: "Second filing" };
-    const allEdges = [...firstEdges, { id: "e2", ...root, target: "src-2" }];
-    // Cards are about 66 to 86px tall, so anything closer than 100px would overlap.
-    const MIN_GAP = 100;
+    const firstEdges = [link("domino", "src-1")];
+    const second = node("src-2");
+    const allEdges = [...firstEdges, link("domino", "src-2")];
 
-    it("places a sibling delivered later below the first without moving it", () => {
+    it("places a sibling delivered later clear of the first without moving it", () => {
       const one = toFlowNodes([], first, firstEdges, true);
       const two = toFlowNodes(one, [...first, second], allEdges, false);
-      const a = two.find((node) => node.id === "src-1");
-      const b = two.find((node) => node.id === "src-2");
-      expect(a?.position).toEqual(one.find((node) => node.id === "src-1")?.position);
-      expect(Math.abs((b?.position.y ?? 0) - (a?.position.y ?? 0))).toBeGreaterThanOrEqual(MIN_GAP);
-      expect(b?.position.x).toBe(a?.position.x);
+      const a = two.find((n) => n.id === "src-1");
+      const b = two.find((n) => n.id === "src-2");
+      expect(a?.position).toEqual(one.find((n) => n.id === "src-1")?.position);
+      expect(overlaps(a?.position as never, b?.position as never)).toBe(false);
     });
 
-    it("steers around a card the person dragged into the slot", () => {
-      const one = toFlowNodes([], first, firstEdges, true).map((node) =>
-        node.id === "src-1" ? { ...node, position: { x: 300, y: 60 } } : node,
+    it("steers around a node the person dragged into the slot", () => {
+      const ideal = layout([...first, second], allEdges).get("src-2") as { x: number; y: number };
+      const one = toFlowNodes([], first, firstEdges, true).map((n) =>
+        n.id === "src-1" ? { ...n, position: { ...ideal } } : n,
       );
       const two = toFlowNodes(one, [...first, second], allEdges, false);
-      const a = two.find((node) => node.id === "src-1");
-      const b = two.find((node) => node.id === "src-2");
-      expect(a?.position).toEqual({ x: 300, y: 60 });
-      expect(Math.abs((b?.position.y ?? 0) - 60)).toBeGreaterThanOrEqual(MIN_GAP);
+      const a = two.find((n) => n.id === "src-1");
+      const b = two.find((n) => n.id === "src-2");
+      expect(a?.position).toEqual(ideal);
+      expect(overlaps(a?.position as never, b?.position as never)).toBe(false);
     });
 
-    it("keeps every sibling apart across several single-record deliveries", () => {
+    it("keeps every node apart across many single-record deliveries", () => {
       let current = toFlowNodes([], [IDLE_DOMINO], [], true);
       let nodes: CanvasNode[] = [IDLE_DOMINO];
-      let edges: { id: string; source: string; target: string }[] = [];
-      for (const n of [1, 2, 3, 4]) {
-        nodes = [...nodes, { ...source, id: `s${n}` }];
-        edges = [...edges, { id: `e${n}`, source: "domino", target: `s${n}` }];
-        current = toFlowNodes(current, nodes, edges, false);
+      let all: { id: string; source: string; target: string }[] = [];
+      for (let n = 1; n <= 14; n++) {
+        // Alternate between hanging off Domino and off the previous record: a branching web.
+        const parent = n % 3 === 0 ? `s${n - 1}` : "domino";
+        nodes = [...nodes, node(`s${n}`)];
+        all = [...all, link(parent, `s${n}`)];
+        current = toFlowNodes(current, nodes, all, false);
       }
-      const ys = current
-        .filter((node) => node.id !== "domino")
-        .map((node) => node.position.y)
-        .sort((x, y) => x - y);
-      for (let i = 1; i < ys.length; i++) {
-        expect((ys[i] ?? 0) - (ys[i - 1] ?? 0)).toBeGreaterThanOrEqual(MIN_GAP);
-      }
+      noOverlap(current.map((n) => n.position));
+    });
+
+    it("separates a whole delivery that arrives at once", () => {
+      const kids = Array.from({ length: 12 }, (_, i) => node(`k${i}`));
+      const out = toFlowNodes(
+        [],
+        [IDLE_DOMINO, ...kids],
+        kids.map((k) => link("domino", k.id)),
+        true,
+      );
+      noOverlap(out.map((n) => n.position));
+    });
+
+    it("never adds or drops a record or edge", () => {
+      const out = toFlowNodes([], [IDLE_DOMINO, source, agent], edges, false);
+      expect(out.map((n) => n.id)).toEqual(["domino", "src-1", "agent-7f3a"]);
     });
   });
 

@@ -28,58 +28,137 @@ export const STATUS_LABEL: Record<CanvasStatus, string> = {
   failed: "Failed",
 };
 
-const COLUMN = 300;
-const ROW = 120;
+// Every node is NODE_W wide with its circle in a CIRCLE_ROW tall row at the top, so a circle always
+// centers at (NODE_W / 2, CIRCLE_ROW / 2) and layout can reason in circle centers.
+export const NODE_W = 144;
+export const CIRCLE_ROW = 72;
+// Space one node (circle plus a two-line label) claims. Two nodes closer than this on both axes overlap.
+export const NODE_BOX = { w: 150, h: 116 };
+const RING_FIRST = 190;
+const RING_STEP = 150;
+const ARC = 140; // least ring length each node on a ring needs, so crowded rings grow instead of overlap
+const BEND = 0.6; // radians a lone child turns away from its parent, so a chain curves instead of lining up
+const MAX_FAN = (2 * Math.PI) / 3;
+const PUSH = 24;
+const MAX_PUSH = 300;
 
 const nodeClass =
-  "rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export function nodeLabel(node: CanvasNode): string {
   const kind = node.kind === "domino" ? "" : `, ${KIND_LABEL[node.kind].toLowerCase()}`;
   return `${node.title}${kind}, ${STATUS_LABEL[node.status].toLowerCase()}. Press Enter for details.`;
 }
 
-/** Left-to-right columns by distance from the roots, in supplied order. Deterministic. */
-// ponytail: O(nodes x edges) scan, fine for one investigation; index edges by source if graphs grow large.
+/**
+ * Radial web around the anchor (Domino, else the first node). Rings follow distance in the supplied
+ * edges; each subtree gets a wedge sized by its leaf count. Positions only: no node or edge is added.
+ * Cycles and shared dependencies keep their first (shortest) route, and a record with no route to
+ * the anchor sits on the first ring. Returns top-left positions. Deterministic.
+ */
 export function layout(nodes: CanvasNode[], edges: CanvasEdge[]): Map<string, XYPosition> {
-  const ids = new Set(nodes.map((node) => node.id));
-  const live = edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
-  const targets = new Set(live.map((edge) => edge.target));
-  const queue = nodes.filter((node) => !targets.has(node.id)).map((node) => node.id);
-  const depth = new Map(queue.map((id) => [id, 0]));
-  for (let i = 0; i < queue.length; i++) {
-    const from = queue[i] as string;
-    for (const edge of live) {
-      if (edge.source !== from || depth.has(edge.target)) continue;
-      depth.set(edge.target, (depth.get(from) ?? 0) + 1);
-      queue.push(edge.target);
+  const ids = [...new Set(nodes.map((node) => node.id))];
+  const first = ids[0];
+  if (first === undefined) return new Map();
+  const anchor = nodes.find((node) => node.kind === "domino")?.id ?? first;
+
+  const near = new Map<string, string[]>(ids.map((id) => [id, []]));
+  for (const edge of edges) {
+    if (edge.source === edge.target || !near.has(edge.source) || !near.has(edge.target)) continue;
+    near.get(edge.source)?.push(edge.target);
+    near.get(edge.target)?.push(edge.source);
+  }
+
+  const depth = new Map([[anchor, 0]]);
+  const kids = new Map<string, string[]>(ids.map((id) => [id, []]));
+  const queue = [anchor];
+  let head = 0;
+  const grow = () => {
+    for (; head < queue.length; head++) {
+      const from = queue[head] as string;
+      for (const next of near.get(from) ?? []) {
+        if (depth.has(next)) continue;
+        depth.set(next, (depth.get(from) ?? 0) + 1);
+        kids.get(from)?.push(next);
+        queue.push(next);
+      }
     }
+  };
+  grow();
+  for (const id of ids) {
+    if (depth.has(id)) continue;
+    depth.set(id, 1);
+    kids.get(anchor)?.push(id);
+    queue.push(id);
+    grow();
   }
-  const columns = new Map<number, string[]>();
-  for (const node of nodes) {
-    const column = depth.get(node.id) ?? 0;
-    columns.set(column, [...(columns.get(column) ?? []), node.id]);
+
+  const leaves = new Map<string, number>();
+  const countLeaves = (id: string): number => {
+    const children = kids.get(id) ?? [];
+    const total = children.length ? children.reduce((sum, c) => sum + countLeaves(c), 0) : 1;
+    leaves.set(id, total);
+    return total;
+  };
+  countLeaves(anchor);
+
+  const crowd = new Map<number, number>();
+  for (const level of depth.values()) crowd.set(level, (crowd.get(level) ?? 0) + 1);
+  const radius = [0];
+  for (let level = 1; level <= Math.max(...depth.values()); level++) {
+    const base = level === 1 ? RING_FIRST : (radius[level - 1] ?? 0) + RING_STEP;
+    radius[level] = Math.max(base, ((crowd.get(level) ?? 0) * ARC) / (2 * Math.PI));
   }
+
+  const centers = new Map<string, XYPosition>([[anchor, { x: 0, y: 0 }]]);
+  const place = (id: string, theta: number, lo: number, hi: number) => {
+    const children = kids.get(id) ?? [];
+    // Past the anchor a wedge stays near the direction the node already points.
+    const from = id === anchor ? lo : Math.max(lo, theta - MAX_FAN / 2);
+    const to = id === anchor ? hi : Math.min(hi, theta + MAX_FAN / 2);
+    const ring = radius[(depth.get(id) ?? 0) + 1] ?? 0;
+    let edge = from;
+    for (const child of children) {
+      const start = edge;
+      edge += ((to - from) * (leaves.get(child) ?? 1)) / (leaves.get(id) ?? 1);
+      const angle =
+        children.length === 1 ? Math.min(to, Math.max(from, theta + BEND)) : (start + edge) / 2;
+      centers.set(child, { x: ring * Math.cos(angle), y: ring * Math.sin(angle) });
+      // A lone child keeps the open wedge so a chain can keep curving; branches split it.
+      if (children.length === 1) place(child, angle, lo, hi);
+      else place(child, angle, start, edge);
+    }
+  };
+  place(anchor, -Math.PI / 2, -Math.PI, Math.PI);
+
   const positions = new Map<string, XYPosition>();
-  for (const [column, members] of columns) {
-    members.forEach((id, row) => {
-      positions.set(id, { x: column * COLUMN, y: (row - (members.length - 1) / 2) * ROW });
+  for (const [id, c] of centers) {
+    positions.set(id, {
+      x: Math.round(c.x - NODE_W / 2),
+      y: Math.round(c.y - CIRCLE_ROW / 2),
     });
   }
   return positions;
 }
 
-const clashes = (a: XYPosition, b: XYPosition) =>
-  Math.abs(a.x - b.x) < COLUMN && Math.abs(a.y - b.y) < ROW;
+export const overlaps = (a: XYPosition, b: XYPosition) =>
+  Math.abs(a.x - b.x) < NODE_BOX.w && Math.abs(a.y - b.y) < NODE_BOX.h;
 
-/** Slide a new node down past anything it would overlap, so cards already on screen never move. */
+/** Push a new node outward along its ray from the anchor until it clears everything, so nodes already on screen never move. */
 function freeSlot(slot: XYPosition, taken: XYPosition[]): XYPosition {
+  const cx = slot.x + NODE_W / 2;
+  const cy = slot.y + CIRCLE_ROW / 2;
+  const length = Math.hypot(cx, cy);
+  const dir = length ? { x: cx / length, y: cy / length } : { x: 1, y: 0 };
   let at = slot;
-  for (;;) {
-    const hit = taken.find((spot) => clashes(at, spot));
-    if (!hit) return at;
-    at = { x: slot.x, y: hit.y + ROW };
+  for (let step = 0; step < MAX_PUSH; step++) {
+    at = {
+      x: Math.round(slot.x + dir.x * PUSH * step),
+      y: Math.round(slot.y + dir.y * PUSH * step),
+    };
+    if (!taken.some((spot) => overlaps(at, spot))) break;
   }
+  return at;
 }
 
 /**
@@ -122,7 +201,8 @@ export function toFlowNodes(
 
 // Shared by the initial fit, the Fit View button and auto-follow so a lone node never jumps to maxZoom.
 export const loneFit = { padding: 0.8, maxZoom: 1 };
-export const graphFit = { padding: 0.2, maxZoom: 1 };
+// minZoom keeps labels readable on a big web; the person pans for the rest.
+export const graphFit = { padding: 0.2, maxZoom: 1, minZoom: 0.6 };
 
 /**
  * One delivery: the next nodes plus the fit to run, if any. The view follows new nodes until the
