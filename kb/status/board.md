@@ -32,8 +32,8 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | ID | Task card | Dependency | Status | Planned branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
-| E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | review | E3b-dominoes | ../domino-E3b at 565c3fa; one causal-scope blocker, use E3b-r2 repair card |
-| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | blocked | E4-multiverse | Not created; human launch in Claude Code after gate |
+| E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | doing | E3b-dominoes | Claude Opus directly dispatched by Codex for E3b-r2 on 565c3fa |
+| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | blocked | E4-multiverse | Not created; Codex dispatches Claude Code after review/integration gate |
 
 ## Product (Micah)
 
