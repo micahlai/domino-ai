@@ -112,6 +112,44 @@ describe("CompanyKnowledgeView", () => {
     expect(out).toContain("Sep 30, 2023");
   });
 
+  it("describes each assumption's basis facts in words, with raw IDs only in technical details", () => {
+    const out = html(RUN_ID, saved());
+    const [main] = out.split("<details");
+    // AS-FIN0 rests on F07 (financing cash flow), AS-FX0 on F08, AS-RESTRICTED on F02.
+    expect(main).toContain("Based on:");
+    expect(main).toContain("Financing cash flow");
+    expect(main).toContain("Exchange-rate effect on cash");
+    expect(main).toContain("Restricted cash");
+    expect(main).not.toMatch(/\bF0[278]\b/);
+    expect(main).not.toMatch(/AS-[A-Z0-9]+/);
+  });
+
+  it("resolves dependencies to the earlier assumption's description and a valid cost and lag", () => {
+    const run = saved();
+    const [fin, fx] = run.inputSnapshot.assumptions;
+    if (!fin || !fx) throw new Error("fixture needs two assumptions");
+    fin.oneTimeCost = { unit: "cents", low: 150000000, high: 250000000 };
+    fin.benefitLagDays = 45;
+    fx.dependsOn = [fin.id];
+    const [main] = html(RUN_ID, run).split("<details");
+    expect(main).toContain("Depends on:");
+    expect(main).toContain(`<li>${fin.description}</li>`);
+    expect(main).toContain("Upfront cost: $1.5M to $2.5M");
+    expect(main).toContain("Benefit starts 45 days after the decision.");
+    expect(main).not.toContain(fin.id);
+  });
+
+  it("omits basis and dependency lines when an assumption has neither", () => {
+    const run = saved();
+    for (const a of run.inputSnapshot.assumptions) {
+      a.basisFactIds = [];
+      a.dependsOn = [];
+    }
+    const out = html(RUN_ID, run);
+    expect(out).not.toContain("Based on:");
+    expect(out).not.toContain("Depends on:");
+  });
+
   it("leaves source links to the saved sources section, so none repeat per fact", () => {
     const run = saved();
     const source = run.inputSnapshot.sources[0];

@@ -95,6 +95,14 @@ function Facts({ k }: { k: RunKnowledge }) {
 }
 
 function Assumptions({ k }: { k: RunKnowledge }) {
+  // The projector guarantees every basis fact and dependency is a saved input listed earlier,
+  // so these resolve; the raw ID is the honest fallback rather than an invented description.
+  const facts = new Map(k.facts.map((f) => [f.id, f]));
+  const assumptions = new Map(k.assumptions.map((a) => [a.id, a]));
+  const basis = (id: string) => {
+    const f = facts.get(id);
+    return f ? `${metricLabel(f.metric)} ${period(f.period)} (${money(f.cents, f.currency)})` : id;
+  };
   return (
     <ul className="space-y-3">
       {k.assumptions.map((a) => (
@@ -104,6 +112,26 @@ function Assumptions({ k }: { k: RunKnowledge }) {
             {ASSUMPTION_KIND[a.label]} · {assumptionValue(a, k.currency)} · from{" "}
             {formatReportDate(a.effectiveFrom)}
           </p>
+          {a.basisFactIds.length > 0 ? (
+            <div className="text-xs text-muted-foreground">
+              Based on:
+              <ul className="list-disc pl-5">
+                {a.basisFactIds.map((id) => (
+                  <li key={id}>{basis(id)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {a.dependsOn.length > 0 ? (
+            <div className="text-xs text-muted-foreground">
+              Depends on:
+              <ul className="list-disc pl-5">
+                {a.dependsOn.map((id) => (
+                  <li key={id}>{assumptions.get(id)?.description ?? id}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {a.oneTimeCost ? (
             <p className="text-xs text-muted-foreground">
               Upfront cost:{" "}
