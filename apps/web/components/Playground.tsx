@@ -240,8 +240,7 @@ export function Playground() {
         </PreviewSection>
       </div>
       <p className="pb-4 text-sm text-muted-foreground">
-        Component previews only. The next product tasks add interactive charts, live data and
-        approval flows.
+        Component previews only. The next product tasks connect live data and approval flows.
       </p>
     </div>
   );

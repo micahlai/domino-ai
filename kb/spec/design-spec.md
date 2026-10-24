@@ -72,15 +72,15 @@ type MultiverseTimelineProps = {
 
 | Element | Look |
 | --- | --- |
-| Past line | Solid, 2 px, dark grey. Area below it lightly filled. |
+| Past line | Solid, 2 px, orange. Area below it lightly filled. |
 | Past event markers | Small circles on the line. Red outline for bad events, green for good. Label on hover. |
-| Today line | Vertical, 1 px, dashed. Label "Today" at the top. |
-| Base future | 2 px, dark grey, continues the past line. |
-| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: grey-green. Breaks: red after the break point, grey before it. |
-| Break marker | Small red cross at `breaksAt`, on the line. |
+| Today line | Vertical, 1 px, dashed. Label "Today" and its date at the bottom. |
+| Base future | 2 px, off-white, continues the past line. |
+| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: muted green. Breaks: pink after the break point, muted before it. |
+| Break marker | Small pink cross at `breaksAt`, on the line. |
 | Survive marker | Small green check at the right end. |
-| Selected future | 3 px, accent blue, label at the right end. Others fade to 0.15. |
-| Lender's limit | Red dashed line on the future side only, label "Lender's limit $3M". |
+| Selected future | 3 px, mint green, label at the right end. Others fade to 0.15. |
+| Lender's limit | Pink dashed line on the future side only, label "Lender's limit $3M". |
 | Y axis | Usable cash in $M, 4 ticks, light grid. No x-axis title; month labels only. |
 
 ### 3.3 Motion (this is the wow)

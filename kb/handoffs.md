@@ -1,12 +1,17 @@
 # Handoffs
 
 Newest first. One short entry at the end of every task or work session.
-Format: `## 2026-10-24 Micah / Codex — revised theme
+Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
+
+## 2026-10-24 01:20 Micah (Codex, P3)
+- Done: custom SVG history/futures with D3 and Motion, probability opacity, break/survival markers, keyboard future selection, event details, and fix comparison matched by risk IDs with stable axes. Chrome verified 64% to 93%, selection across toggle, recorded events and 390 px layout without page overflow. Reduced-motion server render and 30-future geometry regression coverage added. All 61 tests, typecheck, lint and production build pass. Screenshot: `/tmp/domino-p3.png`.
+- Next: P4 wires reviewed props-only components to live Convex queries. Pass comparisonReport to preserve the vertical scale across fix previews.
+- Watch out: IAB preview did not hydrate in the earlier session; Chrome verification passed. Reduced-motion skip is verified through a mocked preference server-render test; OS preference was not changed. Thirty-future geometry passes; 60 fps GPU performance has not been measured.
+
+## 2026-10-24 01:10 Micah / Codex — revised theme
 - Done: Changed the base to near-black brown, green primary, pink warnings and orange history accents. Logo retained from calhacks-2026.
 - Next: Finish P3, then P4.
 - Watch out: This replaces the earlier green background direction.
-
-## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
 ## 2026-10-24 01:07 Micah (Codex, dark theme and logo)
 - Done: applied the supplied mint/clay/rose/green/brown palette as the default dark theme, with readable off-white text and accessible warning text. Reused the original two-tile Domino SVG from calhacks-2026 for the header and favicon; preserved geometry and wordmark dot. Checks (56 tests), build and desktop screenshot review pass.

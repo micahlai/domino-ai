@@ -74,7 +74,7 @@ export function timelineGeometry(
     past,
     pastPath: path(past) ?? "",
     pastArea: pastArea(past) ?? "",
-    ticks: [0, 1, 2, 3].map((index) => y.invert(top + (bottom - top) * index)),
+    ticks: [0, 1, 2, 3].map((index) => y.invert(top + ((bottom - top) * index) / 3)),
     points: (future: Universe) => [
       origin,
       ...future.forecast.weeks.map((week) => ({ date: week.weekStart, usable: week.usable })),

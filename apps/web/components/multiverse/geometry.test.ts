@@ -44,6 +44,10 @@ describe("timeline geometry", () => {
     expect(graph.origin).toEqual({ date: today, usable: limit });
     expect(graph.ticks).toHaveLength(4);
     expect(graph.ticks.every(Number.isFinite)).toBe(true);
+    for (const tick of graph.ticks) {
+      expect(graph.y(tick)).toBeGreaterThanOrEqual(graph.top - 0.001);
+      expect(graph.y(tick)).toBeLessThanOrEqual(graph.bottom + 0.001);
+    }
     expect(graph.pastPath).toBe("");
   });
 

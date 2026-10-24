@@ -1,6 +1,5 @@
 "use client";
 
-import { formatCents, formatDate } from "@/lib/format";
 import type {
   Cents,
   HistoryWeek,
@@ -11,6 +10,7 @@ import type {
 } from "@domino/contracts";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { formatCents, formatDate } from "../../lib/format";
 import { futureKey, timelineGeometry, timestamp } from "./geometry";
 
 export interface MultiverseTimelineProps {
