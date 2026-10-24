@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 08:26 Codex heartbeat
+- Done: core4d5c86f independently accepted;798tests/build and real browser journey pass. Frozen sources, retrospective miss, cost-only alternative, reload, keyboard and mobile checked. Combined backend/UI90bcbf5 passed806tests and pushed.
+- Next: verified Sonnet H4d wires actual activity using existing panel; audit/build/fresh live journey then final preview branch.
+- Watch out: activity first history must stay quiet and alternatives must survive case-only filtering. Pending mutation IDs do not survive reload; no runtime reduced-motion emulation available in browser tool.
+
 ## 2026-10-24 08:02 Codex heartbeat
 - Done: core UI594b185 passes792tests/build; actual browser and independent review found runtime blockers.
 - Next: verified Sonnet repair1 fixes the query render loop, stale completion navigation, uncertain failure wording, malformed response recovery and historical sidebar context. Rebuild/browser before accepting.

@@ -2,6 +2,8 @@
 
 ## Active direction: Codex supervision, Claude development
 
+- Latest08:26 PDT: live core4d5c86f accepted after798tests/build, independent review and actual browser save/reveal/alternative/reload. Backend4795d51 merged into H4; combined806tests pass and90bcbf5 pushed. Only H4d activity wiring now runs (exec72525/PID99485). Preview3101 serves working core4d5c86f; final event wiring/browser/preview-branch gates remain.
+
 - Latest08:02 PDT: live UI594b185 passed792tests/build but actual browser found an infinite render loop. Independent review also found stale navigation and error handling defects. Sonnet repair1 verified running (exec63601/PID23935). Backend4795d51 remains accepted; no new backend writer. Preview3101 currently serves the broken candidate, not the repair.
 
 - Latest07:46 PDT: historical backend complete and accepted at4795d51, pushed H2 branch. H2d independent audit,734tests and true concurrent local sequencing/isolation checks pass. Only H4c core UI is writing now. Next collect/audit core UI, then merge4795d51 at its clean checkpoint and wire actual activity. Main unchanged.
