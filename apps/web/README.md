@@ -34,15 +34,15 @@ To use your team’s cloud development deployment, run `pnpm exec convex dev --c
 in `apps/web` and select the team and project. No external service key is needed for
 P1’s fixture playground. Live queries, mutations and source integrations belong to P2 onward.
 
-## What P1 includes
+## Current product screens
 
-- All seven routes from `kb/spec/design-spec.md` §1. Company screens are heading stubs.
+- All seven routes from `kb/spec/design-spec.md` §1. The company main screen is live; other company routes remain P1 previews until P5/P6.
 - Every §4 component plus the hero has a preview backed by `@domino/contracts/fixtures`.
-- The timeline, branch chart and learning chart are layout/data/empty-state stubs.
+- The hero timeline has animated history/futures, selection and fix comparison. Branch and learning charts remain previews.
 - The fix toggle, risk selection, evidence sheet and event dialog work locally.
-- Simulation and approval buttons remain disabled until their owning task wires them.
+- Live approvals require a matching saved fix branch and confirmation. New simulation, event and next-week actions remain disabled until E7 is ready.
 - `formatCents` formats safe integer cents; `formatDate` validates dates and uses UTC.
-- Inter and the design-spec §5 light theme tokens. Reduced motion is respected.
+- Inter and the design-spec §5 dark brown, green, pink and orange tokens. Reduced motion is respected.
 
 ## Check and build
 
@@ -67,3 +67,21 @@ P1 does not publish or mutate a production deployment.
 
 Vercel monorepo settings: [official setup guide](https://vercel.com/docs/monorepos/turborepo).
 Convex local setup: [official agent guide](https://docs.convex.dev/cli/agent-mode).
+
+## P4 company workspace
+
+`/c/<companyId>` uses the Convex company document ID returned by `pnpm convex:fixtures`.
+It subscribes to company, reports with/without fixes, history, constraints, risks, branches
+and the selected branch’s fixes. A future must match every selected risk before its
+chain and fixes are shown; missing combinations have an explicit empty state.
+
+`/c/kestrel` is a labeled sample preview with local-only approval previews. To make
+this shortcut open the seeded company, set `NEXT_PUBLIC_DEMO_COMPANY_ID` to the seed’s
+company ID alongside `NEXT_PUBLIC_CONVEX_URL` in ignored `apps/web/.env.local`.
+The assembled sample workspace also appears in `/playground`.
+
+Approval records a decision and changes the matching fix branch’s status; it does not
+execute the fix. This demo has no sign-in and labels anonymous decisions unverified.
+`components/company/LiveCompany.tsx` keeps compute actions disabled until E7 replaces
+the internal placeholders. Enable the corresponding readiness flags only after those
+actions are implemented and tested. The mutation callbacks are already connected.

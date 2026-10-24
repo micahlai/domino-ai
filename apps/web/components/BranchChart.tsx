@@ -19,7 +19,7 @@ export function BranchChart({ branches, limit }: { branches: Branch[]; limit: Ce
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Future</TableHead>
+            <TableHead>Scenario</TableHead>
             <TableHead>Low point</TableHead>
             <TableHead>Week of</TableHead>
           </TableRow>

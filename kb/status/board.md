@@ -20,7 +20,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 ### First slices
 
 Plan: `kb/tasks/launch-plan-2026-10-24.md`. These slices need the verified offline S0 gate, not live credentials.
-Parent E1/E3/E6 remain incomplete. Claude's reviewed E3a repair is merged at 59fe62d alongside C1. Combined main passes 131 tests, typechecks and lint. Claude completed E3b e77474d; independent audit found three correctness blockers despite 169 passing branch tests. Repair card E3b-r1 is ready in main; E4 remains gated. No second engine worker.
+Parent E1/E3/E6 remain incomplete. Claude's reviewed E3a repair is merged at 59fe62d alongside C1. Combined main after P3/P4 integration and the I1 compatibility fix passes 147 tests, typechecks, lint and a fresh production build. Claude completed E3b e77474d; independent audit found three correctness blockers despite 169 passing branch tests. Repair card E3b-r1 is ready in main; E4 remains gated. No second engine worker.
 
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
@@ -39,17 +39,19 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | codex/p1-web-shell | Local setup verified; team access and integration keys still need Micah |
+| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | CREAO local setup complete: all five .env fields, three private agents, API mock runs and checks pass; other service access remains unverified |
 | P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
 | P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | done | codex/p2-convex | 14 tables/queries, 5 mutations; seed and live queries verified; 56 tests/check/build pass |
-| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | todo | | Prototype in /playground |
-| P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | todo | | |
+| P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | done | codex/p3-multiverse | SVG fan, stable fix morph, selection and keyboard access; desktop/mobile verified |
+| P4 | Main screen: resilience bar, risks, chain, fixes, proof | `prompts/product/P4-main-screen.md` | P2, P3 | done | codex/p4-main-screen | Live subscriptions, exact branch selection, proof and confirmed approval; 67 tests/check and browser pass |
 | P5 | Branch detail, connect screen, add event, next week | `prompts/product/P5-flows.md` | P4 | todo | | |
 | P6 | Learning + record screens; taste pass | `prompts/product/P6-learning-record-polish.md` | P5 | todo | | |
 | P7 | Usability test and demo materials | `prompts/product/P7-user-test.md` | P6 | todo | | |
 | P8 | Demo video and submission | `prompts/product/P8-submission.md` | E8, P7 | todo | | |
-
 | T1 | Dark palette and original Domino logo | User request | P1 | done | codex/dark-theme | Shared tokens, header mark and favicon; checks/build/screenshot pass |
+
+| C1-UI | Plain financial timeline copy | User request | P4 | done | codex/plain-timeline-copy | Integrated from origin/main 687b91f; distinct from engine contracts C1 |
+| I1 | C1-compatible scenario selection | `kb/tasks/I1-ui-risk-selection.md` | P4, contracts C1 | done | integration-ui-selection | Claude helper/test fix independently reviewed; combined 147 tests and browser check pass |
 
 ## Shared
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { ProofDrawer } from "@/components/ProofDrawer";
 import { formatCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { RiskEvent } from "@domino/contracts";
@@ -25,9 +26,15 @@ export function RiskList({
             <span className="block text-sm font-medium">{risk.label}</span>
             <span className="mt-2 flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
               <span>{Math.round(risk.probability * 100)}% chance</span>
-              <span>{formatCents(risk.impactLowPoint)} lower at the low point</span>
+              <span>
+                {formatCents(risk.impactLowPoint).replace("-", "")}{" "}
+                {risk.impactLowPoint < 0 ? "higher" : "lower"} at the low point
+              </span>
             </span>
           </button>
+          <div className="px-3 pb-3">
+            <ProofDrawer evidence={risk.evidence} />
+          </div>
         </li>
       ))}
     </ul>

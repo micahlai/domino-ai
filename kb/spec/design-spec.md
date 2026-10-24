@@ -72,15 +72,15 @@ type MultiverseTimelineProps = {
 
 | Element | Look |
 | --- | --- |
-| Past line | Solid, 2 px, dark grey. Area below it lightly filled. |
+| Past line | Solid, 2 px, orange. Area below it lightly filled. |
 | Past event markers | Small circles on the line. Red outline for bad events, green for good. Label on hover. |
-| Today line | Vertical, 1 px, dashed. Label "Today" at the top. |
-| Base future | 2 px, dark grey, continues the past line. |
-| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: grey-green. Breaks: red after the break point, grey before it. |
-| Break marker | Small red cross at `breaksAt`, on the line. |
+| Today line | Vertical, 1 px, dashed. Label "Today" and its date at the bottom. |
+| Base future | 2 px, off-white, continues the past line. |
+| Other futures | 1.25 px. Opacity scaled by probability (0.25 to 0.9). Survives: muted green. Breaks: pink after the break point, muted before it. |
+| Break marker | Small pink cross at `breaksAt`, on the line. |
 | Survive marker | Small green check at the right end. |
-| Selected future | 3 px, accent blue, label at the right end. Others fade to 0.15. |
-| Lender's limit | Red dashed line on the future side only, label "Lender's limit $3M". |
+| Selected future | 3 px, mint green, label at the right end. Others fade to 0.15. |
+| Lender's limit | Pink dashed line on the future side only, label "Lender's limit $3M". |
 | Y axis | Usable cash in $M, 4 ticks, light grid. No x-axis title; month labels only. |
 
 ### 3.3 Motion (this is the wow)
@@ -117,22 +117,22 @@ All components live in `apps/web/components/`. Each has a playground section wit
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | `#202B27` | Deep green page background derived from the supplied palette |
-| Surface | `#2B3B36` | Panels and popovers |
+| Background | `#15110F` | Near-black brown page background |
+| Surface | `#211B17` | Dark brown panels and popovers |
 | Warm surface | `#3B312B` | Secondary controls and selected supporting areas |
-| Border | `#45534C` | Subtle separators |
+| Border | `#493B32` | Subtle separators |
 | Text | `#F4F1EB` | Main text |
-| Text muted | `#B7C5BD` | Labels, captions |
+| Text muted | `#BEB3AA` | Labels, captions |
 | Accent / safe | `#68B99E` | Primary actions, selected future, surviving futures |
-| Clay | `#BA8768` | Supporting chart and history accents |
-| Danger | `#BA6A68` | Broken rules, lender's limit, breaking futures |
+| Clay | `#D6A17E` | Supporting chart and history accents |
+| Danger | `#D991A8` | Broken rules, lender's limit, breaking futures |
 | Font | Inter | Everything |
 | Radius | 8 px | Cards, buttons |
 | Spacing | 4 px steps | Use Tailwind spacing scale |
 
-Rose text is lightened to `#D9918F` for small text contrast; the supplied rose remains the warning fill/stroke.
+Pink warning text is lightened to `#E6A5B9` for small text contrast. Green remains the primary color; pink and orange are supporting accents.
 
-Dark mode is the default per Micah's supplied palette. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
+Dark mode uses a near-black brown base per Micah's revised direction. Charts use labels and outcome markers in addition to color. The Domino mark comes from `calhacks-2026/public/favicon.svg`, recolored without changing its geometry.
 
 ---
 
@@ -142,11 +142,14 @@ Dark mode is the default per Micah's supplied palette. Charts use labels and out
 | --- | --- |
 | Lender's limit | Covenant |
 | Cash you can use | Liquidity, unrestricted cash |
-| Future, possible future | Scenario, universe (except in the pitch) |
-| Survives / breaks | Passes / fails stress test |
+| Cash forecast, scenario | Future, possible future, universe, multiverse |
+| Meets requirements / outside limits | Survives / breaks / fails stress test |
 | Pays 45 days late | DSO extension |
 | Low point | Trough, minimum balance |
 
+- Use “Preview fixes” for forecast comparisons; approval is a separate action.
+- Describe the event sequence as “Projected impact,” not a chain reaction.
+- The percentage is the weighted share of tested scenarios meeting requirements, not an unconditional probability.
 - Every number has a unit and a date: "$2.9M on Nov 30".
 - Every headline is a full answer, not a label.
 - Expert words appear only inside the proof drawer.

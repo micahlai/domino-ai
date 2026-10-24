@@ -8,13 +8,17 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const links = [
-  { href: "/c/kestrel", label: "Possible futures" },
+  { href: "/c/kestrel", label: "Cash forecast" },
   { href: "/c/kestrel/learning", label: "What we learned" },
   { href: "/c/kestrel/record", label: "Decision record" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const companyId =
+    pathname.split("/")[1] === "c"
+      ? pathname.split("/")[2]
+      : (process.env.NEXT_PUBLIC_DEMO_COMPANY_ID ?? "kestrel");
   const showNavigation = pathname !== "/";
   return (
     <div className="min-h-screen">
@@ -36,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">See the chain. Change the outcome.</span>
+          <span className="hidden sm:inline">Plan cash needs before you act.</span>
           <Link
             href="/playground"
             className="flex min-h-11 items-center gap-2 rounded px-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
@@ -55,18 +59,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         {showNavigation ? (
           <aside className="border-b bg-muted/50 px-6 py-4 lg:min-h-[calc(100vh-80px)] lg:border-b-0 lg:border-r lg:px-5 lg:py-8">
             <div className="mb-3 flex items-center justify-between text-sm font-medium lg:mb-6">
-              <span>Kestrel Data</span>
+              <span>{companyId === "kestrel" ? "Kestrel Data" : "Company workspace"}</span>
               <PanelLeftClose className="size-4 text-muted-foreground" aria-hidden="true" />
             </div>
             <nav aria-label="Main navigation" className="flex flex-wrap gap-1 lg:flex-col">
               {links.map(({ href, label }) => (
                 <Link
                   key={href}
-                  href={href}
-                  aria-current={pathname === href ? "page" : undefined}
+                  href={href.replace("/c/kestrel", `/c/${companyId}`)}
+                  aria-current={
+                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) ? "page" : undefined
+                  }
                   className={cn(
                     "flex min-h-11 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-                    pathname === href && "bg-background font-medium text-primary",
+                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) &&
+                      "bg-background font-medium text-primary",
                   )}
                 >
                   {label}
