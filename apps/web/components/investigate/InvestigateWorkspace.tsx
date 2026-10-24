@@ -4,7 +4,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  type Edge,
   Handle,
   type NodeProps,
   Position,
@@ -15,17 +14,27 @@ import {
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { ConversationPanel } from "./ConversationPanel";
+import { FlowEdge, type FlowEdgeType, PULSE_SECONDS, ZoneView } from "./MapParts";
 import {
   CIRCLE_ROW,
   type FlowNode,
   IDLE_DOMINO,
   KIND_LABEL,
+  KNOWLEDGE_ID,
+  type Pulse,
+  type Recovery,
   STATUS_LABEL,
+  away,
   deliver,
+  fingerprint,
   graphFit,
   loneFit,
+  pulsesFor,
   safeHref,
+  settle,
   toFlowNodes,
+  withKnowledge,
+  zones,
 } from "./graph";
 import type {
   CanvasConnection,
@@ -36,7 +45,7 @@ import type {
   InvestigateWorkspaceProps,
 } from "./types";
 import "@xyflow/react/dist/style.css";
-import { Bot, ChartLine, ExternalLink, FileText, Wrench, X } from "lucide-react";
+import { Bot, ChartLine, Database, ExternalLink, FileText, Wrench, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -74,11 +83,47 @@ const CONNECTION_LABEL: Record<CanvasConnection, string> = {
   unavailable: "Unavailable right now",
 };
 
-const KIND_ICON: Record<Exclude<CanvasNodeKind, "domino">, typeof Bot> = {
-  agent: Bot,
-  source: FileText,
-  tool: Wrench,
-  output: ChartLine,
+// One shape and tint per kind so the map scans at a glance: rounded agent tiles, portrait document
+// cards for sources, small tool tiles, a wide result card and a rounded data stack for knowledge.
+const KIND_LOOK: Record<
+  Exclude<CanvasNodeKind, "domino">,
+  { Icon: typeof Bot; shape: string; border: string; fill: string; icon: string }
+> = {
+  agent: {
+    Icon: Bot,
+    shape: "size-14 rounded-2xl",
+    border: "border-violet-400/50",
+    fill: "bg-violet-400/10",
+    icon: "text-violet-300",
+  },
+  source: {
+    Icon: FileText,
+    shape: "h-16 w-12 rounded-md",
+    border: "border-sky-400/50",
+    fill: "bg-sky-400/10",
+    icon: "text-sky-300",
+  },
+  tool: {
+    Icon: Wrench,
+    shape: "size-11 rounded-lg",
+    border: "border-amber-400/50",
+    fill: "bg-amber-400/10",
+    icon: "text-amber-300",
+  },
+  output: {
+    Icon: ChartLine,
+    shape: "h-14 w-28 rounded-xl",
+    border: "border-foreground/30",
+    fill: "bg-foreground/5",
+    icon: "text-foreground",
+  },
+  knowledge: {
+    Icon: Database,
+    shape: "size-16 rounded-[50%/24%]",
+    border: "border-teal-400/50",
+    fill: "bg-teal-400/10",
+    icon: "text-teal-300",
+  },
 };
 
 const STATUS_DOT: Record<CanvasStatus, string> = {
@@ -90,18 +135,18 @@ const STATUS_DOT: Record<CanvasStatus, string> = {
 };
 
 function statusText(node: CanvasNode) {
+  // Knowledge is a view of saved records, not a step, so it has no run status.
+  if (node.kind === "knowledge") return `Saved evidence · ${node.evidence?.length ?? 0}`;
   const status = STATUS_LABEL[node.status];
   return node.kind === "domino" ? status : `${KIND_LABEL[node.kind]} · ${status}`;
 }
 
-// Understated status: only a running or failed circle changes its outline; the label always says why.
-const CIRCLE_BORDER: Record<CanvasStatus, string> = {
-  idle: "border-border",
-  queued: "border-border",
-  running: "border-primary",
-  succeeded: "border-border",
-  failed: "border-destructive/70",
-};
+// Understated status: only a running or failed shape changes its outline; the label always says why.
+function shapeBorder(node: CanvasNode, tint: string) {
+  if (node.status === "running") return "border-primary";
+  if (node.status === "failed") return "border-destructive/70";
+  return tint;
+}
 
 export function NodeCard({
   node,
@@ -112,23 +157,24 @@ export function NodeCard({
   selected: boolean;
   animateStatus?: boolean;
 }) {
-  const Icon = node.kind === "domino" ? null : KIND_ICON[node.kind];
+  const look = node.kind === "domino" ? null : KIND_LOOK[node.kind];
   const note = node.kind === "domino" && node.status === "idle" ? "Waiting for a question" : null;
   return (
     <div className="flex w-36 flex-col items-center gap-1.5 text-center">
       <div className="grid h-[72px] place-items-center">
         <span
           className={cn(
-            "grid place-items-center rounded-full border bg-card transition-colors",
-            Icon ? "size-14" : "size-[72px]",
-            CIRCLE_BORDER[node.status],
+            "grid place-items-center border transition-colors",
+            look
+              ? [look.shape, look.fill, shapeBorder(node, look.border)]
+              : ["size-[72px] rounded-full bg-primary/10", shapeBorder(node, "border-primary/40")],
             selected
               ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
               : "hover:border-muted-foreground/60",
           )}
         >
-          {Icon ? (
-            <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
+          {look ? (
+            <look.Icon aria-hidden="true" className={cn("size-5", look.icon)} />
           ) : (
             <Image src="/domino-logo.svg" width={40} height={40} alt="" />
           )}
@@ -146,7 +192,10 @@ export function NodeCard({
         >
           <span
             aria-hidden="true"
-            className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[node.status])}
+            className={cn(
+              "size-1.5 shrink-0 rounded-full",
+              node.kind === "knowledge" ? "bg-teal-300" : STATUS_DOT[node.status],
+            )}
           />
           {statusText(node)}
         </motion.p>
@@ -197,7 +246,8 @@ function CanvasNodeView({ data, selected }: NodeProps<FlowNode>) {
   );
 }
 
-const nodeTypes = { canvas: CanvasNodeView };
+const nodeTypes = { canvas: CanvasNodeView, zone: ZoneView };
+const edgeTypes = { flow: FlowEdge };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -221,11 +271,13 @@ export function NodeDetails({
   onClose,
   connection = "preview",
   output,
+  knowledge,
 }: {
   node?: CanvasNode;
   onClose: () => void;
   connection?: CanvasConnection;
   output?: ReactNode;
+  knowledge?: ReactNode;
 }) {
   const { profile, evidence = [], metadata = [] } = node;
   const hasContent =
@@ -234,7 +286,8 @@ export function NodeDetails({
     !!node.error ||
     evidence.length > 0 ||
     !!profile ||
-    !!output;
+    !!output ||
+    !!knowledge;
   return (
     <section
       aria-label={`${node.title} details`}
@@ -285,8 +338,10 @@ export function NodeDetails({
         </Section>
       ) : null}
 
+      {knowledge ? <Section title="Saved knowledge">{knowledge}</Section> : null}
+
       {evidence.length > 0 ? (
-        <Section title="Evidence">
+        <Section title={node.kind === "knowledge" ? "Saved sources" : "Evidence"}>
           <ul className="space-y-3">
             {evidence.map((item) => {
               const href = safeHref(item.url);
@@ -318,6 +373,12 @@ export function NodeDetails({
               );
             })}
           </ul>
+        </Section>
+      ) : null}
+
+      {node.kind === "knowledge" ? (
+        <Section title="Learnings">
+          <p className="text-muted-foreground">No validated learnings are recorded.</p>
         </Section>
       ) : null}
 
@@ -400,26 +461,44 @@ function Workspace({
   canReveal,
   canAlternative,
   renderOutput,
+  renderKnowledge,
 }: InvestigateWorkspaceProps) {
   // Omitted means the G1 preview Domino. An explicit [] is a real, empty investigation.
-  const incoming = supplied ?? DEFAULT_NODES;
+  // Company knowledge is a view of evidence the sources already carry, added after them.
+  const incoming = useMemo(() => withKnowledge(supplied ?? DEFAULT_NODES), [supplied]);
   // The first snapshot is restored history: it appears without motion.
-  const [initial] = useState(() => toFlowNodes([], incoming, edges, true));
+  const [initial] = useState(() => toFlowNodes([], incoming, true));
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initial);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const flowRef = useRef<ReactFlowInstance<FlowNode, Edge> | null>(null);
+  const flowRef = useRef<ReactFlowInstance<FlowNode, FlowEdgeType> | null>(null);
   const userMoved = useRef(false);
-  const lastConnection = useRef(connection);
+  const recovery = useRef<Recovery>({ held: away(connection), print: fingerprint(incoming) });
+  // Which node statuses were already shown, so a pulse fires once per new recorded transition.
+  const seen = useRef<ReadonlySet<string>>(pulsesFor(new Set(), incoming, edges, true).seen);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [pulses, setPulses] = useState<Pulse[]>([]);
   const reduced = useReducedMotion();
   const fitOptions = nodes.length > 1 ? graphFit : loneFit;
 
   useEffect(() => {
-    // Records delivered while loading, or right as loading ends, are history too.
-    const quiet = connection === "loading" || lastConnection.current === "loading";
-    lastConnection.current = connection;
+    // Records delivered while loading or offline, and the cached/catch-up ones after, are history.
+    const settled = settle(recovery.current, connection, incoming);
+    recovery.current = settled.recovery;
+    const quiet = settled.quiet;
+    const next = pulsesFor(seen.current, incoming, edges, quiet);
+    seen.current = next.seen;
+    if (next.pulses.length > 0 && !reduced) {
+      const fresh = next.pulses;
+      setPulses((now) => [
+        ...now.filter((p) => !fresh.some((f) => f.edgeId === p.edgeId)),
+        ...fresh,
+      ]);
+      clearTimeout(pulseTimer.current);
+      pulseTimer.current = setTimeout(() => setPulses([]), PULSE_SECONDS * 1000 + 300);
+    }
     setNodes((current) => {
       // Follow new work until the person moves the view themselves. fitView waits for measurement.
-      const { nodes: next, fit } = deliver(current, incoming, edges, {
+      const { nodes: next, fit } = deliver(current, incoming, {
         quiet,
         follow: !userMoved.current,
         reduced: !!reduced,
@@ -428,23 +507,44 @@ function Workspace({
       return next;
     });
   }, [incoming, edges, connection, setNodes, reduced]);
+  useEffect(() => () => clearTimeout(pulseTimer.current), []);
 
-  const flowEdges = useMemo<Edge[]>(() => {
+  const flowEdges = useMemo<FlowEdgeType[]>(() => {
     const ids = new Set(nodes.map((node) => node.id));
-    return edges
+    const pulse = new Map(pulses.map((p) => [p.edgeId, p.key]));
+    const real = edges
       .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
       .map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: "straight",
+        type: "flow" as const,
+        data: { pulse: pulse.get(edge.id) },
         focusable: false,
         selectable: false,
       }));
-  }, [nodes, edges]);
+    // A dashed link marks that knowledge is a view beside Domino. It is not an operation, so it never pulses.
+    return ids.has(KNOWLEDGE_ID) && ids.has("domino")
+      ? [
+          ...real,
+          {
+            id: "view:domino->knowledge",
+            source: "domino",
+            target: KNOWLEDGE_ID,
+            type: "flow" as const,
+            data: {},
+            style: { strokeDasharray: "3 5" },
+            focusable: false,
+            selectable: false,
+          },
+        ]
+      : real;
+  }, [nodes, edges, pulses]);
+  const frames = useMemo(() => zones(nodes), [nodes]);
 
   const selected = nodes.find((node) => node.selected)?.data.node;
   const output = selected && renderOutput ? renderOutput(selected) : null;
+  const knowledge = selected?.kind === "knowledge" ? renderKnowledge?.() : null;
 
   const close = useCallback(() => {
     const id = nodes.find((node) => node.selected)?.id;
@@ -473,12 +573,34 @@ function Workspace({
         aria-label="Canvas"
         className="relative flex flex-1 shrink-0 flex-col lg:min-h-0 lg:shrink"
       >
+        {/* A compact toolbar above the canvas on mobile so it never covers the graph; floats top-left on desktop. */}
+        <div className="flex flex-wrap items-center gap-x-3 border-b px-3 lg:pointer-events-none lg:absolute lg:left-4 lg:top-4 lg:z-10 lg:flex-col lg:items-start lg:gap-1.5 lg:border-b-0 lg:px-0">
+          <Link
+            href="/"
+            aria-label="Domino home"
+            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
+            <span className="text-lg">
+              domino<span className="text-primary">.</span>
+            </span>
+          </Link>
+          <h1 className="text-sm font-medium">Investigate</h1>
+          <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
+          {nodes.length > 1 ? (
+            <p className="sr-only text-xs text-muted-foreground lg:not-sr-only lg:max-w-56">
+              A dot on a line marks newly recorded step activity, not data moved.
+            </p>
+          ) : null}
+        </div>
         <div ref={canvasRef} className="relative min-h-[45dvh] flex-1 lg:min-h-0">
           <div className="absolute inset-0">
             <ReactFlow
-              nodes={nodes}
+              // ponytail: frames are inert display nodes; one cast beats a second node type through every handler.
+              nodes={[...(frames as unknown as FlowNode[]), ...nodes]}
               edges={flowEdges}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onInit={(instance) => {
                 flowRef.current = instance;
@@ -518,20 +640,6 @@ function Workspace({
             </p>
           ) : null}
         </div>
-        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5">
-          <Link
-            href="/"
-            aria-label="Domino home"
-            className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-            <span className="text-lg">
-              domino<span className="text-primary">.</span>
-            </span>
-          </Link>
-          <h1 className="text-sm font-medium">Investigate</h1>
-          <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
-        </div>
         {/* Below the canvas on mobile so it never hides the node or zoom controls; floats right on desktop. */}
         {selected ? (
           <div
@@ -547,6 +655,7 @@ function Workspace({
                 onClose={close}
                 connection={connection}
                 output={output}
+                knowledge={knowledge}
               />
             </div>
           </div>

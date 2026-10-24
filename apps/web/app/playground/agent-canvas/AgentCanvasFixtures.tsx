@@ -201,10 +201,110 @@ const WEB_STEPS: Step[] = [
   },
 ];
 
+// Company map for visual review: several sources (one failed), a specialist whose provider was never
+// recorded, one working and one failed tool, and several results. Saved evidence makes the knowledge view appear.
+const evidenceOf = (id: string) => [
+  { id: `${id}-1`, title: `Fixture evidence from ${id}`, publishedAt: "2023-11-08" },
+];
+
+const MAP_STEPS: Step[] = [
+  { label: "Domino starts", apply: (g) => patch(g, "domino", { status: "running" }) },
+  {
+    label: "Four sources arrive (one failed)",
+    apply: (g) =>
+      [
+        "Fixture 10-K",
+        "Fixture earnings call",
+        "Fixture press release",
+        "Fixture news feed",
+      ].reduce(
+        (acc, title, i) =>
+          add(
+            acc,
+            i === 3
+              ? {
+                  ...node(`msrc-${i}`, "source", title),
+                  status: "failed",
+                  error: "Fixture failure: the source could not be loaded.",
+                }
+              : {
+                  ...node(`msrc-${i}`, "source", title),
+                  status: "succeeded",
+                  evidence: evidenceOf(`msrc-${i}`),
+                },
+            "domino",
+          ),
+        g,
+      ),
+  },
+  {
+    label: "Two specialists start (one has no recorded provider)",
+    apply: (g) =>
+      addFrom(
+        add(
+          g,
+          {
+            ...node("magent-0", "agent", "Filing specialist"),
+            profile: {
+              role: "Fixture role",
+              workingStyle: "Fixture working style",
+              instructions: "Fixture instructions",
+              version: "fixture-1",
+              tools: [],
+            },
+            metadata: [
+              { label: "Provider mode", value: "unknown" },
+              { label: "Model", value: "unknown" },
+            ],
+          },
+          "msrc-0",
+        ),
+        node("magent-1", "agent", "Market specialist"),
+        ["msrc-1", "msrc-2"],
+      ),
+  },
+  {
+    label: "Specialists finish",
+    apply: (g) =>
+      patch(patch(g, "magent-0", { status: "succeeded" }), "magent-1", { status: "succeeded" }),
+  },
+  {
+    label: "Two tools start",
+    apply: (g) =>
+      addFrom(
+        add(g, node("mtool-0", "tool", "Fixture forecast tool"), "magent-0"),
+        node("mtool-1", "tool", "Fixture comparison tool"),
+        ["magent-0", "magent-1"],
+      ),
+  },
+  {
+    label: "One tool finishes, one fails",
+    apply: (g) =>
+      patch(patch(g, "mtool-0", { status: "succeeded" }), "mtool-1", {
+        status: "failed",
+        error: "Fixture failure: the tool returned an error.",
+      }),
+  },
+  {
+    label: "Two results arrive",
+    apply: (g) =>
+      add(
+        add(
+          g,
+          { ...node("mout-0", "output", "Fixture cash forecast"), status: "succeeded" },
+          "mtool-0",
+        ),
+        { ...node("mout-1", "output", "Fixture risk list"), status: "succeeded" },
+        "mtool-0",
+      ),
+  },
+];
+
 const run = (steps: Step[]) => steps.reduce((graph, step) => step.apply(graph), EMPTY);
 const SCENARIOS = {
   chain: { steps: STEPS, full: FULL },
   web: { steps: WEB_STEPS, full: run(WEB_STEPS) },
+  map: { steps: MAP_STEPS, full: run(MAP_STEPS) },
 };
 type ScenarioKey = keyof typeof SCENARIOS;
 
@@ -275,6 +375,14 @@ export function AgentCanvasFixtures() {
           size="sm"
           variant="outline"
           className="min-h-11"
+          onClick={() => restart(EMPTY, 0, [], "map")}
+        >
+          New company map session (fixture)
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-11"
           onClick={() => restart(full, steps.length, HISTORY)}
         >
           Load saved history
@@ -338,6 +446,11 @@ export function AgentCanvasFixtures() {
               { id: `s${current.length}`, role: "system", text: "Fixture: alternative pressed." },
             ])
           }
+          renderKnowledge={() => (
+            <p className="text-muted-foreground">
+              Fixture knowledge slot. The parent renders saved facts, assumptions and costs here.
+            </p>
+          )}
           renderOutput={(node) =>
             chartSlot && node.kind === "output" ? (
               <div className="grid h-64 place-items-center rounded-lg border border-dashed px-4 text-center text-sm text-muted-foreground">

@@ -1,5 +1,12 @@
 import type { Node, XYPosition } from "@xyflow/react";
-import type { CanvasEdge, CanvasNode, CanvasNodeKind, CanvasStatus } from "./types";
+import type {
+  CanvasConnection,
+  CanvasEdge,
+  CanvasEvidence,
+  CanvasNode,
+  CanvasNodeKind,
+  CanvasStatus,
+} from "./types";
 
 // `enter`: fade this node in once. `live`: the latest delivery was real work, so a status change may animate.
 export type FlowData = { node: CanvasNode; enter: boolean; live: boolean };
@@ -18,6 +25,7 @@ export const KIND_LABEL: Record<CanvasNodeKind, string> = {
   source: "Source",
   tool: "Tool",
   output: "Result",
+  knowledge: "Knowledge",
 };
 
 export const STATUS_LABEL: Record<CanvasStatus, string> = {
@@ -28,120 +36,215 @@ export const STATUS_LABEL: Record<CanvasStatus, string> = {
   failed: "Failed",
 };
 
-// Every node is NODE_W wide with its circle in a CIRCLE_ROW tall row at the top, so a circle always
-// centers at (NODE_W / 2, CIRCLE_ROW / 2) and layout can reason in circle centers.
+// Every node is NODE_W wide with its shape in a CIRCLE_ROW tall row at the top, so a shape always
+// centers at (NODE_W / 2, CIRCLE_ROW / 2) and layout can reason in centers.
 export const NODE_W = 144;
 export const CIRCLE_ROW = 72;
-// A rendered node is NODE_W x NODE_H: circle row 72, gap 6, two-line title 32, status line 16.
+// A rendered node is NODE_W x NODE_H: shape row 72, gap 6, two-line title 32, status line 16.
 // NODE_BOX adds a gap, so two nodes closer than this on both axes overlap or nearly touch.
-const NODE_H = 126;
+export const NODE_H = 126;
 export const NODE_BOX = { w: NODE_W + 8, h: NODE_H + 12 };
-// Rings stay close so outputs are not far from the anchor and a full fit stays readable.
-const RING_FIRST = 196; // a diagonal neighbour of the anchor still clears NODE_BOX
-const RING_STEP = 140;
-const ARC = 140; // least ring length each node on a ring needs, so crowded rings grow instead of overlap
-const BEND = 0.6; // radians a lone child turns away from its parent, so a chain curves instead of lining up
-const MAX_FAN = (2 * Math.PI) / 3;
 const PUSH = 12; // small steps so a pushed node sits just clear, not a whole step too far
 const MAX_PUSH = 600;
+
+// Company map: Domino in the middle, Sources left, Toolbox right, specialists above, saved
+// knowledge just below Domino and result cards under that. Slots depend on kind and arrival order
+// only (never on edges), so a node's slot is the same whatever else has arrived.
+const SIDE_X = 260; // centre of the first Sources / Toolbox column
+const COL_GAP = 168; // next column, further out
+const ROW_GAP = 140; // vertical step inside a column
+const ACROSS = 190; // horizontal step inside a specialist or result row
+const PER_LANE = 3; // slots per column or row before the next one starts
+const AGENT_Y = 320;
+const KNOWLEDGE_Y = 190;
+const OUTPUT_Y = 360;
+const BAND = 160; // next row of specialists or results
+
+/** 0, +1, -1: fill the middle first so a lane grows evenly both ways. */
+const spread = (i: number) => (i === 0 ? 0 : i % 2 ? (i + 1) / 2 : -i / 2);
+
+function slot(kind: CanvasNodeKind, index: number): XYPosition {
+  const lane = index % PER_LANE;
+  const band = Math.floor(index / PER_LANE);
+  const k = spread(lane);
+  switch (kind) {
+    case "domino":
+      return { x: 0, y: 0 };
+    case "source":
+      return { x: -(SIDE_X + band * COL_GAP), y: k * ROW_GAP };
+    case "tool":
+      return { x: SIDE_X + band * COL_GAP, y: k * ROW_GAP };
+    case "agent":
+      return { x: k * ACROSS, y: -(AGENT_Y + band * BAND) };
+    case "knowledge":
+      return { x: k * ACROSS, y: KNOWLEDGE_Y + band * BAND };
+    case "output":
+      return { x: k * ACROSS, y: OUTPUT_Y + band * BAND };
+  }
+}
+
+const topLeft = (c: XYPosition): XYPosition => ({
+  x: Math.round(c.x - NODE_W / 2),
+  y: Math.round(c.y - CIRCLE_ROW / 2),
+});
 
 const nodeClass =
   "rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export function nodeLabel(node: CanvasNode): string {
+  if (node.kind === "knowledge")
+    return `${node.title}, a view of the saved evidence, not an agent. Press Enter for details.`;
   const kind = node.kind === "domino" ? "" : `, ${KIND_LABEL[node.kind].toLowerCase()}`;
   return `${node.title}${kind}, ${STATUS_LABEL[node.status].toLowerCase()}. Press Enter for details.`;
 }
 
-/**
- * Radial web around the anchor (Domino, else the first node). Rings follow distance in the supplied
- * edges; each subtree gets a wedge sized by its leaf count. Positions only: no node or edge is added.
- * Cycles and shared dependencies keep their first (shortest) route, and a record with no route to
- * the anchor sits on the first ring. Returns top-left positions. Deterministic.
- */
-export function layout(nodes: CanvasNode[], edges: CanvasEdge[]): Map<string, XYPosition> {
-  const ids = [...new Set(nodes.map((node) => node.id))];
-  const first = ids[0];
-  if (first === undefined) return new Map();
-  const anchor = nodes.find((node) => node.kind === "domino")?.id ?? first;
-
-  const near = new Map<string, string[]>(ids.map((id) => [id, []]));
-  for (const edge of edges) {
-    if (edge.source === edge.target || !near.has(edge.source) || !near.has(edge.target)) continue;
-    near.get(edge.source)?.push(edge.target);
-    near.get(edge.target)?.push(edge.source);
-  }
-
-  const depth = new Map([[anchor, 0]]);
-  const kids = new Map<string, string[]>(ids.map((id) => [id, []]));
-  const queue = [anchor];
-  let head = 0;
-  const grow = () => {
-    for (; head < queue.length; head++) {
-      const from = queue[head] as string;
-      for (const next of near.get(from) ?? []) {
-        if (depth.has(next)) continue;
-        depth.set(next, (depth.get(from) ?? 0) + 1);
-        kids.get(from)?.push(next);
-        queue.push(next);
-      }
-    }
-  };
-  grow();
-  for (const id of ids) {
-    if (depth.has(id)) continue;
-    depth.set(id, 1);
-    kids.get(anchor)?.push(id);
-    queue.push(id);
-    grow();
-  }
-
-  const leaves = new Map<string, number>();
-  const countLeaves = (id: string): number => {
-    const children = kids.get(id) ?? [];
-    const total = children.length ? children.reduce((sum, c) => sum + countLeaves(c), 0) : 1;
-    leaves.set(id, total);
-    return total;
-  };
-  countLeaves(anchor);
-
-  const crowd = new Map<number, number>();
-  for (const level of depth.values()) crowd.set(level, (crowd.get(level) ?? 0) + 1);
-  const radius = [0];
-  for (let level = 1; level <= Math.max(...depth.values()); level++) {
-    const base = level === 1 ? RING_FIRST : (radius[level - 1] ?? 0) + RING_STEP;
-    radius[level] = Math.max(base, ((crowd.get(level) ?? 0) * ARC) / (2 * Math.PI));
-  }
-
-  const centers = new Map<string, XYPosition>([[anchor, { x: 0, y: 0 }]]);
-  const place = (id: string, theta: number, lo: number, hi: number) => {
-    const children = kids.get(id) ?? [];
-    // Past the anchor a wedge stays near the direction the node already points.
-    const from = id === anchor ? lo : Math.max(lo, theta - MAX_FAN / 2);
-    const to = id === anchor ? hi : Math.min(hi, theta + MAX_FAN / 2);
-    const ring = radius[(depth.get(id) ?? 0) + 1] ?? 0;
-    let edge = from;
-    for (const child of children) {
-      const start = edge;
-      edge += ((to - from) * (leaves.get(child) ?? 1)) / (leaves.get(id) ?? 1);
-      const angle =
-        children.length === 1 ? Math.min(to, Math.max(from, theta + BEND)) : (start + edge) / 2;
-      centers.set(child, { x: ring * Math.cos(angle), y: ring * Math.sin(angle) });
-      // A lone child keeps the open wedge so a chain can keep curving; branches split it.
-      if (children.length === 1) place(child, angle, lo, hi);
-      else place(child, angle, start, edge);
-    }
-  };
-  place(anchor, -Math.PI / 2, -Math.PI, Math.PI);
-
+/** Top-left slot for every node, in arrival order within its kind. Positions only; deterministic. */
+export function layout(nodes: CanvasNode[]): Map<string, XYPosition> {
+  const used = new Map<CanvasNodeKind, number>();
   const positions = new Map<string, XYPosition>();
-  for (const [id, c] of centers) {
-    positions.set(id, {
-      x: Math.round(c.x - NODE_W / 2),
-      y: Math.round(c.y - CIRCLE_ROW / 2),
-    });
+  for (const node of nodes) {
+    if (positions.has(node.id)) continue;
+    const index = used.get(node.kind) ?? 0;
+    used.set(node.kind, index + 1);
+    positions.set(node.id, topLeft(slot(node.kind, index)));
   }
   return positions;
+}
+
+// Presentation groups. They only frame real members: nothing runs "in" a group.
+export type Group = "sources" | "toolbox";
+export const GROUP_OF: Partial<Record<CanvasNodeKind, Group>> = {
+  source: "sources",
+  tool: "toolbox",
+};
+const GROUPS: { id: Group; kind: CanvasNodeKind }[] = [
+  { id: "sources", kind: "source" },
+  { id: "toolbox", kind: "tool" },
+];
+const ZONE_PAD = 20;
+const ZONE_HEAD = 48; // room for the two-line label above the first member
+
+export type ZoneData = { group: Group; count: number };
+export type ZoneNode = Node<ZoneData, "zone">;
+
+/**
+ * Bounding box of each group's current members (so a dragged member keeps its frame). An empty
+ * group frames the slot its first member would take, so "none yet" is visible, not hidden.
+ * Nothing is drawn for a lone idle Domino.
+ */
+export function zones(nodes: FlowNode[]): ZoneNode[] {
+  if (!nodes.some((node) => node.data.node.kind !== "domino")) return [];
+  return GROUPS.map(({ id, kind }) => {
+    const members = nodes.filter((node) => node.data.node.kind === kind);
+    const spots = members.length ? members.map((node) => node.position) : [topLeft(slot(kind, 0))];
+    const x = Math.min(...spots.map((p) => p.x)) - ZONE_PAD;
+    const y = Math.min(...spots.map((p) => p.y)) - ZONE_HEAD;
+    const right = Math.max(...spots.map((p) => p.x)) + NODE_W + ZONE_PAD;
+    const bottom = Math.max(...spots.map((p) => p.y)) + NODE_H + ZONE_PAD;
+    return {
+      id: `zone-${id}`,
+      type: "zone",
+      position: { x, y },
+      width: right - x,
+      height: bottom - y,
+      data: { group: id, count: members.length },
+      zIndex: -1,
+      selectable: false,
+      draggable: false,
+      focusable: false,
+      connectable: false,
+      deletable: false,
+      ariaRole: "group",
+      ariaLabel: `${id === "sources" ? "Sources" : "Toolbox"}: ${members.length} ${members.length === 1 ? "item" : "items"}`,
+      className: "pointer-events-none",
+    };
+  });
+}
+
+export const KNOWLEDGE_ID = "company-knowledge";
+
+/**
+ * Company knowledge is a view of evidence already saved on source records, so it is derived here
+ * and never invents a fact. It appears only once some source carries evidence.
+ */
+export function withKnowledge(nodes: CanvasNode[]): CanvasNode[] {
+  const items = new Map<string, CanvasEvidence>();
+  for (const node of nodes) {
+    if (node.kind !== "source") continue;
+    for (const item of node.evidence ?? []) if (!items.has(item.id)) items.set(item.id, item);
+  }
+  if (items.size === 0) return nodes;
+  return [
+    ...nodes,
+    {
+      id: KNOWLEDGE_ID,
+      kind: "knowledge",
+      title: "Company knowledge",
+      status: "succeeded",
+      summary:
+        "A view of the evidence already saved for this investigation. It is not an agent and does nothing on its own.",
+      evidence: [...items.values()],
+    },
+  ];
+}
+
+export const away = (c: CanvasConnection) =>
+  c === "loading" || c === "offline" || c === "unavailable";
+
+/** Content identity of a snapshot (ids and statuses), so a re-parsed identical array is not news. */
+export const fingerprint = (nodes: CanvasNode[]) =>
+  nodes.map((node) => `${node.id}:${node.status}`).join("|");
+
+/** Quiet-until-changed latch. `print` is the last snapshot seen; `held` means a recovery is pending. */
+export type Recovery = { held: boolean; print: string };
+
+/**
+ * Decide whether a delivery is history. Loading, offline and unavailable hold a latch. Once the
+ * connection is back, unchanged (cached) snapshots stay quiet, and so does the first changed one
+ * (the catch-up), which then releases the latch. Convex reports the socket connected before the
+ * query catches up and carries no freshness marker, so a genuine live step that is the very first
+ * change after a reconnect is also shown without motion. That is the deliberate conservative
+ * tradeoff: a missed pulse is better than replaying old work as new.
+ */
+export function settle(
+  recovery: Recovery,
+  connection: CanvasConnection,
+  incoming: CanvasNode[],
+): { quiet: boolean; recovery: Recovery } {
+  const print = fingerprint(incoming);
+  const held = recovery.held || away(connection);
+  if (!held) return { quiet: false, recovery: { held: false, print } };
+  const release = !away(connection) && print !== recovery.print;
+  return { quiet: true, recovery: { held: !release, print } };
+}
+
+export type Pulse = { key: string; edgeId: string };
+
+/**
+ * Pulses for newly recorded step activity: a node that is now running or done for the first time
+ * lights each dependency that points at it, once. A failed step never pulses, and quiet
+ * deliveries (restored history, reconnect) only remember what was already there. This marks
+ * recorded activity, not measured data transfer.
+ */
+export function pulsesFor(
+  seen: ReadonlySet<string>,
+  incoming: CanvasNode[],
+  edges: CanvasEdge[],
+  quiet: boolean,
+): { seen: Set<string>; pulses: Pulse[] } {
+  const next = new Set(seen);
+  const pulses: Pulse[] = [];
+  for (const node of incoming) {
+    const key = `${node.id}:${node.status}`;
+    if (next.has(key)) continue;
+    next.add(key);
+    if (quiet || (node.status !== "running" && node.status !== "succeeded")) continue;
+    for (const edge of edges) {
+      if (edge.target === node.id)
+        pulses.push({ key: `${edge.id}:${node.status}`, edgeId: edge.id });
+    }
+  }
+  return { seen: next, pulses };
 }
 
 export const overlaps = (a: XYPosition, b: XYPosition) =>
@@ -172,11 +275,10 @@ function freeSlot(slot: XYPosition, taken: XYPosition[]): XYPosition {
 export function toFlowNodes(
   current: FlowNode[],
   incoming: CanvasNode[],
-  edges: CanvasEdge[],
   quiet: boolean,
 ): FlowNode[] {
   const known = new Map(current.map((node) => [node.id, node]));
-  const positions = layout(incoming, edges);
+  const positions = layout(incoming);
   // Layout alone only knows this delivery; sequential siblings would land on top of earlier ones.
   const taken = incoming.flatMap((node) => known.get(node.id)?.position ?? []);
   return incoming.map((node) => {
@@ -214,10 +316,9 @@ export const graphFit = { padding: 0.2, maxZoom: 1 };
 export function deliver(
   current: FlowNode[],
   incoming: CanvasNode[],
-  edges: CanvasEdge[],
   options: { quiet: boolean; follow: boolean; reduced: boolean },
 ) {
-  const nodes = toFlowNodes(current, incoming, edges, options.quiet);
+  const nodes = toFlowNodes(current, incoming, options.quiet);
   const added = nodes.some((node) => !current.some((known) => known.id === node.id));
   const fit =
     added && options.follow
