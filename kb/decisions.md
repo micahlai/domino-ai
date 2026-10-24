@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Micah: label the particle control Hide particles / Show particles and clear the layer when disabled. Why: user direction; disabling emission should remove particles while chart transitions continue independently.
+
 - 2026-10-24 Micah: store one validated brief per company/week, show only saved grades/rules/briefs in company views, and notify on subsequent brief arrivals. Why: P6 must distinguish measured results from layout examples. R reloads saved results and ignores forms/dialogs; demo record times use Pacific time consistently across server and browser.
 
 - 2026-10-24 Micah: P5 reads action readiness from the backend and shows configuration/confirmation even when processing is unavailable. Why: product flows can be reviewed now while preserving truthful results until E5/E7 is implemented; unsupported credit-line changes must not be modeled as cash withdrawals.

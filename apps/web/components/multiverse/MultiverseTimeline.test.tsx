@@ -36,6 +36,6 @@ describe("timeline without animation", () => {
     expect(html).not.toContain('stroke-dasharray="0 1"');
     expect(html).not.toMatch(/NaN|Infinity/);
     expect(html).not.toContain("<canvas");
-    expect(html).not.toContain("Pause motion");
+    expect(html).not.toContain("Hide particles");
   });
 });

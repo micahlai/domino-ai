@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 12:42 Micah (Codex, particle visibility)
+- Done: Hide particles clears the Canvas and stops its drawing loop instead of retaining frozen particles. Show particles resumes emission; chart transitions remain independent. All 83 tests, typecheck, lint and production build pass. Browser verified hidden particles stay absent through scenario, cash-scale and fix-preview changes, then resume when enabled; console clean. Screenshot: /tmp/domino-particles-hidden.png.
+- Next: review at http://127.0.0.1:3007/c/kestrel in codex/p5-p6-flows.
+- Watch out: committed locally in the existing P5/P6 worktree; main and the separate timeline-controls worktree remain unchanged.
+
 ## 2026-10-24 04:01 Micah (Codex, combined product preview)
 - Done: reviewed and integrated V3 commit 7ddfc9c from its separate timeline-controls worktree into codex/p5-p6-flows after the P5 and P6 commits. No code conflicts; retained both knowledge-base histories and P6 phone-dialog sizing. Combined checks pass with 83 tests and production build. Port 3007 production browser verified independent scales/reset, removed dial, clicked event details, learning/record routes, illustrative accuracy chart and landing, without console errors. Screenshots: /tmp/domino-p5-p6-event.png and /tmp/domino-p6-record.png.
 - Next: review the combined preview at http://127.0.0.1:3007/c/kestrel. The separate timeline-only preview remains on port 3008. P5 remains review pending E5/E7 processing and credit-line contract support.

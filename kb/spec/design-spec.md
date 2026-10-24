@@ -95,7 +95,7 @@ type MultiverseTimelineProps = {
 
 Soft particles emit outward from the full length of each history and forecast curve, then fade. Allocate forecast particle counts in proportion to the supplied scenario probabilities within a shared budget; history uses a fixed baseline weight. Selection highlights a scenario's particles; fix previews move their emission origins with the chart geometry. Particle positions never change forecast values. Keep financial labels and paths readable; no flashes, portal effects, camera movement or background star field.
 
-A single Canvas layer samples curve coordinates on geometry changes and reuses typed buffers while drawing. Scale the budget with viewport width, capped at 720 particles / 32 tracks. Cap pixel ratio at 1.5 and stop the animation loop offscreen, in hidden tabs, and for reduced motion. Use 30 fps for coarse pointers and back off from 60 fps if drawing is persistently expensive. Offer Pause motion / Resume motion. The SVG remains the accessible, selectable source of forecast data.
+A single Canvas layer samples curve coordinates on geometry changes and reuses typed buffers while drawing. Scale the budget with viewport width, capped at 720 particles / 32 tracks. Cap pixel ratio at 1.5 and stop the animation loop offscreen, in hidden tabs, and for reduced motion. Use 30 fps for coarse pointers and back off from 60 fps if drawing is persistently expensive. Offer Hide particles / Show particles. Disabling clears the Canvas instead of leaving frozen particles; chart transitions remain independent. The SVG remains the accessible, selectable source of forecast data.
 
 The playground's ParticleMotion section repeats sample curves 30 times to exercise rendering; those copies are not additional financial forecasts.
 

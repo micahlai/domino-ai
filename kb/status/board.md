@@ -39,6 +39,8 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 
 | V3 | Timeline scales and event details | User request | V2 | done | codex/timeline-controls | Independent scales/reset, accessible event popup, slider removed; 76 tests/check/build and desktop/mobile review pass |
 
+| V4 | Hide disabled particles | User request | V3 | done | codex/p5-p6-flows | Clears particles without freezing chart transitions; checks, build and browser verified |
+
 ## Shared
 
 | ID | Task | Prompt | When |

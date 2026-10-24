@@ -64,7 +64,7 @@ export function MultiverseTimeline({
   const [pointerInPlot, setPointerInPlot] = useState(false);
   const reduced = useReducedMotion();
   const [ready, setReady] = useState(false);
-  const [motionEnabled, setMotionEnabled] = useState(true);
+  const [particlesEnabled, setParticlesEnabled] = useState(true);
   const id = useId().replace(/:/g, "");
   useEffect(() => {
     setReady(true);
@@ -181,9 +181,9 @@ export function MultiverseTimeline({
               variant="ghost"
               size="sm"
               className="min-h-9 text-xs text-muted-foreground"
-              onClick={() => setMotionEnabled((enabled) => !enabled)}
+              onClick={() => setParticlesEnabled((enabled) => !enabled)}
             >
-              {motionEnabled ? "Pause motion" : "Resume motion"}
+              {particlesEnabled ? "Hide particles" : "Show particles"}
             </Button>
           ) : null}
         </div>
@@ -209,7 +209,7 @@ export function MultiverseTimeline({
             width={width}
             height={graph.height}
             activeKey={activeParticleTrack ? futureKey(activeParticleTrack) : undefined}
-            enabled={motionEnabled}
+            enabled={particlesEnabled}
           />
         ) : null}
         <svg

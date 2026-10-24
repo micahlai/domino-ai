@@ -174,7 +174,7 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
         : running
           ? "running"
           : !settings.current.enabled
-            ? "paused"
+            ? "off"
             : document.hidden
               ? "hidden"
               : "offscreen";
@@ -183,7 +183,8 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
         for (const track of field.current.tracks) track.from = track.to;
         field.current.changed = elapsed.current - 0.6;
       }
-      if (reducedMotion.matches) context.clearRect(0, 0, width, height);
+      if (reducedMotion.matches || !settings.current.enabled)
+        context.clearRect(0, 0, width, height);
       else draw(elapsed.current, !running);
       if (running) {
         measuredFrom = 0;
