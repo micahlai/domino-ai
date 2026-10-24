@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:46 Codex brain (direct E4 dispatch)
+- Done: E3b merged at b7a6d93; post-merge check passes 197 tests/typechecks/lint. Created E4-multiverse in ../domino-E4 from f1ff60d and installed frozen dependencies offline. Claude Opus/high is running E4 directly with a 30-minute checkpoint under explicit user authorization.
+- Next: inspect /tmp/domino-E4-claude.log and worker Result, independently review the returned commit, then check and integrate. User need not relay prompts. Existing main remains verified.
+- Watch out: E4 not complete or reviewed yet. No second engine writer, particles, external data writes, push or deployment. Original worktrees and unrelated local work remain intact.
+
 ## 2026-10-24 02:44 Codex brain (E3b integration)
 - Done: directly dispatched Claude Opus for r2, audited aa1d876 with independent GPT-6.1 Sol, and reproduced both corrected churn cases. Branch check passes 181 tests; combined main passes 197 tests, five typechecks, lint and fresh production build. Task-card conflicts preserve Results and audit history.
 - Next: post-merge check, then create ../domino-E4 from passing main and directly dispatch Claude for kb/tasks/E4-multiverse.md. Independent review before E4 integration.
