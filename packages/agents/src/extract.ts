@@ -111,8 +111,9 @@ export function scanChatText(chatText: string): ChatTextScan {
     const body = unfence(match[1] ?? "").trim();
     const candidate = tryJson(body);
     if (candidate) scan.candidates.push(candidate);
-    // A broken JSON answer must not slip through as a plain-text brief.
-    else if (body.startsWith("{") || body.startsWith("[")) scan.malformedDelimited++;
+    // A broken JSON answer, or a fence unfence could not strip, must not slip through as a
+    // plain-text brief.
+    else if (/^(?:[{[]|```)/.test(body)) scan.malformedDelimited++;
     else scan.candidates.push({ text: body });
   }
   for (const match of chatText.matchAll(fenced)) {

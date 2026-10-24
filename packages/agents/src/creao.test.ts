@@ -329,6 +329,9 @@ describe("CREAO chat text extraction", () => {
       '  {"text": "Cash", }',
       '["Cash was close."',
       '```json\n{"text": "Cash was close.",}\n```',
+      // Incomplete fences: no closing fence, or a two-backtick close.
+      '```json\n{"text": "Cash was close."',
+      '```json\n{"text": "Cash was close."}\n``',
     ]) {
       await expect(categoryOf(extract({ chatText: wrap(body) }, "weeklyBrief"))).resolves.toBe(
         "no_result",
@@ -338,6 +341,9 @@ describe("CREAO chat text extraction", () => {
     await expect(
       extract({ chatText: wrap("Cash held up {mostly} this week.") }, "weeklyBrief"),
     ).resolves.toBe("Cash held up {mostly} this week.");
+    await expect(
+      extract({ chatText: wrap('```json\n{"text": "Fenced."}\n```') }, "weeklyBrief"),
+    ).resolves.toBe("Fenced.");
   });
 
   it("does not accept an echoed input object as a brief", async () => {
