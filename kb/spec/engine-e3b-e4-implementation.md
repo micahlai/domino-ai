@@ -1,6 +1,6 @@
 # E3b and E4 implementation brief
 
-Status: E3b final repair aa1d876 independently reviewed and integrated with current UI; combined 197-test check and production build pass. C1 and E3a are merged. Claude implements E4; Codex dispatches, audits and integrates under explicit user authorization.
+Status: E3b aa1d876 and E4 87de4f6 independently reviewed and integrated with the current UI. Combined 240-test check, five typechecks, lint and fresh production build pass. Claude implemented; Codex directly dispatched, audited and integrated under explicit user authorization. E5/E6/E7 wiring and safe persisted-data backfill remain separate.
 
 Decision: serialize E3b then E4. Both own packages/engine and E4 must reuse one rule evaluator. Counterargument: parallel implementation could start sooner, but duplicates cash/date logic and creates integration risk.
 

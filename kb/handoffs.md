@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:09 Codex brain (E4 integration)
+- Done: directly ran Claude E4 and repair; independently reviewed 87de4f6 with Sol/Astra and lead probes. All three blockers resolved. Combined main passes 240 tests, five typechecks, lint and fresh production build. Review: kb/reviews/E4-r1-87de4f6.md.
+- Next: finish merge/post-merge check, then move to provider adapters and connector/action wiring with safe seeded-data backfill. Engine calculation methods are implemented; grade/learn and persisted end-to-end flow remain open.
+- Watch out: generated IDs are opaque; fixture fixes do not automatically target generated risks. No live provider call, data reset, particle integration, push or deployment. Original worktrees and unrelated local files retained; Claude is stopped.
+
 ## 2026-10-24 02:59 Codex brain (E4 audit)
 - Done: Claude returned clean 2340ff8. Lead check passes 236 tests/typechecks/lint. Independent Sol/Astra reviews and lead probes found three blockers, documented in kb/reviews/E4-2340ff8.md; all tested scoring and sensitivity cases otherwise pass.
 - Next: directly run Claude E4-r1 for daily-risk retention, collision-free IDs and omission of unsupported signing dates. Re-review before merge; main remains at passing E3b integration.

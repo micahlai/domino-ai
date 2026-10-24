@@ -2,6 +2,8 @@
 
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
+- 2026-10-24 Codex brain: E4 history omits dated signing markers because Deal has no actual signing/close timestamp. Counterargument: signed/won status is useful, but assigning it an expected date invents historical precision. No contract expansion in this repair.
+
 - 2026-10-24 Codex brain: E4 labels spend-spike probability 0.3 as a demo assumption, compares probability-weighted money using exact ratios, and labels historical usable cash as using current restricted cash. Why: the records do not establish incident probability or historical restricted balances; assumptions must not masquerade as learned facts.
 
 - 2026-10-24 Jayden: Codex may run Claude directly for the engine work and perform the audits/integration. Why: explicit user authorization removes the manual prompt relay; it supersedes the generic human-launch guidance for this work. Keep one engine writer and the existing review gates.
@@ -28,5 +30,3 @@ Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 - 2026-10-23 Team: Convex is the only database. Capital One Nessie is the bank. Why: live UI updates; sponsor tracks with a real job.
 - 2026-10-23 Team: vertical is B2B software, seat is FP&A cash forecasting. Why: mentor feedback; rich cash-timing problems; public peers for realism.
 - 2026-10-23 Team: not entering Anthropic "Claude for Public Benefit" or Cartesia. Why: no real fit.
-
-- 2026-10-24: E4 history omits dated signing markers because Deal has no actual signing/close timestamp. Counterargument: signed/won status is useful, but assigning it an expected date invents historical precision. No contract expansion in this repair.

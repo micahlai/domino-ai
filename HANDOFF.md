@@ -1,9 +1,10 @@
 # Domino handoff
-## 2026-10-24: E3b integrated; Claude E4 running
+## 2026-10-24: E3b and E4 integrated after direct Claude execution
 - Goal: Claude implements; Codex directly dispatches, audits and integrates. User authorized running Claude without relaying prompts. Particle work remains deferred.
-- Done: b7a6d93 merges E3b aa1d876 into main alongside P3/P4/I1, E3a/C1/E1a/E6a. Independent GPT-6.1 Sol cleared r2, and lead probes confirm both churn cases no longer invent causal arrows. Combined 197 tests, five typechecks, lint and fresh production build pass.
-- Active: Claude E4 completed 2340ff8 in ../domino-E4. Lead full check passes 236 tests, five typechecks and lint. Independent review found three blockers: missed daily risks, colliding universe IDs and expectedClose presented as actual signing history. E4 is unmerged.
-- Next exact step: directly dispatch Claude Opus with kb/tasks/E4-r1-daily-risk-identity-history.md and kb/reviews/E4-2340ff8.md, then re-review exact cases and run branch/combined/post-merge checks. Log /tmp/domino-E4-r1-claude.log. No competing engine writer.
-- Review evidence: kb/reviews/E3b-r2-aa1d876.md and prior audit history. Broad churn may omit valid causal links conservatively. Daily rules and exact money repairs remain intact.
-- Preservation: .env.example changes, CREAO notes/cards and untracked web tooling remain outside integration. No ignored env changes, push, deployment, data reset or worktree deletion. All original worker checkouts retained; do not launch another writer in them. E6b adapters and safe seeded-data backfill remain open.
+- Done: E3b aa1d876 merged at b7a6d93. E4 2340ff8 plus repair 87de4f6 are reviewed and integrated alongside P3/P4/I1, E3a/C1/E1a/E6a. Independent Sol/Astra reviews and lead probes clear the recorded blockers. Combined 240 tests, five typechecks, lint and fresh production build pass.
+- Current engine: forecast, dominoes, scanRisks, scoreFix, rankFixes, history, pastEvents and stressTest implemented. grade/learn remain placeholders. No claim that Convex actions already use these functions or live provider credentials work.
+- Next exact step: finish merge and post-merge check; then scope Claude's provider-adapter and connector/action work from the existing E5/E6/E7 dependencies. Preserve actual generated risk IDs, load ancestor context once, and plan an idempotent C1 seed backfill that preserves approvals. Do not reset data.
+- Reviews: kb/reviews/E3b-r2-aa1d876.md and kb/reviews/E4-r1-87de4f6.md. Broad churn may omit causal links conservatively; daily-only risks retain zero low-point impact under the chosen ranking. No invented signing dates; current restricted cash is a disclosed historical assumption.
+- Workers: Claude E4 is finished, clean at 87de4f6 in ../domino-E4. Logs /tmp/domino-E4-claude.log and /tmp/domino-E4-r1-claude.log. No active implementation writer. Original E3b/E4 and other worktrees retained; no deletion authorized.
+- Preservation: .env.example changes, CREAO notes/cards and untracked web tooling remain outside integration. No ignored env changes, push, deployment, particle integration or external data write.
 - Servers: temporary UI preview localhost:3012 stopped and browser tab closed. No server owned by this integration remains. Screenshot /tmp/domino-ui-integration.png verifies illustrative fixture UI only.

@@ -11,7 +11,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 | E1 | Simulator: Kestrel + EDGAR calibration + `sim:print` | `prompts/engine/E1-simulator.md` | S0 | doing | main | E1a merged at 5762475; later E1 slices remain open |
 | E2 | Mock servers (Stripe, CRM, cards, books, payroll, docs) + Nessie seeding + `pnpm seed` | `prompts/engine/E2-mocks-and-seed.md` | E1 | todo | | |
 | E3 | Engine: forecast, changes, dominoes | `prompts/engine/E3-forecast-dominoes.md` | S0 | done | main | E3a/C1 plus independently reviewed E3b aa1d876 integrated; combined 197 tests/check/build pass |
-| E4 | Engine: risks, fix scoring, history, stress test | `kb/tasks/E4-multiverse.md` | E3b merged | doing | E4-multiverse | 2340ff8 passes 236 tests but has three audit blockers; Claude repair E4-r1 next |
+| E4 | Engine: risks, fix scoring, history, stress test | `kb/tasks/E4-multiverse.md` | E3b merged | done | main | Claude 2340ff8 + reviewed repair 87de4f6 integrated; combined 240 tests/check/build pass |
 | E5 | Connectors + tie-out (Convex actions) | `prompts/engine/E5-connectors.md` | E2, P2 | todo | | |
 | E6 | Agents: CREAO + Claude adapters | `prompts/engine/E6-agents.md` | S0 | doing | main | E6a merged at 63366ae; live adapters remain open |
 | E7 | Wire actions: connect.run, recompute, week.advance; grade + learn | `prompts/engine/E7-wiring-learning.md` | E4, E5, E6 | todo | | |
@@ -20,7 +20,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 ### First slices
 
 Plan: `kb/tasks/launch-plan-2026-10-24.md`. These slices need the verified offline S0 gate, not live credentials.
-E1 and E6 follow-up slices remain open. E3a, C1 and independently reviewed E3b aa1d876 are integrated with P3/P4 and I1. Combined checks pass 197 tests, five typechecks, lint and a fresh production build. Post-merge checks also passed; Claude E4 is running from f1ff60d. Only one engine writer at a time.
+E1 and E6 follow-up slices remain open. E3a, C1 and independently reviewed E3b aa1d876 are integrated with P3/P4 and I1. E4 87de4f6 is also independently reviewed and integrated; combined checks pass 240 tests, five typechecks, lint and a fresh production build. No engine writer is active.
 
 | ID | Task card | Dependency | Status | Reserved branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | ID | Task card | Dependency | Status | Planned branch | Worktree |
 | --- | --- | --- | --- | --- | --- |
 | E3b | `kb/tasks/E3b-dominoes.md` | C1 and E3a merged | done | E3b-dominoes | aa1d876 independently reviewed and integrated; original worktree retained |
-| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | doing | E4-multiverse | ../domino-E4 at 2340ff8; direct Claude E4-r1 repair next |
+| E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | done | E4-multiverse | 87de4f6 reviewed and integrated; ../domino-E4 retained |
 
 ## Product (Micah)
 
