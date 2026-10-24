@@ -13,6 +13,7 @@ import {
   IDLE_DOMINO,
   NODE_W,
   deliver,
+  graphFit,
   layout,
   overlaps,
   safeHref,
@@ -369,6 +370,33 @@ describe("graph", () => {
       const b = two.find((n) => n.id === "src-2");
       expect(a?.position).toEqual(ideal);
       expect(overlaps(a?.position as never, b?.position as never)).toBe(false);
+    });
+
+    it("keeps a new two-line node clear of an old circle's actual rendered box", () => {
+      // A node renders 144 x 126 (circle 72 + gap 6 + two-line title 32 + status 16), so the
+      // rectangles themselves, not NODE_BOX, must not intersect.
+      const [W, H] = [144, 126];
+      const twoLine = (id: string): CanvasNode => ({
+        ...node(id),
+        title: "A sufficiently long title that wraps onto two lines",
+      });
+      const nodes = [IDLE_DOMINO, twoLine("old"), twoLine("new")];
+      const all = [link("domino", "old"), link("domino", "new")];
+      const ideal = layout(nodes, all).get("new") as { x: number; y: number };
+      for (const dy of [-126, -116, 0, 100, 116, 126]) {
+        const one = toFlowNodes([], nodes.slice(0, 2), all.slice(0, 1), true).map((n) =>
+          n.id === "old" ? { ...n, position: { x: ideal.x, y: ideal.y + dy } } : n,
+        );
+        const two = toFlowNodes(one, nodes, all, false);
+        const a = two.find((n) => n.id === "old")?.position as { x: number; y: number };
+        const b = two.find((n) => n.id === "new")?.position as { x: number; y: number };
+        expect(a).toEqual({ x: ideal.x, y: ideal.y + dy });
+        expect(Math.abs(a.x - b.x) >= W || Math.abs(a.y - b.y) >= H).toBe(true);
+      }
+    });
+
+    it("fits the whole web without its own zoom floor", () => {
+      expect(graphFit).not.toHaveProperty("minZoom");
     });
 
     it("keeps every node apart across many single-record deliveries", () => {

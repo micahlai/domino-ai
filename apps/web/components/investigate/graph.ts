@@ -32,15 +32,18 @@ export const STATUS_LABEL: Record<CanvasStatus, string> = {
 // centers at (NODE_W / 2, CIRCLE_ROW / 2) and layout can reason in circle centers.
 export const NODE_W = 144;
 export const CIRCLE_ROW = 72;
-// Space one node (circle plus a two-line label) claims. Two nodes closer than this on both axes overlap.
-export const NODE_BOX = { w: 150, h: 116 };
-const RING_FIRST = 190;
-const RING_STEP = 150;
+// A rendered node is NODE_W x NODE_H: circle row 72, gap 6, two-line title 32, status line 16.
+// NODE_BOX adds a gap, so two nodes closer than this on both axes overlap or nearly touch.
+const NODE_H = 126;
+export const NODE_BOX = { w: NODE_W + 8, h: NODE_H + 12 };
+// Rings stay close so outputs are not far from the anchor and a full fit stays readable.
+const RING_FIRST = 196; // a diagonal neighbour of the anchor still clears NODE_BOX
+const RING_STEP = 140;
 const ARC = 140; // least ring length each node on a ring needs, so crowded rings grow instead of overlap
 const BEND = 0.6; // radians a lone child turns away from its parent, so a chain curves instead of lining up
 const MAX_FAN = (2 * Math.PI) / 3;
-const PUSH = 24;
-const MAX_PUSH = 300;
+const PUSH = 12; // small steps so a pushed node sits just clear, not a whole step too far
+const MAX_PUSH = 600;
 
 const nodeClass =
   "rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -201,8 +204,8 @@ export function toFlowNodes(
 
 // Shared by the initial fit, the Fit View button and auto-follow so a lone node never jumps to maxZoom.
 export const loneFit = { padding: 0.8, maxZoom: 1 };
-// minZoom keeps labels readable on a big web; the person pans for the rest.
-export const graphFit = { padding: 0.2, maxZoom: 1, minZoom: 0.6 };
+// No zoom floor of its own: a full fit must show the whole web. The person zooms in to read.
+export const graphFit = { padding: 0.2, maxZoom: 1 };
 
 /**
  * One delivery: the next nodes plus the fit to run, if any. The view follows new nodes until the

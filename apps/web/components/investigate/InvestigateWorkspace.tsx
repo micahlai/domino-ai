@@ -491,7 +491,7 @@ function Workspace({
               style={flowStyle}
               fitView
               fitViewOptions={fitOptions}
-              minZoom={0.3}
+              minZoom={0.1}
               maxZoom={2}
               nodesConnectable={false}
               deleteKeyCode={null}
