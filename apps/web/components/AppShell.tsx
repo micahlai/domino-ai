@@ -22,6 +22,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     pathname.split("/")[1] === "c"
       ? pathname.split("/")[2]
       : (process.env.NEXT_PUBLIC_DEMO_COMPANY_ID ?? "kestrel");
+  // The agent canvas owns the whole window and pins Original tokens, so it skips the shared header.
+  if (pathname.startsWith("/investigate")) {
+    return (
+      <main id="main" className="min-h-dvh">
+        {children}
+      </main>
+    );
+  }
   const showNavigation = pathname !== "/";
   // The historical page is real 2U history, not the Kestrel demo company.
   const sidebarTitle = pathname.startsWith("/historical")
