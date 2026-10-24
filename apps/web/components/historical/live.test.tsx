@@ -19,6 +19,7 @@ import {
   readActivity,
   useHistoricalQueries,
 } from "./HistoricalLive";
+import { HistoricalReplay } from "./HistoricalReplay";
 import {
   type AlternativeData,
   type BaselineData,
@@ -356,6 +357,51 @@ describe("alternative association", () => {
     });
     expect(out).toContain("only shown after the reveal");
     expect(out).not.toContain("hypothetical, cost only");
+  });
+});
+
+describe("alternative without a reveal", () => {
+  const futureCase = caseData(true);
+  const early = buildView({
+    caseData: futureCase,
+    baseline: baseline(),
+    alternative: alternative(),
+  });
+
+  it("shows the saved alternative but no observed value, evidence or date, even from a post-reveal case", () => {
+    expect(early.alternative).toBeDefined();
+    expect(early.stage).toBe("baseline");
+    expect(early.observed).toEqual([]);
+    expect(early.comparison).toEqual([]);
+    expect(early.dates.revealedOn).toBeUndefined();
+    expect(early.evidence.some((e) => e.id.startsWith("revealed:"))).toBe(false);
+    expect(early.evidence.some((e) => e.id === "alt:forecast")).toBe(true);
+    expect(JSON.stringify(early)).not.toContain("6068900000");
+  });
+
+  it("never says the shown alternative is not revealed yet, and keeps the other views truthful", () => {
+    const out = renderToStaticMarkup(<HistoricalReplay view={early} activity={<span />} />);
+    expect(out).toContain("hypothetical, cost only");
+    expect(out).toContain("Post-hoc: chosen with the outcome known");
+    expect(out).not.toContain("not revealed yet");
+    expect(out).toContain("2. What was reported (not available yet)");
+    const base = renderToStaticMarkup(
+      <HistoricalReplay view={buildView({ caseData: caseData(false), baseline: baseline() })} />,
+    );
+    expect(base).toContain("3. One alternative (not available yet)");
+  });
+
+  it("is unchanged once revealed, and an invalid alternative is still refused by its check", () => {
+    const revealed = buildView({
+      caseData: futureCase,
+      baseline: baseline(),
+      reveal,
+      alternative: alternative(),
+    });
+    expect(revealed.stage).toBe("response");
+    expect(revealed.dates.revealedOn).toBe("2024-02-12");
+    expect(revealed.alternative).toBeDefined();
+    expect(alternativeIssue(baseline(), alternative("baseline-ffffffffffffffff"))).toBeDefined();
   });
 });
 

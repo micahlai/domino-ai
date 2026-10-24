@@ -7,10 +7,8 @@ import { HistoricalReplay } from "../../historical/HistoricalReplay";
 import {
   type AlternativeData,
   AlternativeDataSchema,
-  type BaselineData,
   BaselineDataSchema,
   CASE_ID,
-  type CaseData,
   CaseDataSchema,
   RevealDataSchema,
   alternativeIssue,
@@ -55,31 +53,6 @@ export function useOutputQueries({ stage, baselineRunId, altRunId, revealed }: O
 }
 
 const loading = <HistoricalReplay status="loading" />;
-
-/**
- * buildView only attaches an alternative once a reveal agrees, so give it an empty one (no
- * comparisons, so no observed value or evidence can enter) and strip what that implies: the
- * revealed stage, the reveal date and the comparison rows. Nothing is computed here.
- */
-function savedAlternativeView(
-  caseData: CaseData,
-  baseline: BaselineData,
-  alternative: AlternativeData,
-) {
-  const shown = buildView({
-    caseData: { ...caseData, revealed: true },
-    baseline,
-    reveal: {
-      runId: baseline.run.id,
-      revealedThrough: caseData.knowledgeCutoff,
-      revealedAt: "",
-      comparisons: [],
-    },
-    alternative,
-  });
-  const { revealedOn: _, ...dates } = shown.dates;
-  return { ...shown, stage: "baseline" as const, dates, comparison: [] };
-}
 
 /** From already-fetched results, so it renders without hooks. Unknown is never drawn as empty. */
 export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw: Raw }) {
@@ -145,15 +118,12 @@ export function FinancialOutputView({ target, raw }: { target: OutputTarget; raw
     alternative = parsed.data;
   }
 
-  const view =
-    early && alternative
-      ? savedAlternativeView(caseData.data, baseline.data, alternative)
-      : buildView({
-          caseData: caseData.data,
-          baseline: baseline.data,
-          reveal: revealData,
-          alternative,
-        });
+  const view = buildView({
+    caseData: caseData.data,
+    baseline: baseline.data,
+    reveal: revealData,
+    alternative,
+  });
   // A hidden element replaces the replay's default "activity not connected" panel, which does
   // not apply to a conversation.
   return <HistoricalReplay view={view} activity={<span hidden />} />;

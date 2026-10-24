@@ -9,4 +9,8 @@
 - **Skills:** /orchestrator /ponytail full, taste/ui-ux-pro-max. OneSonnet/high nochildren, bounded30min. Focusedtests/typecheck/lint only; nofullsuite/build/server/browser/livecalls/keys/push/merge/sharednotes. Commitlocal Result thenstop. Otheragents present, preserve their edits.
 
 ## Result
-- Pending.
+- Done. `buildView` now attaches a validated saved alternative without a reveal; only observed fields, comparison rows and the reveal date stay gated on a successful reveal. Stage stays `baseline` until revealed. `savedAlternativeView` (fake reveal) is deleted from `FinancialOutput.tsx`. `alternativeIssue` checks and `HistoricalLive` (which still passes an alternative only after a reveal) are unchanged.
+- Journey in `HistoricalReplay`: steps now say "(not available yet)" instead of "(not revealed yet)", and the alternative step counts as available whenever an alternative is shown, independent of the reveal.
+- `adapt.ts`: the stored `instructionsScope` is read from the profile and shown as the specialist node summary (visible detail slot), as saved. Nothing invented. `appId` is not surfaced.
+- Tests added: baseline, early alternative (including a post-reveal raw case: no observed value, evidence or date), revealed alternative, invalid alternative, label wording, scope survives the adapter. Run: `vitest` on `components/historical` and `components/investigate` (121 passed), `tsc --noEmit`, `biome check`. Not run: full suite, build, server, browser, live calls.
+- Not done: no browser check of the label or summary wording.

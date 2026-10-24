@@ -152,6 +152,14 @@ describe("FinancialOutputView", () => {
       expect(out).not.toContain("Feb 12, 2024");
       expect(out).not.toContain("revealed:");
       expect(out).not.toContain("Saved forecast versus what was reported");
+      expect(out).not.toContain("not revealed yet");
+    });
+
+    it("shows nothing future even when the case record is already post-reveal", () => {
+      const out = html(early, { ...raw, case: { ...raw.case, revealed: true } });
+      expect(out).toContain("hypothetical, cost only");
+      expect(out).not.toMatch(/60[.,]?689|\$60\.7M/);
+      expect(out).not.toContain("Disclosure published");
     });
 
     it("does not read the reveal, so a failing reveal read cannot surface", () => {

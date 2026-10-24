@@ -385,7 +385,9 @@ export function buildView({ caseData, baseline, reveal, alternative }: ViewInput
     const f = c.status === "scored" ? observedFacts.get(c.observationFactId) : undefined;
     return f ? [factEvidence(f, caseData.case, "revealed")] : [];
   });
-  const alt = revealed && alternative ? alternativeView(alternative) : undefined;
+  // A saved alternative needs no reveal: it is a projection and never reads observed values.
+  // Callers still own the alternativeIssue check; the reveal gates only the observed fields.
+  const alt = alternative ? alternativeView(alternative) : undefined;
   const altEvidence: HistoricalEvidence[] =
     alt && alternative
       ? [
@@ -412,7 +414,7 @@ export function buildView({ caseData, baseline, reveal, alternative }: ViewInput
   };
   return {
     ...common,
-    stage: alt ? "response" : revealed ? "observed" : "baseline",
+    stage: revealed ? (alt ? "response" : "observed") : "baseline",
     dates: {
       knowledgeCutoff: localDate(run.knowledgeCutoff),
       lastReportedOn: origin?.d ?? run.originBalanceDate,

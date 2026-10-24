@@ -61,6 +61,7 @@ const Profile = z.object({
   version: z.string(),
   tools: z.array(z.string()),
   knowledgeCutoff: z.string().optional(),
+  instructionsScope: z.string().optional(),
 });
 
 const SourceOutput = z.object({
@@ -108,14 +109,18 @@ const STEP_FOR_OUTPUT: Partial<Record<Operation["kind"], OutputStage>> = {
 
 const UNREADABLE = "The saved result was not in the expected shape, so it is not shown.";
 
-function profileOf(op: Operation): CanvasProfile | undefined {
+function profileOf(op: Operation): { profile: CanvasProfile; scope?: string } | undefined {
   const parsed = Profile.safeParse(op.profile);
   if (!parsed.success) return undefined;
+  const { instructionsScope, ...rest } = parsed.data;
   // Provider and model are whatever was saved. Absent stays absent: it is never guessed.
   return {
-    ...parsed.data,
-    ...(op.provider ? { provider: op.provider } : {}),
-    ...(op.model ? { model: op.model } : {}),
+    profile: {
+      ...rest,
+      ...(op.provider ? { provider: op.provider } : {}),
+      ...(op.model ? { model: op.model } : {}),
+    },
+    scope: instructionsScope,
   };
 }
 
@@ -177,14 +182,17 @@ function operationNode(op: Operation): CanvasNode {
       : op.status === "failed"
         ? (op.error?.message ?? "This step failed and no reason was recorded.")
         : undefined;
-  const profile = specialist ? profileOf(op) : undefined;
+  const saved = specialist ? profileOf(op) : undefined;
+  const profile = saved?.profile;
+  // The stored note on what the supplied rules cover is shown as saved, in the visible summary slot.
+  const shownSummary = summary ?? saved?.scope;
 
   return {
     id: op.operationId,
     kind: op.kind === "source_load" ? "source" : specialist ? "agent" : "tool",
     title: op.title,
     status,
-    ...(summary ? { summary } : {}),
+    ...(shownSummary ? { summary: shownSummary } : {}),
     ...(text ? { outputText: text } : {}),
     ...(error ? { error } : {}),
     ...(evidence?.length ? { evidence } : {}),
