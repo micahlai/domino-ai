@@ -20,7 +20,7 @@
 
 ## CREAO "AI-First Disruptor"
 - [ ] A CREAO agent does core work: learning the company (mapSource, readConstraints)
-- [ ] Agent ids: mapSource `____`, constraints `____`, brief `____`
+- [x] Agent ids: mapSource `02a902ae-5e45-425b-9b1b-62882b57f4f4`, constraints `fde63788-fe39-436d-abd7-10d6f651e61a`, brief `6d6cad92-08c5-4091-b78c-a1252d8f1e5d`
 - [ ] One run share link per agent in the README
 - [ ] Select the CREAO track on Devpost
 

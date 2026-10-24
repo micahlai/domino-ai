@@ -60,3 +60,11 @@ Before you push: `pnpm check` (typecheck, tests, lint).
 - **Seats it fills:** the FP&A analyst who owns the cash forecast, working with the controller and CFO.
 - **What is real and what is simulated:** see `kb/product/proof.md`.
 - **CREAO agent ids and run links:** see `kb/product/submission.md`.
+
+CREAO agents (one required `prompt` textarea containing the job input as JSON):
+
+- [Domino Source Mapper](https://agent.creao.ai/apps/02a902ae-5e45-425b-9b1b-62882b57f4f4): `02a902ae-5e45-425b-9b1b-62882b57f4f4`
+- [Domino Constraint Reader](https://agent.creao.ai/apps/fde63788-fe39-436d-abd7-10d6f651e61a): `fde63788-fe39-436d-abd7-10d6f651e61a`
+- [Domino Weekly Brief](https://agent.creao.ai/apps/6d6cad92-08c5-4091-b78c-a1252d8f1e5d): `6d6cad92-08c5-4091-b78c-a1252d8f1e5d`
+
+API setup and response handling are documented in `kb/research/sponsors.md`. Credentials stay in the ignored root `.env`; the E6 adapter still needs implementation.

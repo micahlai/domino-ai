@@ -21,7 +21,7 @@ Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | codex/p1-web-shell | Local setup verified; team access and integration keys still need Micah |
+| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | CREAO local setup complete: all five .env fields, three private agents, API mock runs and checks pass; other service access remains unverified |
 | P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
 | P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | todo | | |
 | P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | todo | | Prototype in /playground |
