@@ -18,6 +18,7 @@ import { money } from "./dominoes";
 import { forecast } from "./forecast";
 import { assertBank, compare, mean, scoreWeeks, toPct } from "./grade";
 import type { Ratio } from "./money";
+import { isOrganicPayment } from "./schedule";
 
 const MIN_SAMPLES = 3;
 
@@ -113,7 +114,7 @@ function learnDelays(snapshot: Snapshot): LearnedDelay[] {
   assertUniqueIds(snapshot.invoices, "invoice");
   const byCustomer = new Map<string, Invoice[]>();
   for (const inv of snapshot.invoices) {
-    if (!inv.paid) continue;
+    if (!isOrganicPayment(inv)) continue;
     [inv.issued, inv.due, inv.paid].forEach(toMs);
     if (inv.paid > snapshot.asOf || inv.issued > inv.paid) continue;
     byCustomer.set(inv.customerId, [...(byCustomer.get(inv.customerId) ?? []), inv]);

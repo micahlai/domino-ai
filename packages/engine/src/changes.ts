@@ -36,10 +36,11 @@ function applyOne(
       return items.filter((i) => !isItem(i, "invoice", change.invoiceId));
     case "churn":
       requireRecord(snapshot.customers, change.customerId, "customer");
+      // Pending payouts are already collected, so churn leaves them.
       return items.filter(
         (i) =>
           !(
-            (i.kind === "invoice" || i.kind === "deal") &&
+            (i.kind === "invoice" || i.kind === "deal" || i.kind === "plan") &&
             i.customerId === change.customerId &&
             i.date >= change.fromDate
           ),

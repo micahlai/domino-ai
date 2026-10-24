@@ -174,7 +174,7 @@ const invoiceItem = (schedule: CashSchedule, id: string) =>
 /**
  * The highest-ranked risk with exactly one delay_invoice change for an open invoice whose
  * unmodified receipt is inside the horizon. Searches extra days from 0 through the first day the
- * receipt leaves the horizon; reports total lateness including the model's rounded mean.
+ * receipt leaves the horizon; reports total lateness from the original due date.
  */
 function delayPoint(
   snapshot: Snapshot,
@@ -193,8 +193,10 @@ function delayPoint(
   const fails = (days: number) => delayFails(snapshot, model, constraints, pick.id, days);
   const extra = smallestFailing(daysBetween(pick.date, end) + 1, fails);
   if (extra === undefined) return [];
-  const mean = Math.round(model.customerDelayDays[pick.customerId ?? ""]?.mean ?? 0);
-  const total = mean + extra;
+  // Lateness from the original due date to the forecast receipt, which already holds the
+  // rounded mean, an issuance clamp or an agreed collection date.
+  const due = snapshot.invoices.find((i) => i.id === pick.id)?.due ?? pick.date;
+  const total = daysBetween(due, pick.date) + extra;
   const name = snapshot.customers.find((c) => c.id === pick.customerId)?.name ?? pick.customerId;
   return [
     { label: `${name} paying ${total} or more days late`, threshold: total, unit: "days_late" },

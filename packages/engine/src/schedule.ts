@@ -1,12 +1,14 @@
-import type { Cents, CompanyModel, ISODate, Snapshot } from "@domino/contracts";
-import { addDays, toMs, weekIndexOf } from "./dates";
+import type { Cents, CompanyModel, ISODate, Invoice, Snapshot } from "@domino/contracts";
+import { addDays, addMonthsClamped, horizonEnd, monthsBetween, toMs, weekIndexOf } from "./dates";
 
 /** One dated cash movement. Positive = money in, negative = money out. */
 export type CashItem = {
-  kind: "invoice" | "deal" | "bill" | "payroll" | "recurring" | "change";
-  /** Source record id, or the change label */
+  kind: "invoice" | "deal" | "plan" | "payout" | "bill" | "payroll" | "recurring" | "change";
+  /** Source record id, the change label, or JSON [planId, issueDate] for a planned occurrence */
   id: string;
   customerId?: string;
+  /** Billing plan behind a "plan" occurrence */
+  planId?: string;
   date: ISODate;
   amount: Cents;
 };
@@ -32,17 +34,25 @@ export function baseSchedule(
   const last = weeks[weeks.length - 1];
   if (!last) throw new Error("no weeks");
   assertUniqueBillIds(snapshot);
-  const horizonEnd = toMs(addDays(last, 7));
+  const endMs = toMs(addDays(last, 7));
   const items: CashItem[] = [];
   for (const inv of snapshot.invoices) {
-    if (inv.paid) continue;
-    const date = addDays(inv.due, delayDays(model, inv.customerId));
+    if (inv.paid || inv.writtenOff) continue;
+    // An observable agreement replaces the inferred date and the original amount.
+    const date =
+      inv.collection?.payOn ??
+      notBefore(addDays(inv.due, delayDays(model, inv.customerId)), inv.issued);
+    const amount = inv.collection?.amount ?? inv.amount;
+    items.push({ kind: "invoice", id: inv.id, customerId: inv.customerId, date, amount });
+  }
+  items.push(...planReceipts(snapshot, model, horizonEnd(weeks)));
+  // Collected already, so customer churn or invoice changes cannot cancel it.
+  for (const payout of snapshot.pendingPayouts ?? []) {
     items.push({
-      kind: "invoice",
-      id: inv.id,
-      customerId: inv.customerId,
-      date,
-      amount: inv.amount,
+      kind: "payout",
+      id: payout.id,
+      date: payout.expectedArrival,
+      amount: payout.amount,
     });
   }
   for (const deal of uninvoicedSignedDeals(snapshot)) {
@@ -60,8 +70,15 @@ export function baseSchedule(
       amount: deal.amount,
     });
   }
+  // Deadline rules still read bill.due; only the cash date follows the agreement.
   for (const bill of snapshot.bills) {
-    if (!bill.paid) items.push({ kind: "bill", id: bill.id, date: bill.due, amount: -bill.amount });
+    if (!bill.paid)
+      items.push({
+        kind: "bill",
+        id: bill.id,
+        date: bill.agreedPayOn ?? bill.due,
+        amount: -bill.amount,
+      });
   }
   // Runs on or before asOf already left the bank and are in cashOnHand.
   for (const run of snapshot.payroll) {
@@ -73,10 +90,51 @@ export function baseSchedule(
   for (const spend of model.recurringSpend) {
     for (
       let date = addDays(snapshot.asOf, spend.everyDays);
-      toMs(date) < horizonEnd;
+      toMs(date) < endMs;
       date = addDays(date, spend.everyDays)
     ) {
       items.push({ kind: "recurring", id: spend.label, date, amount: -spend.amount });
+    }
+  }
+  return items;
+}
+
+/**
+ * A paid invoice whose timing reflects the customer's own habit. An agreed collection or a
+ * discounted settlement was negotiated, so its date is not organic delay evidence.
+ */
+export const isOrganicPayment = (inv: Invoice): inv is Invoice & { paid: string } =>
+  inv.paid !== undefined &&
+  inv.collection === undefined &&
+  (inv.paidAmount === undefined || inv.paidAmount === inv.amount);
+
+// Same-shape ISO dates order correctly as strings.
+const notBefore = (date: ISODate, floor: ISODate) => (date < floor ? floor : date);
+
+/**
+ * Unissued occurrences from each plan's cursor, issued on or before the horizon end (a later
+ * issue can never be received inside it) and endDate. Receipt = issue + plan terms + rounded
+ * learned delay, never before issue. Issued occurrences are already invoices, so none repeat.
+ */
+function planReceipts(snapshot: Snapshot, model: CompanyModel, lastDay: ISODate): CashItem[] {
+  const items: CashItem[] = [];
+  for (const plan of snapshot.billingPlans ?? []) {
+    const stop = plan.endDate !== undefined && plan.endDate < lastDay ? plan.endDate : lastDay;
+    const start = monthsBetween(plan.anchorDate, plan.nextInvoiceDate);
+    for (let k = start; ; k += plan.everyMonths) {
+      const issued = addMonthsClamped(plan.anchorDate, k);
+      if (issued > stop) break;
+      const terms = plan.paymentTermsDays + delayDays(model, plan.customerId);
+      items.push({
+        kind: "plan",
+        // An encoded tuple: distinct plan/date pairs never share an ID. Changes and dominoes
+        // match by kind too, so an invoice whose ID happens to equal this is never confused.
+        id: JSON.stringify([plan.id, issued]),
+        planId: plan.id,
+        customerId: plan.customerId,
+        date: notBefore(addDays(issued, terms), issued),
+        amount: plan.amount,
+      });
     }
   }
   return items;

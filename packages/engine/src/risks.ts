@@ -15,6 +15,7 @@ import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecas
 import { compareIds } from "./funding";
 import { decimalRatio } from "./money";
 import { evaluateOnSchedule } from "./rules";
+import { isOrganicPayment } from "./schedule";
 
 const MAX_RISKS = 5;
 const LATE_DAYS = 14;
@@ -93,19 +94,26 @@ function ruleOutcomes(
 
 const observablePaid = (snapshot: Snapshot, customerId: string) =>
   snapshot.invoices
-    .filter((i) => i.customerId === customerId && i.paid !== undefined && i.paid <= snapshot.asOf)
+    .filter((i) => i.customerId === customerId && isOrganicPayment(i) && i.paid <= snapshot.asOf)
     .sort((a, b) => compareIds(a.id, b.id));
 
 const daysLate = (i: Invoice) => daysBetween(i.due, i.paid ?? i.due);
 
+/** Cash still expected from an invoice: the agreed amount when one is known. */
+const remaining = (i: Invoice) => i.collection?.amount ?? i.amount;
+/** Unsettled with cash still to come. A zero receipt has nothing to delay or lose. */
+const isOpen = (i: Invoice) => !i.paid && !i.writtenOff && remaining(i) !== 0;
+
 /**
- * Chance = paid invoices more than 14 days late / all observable paid invoices (paid by asOf).
+ * Chance = paid invoices more than 14 days late / all observable ordinary paid invoices (paid by
+ * asOf). Invoices with a collection agreement are skipped: due-date lateness does not establish a
+ * chance of missing a negotiated date.
  * The p90 is total lateness while the forecast already adds the rounded mean, so the extra
  * delay is max(0, round(p90) - round(mean)).
  */
 function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
   return snapshot.invoices
-    .filter((i) => !i.paid)
+    .filter((i) => isOpen(i) && i.collection === undefined)
     .flatMap((inv) => {
       const delay = model.customerDelayDays[inv.customerId];
       if (!delay) return [];
@@ -160,7 +168,7 @@ function nonRenewals(snapshot: Snapshot): Candidate[] {
     if (deal.kind !== "renewal" || typeof deal.invoiceId !== "string" || deal.stage === "lost")
       return [];
     const inv = snapshot.invoices.find((i) => i.id === deal.invoiceId);
-    if (!inv || inv.paid) return [];
+    if (!inv || !isOpen(inv)) return [];
     const unsigned = deal.stage === "won" && !deal.signed;
     const probability = unsigned ? UNSIGNED_RENEWAL_CHANCE : RENEWAL_CHANCE;
     const why = unsigned
@@ -169,7 +177,7 @@ function nonRenewals(snapshot: Snapshot): Candidate[] {
     return [
       {
         id: `risk_nonrenewal_${deal.id}`,
-        label: `${customerName(snapshot, deal.customerId)} does not renew (${money(inv.amount)} invoice lost)`,
+        label: `${customerName(snapshot, deal.customerId)} does not renew (${money(remaining(inv))} invoice lost)`,
         probability,
         changes: [{ kind: "lose_invoice", invoiceId: inv.id }],
         evidence: [

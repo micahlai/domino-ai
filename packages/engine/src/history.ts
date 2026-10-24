@@ -47,6 +47,8 @@ export function pastEvents(snapshot: Snapshot, _model: CompanyModel): PastEvent[
 function latePaid(snapshot: Snapshot): PastEvent[] {
   return snapshot.invoices.flatMap((inv) => {
     if (!inv.paid || inv.paid > snapshot.asOf) return [];
+    // Gross actually collected; an agreed collection amount is a plan, not proof of payment.
+    const amount = inv.paidAmount ?? inv.amount;
     const late = daysBetween(inv.due, inv.paid);
     if (late <= LATE_DAYS) return [];
     const name = snapshot.customers.find((c) => c.id === inv.customerId)?.name ?? inv.customerId;
@@ -54,9 +56,9 @@ function latePaid(snapshot: Snapshot): PastEvent[] {
       {
         id: `past_late_${inv.id}`,
         date: inv.paid,
-        label: `${name} paid ${money(inv.amount)} ${late} days late`,
+        label: `${name} paid ${money(amount)} ${late} days late`,
         kind: "late_payment" as const,
-        amount: inv.amount,
+        amount,
         evidence: [
           { source: "stripe" as const, ref: inv.id, note: `Due ${inv.due}, paid ${inv.paid}` },
         ],
