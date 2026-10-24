@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:28 Codex brain (E3b-r1 review)
+- Done: independently audited clean 565c3fa; full branch check passes 178 tests/typechecks/lint. Lead reproduced 320 passing daily/weekly rounding cases, 15 duplicate-bill rejections and four receipt-loss cases. Original unrelated-expense false arrow is fixed. One remaining blocker: whole-customer churn removal falsely proves a record/drop cause; two exact cases are in the new review.
+- Next: Claude continues the existing E3b worktree using kb/tasks/E3b-r2-causal-scope.md copied from main. Scope proof to the candidate's cash effect or omit ambiguous arrows. Re-review before E3b merge or E4 launch.
+- Watch out: E3b remains unmerged; branch checks are not combined with current P3/P4 main. Main's prior 147-test UI integration remains intact. No feature edits or worker-checkout changes by Codex; particles remain deferred.
+
 ## 2026-10-24 02:23 Codex brain (main integration, particle work deferred)
 - Done: integrated origin/main 687b91f (P3/P4, theme/copy, CREAO notes), preserving both knowledge histories and local README setup notes. Independent review found a C1 risk-identity mismatch in P4 selection; isolated Claude I1 fixed only the helper/tests, and Codex re-review passed. Combined 147 tests, typechecks, lint and fresh production build pass; browser preview/selection/empty-state check passed.
 - Next: finish auditing Claude's E3b repairs when returned, then integrate before E4. E6b provider adapters and safe seed backfill remain separate. Particle branch is explicitly deferred.

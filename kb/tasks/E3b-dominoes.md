@@ -21,3 +21,5 @@
   - Duplicate bill IDs are not rejected by SnapshotSchema and would collapse in the event diff. Lost-receipt sensitivity for E4 should adjust the schedule and call evaluateOnSchedule; that hook is unexercised. dominoes.ts is 321 lines; functions not mechanically measured against the 40-line guideline.
 
 Brain audit: e77474d passes 169 tests but is blocked on three reproduced correctness defects. See kb/reviews/E3b-e77474d.md and kb/tasks/E3b-r1-funding-causes.md. Not merged; E4 remains gated.
+
+Repair update: 565c3fa clears the funding/identity findings but retains one causal-scope defect. Continue with kb/tasks/E3b-r2-causal-scope.md; review kb/reviews/E3b-r1-565c3fa.md.
