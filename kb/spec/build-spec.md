@@ -131,8 +131,10 @@ Data flow:
 
 The source of truth is code: `packages/contracts/src/`.
 
+C2 observation/replay contexts are integrated. C3 optional forward billing, observed settlements and private simulator runtime are reviewed and merged with provider schema compatibility. See [forward-data-contract.md](forward-data-contract.md). Engine and simulator adoption must complete before emitting new fields.
+
 C1 additions for E3b/E4 are merged at 3c54e67; their semantics are in [engine-context-contract-proposal.md](engine-context-contract-proposal.md).
-Engine adoption is pending. The scoped [E3b/E4 implementation brief](engine-e3b-e4-implementation.md) supersedes conflicting examples below, including unconditional consequences, p90 offsets, fix usefulness/status and unsupported automatic good events.
+E3b/E4 engine adoption is integrated. The scoped [E3b/E4 implementation brief](engine-e3b-e4-implementation.md) supersedes conflicting examples below, including unconditional consequences, p90 offsets, fix usefulness/status and unsupported automatic good events.
 
 | File | Holds |
 | --- | --- |

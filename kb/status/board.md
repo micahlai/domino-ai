@@ -39,7 +39,7 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E6b | `kb/tasks/E6b-provider-adapters.md` | E6a | doing | E6b-provider-adapters | Reviewed8f095c6 merged234fdc3; four live jobs pass, explain/brief repairs pending |
 | C2 | `kb/tasks/C2-learning-context.md` | E4 | done | C2-learning-context | e5f6833 independently reviewed and merged; 280-test combined check |
 | E7a | `kb/tasks/E7a-grade-learn.md` | C2 | done | E7a-grade-learn | 9efe1d8 reviewed and merged at 6c0bd2b; 306-test combined check |
-| C3 | `kb/tasks/C3-forward-data.md` | C2, E7a reviewed | doing | C3-forward-data | Claude contracts slice; no new data emitted before consumer adoption |
+| C3 | `kb/tasks/C3-forward-data.md` | C2, E7a reviewed | done | C3-forward-data | cf5a78c plus provider adoptiona8fe7b0 mergedf3ff458;635tests pass |
 
 ## Product (Micah)
 
@@ -68,4 +68,9 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | --- | --- | --- | --- |
 | G | Gate check | `prompts/shared/99-gate-check.md` | At every gate |
 
-| I3 | `kb/tasks/I3-computed-controls.md` | I2 | doing | I3-computed-controls | Claude in ../domino-I3; computed event/fix controls |
+| I3 | `kb/tasks/I3-computed-controls.md` | I2 | done | I3-computed-controls | eea1398 reviewed/merged/deployed; browser event/sim success |
+
+| E3c | `kb/tasks/E3c-forward-forecast.md` | C3 | doing | E3c-forward-forecast | Claude pure engine adoption |
+| E1b | `kb/tasks/E1b-week-runtime.md` | C3 | doing | E1b-week-runtime | Claude deterministic simulator |
+| E6c/E6d | provider repairs/C3 consumers | E6b,C3 | done | main | reviewed,635combinedtests; Claude textsmokes pass |
+| E6e | `kb/tasks/E6e-text-artifacts.md` | E6d | doing | E6e-text-artifacts | Claude strict CREAO artifact support |

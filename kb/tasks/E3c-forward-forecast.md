@@ -9,6 +9,7 @@
 - **Other readers:** Exclude settled/writeoff invoices from generated late/nonrenewal risks; use relevant agreed terms/remaining amounts. Audit causal schedule filters, risk sensitivity, grade/learn replay and evidence for new kinds. Learning must not treat discounted/agreed settlements as ordinary organic delay evidence. No unsupported causal arrows; preserve conservative omission.
 - **Verification:** Jan31/Feb28/Mar31 and leap cadence; canceled plan retains outstanding invoice; late learned delay crossing horizon; negative delay before issuance; paid-but-unbanked net payout once; writeoff no cash/risk; agreed bill due-vs-pay distinction; ordered changes and plan churn; authentic replay with new fields. No magic favorable scenario counts.
 - **Coordination:** You are not alone. No contracts/sim/web/deps/env/network/provider calls/other checkout writes, subagents, board/handoffs, pull/rebase/reset/stash/merge/push. Commit owned files and Result. Thirty-minute checkpoint.
+- **Audit clarifications:** history late-paid evidence uses paidAmount ?? amount, never collection.amount as proof. Stress-test delay threshold is days from original due to effective baseline receipt plus extra delay, including agreed dates and issuance clamp. Zero receipts have no delay/loss risk. Both learning and risk-probability paid samples exclude explicit collection agreements or paidAmount differing from face amount; paidAmount equal to face remains ordinary evidence.
 ## Result (worker fills this in when done)
 - Done:
 - What changed (files):

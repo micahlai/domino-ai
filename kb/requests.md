@@ -1,9 +1,9 @@
 # Requests
 
 Ask for a change in someone else's area here. Newest first.
-Format: `- [ ] 2026-10-24 Codex brain -> integration owner: C3 adds optional forward billing, observed pending payouts/settlement terms and private simulator runtime. Required to avoid fabricated forward invoices or lost collected cash. User authorized backend completion; independently review before adoption. See kb/spec/forward-data-contract.md.
+Format: `- [ ] YYYY-MM-DD From -> To: request (file or function). Why.` Tick it when done.
 
-- [ ] YYYY-MM-DD From -> To: request (file or function). Why.` Tick it when done.
+- [x] 2026-10-24 Codex brain -> integration owner: C3 optional forward billing, observed pending payouts/settlement terms and private runtime reviewed at cf5a78c; provider adoption a8fe7b0 paired and mergedf3ff458. User authorized backend completion. Engine/simulator adoption remains separate. See kb/spec/forward-data-contract.md.
 
 - [x] 2026-10-24 Codex brain -> integration owner: C2 adds optional observation/replay contexts to grade/learn. Existing Forecast[] lacks origin date and records; user authorized backend completion. Independently review before adoption; no schema/table migration or existing call break. See kb/spec/learning-context.md.
 
