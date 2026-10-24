@@ -36,6 +36,9 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E4 | `kb/tasks/E4-multiverse.md` | E3b reviewed and merged | done | E4-multiverse | 87de4f6 reviewed and integrated; ../domino-E4 retained |
 
 | I2 | `kb/tasks/I2-computed-prototype.md` | E4, P4 | doing | I2-computed-prototype | Claude Opus in ../domino-I2; computed Convex slice |
+| E6b | `kb/tasks/E6b-provider-adapters.md` | E6a | doing | E6b-provider-adapters | Claude Opus in ../domino-E6b; no live calls yet |
+| C2 | `kb/tasks/C2-learning-context.md` | E4 | done | C2-learning-context | e5f6833 independently reviewed and merged; 280-test combined check |
+| E7a | `kb/tasks/E7a-grade-learn.md` | C2 | ready | E7a-grade-learn | Pure grade/learn slice; launch after combined check |
 
 ## Product (Micah)
 

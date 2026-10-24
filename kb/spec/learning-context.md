@@ -1,6 +1,6 @@
 # C2: Grading and retrospective model replay
 
-Status: additive contract proposal required by backend completion. Independent audit confirmed existing Forecast[] cannot recover origin cash timing or per-record inputs. The user authorized ongoing backend implementation; keep this change isolated and independently review it before downstream implementation. Existing callers remain source-compatible.
+Status: C2 e5f6833 independently reviewed and merged. Additive contexts required by backend completion. Independent audit confirmed existing Forecast[] cannot recover origin cash timing or per-record inputs. The user authorized ongoing backend implementation; keep this change isolated and independently review it before downstream implementation. Existing callers remain source-compatible.
 
 ## Contract addition
 - Add GradeContextSchema/type with forecastAsOf: ISODate, asOf: ISODate, bankWindowComplete: literal true. Dates must be real calendar dates and asOf must be later than forecastAsOf. Meaning: starting forecast cash is the end-of-day balance on forecastAsOf; caller supplies all bank transactions strictly after it through asOf. Empty actualBank can be a known quiet window. The explicit true assertion is a caller responsibility, not proof the external bank was complete.

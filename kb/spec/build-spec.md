@@ -201,17 +201,14 @@ Find events the base forecast ignores. Score each one.
 4. A fix is **useful** only if it raises the low point. Drop fixes that do not.
 5. Rank useful fixes: first by "removes every broken rule", then by low-point gain, then by lower risk.
 
-### 6.5 `grade(previous, actualBank)` and `learn(snapshot, model, history)`
+### 6.5 `grade(previous, actualBank, context?)` and `learn(snapshot, model, history, context?)`
 
-- **Error metric:** for each past week, `abs(forecast closing - actual closing) / actual closing`. Report the mean, in percent.
-- **Misses:** each week with error over 3%. For each miss, find the record that caused it (for example "Acme paid 12 days later than forecast").
-- **Learning:**
-  1. Update each customer's delay `mean` and `p90` from their paid invoices.
-  2. Update recurring spend from card transactions (same merchant, regular gaps).
-  3. Propose a rule for each repeated miss.
-  4. Re-run the forecasts for past weeks with the new model.
-  5. Keep the change only if the mean error goes down. Store `errorBefore` and `errorAfter`.
-  6. Increase `model.version`.
+C2 adds explicit observation and replay contexts. See [learning-context.md](learning-context.md) and the implementation policy in [grade-learn-implementation.md](grade-learn-implementation.md).
+
+- Grade only completed forecast weeks from a known origin and complete bank window. Missing context or no completed weeks is insufficient data, never a fabricated zero error.
+- Error uses `abs(forecast closing - actual closing) / max(abs(actual closing), 1 cent)`, equally weighted by completed week. A miss is strictly over 3%. Evidence identifies observed discrepancies without inventing invoice-to-bank causality.
+- Learn supported payment delays and regular card spend from observations available at the cutoff. Replay the current model and candidate on the same authentic origin snapshots, supplied in `LearnContext.examples`; legacy forecast history cannot reconstruct these inputs.
+- Accept only strict retrospective error reduction with evidence. Ties, regressions and absent evidence preserve the original model and version. An accepted update adds factual rules and increments the version once. Retrospective fit is not held-out predictive proof.
 
 ### 6.6 `history`, `pastEvents` and `stressTest` (multiverse)
 

@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 03:28 Codex brain (C2 integration)
+- Done: C2 e5f6833 independently approved by Astra and lead contract review. Forced branch check passes 280 tests/typechecks/lint; merged additive observation/replay contexts. Prepared E7a pure grade/learn policy and card.
+- Next: combined main check, then directly launch Claude E7a while I2 and E6b continue in isolated worktrees. Audit I2 and deploy only the reviewed computed prototype to the configured development deployment.
+- Watch out: current synthetic fixture computes 0/11 passing scenarios; old 7/11 was illustrative. No learning or provider success claimed. No data reset, push or production deployment.
+
 ## 2026-10-24 03:14 Codex brain (Micah UI integration)
 - Done: independently reviewed and integrated origin/main 77d0df6, including particle emission and exact weekly inspection. Preserved local Convex guidance and both knowledge histories. Combined check passes 248 tests/typechecks/lint and fresh production build.
 - Next: start the prototype locally and connect real engine outputs to Convex while continuing backend completion through Claude.
