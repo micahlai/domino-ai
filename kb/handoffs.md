@@ -3,6 +3,11 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 02:08 Codex brain (E3b independent audit)
+- Done: audited clean Claude commit e77474d with independent Astra rules review and GPT-6.1 Sol causal review; lead forced check passes 169 tests, typechecks and lint. Lead reproduced three defects with schema-valid inputs: weekly hire savings misdate daily funds, causal arrows blame unrelated events, duplicate bill IDs corrupt deadline results. Review and repair card committed in main.
+- Next: Claude copies kb/tasks/E3b-r1-funding-causes.md from main into its existing E3b worktree, implements the scoped repairs and returns a commit for re-review. E4 stays gated.
+- Watch out: E3b not merged; no feature code written or worker checkout modified by Codex. Main still awaits remote UI integration identified earlier. Unrelated environment/README/CREAO/web tooling work preserved.
+
 ## 2026-10-24 01:46 Codex brain (Claude implementation handoff)
 - Done: integrated reviewed E3a repair at 59fe62d; combined 131 tests, typechecks, lint and fresh production build pass. User assigned both E3b/E4 implementation to Claude, with Codex auditing/checking. Prepared the E3b branch/worktree from passing main.
 - Next: human launches Claude Code in ../domino-E3b using kb/tasks/E3b-dominoes.md. Return the completed commit to Codex for independent audit and integration; only then launch E4.

@@ -1,11 +1,11 @@
 # Domino handoff
-## 2026-10-24: Claude implements; Codex audits
-- Goal: Claude Code implements E3b then E4. Codex handles planning, independent review, verification and integration, with no feature code written by the brain.
-- Main: reviewed E3a repair 4a9be26 merged at 59fe62d after C1 3c54e67. Only merge conflict was duplicate repair-card notes; main retained Claude's complete Result plus independent audit notes. Original Claude checkout remains clean and untouched.
-- Verification: combined main forced pnpm check passes 131 tests, five typechecks and lint; fresh forced pnpm build passes. Node 24.11.1 / pnpm 9.12.0.
-- Next exact step: human starts Claude Code in ../domino-E3b on E3b-dominoes and gives it kb/tasks/E3b-dominoes.md. Implement only E3b, fill local card Result, run pnpm check and commit. Return its commit to Codex for independent audit, fresh checks and integration. E4 remains gated until that succeeds.
-- E3b checkout: prepared from passing main with its task card and implementation brief. No feature worker launched by Codex. E4 worktree not created yet. Keep one writer in packages/engine at a time.
-- Setup: export PATH="/Users/jaydenl/.nvm/versions/node/v24.11.1/bin:$PATH"; pnpm install --frozen-lockfile. No environment/auth files copied. No new dependencies authorized.
-- Scope: E3b adopts invoice links and common deadline/domino rules. E4 later builds scenarios, fix scoring and history. Exact acceptance and funding conventions: kb/spec/engine-e3b-e4-implementation.md.
-- Open: raw Kestrel still hits the temporary forecast ambiguity guard until E3b adopts C1. Safe seeded-data backfill and E5/E7 contexts are separate. Parent E3 remains incomplete; passing tests are not a working hero/demo claim.
-- Concurrent work: existing README edits, CREAO setup notes/card and untracked apps/web tooling preserved and excluded. No reset, push, deploy, worktree deletion or external messages. No Domino servers started. Do not touch the separate Scrabble bot or read secrets.
+## 2026-10-24: E3b audit requires Claude repairs
+- Goal: Claude implements engine work; Codex audits, checks and integrates. Keep one engine writer.
+- Main: E3a merged at 59fe62d, C1 at 3c54e67. Main's prior combined verification passed 131 tests and a fresh build. Unrelated environment/README/CREAO/web tooling work is preserved.
+- E3b: Claude finished clean e77474d on E3b-dominoes in ../domino-E3b. Not merged. Lead forced pnpm check passes 169 tests (66 engine), five typechecks and lint under Node 24.11.1/pnpm 9.12.0.
+- Audit: independent GPT-6 Astra rules review and GPT-6.1 Sol causal review found three blockers, all reproduced by lead with schema-valid inputs. Weekly hire savings can fund before accrual or defer pre-Monday savings; chronology-based causedBy blames unrelated events; duplicate bill IDs corrupt funding/target lookup.
+- Evidence: kb/reviews/E3b-e77474d.md has exact cases, file/line references and repair acceptance. Worker Result copied into main's E3b card. Worker checkout untouched.
+- Next exact step: user gives Claude kb/tasks/E3b-r1-funding-causes.md from main. Claude copies only that card into its existing E3b checkout, fixes/tests/commits packages/engine plus local Result, and returns commit hash. No rebase or merge of main into the active worker. Codex re-reviews and reruns checks before E3b integration; E4 cannot launch yet.
+- Repair design: keep exact weekly hire totals and actual daily availability; per-candidate causal proof or omit the link; reject duplicate bill identities locally without changing shared contracts.
+- Remote integration: last fetch found origin/main eight commits ahead of local common history, including P3/P4 and copy; local main was 23 commits ahead then. Particle animation is a separate branch. No remote changes merged or pushed during this audit; recheck refs before integration and preserve local README/.env.example edits.
+- Limits: no live provider calls, environment changes, seed resets, deployments, pushes, feature code or worktree deletion by this audit. E4, real adapters and context wiring remain open. Existing seed data requires a separate safe backfill.
