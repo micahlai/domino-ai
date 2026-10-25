@@ -695,8 +695,39 @@ const CONNECTOR_VENDORS = new Set<VendorId>([
  * removes it from the map); without them (demo, loading) a source shows once it has work.
  */
 export function mapSources(graph: BrainGraph, connected?: ReadonlySet<VendorId>): BrainGraph {
+  // The saved bank row is historically keyed `nessie`/`bank`, even when Plaid supplied an
+  // operating feed. Project that generic read onto the sole connected bank vendor. This also
+  // retains reads older than the loaded event window and their source -> agent links.
+  const bank = graph.nodes.find((n) => n.id === "source:bank");
+  const plaid = graph.nodes.find((n) => n.id === "source:plaid");
+  const plaidOnly = connected?.has("plaid") && !connected.has("capitalone");
+  let projected = graph;
+  if (plaidOnly && bank && plaid && hasWork(bank)) {
+    const operations = [
+      ...new Map([...bank.operations, ...plaid.operations].map((op) => [op.id, op])).values(),
+    ].sort(byTime);
+    const latest = operations.at(-1);
+    const merged: BrainNode = {
+      ...plaid,
+      operations,
+      ...(bank.saved && { saved: bank.saved }),
+      ...(latest && { lastAt: latest.at, status: toCanvasStatus(latest.status) }),
+    };
+    const edges = new Map<string, BrainEdge>();
+    for (const edge of graph.edges) {
+      const source = edge.source === bank.id ? plaid.id : edge.source;
+      const id = edgeId(source, edge.target);
+      edges.set(id, { ...edge, id, source });
+    }
+    projected = {
+      nodes: graph.nodes
+        .filter((n) => n.id !== bank.id)
+        .map((n) => (n.id === plaid.id ? merged : n)),
+      edges: [...edges.values()],
+    };
+  }
   const drop = new Set(
-    graph.nodes
+    projected.nodes
       .filter((n) => {
         if (n.kind !== "source") return false;
         if (n.vendor === "apify") return true;
@@ -706,10 +737,10 @@ export function mapSources(graph: BrainGraph, connected?: ReadonlySet<VendorId>)
       })
       .map((n) => n.id),
   );
-  if (!drop.size) return graph;
+  if (!drop.size) return projected;
   return {
-    nodes: graph.nodes.filter((n) => !drop.has(n.id)),
-    edges: graph.edges.filter((e) => !drop.has(e.source) && !drop.has(e.target)),
+    nodes: projected.nodes.filter((n) => !drop.has(n.id)),
+    edges: projected.edges.filter((e) => !drop.has(e.source) && !drop.has(e.target)),
   };
 }
 

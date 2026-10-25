@@ -15,6 +15,7 @@ import {
   idleAgents,
   isAgent,
   mapCounts,
+  mapSources,
   neighbors,
   pulsePath,
   pulsesFor,
@@ -44,6 +45,53 @@ const op = (over: Partial<FieldOperation> & { id: string }): FieldOperation => (
 });
 
 describe("buildBrainGraph", () => {
+  it("projects a generic saved bank read onto connected Plaid, including old reads outside the log", () => {
+    const read = op({ id: "bank-read", source: "bank", tool: "plaid.read" });
+    const recent = withSavedState(buildBrainGraph([read]), {
+      sources: [{ id: "bank", lastPull: "2023-09-30" }],
+    });
+    const plaid = mapSources(recent, new Set(["plaid"]));
+    expect(plaid.nodes.find((n) => n.id === "source:plaid")).toMatchObject({
+      title: "Plaid",
+      vendor: "plaid",
+      saved: "Data through Sep 30",
+      operations: [read],
+    });
+    expect(plaid.nodes.some((n) => n.id === "source:bank")).toBe(false);
+    expect(plaid.edges).toContainEqual({
+      id: "source:plaid->agent:ingestion",
+      source: "source:plaid",
+      target: "agent:ingestion",
+      kind: "feeds",
+    });
+    expect(mapCounts(plaid).sources).toBe(1);
+
+    const oldRead = mapSources(
+      withSavedState(buildBrainGraph([]), {
+        sources: [{ id: "bank", lastPull: "2023-09-30" }],
+      }),
+      new Set(["plaid"]),
+    );
+    expect(oldRead.nodes.find((n) => n.id === "source:plaid")?.saved).toBe("Data through Sep 30");
+    expect(mapCounts(oldRead).sources).toBe(1);
+  });
+
+  it("keeps the generic bank read on Capital One for a connected legacy Nessie feed", () => {
+    const graph = withSavedState(
+      buildBrainGraph([op({ id: "nessie-read", source: "bank", tool: "nessie.read" })]),
+      {
+        sources: [{ id: "bank", lastPull: "2026-11-02" }],
+      },
+    );
+    const nessie = mapSources(graph, new Set(["capitalone"]));
+    expect(nessie.nodes.find((n) => n.id === "source:bank")).toMatchObject({
+      vendor: "capitalone",
+      saved: "Data through Nov 2",
+    });
+    expect(nessie.nodes.some((n) => n.id === "source:plaid")).toBe(false);
+    expect(mapCounts(nessie).sources).toBe(1);
+  });
+
   it("always shows the built-in agents, sources and outputs, idle until the log says otherwise", () => {
     const graph = buildBrainGraph([]);
     expect(graph.nodes.filter((n) => n.kind === "agent").map((n) => n.id)).toEqual([
