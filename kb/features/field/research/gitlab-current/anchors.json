@@ -1,0 +1,226 @@
+{
+  "caseId": "gitlab-inspired-2026-q2",
+  "fictionalCompanyType": "developer platform SaaS",
+  "referenceCompany": "GitLab Inc.",
+  "currency": "USD",
+  "reportedUnit": "USD thousands",
+  "reportedValueEncoding": "Strings preserve filing presentation: parentheses indicate negative values; commas are digit separators. A dash in a filing is not encoded as a monetary zero here.",
+  "eligibilityAsOf": "2026-10-25",
+  "demoPeriod": { "start": "2026-05-01", "end": "2026-07-31" },
+  "sources": {
+    "q2": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "indexUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/0001628280-26-059943-index-headers.html",
+      "accession": "0001628280-26-059943",
+      "form": "10-Q",
+      "periodEnd": "2026-07-31",
+      "filingDate": "2026-09-02",
+      "acceptedAt": "2026-09-01 18:13:00 ET"
+    },
+    "q1": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "indexUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/0001628280-26-039793-index-headers.html",
+      "accession": "0001628280-26-039793",
+      "form": "10-Q",
+      "periodEnd": "2026-04-30",
+      "filingDate": "2026-06-02",
+      "acceptedAt": "2026-06-02 16:11:09 ET"
+    },
+    "release": {
+      "url": "https://ir.gitlab.com/news/news-details/2026/GitLab-Reports-Second-Quarter-Fiscal-Year-2027-Financial-Results/default.aspx",
+      "publicationDate": "2026-09-01",
+      "reportedPeriodEnd": "2026-07-31"
+    },
+    "secCompanyFilings": {
+      "url": "https://www.sec.gov/edgar/browse/?CIK=1653482",
+      "checkedAsOf": "2026-10-25"
+    }
+  },
+  "latestEligibility": {
+    "status": "latest verified GitLab quarterly financial filing available by the cutoff",
+    "basis": "The SEC filing sequence and GitLab investor-relations results show FY2027 Q2 as the latest published quarterly result by 2026-10-25. The next fiscal quarter ends 2026-10-31, after the cutoff; Q3 figures in the Q2 release are guidance, not actuals.",
+    "sourceKeys": ["secCompanyFilings", "q2", "release"]
+  },
+  "reported": {
+    "cashOpeningQuarter": {
+      "value": "335,395",
+      "unit": "USD thousands",
+      "asOf": "2026-04-30",
+      "source": "q1",
+      "section": "Condensed Consolidated Balance Sheets",
+      "line": "Cash and cash equivalents"
+    },
+    "cashClosingQuarter": {
+      "value": "226,491",
+      "unit": "USD thousands",
+      "asOf": "2026-07-31",
+      "source": "q2",
+      "section": "Condensed Consolidated Balance Sheets",
+      "line": "Cash and cash equivalents"
+    },
+    "cashComparativeFiscalOpening": {
+      "value": "229,576",
+      "unit": "USD thousands",
+      "asOf": "2026-01-31",
+      "source": "q2",
+      "section": "Condensed Consolidated Balance Sheets",
+      "line": "Cash and cash equivalents"
+    },
+    "shortTermInvestmentsOpening": {
+      "value": "1,022,117",
+      "unit": "USD thousands",
+      "asOf": "2026-04-30",
+      "source": "q1",
+      "section": "Condensed Consolidated Balance Sheets",
+      "line": "Short-term investments",
+      "note": "Separate from cash and cash equivalents."
+    },
+    "shortTermInvestmentsClosing": {
+      "value": "1,030,495",
+      "unit": "USD thousands",
+      "asOf": "2026-07-31",
+      "source": "q2",
+      "section": "Condensed Consolidated Balance Sheets",
+      "line": "Short-term investments",
+      "note": "Separate from cash and cash equivalents."
+    },
+    "restrictedCash": {
+      "status": "not separately reported or reconciled in the two cited 10-Q cash-flow statements",
+      "sourceKeys": ["q1", "q2"],
+      "note": "No reported zero is available. Any zero used by a fictional ledger must be explicitly labeled a reconstruction assumption."
+    },
+    "balanceSheetOpening": {
+      "asOf": "2026-04-30",
+      "unit": "USD thousands",
+      "source": "q1",
+      "section": "Condensed Consolidated Balance Sheets",
+      "lines": {
+        "accountsReceivableNet": "200,302",
+        "accountsPayable": "8,847",
+        "accruedExpensesAndOtherCurrentLiabilities": "72,680",
+        "accruedCompensationAndBenefits": "28,538",
+        "deferredRevenueCurrent": "532,983",
+        "deferredRevenueNoncurrent": "23,991",
+        "totalCurrentAssets": "1,639,405",
+        "totalCurrentLiabilities": "643,048",
+        "totalAssets": "1,705,533",
+        "totalLiabilities": "674,147"
+      }
+    },
+    "balanceSheetClosing": {
+      "asOf": "2026-07-31",
+      "unit": "USD thousands",
+      "source": "q2",
+      "section": "Condensed Consolidated Balance Sheets",
+      "lines": {
+        "accountsReceivableNet": "257,343",
+        "accountsPayable": "9,955",
+        "accruedExpensesAndOtherCurrentLiabilities": "51,580",
+        "accruedCompensationAndBenefits": "46,932",
+        "deferredRevenueAndCustomerAdvancesCurrent": "553,844",
+        "deferredRevenueNoncurrent": "20,829",
+        "totalCurrentAssets": "1,595,055",
+        "totalCurrentLiabilities": "662,311",
+        "totalAssets": "1,661,832",
+        "totalLiabilities": "690,345"
+      },
+      "note": "The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    "quarterIncome": {
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "periodLabel": "Three months ended July 31, 2026",
+      "unit": "USD thousands",
+      "source": "q2",
+      "section": "Condensed Consolidated Statements of Operations",
+      "lines": {
+        "subscriptionRevenue": "258,311",
+        "licenseRevenue": "27,943",
+        "totalRevenue": "286,254",
+        "subscriptionCostOfRevenue": "38,258",
+        "licenseCostOfRevenue": "7,380",
+        "totalCostOfRevenue": "45,638",
+        "grossProfit": "240,616",
+        "salesAndMarketing": "134,363",
+        "researchAndDevelopment": "94,980",
+        "generalAndAdministrative": "68,208",
+        "totalOperatingExpenses": "297,551",
+        "operatingLoss": "(56,935)",
+        "incomeTaxProvision": "(3,195)",
+        "netLoss": "(36,132)",
+        "netLossAttributableToGitLab": "(36,844)"
+      },
+      "note": "Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit."
+    },
+    "quarterStockBasedCompensation": {
+      "value": "75,006",
+      "unit": "USD thousands",
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "source": "q2",
+      "section": "Notes to Condensed Consolidated Financial Statements, Stock-Based Compensation Expense",
+      "line": "Total stock-based compensation expense",
+      "note": "Noncash expense; do not map to a payroll disbursement."
+    },
+    "cashFlowSixMonths": {
+      "periodStart": "2026-02-01",
+      "periodEnd": "2026-07-31",
+      "periodLabel": "Six months ended July 31, 2026",
+      "unit": "USD thousands",
+      "source": "q2",
+      "section": "Condensed Consolidated Statements of Cash Flows",
+      "lines": {
+        "operating": "146,105",
+        "investing": "(5,378)",
+        "financing": "(143,346)",
+        "foreignExchangeEffect": "(466)",
+        "netCashChange": "(3,085)",
+        "purchasesOfShortTermInvestments": "(421,817)",
+        "maturitiesOfShortTermInvestments": "358,647",
+        "salesOfShortTermInvestments": "60,398",
+        "propertyAndEquipmentPurchases": "(2,606)",
+        "stockOptionExerciseProceedsNet": "5,361",
+        "employeeStockPurchasePlanProceeds": "6,886",
+        "commonStockRepurchases": "(154,685)",
+        "netShareSettlementTaxPayments": "(908)",
+        "cashTaxesPaidIncludingJiHuSettlement": "8,820"
+      }
+    },
+    "cashFlowThreeMonths": {
+      "periodStart": "2026-02-01",
+      "periodEnd": "2026-04-30",
+      "periodLabel": "Three months ended April 30, 2026",
+      "unit": "USD thousands",
+      "source": "q1",
+      "section": "Condensed Consolidated Statements of Cash Flows",
+      "lines": {
+        "operating": "149,197",
+        "investing": "4,157",
+        "financing": "(47,835)",
+        "foreignExchangeEffect": "300",
+        "netCashChange": "105,819",
+        "purchasesOfShortTermInvestments": "(222,196)",
+        "maturitiesOfShortTermInvestments": "218,824",
+        "salesOfShortTermInvestments": "9,922",
+        "propertyAndEquipmentPurchases": "(2,393)",
+        "stockOptionExerciseProceedsNet": "2,373",
+        "commonStockRepurchases": "(50,048)",
+        "netShareSettlementTaxPayments": "(160)",
+        "cashTaxRefundsRelatedToBAPA": "(77)",
+        "otherCashTaxesPaid": "139"
+      },
+      "note": "Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure."
+    }
+  },
+  "quarterCashFlowStatus": "Quarter cash-flow totals and comparable components are not directly reported in the 10-Q statements. Derive each 2026-05-01 through 2026-07-31 component in deterministic integer-cent code from reported six-month minus three-month values and reconcile to the April 30 and July 31 cash-and-equivalents endpoints. The earnings release separately reports quarter operating cash flow rounded to $(3.1) million.",
+  "syntheticAssumptions": {
+    "status": "Any generated records, dates, counterparties, and undisclosed component residuals belong to the fictional CodeHarbor demo, not to GitLab reported operations.",
+    "generationRules": [
+      "Keep recognized revenue, receivables, deferred liabilities, and cash receipts distinct.",
+      "Keep stock-based compensation noncash and the tax benefit distinct from tax cash payments.",
+      "Preserve reported opening and closing receivables and deferred-liability line values as source anchors. Explain reconstructed bridges; never silently replace an endpoint.",
+      "Separate short-term investment purchases, maturities, sales, equity financing, and foreign exchange from operating transactions.",
+      "Do not claim restricted cash is a verified zero or derive a quarter cash-tax total from the differently scoped disclosures."
+    ]
+  }
+}
