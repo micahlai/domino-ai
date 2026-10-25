@@ -1,4 +1,4 @@
-import { BOUNDARY_INTEGER_MAX } from "@domino/contracts";
+import { BOUNDARY_INTEGER_MAX, canonicalJson } from "@domino/contracts";
 import { z } from "zod";
 import { type WorkspaceRun, matchRecords, recordsOf } from "../questions/context";
 import { IN, OUT, SCENARIO, clauses, readWithGrammar } from "../questions/grammar";
@@ -174,7 +174,7 @@ export function validateProposal(run: WorkspaceRun, proposal: QuestionProposal) 
   const rules = proposal.constraints ?? run.constraints;
   if (
     proposal.constraints &&
-    !run.constraints.every((old) => rules.some((r) => JSON.stringify(r) === JSON.stringify(old)))
+    !run.constraints.every((old) => rules.some((r) => canonicalJson(r) === canonicalJson(old)))
   )
     reject("CHAT_INTEGRITY", "The proposal changed an existing rule. Start a new chat.");
   checkConstraints(rules, snapshot);
@@ -184,6 +184,25 @@ export function validateProposal(run: WorkspaceRun, proposal: QuestionProposal) 
     end: addDays(run.forecast.weeks[12]?.weekStart ?? "", 6),
   });
   checkMoneyBound(snapshot, run.baseline.model, rules, [...run.changes, ...proposal.changes]);
+}
+/** Cash schedules key events by label. Distinguish each new payment without
+ * relabeling ancestor events or changing any financial input. */
+function distinctCashLabels(run: WorkspaceRun, proposal: QuestionProposal): QuestionProposal {
+  const used = new Set(run.changes.flatMap((change) => ("label" in change ? [change.label] : [])));
+  const changes = proposal.changes.map((change) => {
+    if (change.kind !== "add_cash" && change.kind !== "remove_cash") {
+      if ("label" in change) used.add(change.label);
+      return change;
+    }
+    let label = change.label;
+    for (let ordinal = 1; used.has(label); ordinal++) {
+      const suffix = ` (${change.date}${ordinal > 1 ? ` #${ordinal}` : ""})`;
+      label = `${change.label.slice(0, 200 - suffix.length)}${suffix}`;
+    }
+    used.add(label);
+    return { ...change, label };
+  });
+  return { ...proposal, changes };
 }
 function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result {
   for (const [index, intent] of draft.intents.entries()) {
@@ -217,8 +236,9 @@ function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result
       proposal: null,
       pendingField: null,
     };
+  const proposal = distinctCashLabels(run, outcome.proposal);
   try {
-    validateProposal(run, outcome.proposal);
+    validateProposal(run, proposal);
   } catch {
     return {
       draft,
@@ -232,7 +252,7 @@ function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result
     draft,
     answer:
       "Here is the complete proposal. Review the event details and full rule set, then confirm to save and calculate. Nothing has run yet.",
-    proposal: outcome.proposal,
+    proposal,
     pendingField: null,
   };
 }

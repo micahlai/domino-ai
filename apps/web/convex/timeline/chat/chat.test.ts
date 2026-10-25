@@ -6,8 +6,10 @@ import { engine } from "@domino/engine";
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import schema from "../../schema";
+import { projectRun } from "../questions/context";
 import { baselineRefs } from "../refs";
 import { workspaceRefs } from "../workspaceRefs";
+import { validateProposal } from "./draft";
 import type { ChatReceipt } from "./receipt";
 import { chatRefs } from "./refs";
 const modules = Object.fromEntries(
@@ -131,6 +133,112 @@ describe("durable Timeline clarification chat", () => {
     });
     expect(result?.constraints).toEqual(r.proposal?.constraints);
     expect(result?.ownChanges).toEqual(r.proposal?.changes);
+  });
+  it("compares retained rules by canonical content rather than object key order", async () => {
+    const t = setup();
+    const rule: Constraint = {
+      id: "old",
+      kind: "min_cash",
+      limit: 265_000_000,
+      label: "Minimum usable cash",
+      evidence: { source: "document", ref: "fixture", note: "Reviewed" },
+    };
+    const src = await source(t, [rule]);
+    const raw = await t.query(workspaceRefs.get, src);
+    const run = projectRun(raw, src.companyId, src.runId);
+    if (!run || run === "invalid") throw new Error("Invalid fixture");
+    const reordered: Constraint = {
+      evidence: { note: "Reviewed", ref: "fixture", source: "document" },
+      label: rule.label,
+      limit: rule.limit,
+      kind: rule.kind,
+      id: rule.id,
+    };
+    expect(JSON.stringify(reordered)).not.toBe(JSON.stringify(run.constraints[0]));
+    expect(() =>
+      validateProposal(run, {
+        label: "Retained rule",
+        changes: [],
+        constraints: [reordered],
+        constraintNote: null,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateProposal(run, {
+        label: "Changed rule",
+        changes: [],
+        constraints: [{ ...reordered, limit: 265_000_001 }],
+        constraintNote: null,
+      }),
+    ).toThrow(/CHAT_INTEGRITY/);
+  });
+  it("keeps repeated cash events distinct across saved ancestors, including the same date", async () => {
+    const t = setup();
+    const rule: Constraint = {
+      id: "cash-min",
+      kind: "min_cash",
+      limit: 265_000_000,
+      label: "Minimum usable cash",
+      evidence: { source: "document", ref: "fixture", note: "Reviewed" },
+    };
+    const src = await source(t, [rule]);
+    const ancestor = await t.mutation(workspaceRefs.simulate, {
+      companyId: src.companyId,
+      parentRunId: src.runId,
+      requestId: rid(),
+      label: "First Atlas payment",
+      changesJson: JSON.stringify([
+        {
+          kind: "remove_cash",
+          amount: 8_000_000,
+          date: "2026-11-17",
+          label: "Payment to Atlas Legal",
+        },
+      ]),
+      reviewed: true,
+    });
+    let parentId = ancestor.runId;
+    for (const [index, expectedLabel] of [
+      "Payment to Atlas Legal (2026-11-18)",
+      "Payment to Atlas Legal (2026-11-18 #2)",
+    ].entries()) {
+      let r = await t.mutation(chatRefs.begin, {
+        companyId: src.companyId,
+        runId: parentId,
+        requestId: rid(),
+      });
+      r = await send(t, r, "What if we spend $500?");
+      r = await send(t, r, "on 2026-11-18");
+      r = await send(t, r, "Atlas Legal");
+      expect(r.status).toBe("ready");
+      expect(r.proposal?.changes).toEqual([
+        { kind: "remove_cash", amount: 50_000, date: "2026-11-18", label: expectedLabel },
+      ]);
+      const args = { ...key(r), requestId: rid(), expectedRevision: r.revision, reviewed: true };
+      const saved = await t.mutation(chatRefs.confirm, args);
+      expect(await t.mutation(chatRefs.confirm, args)).toEqual(saved);
+      const parent = await t.query(workspaceRefs.get, {
+        companyId: src.companyId,
+        runId: parentId,
+      });
+      const result = await t.query(workspaceRefs.get, {
+        companyId: src.companyId,
+        runId: saved.linkedRunId!,
+      });
+      expect(result?.constraints).toEqual([rule]);
+      expect(result?.changes).toHaveLength(index + 2);
+      expect(result?.changes[0]).toEqual({
+        kind: "remove_cash",
+        amount: 8_000_000,
+        date: "2026-11-17",
+        label: "Payment to Atlas Legal",
+      });
+      expect(result?.ownChanges).toEqual(r.proposal?.changes);
+      expect(result!.forecast.weeks.at(-1)!.closing - parent!.forecast.weeks.at(-1)!.closing).toBe(
+        -50_000,
+      );
+      parentId = saved.linkedRunId!;
+    }
   });
   it("returns exact request snapshots across later turns and rejects changed payloads and stale revisions", async () => {
     const t = setup();
