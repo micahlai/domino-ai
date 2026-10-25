@@ -7,6 +7,7 @@ import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
+import { NotificationToasts } from "./field/NotificationToasts";
 import { OperatingProvenanceStrip } from "./field/OperatingProvenanceStrip";
 import { SimClockBar } from "./field/SimClockBar";
 import {
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main id="main" className="min-h-0 flex-1">
           {children}
         </main>
+        <Notifications />
       </div>
     );
   }
@@ -126,9 +128,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <Notifications />
     </div>
   );
 }
+
+/** One toast stack for the whole app; it needs the backend to read events. */
+const Notifications = () => (process.env.NEXT_PUBLIC_CONVEX_URL ? <NotificationToasts /> : null);
 
 /** Saved trace and calculation pages show a recorded run, not the live feed. */
 const isRecordedPath = (pathname: string) =>
