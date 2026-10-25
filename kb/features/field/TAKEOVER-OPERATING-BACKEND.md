@@ -7,3 +7,8 @@
 - Checks: frozen-lockfile install succeeded with network escalation after the offline store lacked Vitest; changed-file Biome and `git diff --check` passed. The combined branch exposed Convex arguments inferred as an empty object. Follow-ups use explicit literal validators from the frozen ID constants and let the handler argument infer from them. The isolated checkout still lacks the concurrent simulation exports, so combined `tsc` and focused tests run with the integration owner. No runtime or provider requests were made.
 - Next exact step: integrate the simulation commit; run `pnpm --filter @domino/web typecheck` and `pnpm --filter @domino/web test -- convex/tests/operatingFeed.test.ts convex/tests/fieldOperating.test.ts`; inspect any source-shape failure. Verify selected 2U UI routing in the integration worktree. Use `context.reconciliation` for four-category reported cash-flow provenance; Timeline's existing engine cash-flow display groups FX with other unclassified activity.
 - Open question: none in the backend contract; combined runtime checks are pending.
+
+## Copy repair
+
+- Analyst bridge suggestion and advisor activity now say "cash minimum". The same generated minimum is illustrative for operating feeds, so these messages no longer present it as an actual lender covenant. Legacy judge fixture stories and internal field names were left intact.
+- Verification for this copy-only change: changed-file Biome and `git diff --check` passed. No assertion targets this wording; root integration owner will run combined checks.

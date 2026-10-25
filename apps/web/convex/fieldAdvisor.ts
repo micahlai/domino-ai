@@ -169,7 +169,7 @@ export const advise = internalAction({
         candidate,
       );
       const outcome = `low point ${usd(effect.lowPoint)} (${effect.gain >= 0 ? "+" : ""}${usd(effect.gain)}), ${
-        effect.survives ? "stays above the lender's minimum" : "still breaks a limit"
+        effect.survives ? "stays above the cash minimum" : "still breaks a limit"
       }`;
       await write([
         m.tool({
@@ -425,9 +425,9 @@ async function advisorRound(
       agentKind: "domino",
       event: "status",
       status: "working",
-      currentTask: `Scenario ${n} breaks the lender's minimum: comparing ${candidates.length} fixes`,
+      currentTask: `Scenario ${n} breaks the cash minimum: comparing ${candidates.length} fixes`,
       refs: [sc.scenarioId],
-      summary: `Scenario ${n} (${sc.title}) falls to ${usd(low.low)}, under the lender's minimum of ${usd(floor)}; starting ${candidates.length} advisors`,
+      summary: `Scenario ${n} (${sc.title}) falls to ${usd(low.low)}, under the cash minimum of ${usd(floor)}; starting ${candidates.length} advisors`,
     },
     ...candidates.flatMap((c) => {
       const m = member(advisorAgent(c.kind), ANALYST);
@@ -492,7 +492,7 @@ async function advisorRound(
       tool: "convex.suggestions",
       toolCategory: "convex",
       refs: ranked.map((r) => r.candidate.fix.id),
-      summary: `Saved ${ranked.length} suggestions for scenario ${n}: ${surviving} keep cash above the lender's minimum`,
+      summary: `Saved ${ranked.length} suggestions for scenario ${n}: ${surviving} keep cash above the cash minimum`,
     },
   ]);
   return { scenarioIndex: sc.index, breaksWeek: sc.breaksWeek, companyId: t.companyId };
