@@ -12,14 +12,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
-import { formatCents, formatDate } from "../../../lib/format";
+import { formatDate } from "../../../lib/format";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
+import { useSelectedCompanyName } from "../company";
 import { EmptyRow, Panel } from "../panel";
+import { SourceBadge } from "../parts";
 import { CashFlowBars, CashLine, FLOW_SECTIONS } from "./charts";
 import {
   type DashboardData,
@@ -28,9 +30,10 @@ import {
   useDashboard,
 } from "./data";
 import type { DashboardView, Health } from "./derive";
+import { formatCents } from "./money";
 
 // Home dashboard: are we OK on cash for the next 13 weeks? If not, when does it break, why,
-// and what do I do? Field owns this page; sections marked SampleTag wait on the Timeline lane.
+// and what do I do? Field owns this page; parts marked SampleTag wait on the Timeline lane.
 
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
@@ -108,11 +111,17 @@ export function ago(iso: string | null, now: number | null): string {
 
 function Header({ data }: { data: DashboardData }) {
   const now = useNow();
+  const company = useSelectedCompanyName();
   const h = data.header;
   return (
     <PageHeader
-      eyebrow="Cash health, next 13 weeks"
-      title={h?.name ?? <Skeleton className="h-9 w-56" />}
+      eyebrow={
+        <span className="flex flex-wrap items-center gap-2">
+          Cash health, next 13 weeks
+          <SourceBadge source={data.source} note={data.note} />
+        </span>
+      }
+      title={h?.name ?? (data.source === "loading" ? <Skeleton className="h-9 w-56" /> : company)}
       description={
         h ? (
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -137,12 +146,7 @@ function Header({ data }: { data: DashboardData }) {
           "Loading the latest books"
         )
       }
-      actions={
-        <>
-          {h ? <AgentStatus agent={h.agent} /> : null}
-          <SourceBadge data={data} />
-        </>
-      }
+      actions={h ? <AgentStatus agent={h.agent} /> : null}
     />
   );
 }
@@ -191,40 +195,16 @@ function AgentStatus({ agent }: { agent: DashboardHeader["agent"] }) {
   );
 }
 
-function SourceBadge({ data }: { data: DashboardData }) {
-  if (data.source === "live")
-    return (
-      <Badge variant="success" className="h-8 gap-1.5 px-2.5 text-[13px]">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-safe" />
-        Live
-      </Badge>
-    );
-  if (data.source === "loading")
-    return (
-      <Badge variant="secondary" className="h-8 px-2.5 text-[13px] font-normal">
-        Connecting...
-      </Badge>
-    );
-  return (
-    <Badge
-      variant="outline"
-      title={data.note}
-      className="h-8 gap-1.5 border-dashed px-2.5 text-[13px] font-normal text-muted-foreground"
-    >
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-clay" />
-      Demo data · {data.note.toLowerCase()}
-    </Badge>
-  );
-}
-
-/** Marks sections that still show sample numbers. Quiet on purpose: a label, not an alarm. */
-function SampleTag() {
+/** Marks parts that stand in until the Timeline lane is connected. Quiet on purpose: a label,
+ * not an alarm. */
+function SampleTag({ label, title }: { label: string; title: string }) {
   return (
     <span
-      title="This section will show the Timeline lane's results once they are connected"
+      title={title}
       className="inline-flex shrink-0 items-center gap-1 rounded border border-dashed px-1.5 py-px text-[11px] font-normal leading-4 tracking-normal text-muted-foreground"
     >
-      Sample data<span className="sr-only"> until Timeline is connected</span>
+      {label}
+      <span className="sr-only">: {title}</span>
     </span>
   );
 }
@@ -307,7 +287,10 @@ function HealthBanner({ view }: { view: DashboardView }) {
             <Badge variant={meta.badge} className="font-semibold">
               {meta.label}
             </Badge>
-            <SampleTag />
+            <SampleTag
+              label="Simple check"
+              title="Compares the 13-week low point with the lender's minimum, until the Timeline rating is connected"
+            />
           </div>
           <p className="mt-2 max-w-3xl text-[15px] font-medium leading-6 text-foreground">
             {words.sentence}
@@ -681,7 +664,10 @@ function Risks({ view }: { view: DashboardView }) {
       title={
         <span className="inline-flex flex-wrap items-center gap-2">
           Risks from auto-analysis
-          <SampleTag />
+          <SampleTag
+            label="Sample scenarios"
+            title="Example events run on these books, until the Timeline's auto-analysis is connected"
+          />
         </span>
       }
       description="What happens to the low point if each event comes true, and the fix the agent suggests."

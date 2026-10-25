@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "../../lib/utils";
@@ -22,17 +21,7 @@ export function CaseNav() {
     },
   ];
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b px-4 py-1">
-      <Link
-        href="/"
-        aria-label="Domino home"
-        className="flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-        <span className="text-lg">
-          domino<span className="text-primary">.</span>
-        </span>
-      </Link>
+    <header className="flex shrink-0 min-h-12 flex-wrap items-center gap-x-6 gap-y-1 border-b px-4 py-1">
       <div className="min-w-0 flex-1 basis-56">
         <h1 className="text-sm font-medium">2U, late 2023</h1>
         <p className="text-xs text-muted-foreground">

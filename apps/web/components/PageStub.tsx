@@ -1,34 +1,38 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { PageHeader } from "@/components/ui/page";
+import { Clock } from "lucide-react";
+import type { ReactNode } from "react";
 
+/** A page that is planned but not built yet: the shared page header, then one quiet empty state. */
 export function PageStub({
   label,
   title,
   description,
-}: { label: string; title: string; description: string }) {
+  status = "This page is not built yet.",
+  children,
+}: {
+  label: string;
+  title: string;
+  description: string;
+  /** One plain line on when the page arrives. */
+  status?: string;
+  /** Optional links to what works today. */
+  children?: ReactNode;
+}) {
   return (
-    <section className="max-w-4xl space-y-8">
-      <div>
-        <p className="mb-3 text-sm text-muted-foreground">{label}</p>
-        <h1 className="text-3xl font-medium tracking-tight">{title}</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
-      </div>
-      <Card className="bg-muted/50 shadow-none">
-        <CardContent className="space-y-4 p-6">
-          <p className="text-sm text-muted-foreground">
-            This screen is ready for the next product task. Explore the component previews in the
-            meantime.
+    <div className="mx-auto max-w-[1200px] space-y-6">
+      <PageHeader eyebrow={label} title={title} description={description} />
+      <section className="flex flex-col items-start gap-4 rounded-lg border border-dashed bg-card px-6 py-10 sm:flex-row sm:items-center">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <Clock aria-hidden="true" className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold tracking-[-0.01em]">{status}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Nothing here changes your data. Domino never moves money.
           </p>
-          <Button variant="outline" asChild>
-            <Link href="/playground">
-              Open playground
-              <ArrowRight className="ml-2 size-4" aria-hidden="true" />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </section>
+        </div>
+        {children ? <div className="flex flex-wrap gap-2">{children}</div> : null}
+      </section>
+    </div>
   );
 }

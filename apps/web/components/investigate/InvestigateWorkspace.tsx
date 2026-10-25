@@ -48,7 +48,6 @@ import "@xyflow/react/dist/style.css";
 import { Bot, ChartLine, Database, ExternalLink, FileText, Wrench, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   type CSSProperties,
   type ReactNode,
@@ -576,20 +575,9 @@ function Workspace({
       >
         {/* A compact toolbar above the canvas on mobile so it never covers the graph; floats top-left on desktop. */}
         <div className="flex flex-wrap items-center gap-x-3 border-b px-3 lg:pointer-events-none lg:absolute lg:left-4 lg:top-4 lg:z-10 lg:flex-col lg:items-start lg:gap-1.5 lg:border-b-0 lg:px-0">
+          {/* The shared top bar above carries the logo and home link. */}
           {embedded ? null : (
-            <>
-              <Link
-                href="/"
-                aria-label="Domino home"
-                className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-                <span className="text-lg">
-                  domino<span className="text-primary">.</span>
-                </span>
-              </Link>
-              <h1 className="text-sm font-medium">Investigate</h1>
-            </>
+            <h1 className="min-h-11 content-center text-sm font-medium">Investigate</h1>
           )}
           <p className="text-xs text-muted-foreground">{CONNECTION_LABEL[connection]}</p>
           {nodes.length > 1 ? (

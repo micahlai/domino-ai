@@ -64,6 +64,12 @@ export function selectCompany(profile: ProfileId) {
 export const useSelectedProfile = (): ProfileId =>
   useSyncExternalStore(subscribe, read, () => DEFAULT_FIELD_COMPANY);
 
+/** The selected company's display name. Company records are named exactly after their profile. */
+export const useSelectedCompanyName = (): string => {
+  const profile = useSelectedProfile();
+  return FIELD_COMPANIES.find((c) => c.id === profile)?.name ?? "Your company";
+};
+
 export type PickerCompany = FunctionReturnType<typeof api.field.companies>[number];
 
 /**
