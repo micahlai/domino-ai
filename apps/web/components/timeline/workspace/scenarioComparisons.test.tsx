@@ -15,6 +15,7 @@ import {
   forkOf,
   readComparison,
   scenarioDepth,
+  toggleShown,
 } from "./scenarioComparisons";
 
 const clone = <T,>(value: T): T => structuredClone(value);
@@ -52,6 +53,22 @@ describe("saved scenario comparisons", () => {
     expect(forkOf("s2", entries, new Set(["s1", "s2"]), "base")).toBe("s1");
     expect(forkOf("s2", entries, new Set(["s2"]), "base")).toBe("base");
     expect(forkOf("s1", entries, new Set(["s1"]), "base")).toBe("base");
+  });
+
+  it("shows a child only with all its parents and hides children with their parent", () => {
+    const root = fixtureGraph[0]!;
+    const entries = [
+      { ...root, runId: "base", parentRunId: null },
+      { ...root, runId: "s1", parentRunId: "base" },
+      { ...root, runId: "s2", parentRunId: "s1" },
+      { ...root, runId: "s3", parentRunId: "s2" },
+      { ...root, runId: "side", parentRunId: "base" },
+    ];
+    expect(toggleShown([], "s3", entries, "base")).toEqual(["s1", "s2", "s3"]);
+    expect(toggleShown(["side", "s1", "s2", "s3"], "s1", entries, "base")).toEqual(["side"]);
+    expect(toggleShown(["s1", "s2"], "s2", entries, "base")).toEqual(["s1"]);
+    // Past the line limit, counting the parents it brings along, nothing changes.
+    expect(toggleShown(["a", "b", "c", "d", "side"], "s2", entries, "base")).toBeNull();
   });
 
   it("finds where two saved curves first differ", () => {

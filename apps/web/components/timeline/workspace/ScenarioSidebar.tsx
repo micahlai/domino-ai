@@ -13,6 +13,8 @@ import {
   type ScenarioComparisons,
   colorFor,
   scenarioDepth,
+  showWithAncestors,
+  toggleShown,
 } from "./scenarioComparisons";
 import { type Outcome, entryOutcome, receiptOutcome } from "./summary";
 
@@ -86,7 +88,8 @@ export function ScenarioSidebar({
   const filtered = entries.filter((entry) =>
     `${entry.label} ${KIND[entry.kind]}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
-  const full = comparisons.ids.length >= MAX_COMPARISONS;
+  const canShow = (id: string) =>
+    showWithAncestors(comparisons.ids, id, entries, baseRunId ?? "") !== null;
   return (
     <section
       className="min-w-0 space-y-3"
@@ -224,8 +227,12 @@ export function ScenarioSidebar({
                 </div>
                 {entry.runId !== baseRunId ? (
                   <label
-                    className={`flex min-h-11 shrink-0 items-center gap-2 text-xs sm:min-h-8 ${!selected && full ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer"}`}
-                    title={!selected && full ? `Up to ${MAX_COMPARISONS} at a time` : undefined}
+                    className={`flex min-h-11 shrink-0 items-center gap-2 text-xs sm:min-h-8 ${!selected && !canShow(entry.runId) ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer"}`}
+                    title={
+                      !selected && !canShow(entry.runId)
+                        ? `Up to ${MAX_COMPARISONS} lines at a time, counting the scenarios it builds on`
+                        : undefined
+                    }
                   >
                     <input
                       type="checkbox"
@@ -235,14 +242,17 @@ export function ScenarioSidebar({
                       }
                       aria-label={`Compare ${name}`}
                       checked={selected}
-                      disabled={!selected && full}
-                      onChange={() =>
-                        comparisons.onChange(
-                          selected
-                            ? comparisons.ids.filter((id) => id !== entry.runId)
-                            : [...comparisons.ids, entry.runId],
-                        )
-                      }
+                      disabled={!selected && !canShow(entry.runId)}
+                      onChange={() => {
+                        // A child is shown only with all its parents; hiding a parent hides what builds on it.
+                        const next = toggleShown(
+                          comparisons.ids,
+                          entry.runId,
+                          entries,
+                          baseRunId ?? "",
+                        );
+                        if (next) comparisons.onChange(next);
+                      }}
                     />
                     <span>Show</span>
                   </label>

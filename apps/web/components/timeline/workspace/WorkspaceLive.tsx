@@ -16,6 +16,7 @@ import { baselineHref } from "../baseline/api";
 import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
 import type { AskInput, AskOutcome } from "./QuestionsPanel";
+import { familyEntries } from "./ScenarioSidebar";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
   LinkResultSchema,
@@ -45,7 +46,7 @@ import {
 import { NewerBooksNotice, fieldCompanyOf, useLatestImport } from "./books";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
-import { comparisonIds, readComparison } from "./scenarioComparisons";
+import { comparisonIds, readComparison, showWithAncestors } from "./scenarioComparisons";
 import { ShownScenariosProvider, useShownScenarios } from "./shownScenarios";
 
 export const CATALOG_PAGE_SIZE = 20;
@@ -211,9 +212,13 @@ function RunReady({
   // Opening a saved what-if shows it; the bare timeline shows only the base forecast.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened run
   useEffect(() => {
-    if (run.kind !== "baseline" && !shown.ids.includes(run.runId))
-      shown.set([...shown.ids, run.runId]);
-  }, [run.runId]);
+    if (run.kind !== "baseline" && !shown.ids.includes(run.runId)) show(run.runId);
+  }, [run.runId, graph.state]);
+  // A scenario is drawn with every scenario it builds on, so its branch leaves a visible line.
+  const show = (id: string) => {
+    const next = showWithAncestors(shown.ids, id, familyEntries(run, graph), baseRunId ?? "");
+    if (next) shown.set(next);
+  };
   const selectedComparisons = comparisonIds(shown.ids, baseRunId ?? "");
   const comparisonKey = selectedComparisons.join("\n");
   // Convex stores subscription callbacks by query-bag identity and updates state during render
@@ -248,14 +253,25 @@ function RunReady({
   async function write(
     call: () => Promise<unknown>,
     navigate: boolean,
-    show = false,
+    showResult = false,
   ): Promise<Outcome> {
     try {
       const parsed = RunResultSchema.safeParse(await call());
       if (!parsed.success || parsed.data.companyId !== companyId)
         return { ok: false, message: UNUSABLE_ANSWER };
-      if (show && !shown.ids.includes(parsed.data.runId))
-        shown.set([...shown.ids, parsed.data.runId]);
+      if (showResult && !shown.ids.includes(parsed.data.runId)) {
+        // The new run is not in the family list yet; its parent is the open run, shown first.
+        const withParent =
+          run.runId === baseRunId
+            ? shown.ids
+            : (showWithAncestors(
+                shown.ids,
+                run.runId,
+                familyEntries(run, graph),
+                baseRunId ?? "",
+              ) ?? shown.ids);
+        shown.set([...withParent, parsed.data.runId]);
+      }
       if (navigate) router.push(workspaceHref(companyId, { runId: parsed.data.runId }));
       return { ok: true, runId: parsed.data.runId };
     } catch (e) {

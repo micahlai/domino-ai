@@ -8,7 +8,13 @@ import { cn } from "../../../lib/utils";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { familyEntries } from "./ScenarioSidebar";
 import type { CatalogEntry, Read, WorkspaceRun } from "./api";
-import { MAX_COMPARISONS, type ScenarioComparisons, colorFor } from "./scenarioComparisons";
+import {
+  MAX_COMPARISONS,
+  type ScenarioComparisons,
+  colorFor,
+  showWithAncestors,
+  toggleShown,
+} from "./scenarioComparisons";
 
 const KIND = { baseline: "Base forecast", rules: "Rules changed", scenario: "What-if" };
 
@@ -40,7 +46,8 @@ type RowContext = {
   run: WorkspaceRun;
   comparisons: ScenarioComparisons;
   byId: Map<string, CatalogEntry>;
-  full: boolean;
+  /** Whether ticking this run (with its parents) stays within the line limit. */
+  canShow: (id: string) => boolean;
   toggle: (id: string) => void;
   buildOn?: (runId: string) => void;
   hrefFor: (id: string) => string;
@@ -74,13 +81,12 @@ export function ScenarioNav({
     run,
     comparisons,
     byId: new Map(entries.map((e) => [e.runId, e])),
-    full: comparisons.ids.length >= MAX_COMPARISONS,
-    toggle: (id) =>
-      comparisons.onChange(
-        comparisons.ids.includes(id)
-          ? comparisons.ids.filter((x) => x !== id)
-          : [...comparisons.ids, id],
-      ),
+    canShow: (id) => showWithAncestors(comparisons.ids, id, entries, baseRunId ?? "") !== null,
+    // A child is shown only with all its parents; hiding a parent hides what builds on it.
+    toggle: (id) => {
+      const next = toggleShown(comparisons.ids, id, entries, baseRunId ?? "");
+      if (next) comparisons.onChange(next);
+    },
     buildOn,
     hrefFor,
   };
@@ -120,7 +126,8 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(true);
   const { entry, children } = node;
-  const { run, comparisons, byId, full, toggle, buildOn, hrefFor } = ctx;
+  const { run, comparisons, byId, canShow, toggle, buildOn, hrefFor } = ctx;
+  const blocked = !comparisons.ids.includes(entry.runId) && depth > 0 && !canShow(entry.runId);
   const isBase = depth === 0;
   const shown = isBase || comparisons.ids.includes(entry.runId);
   const color = !isBase && shown ? colorFor(comparisons, entry.runId) : undefined;
@@ -183,12 +190,12 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
           className="relative mt-0.5 size-3.5 shrink-0 cursor-pointer disabled:cursor-default"
           style={color ? { accentColor: color } : undefined}
           checked={shown}
-          disabled={isBase || (!shown && full)}
+          disabled={isBase || blocked}
           title={
             isBase
               ? "The base forecast is always shown"
-              : !shown && full
-                ? `Up to ${MAX_COMPARISONS} at a time`
+              : blocked
+                ? `Up to ${MAX_COMPARISONS} lines at a time, counting the scenarios it builds on`
                 : undefined
           }
           onChange={() => toggle(entry.runId)}

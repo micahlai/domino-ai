@@ -28,6 +28,65 @@ export function comparisonIds(ids: string[], base: string): string[] {
   return [...new Set(ids)].filter((id) => id !== base).slice(0, MAX_COMPARISONS);
 }
 
+/** Ancestors of a run, nearest last, stopping at the always-drawn base. */
+export function ancestorsOf(id: string, entries: CatalogEntry[], baseRunId: string): string[] {
+  const byId = new Map(entries.map((e) => [e.runId, e]));
+  const chain: string[] = [];
+  const seen = new Set([id]);
+  let parent = byId.get(id)?.parentRunId ?? null;
+  while (parent && parent !== baseRunId && !seen.has(parent) && byId.has(parent)) {
+    chain.unshift(parent);
+    seen.add(parent);
+    parent = byId.get(parent)?.parentRunId ?? null;
+  }
+  return chain;
+}
+
+/**
+ * Show a scenario with every scenario it builds on, so a branch is always drawn leaving a
+ * visible parent. Returns null when that would pass the limit of shown lines.
+ */
+export function showWithAncestors(
+  ids: string[],
+  id: string,
+  entries: CatalogEntry[],
+  baseRunId: string,
+): string[] | null {
+  const next = [...ids];
+  for (const run of [...ancestorsOf(id, entries, baseRunId), id])
+    if (run !== baseRunId && !next.includes(run)) next.push(run);
+  return next.length > MAX_COMPARISONS ? null : next;
+}
+
+/** Hide a scenario and everything built on it: a child cannot be shown without its parent. */
+export function hideWithDescendants(ids: string[], id: string, entries: CatalogEntry[]): string[] {
+  const children = new Map<string, string[]>();
+  for (const e of entries)
+    if (e.parentRunId)
+      children.set(e.parentRunId, [...(children.get(e.parentRunId) ?? []), e.runId]);
+  const drop = new Set<string>();
+  const stack = [id];
+  while (stack.length) {
+    const run = stack.pop() as string;
+    if (drop.has(run)) continue;
+    drop.add(run);
+    stack.push(...(children.get(run) ?? []));
+  }
+  return ids.filter((x) => !drop.has(x));
+}
+
+/** Tick or untick one scenario under the parent-first rule; null when it cannot be shown. */
+export function toggleShown(
+  ids: string[],
+  id: string,
+  entries: CatalogEntry[],
+  baseRunId: string,
+): string[] | null {
+  return ids.includes(id)
+    ? hideWithDescendants(ids, id, entries)
+    : showWithAncestors(ids, id, entries, baseRunId);
+}
+
 /** Keep existing color slots, give each newly shown scenario the lowest free one. */
 export function assignColors(
   previous: Record<string, number>,
