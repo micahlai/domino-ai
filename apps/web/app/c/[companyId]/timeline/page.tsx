@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Timeline" };
 export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
   const companyId = decodeTimelineCompanyId((await params).companyId);
   return (
-    <div className="min-w-0">
+    <div className="h-full min-h-0 min-w-0">
       <SyncCompany companyId={companyId} />
       <WorkspaceLive key={companyId} companyId={companyId} landing="latest" />
     </div>

@@ -15,7 +15,6 @@ import { analysisHref } from "../analysis/links";
 import { baselineHref } from "../baseline/api";
 import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
-import { familyEntries } from "./ScenarioSidebar";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
   LinkResultSchema,
@@ -43,7 +42,12 @@ import {
 import { NewerBooksNotice, fieldCompanyOf, useLatestImport } from "./books";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
-import { comparisonIds, readComparison, showWithAncestors } from "./scenarioComparisons";
+import {
+  comparisonIds,
+  familyEntries,
+  readComparison,
+  showWithAncestors,
+} from "./scenarioComparisons";
 import { ShownScenariosProvider, useShownScenarios } from "./shownScenarios";
 
 export const CATALOG_PAGE_SIZE = 20;

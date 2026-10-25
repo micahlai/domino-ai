@@ -1,5 +1,23 @@
 # Timeline handoff
 
+## 2026-10-25: manual-entry follow-up consolidated
+
+- Done: user-requested side-conversation follow-up moves manual event entry to More details, keeping Ask Domino in the header and preserving mounted drafts/review/save. Parent chat explicitly authorized publishing all remaining changes.
+- Checks: 74 focused tests, web TypeScript, scoped Biome and whitespace checks pass. Prior complete TL11 check passed2,520tests.
+
+## 2026-10-25: TL11 page-filling timeline and branch focus
+
+- Done: all session UI changes are consolidated on `claude-timeline-chat`: full-window chart, collapsible/widenable scenario rail with visible Build on and closed metadata, collapsible draft-preserving chat, collapsed bottom financial tray, vertical top-left chart key, continuous horizontal pan and date-anchored grid, exact-time branch-aware focus. See [layout scope](TL11-layout.md) and [task](../../tasks/TL11-page-filling-timeline.md).
+- Browser: actual saved Kestrel timeline checked at 1440×900, 1024×768 and 390×844. Confirmed rail/dropdown actions, parent-first comparisons, unsent chat draft retention, bottom saved values, keyboard scrollers/week selection, fractional pan and moving grid. Clicked a fractional position on Driftwood's curve: focus retained its run ID; keyboard week movement kept the branch and Build on stayed on base. Uncheck falls back to base, recheck restores focus. Screenshot `/tmp/domino-tl11-final.png`.
+- Runtime: preview http://127.0.0.1:3116/c/kestrel/timeline in `../domino-claude-chat`, reusing the existing `../domino-unified-chat` local backend on3212/3213 and its saved data. Restarted those stopped services after interruption; no data/env copying. Main unchanged. No production build/provider calls/new financial writes in this UI acceptance.
+- Checks: final `pnpm check` passes typechecks, 2,520 tests (1,218 web) and Biome649 files. Source audit found no blockers; no backend/schema/contracts/engine/global-style edits. User explicitly authorized pushing all consolidated session changes to `claude-timeline-chat`; no main merge.
+
+## 2026-10-25: TL10 Claude chat, scenario branches and timeline controls
+
+- Done: Claude-backed "Ask Domino" chat (questions with sources and what-ifs in one thread, choices), color-coded scenario branches with start dates and a parent-first visibility rule, branch tree rail, time and cash scrollers, branch confirmation flash. Branch `claude-timeline-chat` pushed at `bae9a8e`; main untouched.
+- Checks: `pnpm check` (1,209 web tests); live API checks. No browser check yet.
+- Next: [TL10 handoff](TL10-claude-chat-handoff.md): browser pass, Phase 3 solution scenarios, task cards/decisions/spec, then PR.
+
 ## 2026-10-25: TL9 sidebar ready for push
 
 - Done: durable typed clarification chat beside the timeline; exact reviewed scenario/rule save, transcript/history, source-pinned context and legacy link redirect. Phone remains on the timeline page. Independent review accepted final UI/backend; live initialization and repeated-payment issues repaired.

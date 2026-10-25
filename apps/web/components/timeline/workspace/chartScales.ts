@@ -37,12 +37,29 @@ export function formatAxisCash(cents: number): string {
   return `${value < 0n ? "-" : ""}$${whole}${fraction ? `.${fraction}` : ""}${unit.suffix}`;
 }
 
-/** Date labels always refer to a supplied saved week, never an interpolated date. */
-export function dateTicks(dates: string[], maximum = 7): { index: number; date: string }[] {
-  const count = Math.min(Math.max(2, maximum), dates.length);
-  if (!count) return [];
-  return Array.from({ length: count }, (_, i) => {
-    const index = count === 1 ? 0 : Math.round((i * (dates.length - 1)) / (count - 1));
-    return { index, date: dates[index]! };
-  });
+/** Pan in drawing coordinates: saved weeks remain discrete, the viewport does not. */
+export function panWeekWindow(
+  start: number,
+  end: number,
+  delta: number,
+  last: number,
+): [number, number] {
+  const span = end - start;
+  const nextStart = Math.min(Math.max(0, last - span), Math.max(0, start + delta));
+  return [nextStart, nextStart + span];
+}
+
+/** Grid dates stay anchored to the complete saved series while the viewport moves past them. */
+export function visibleDateTicks(dates: string[], start: number, end: number, maximum: number) {
+  const interval = Math.max(1, Math.ceil((end - start) / Math.max(1, maximum - 1)));
+  const ticks: { index: number; date: string }[] = [];
+  for (
+    let index = Math.max(0, Math.ceil(start / interval) * interval);
+    index <= Math.min(end, dates.length - 1);
+    index += interval
+  ) {
+    const date = dates[index];
+    if (date) ticks.push({ index, date });
+  }
+  return ticks;
 }

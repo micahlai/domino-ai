@@ -4,17 +4,31 @@ import type { Forecast, HistoryWeek, ScheduledItem } from "@domino/contracts";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 import { motion, useReducedMotion } from "motion/react";
-import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { formatExactCents, formatFullDate } from "../baseline/format";
-import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
+import { type FocusCurve, type FocusPoint, nearestCurveAt, pointOnCurve } from "./chartFocus";
+import { cashScale, formatAxisCash, panWeekWindow, visibleDateTicks } from "./chartScales";
 
 export type ChartProps = {
+  /** Fill the workspace plot area while keeping labels at their native size. */
+  fill?: boolean;
   history: HistoryWeek[];
   forecast: Forecast;
   /** Parent node's saved forecast, drawn faintly for comparison. */
   parent?: Forecast | null;
   /** Name of the main forecast line in the legend and tooltip. */
   forecastLabel?: string;
+  /** Identity of the main line and preferred open scenario for the initial focus dot. */
+  forecastRunId?: string;
+  initialFocusRunId?: string;
   comparisons?: {
     runId: string;
     label: string;
@@ -58,22 +72,26 @@ const RECENT_WEEKS = 8;
 const MIN_SPAN = 4;
 const DASHES = ["6 4", "2 4", "10 3 2 3"] as const;
 
-type Point = { x: number; y: number };
+type Point = FocusPoint;
 
 /** Measures the drawing width so text stays at its real size on phones and wide screens. */
-function useWidth() {
+function usePlotSize() {
   const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(DEFAULT_W);
+  const [size, setSize] = useState({ width: DEFAULT_W, height: 340 });
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const update = () => setWidth(Math.max(300, Math.min(1400, Math.round(el.clientWidth))));
+    const update = () =>
+      setSize({
+        width: Math.max(200, Math.round(el.clientWidth)),
+        height: Math.round(el.clientHeight),
+      });
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  return [ref, width] as const;
+  return [ref, size] as const;
 }
 
 /**
@@ -83,10 +101,16 @@ function useWidth() {
 export function WorkspaceChart(p: ChartProps) {
   const titleId = useId();
   const clipId = `${titleId.replace(/:/g, "")}-plot`;
-  const [wrapRef, W] = useWidth();
+  const [wrapRef, plotSize] = usePlotSize();
+  const W = plotSize.width;
   const compact = W < 560;
-  const H = compact ? 280 : 340;
+  const H = p.fill ? Math.max(180, plotSize.height) : compact ? 280 : 340;
   const PAD = { right: compact ? 12 : 20, top: 30, bottom: 52 };
+  const [focus, setFocus] = useState<{
+    runId: string;
+    slot: number;
+    weekStart: string | null;
+  } | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const reduced = useReducedMotion();
   const [chosenView, setView] = useState<[number, number] | null>(null);
@@ -141,10 +165,12 @@ export function WorkspaceChart(p: ChartProps) {
   const left =
     18 + Math.max(44, ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 14));
   const dates = [...history.map((week) => week.weekStart), ...weeks.map((week) => week.weekStart)];
-  const timeTicks = dateTicks(
-    dates.slice(viewStart, viewEnd + 1),
-    compact ? 4 : W < 820 ? 6 : 9,
-  ).map((tick) => ({ ...tick, index: tick.index + viewStart }));
+  const timeTicks = visibleDateTicks(
+    dates,
+    viewStart,
+    viewEnd,
+    Math.min(9, Math.max(2, Math.floor((W - left - PAD.right) / 110) + 1)),
+  );
   const x = scaleLinear()
     .domain([viewStart, Math.max(viewEnd, viewStart + 1)])
     .range([left, W - PAD.right]);
@@ -154,7 +180,7 @@ export function WorkspaceChart(p: ChartProps) {
   const draw = line<Point>()
     .x((d) => d.x)
     .y((d) => d.y);
-  const at = (i: number, cents: number): Point => ({ x: x(i), y: y(cents) });
+  const at = (i: number, cents: number): Point => ({ slot: i, x: x(i), y: y(cents) });
   const past = history.map((h, i) => at(i, h.usable));
   const future = weeks.map((w, i) => at(off + i, w.usable));
   const parentLine = p.parent?.weeks.map((w, i) => at(off + i, w.usable)) ?? [];
@@ -173,6 +199,61 @@ export function WorkspaceChart(p: ChartProps) {
   const itemsByWeek = new Map<string, number>();
   for (const it of p.items) itemsByWeek.set(it.dueWeek, (itemsByWeek.get(it.dueWeek) ?? 0) + 1);
   const selectedIndex = weeks.findIndex((w) => w.weekStart === p.selectedWeek);
+  const mainRunId = p.forecastRunId ?? "forecast";
+  const curves: FocusCurve[] = [
+    { runId: mainRunId, label: mainLabel, points: lastPast ? [lastPast, ...future] : future },
+    ...comparisons.map((entry) => ({
+      runId: entry.runId,
+      label: entry.label,
+      color: entry.color,
+      points: comparisonPoints(entry),
+    })),
+    ...(p.parent && !p.comparisons
+      ? [
+          {
+            runId: "parent",
+            label: "Scenario it started from",
+            color: "hsl(var(--muted-foreground))",
+            points: lastPast ? [lastPast, ...parentLine] : parentLine,
+          },
+        ]
+      : []),
+    { runId: "recorded", label: "Recorded cash", points: past, color: "hsl(var(--clay))" },
+  ];
+  const focusCurve =
+    curves.find(
+      (curve) => curve.runId === (focus?.runId ?? p.initialFocusRunId) && curve.points.length > 1,
+    ) ?? curves[0]!;
+  // Store time and identity, then reproject from the current scales after any pan, zoom or resize.
+  const focusSlot = focus && focus.weekStart === p.selectedWeek ? focus.slot : off + selectedIndex;
+  const focusPoint =
+    selectedIndex >= 0 || focus ? pointOnCurve(focusCurve.points, focusSlot) : null;
+  const focusDate = (slot: number) => {
+    const before = dates[Math.floor(slot)];
+    const after = dates[Math.ceil(slot)];
+    return before && after && before !== after
+      ? `between ${formatFullDate(before)} and ${formatFullDate(after)}`
+      : `week of ${formatFullDate(before ?? "")}`;
+  };
+  const focusLabel = `${focusCurve.label} · ${focusDate(focusSlot)}`;
+  const selectAt = (event: MouseEvent<SVGRectElement>) => {
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    const bounds = svg.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const pointerX = ((event.clientX - bounds.left) / bounds.width) * W;
+    const pointerY = ((event.clientY - bounds.top) / bounds.height) * H;
+    const slot = x.invert(clampTo(pointerX, plotLeft, plotRight));
+    const picked = nearestCurveAt(curves, slot, pointerY, focusCurve.runId);
+    if (!picked) return;
+    // Week details keep the nearest saved forecast record; no fractional financial values are made.
+    const week =
+      picked.curve.runId !== "recorded" && slot >= off - 1
+        ? weeks[clampTo(Math.round(slot - off), 0, weeks.length - 1)]
+        : undefined;
+    setFocus({ runId: picked.curve.runId, slot, weekStart: week?.weekStart ?? p.selectedWeek });
+    if (week) p.onSelectWeek(week.weekStart);
+  };
   const low = p.forecast.lowPoint;
   const lowIndex = weeks.findIndex((w) => w.weekStart === low.weekStart);
   const breachedWeeks = new Set(p.breachedWeeks ?? []);
@@ -209,7 +290,6 @@ export function WorkspaceChart(p: ChartProps) {
 
   // Trackpad: two-finger swipes pan time and cash; a pinch zooms time around the pointer. The
   // scrollers set the scale. At an edge the swipe goes back to the page, so it never traps it.
-  const panCarry = useRef(0);
   const onWheel = useRef<(e: WheelEvent) => void>(() => undefined);
   onWheel.current = (e) => {
     const el = wrapRef.current;
@@ -218,7 +298,7 @@ export function WorkspaceChart(p: ChartProps) {
     const px = rect.width / W;
     const span = viewEnd - viewStart;
     if (e.ctrlKey) {
-      const nextSpan = clampTo(Math.round(span * Math.exp(e.deltaY * 0.01)), MIN_SPAN, lastSlot);
+      const nextSpan = clampTo(span * Math.exp(e.deltaY * 0.01), MIN_SPAN, lastSlot);
       e.preventDefault();
       if (nextSpan === span) return;
       const ratio = clampTo(
@@ -227,7 +307,7 @@ export function WorkspaceChart(p: ChartProps) {
         1,
       );
       const anchorSlot = viewStart + ratio * span;
-      const start = clampTo(Math.round(anchorSlot - ratio * nextSpan), 0, lastSlot - nextSpan);
+      const start = clampTo(anchorSlot - ratio * nextSpan, 0, lastSlot - nextSpan);
       setView(start === 0 && nextSpan === lastSlot ? null : [start, start + nextSpan]);
       return;
     }
@@ -235,13 +315,16 @@ export function WorkspaceChart(p: ChartProps) {
     const dx = sideways ? e.deltaX || e.deltaY : 0;
     const dy = sideways ? 0 : e.deltaY;
     if (dx && span < lastSlot) {
-      panCarry.current += (dx / ((plotRight - plotLeft) * px)) * span;
-      const steps = Math.trunc(panCarry.current);
-      const start = clampTo(viewStart + steps, 0, lastSlot - span);
-      if (start !== viewStart || Math.abs(panCarry.current) < 1) e.preventDefault();
-      if (steps) {
-        panCarry.current -= steps;
-        setView([start, start + span]);
+      const next = panWeekWindow(
+        viewStart,
+        viewEnd,
+        (dx / ((plotRight - plotLeft) * px)) * span,
+        lastSlot,
+      );
+      if (next[0] !== viewStart) {
+        e.preventDefault();
+        setCashView((current) => current ?? [domainLo, domainHi]);
+        setView(next);
       }
     }
     const height = domainHi - domainLo;
@@ -279,15 +362,128 @@ export function WorkspaceChart(p: ChartProps) {
           };
 
   return (
-    <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
-      <div className="flex min-w-0 items-start gap-2" data-testid="chart-scale">
-        <div ref={wrapRef} className="relative min-w-0 max-w-full flex-1 overscroll-contain">
+    <figure
+      className={
+        p.fill
+          ? "relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-2"
+          : "min-w-0 max-w-full space-y-3"
+      }
+      data-testid="workspace-chart"
+    >
+      <figcaption
+        className={
+          p.fill
+            ? "absolute z-20 max-h-[70%] w-max max-w-[min(20rem,calc(100%_-_6rem))] overflow-y-auto rounded-md border bg-card/95 px-2 py-1 text-xs text-muted-foreground shadow-xs"
+            : "shrink-0 text-xs text-muted-foreground"
+        }
+        style={p.fill ? { left: left + 8, top: PAD.top + 4 } : undefined}
+      >
+        <details open={p.fill ? undefined : true}>
+          <summary className="min-h-6 cursor-pointer">
+            Chart key
+            {comparisons.length
+              ? ` · ${comparisons.length} ${comparisons.length === 1 ? "scenario" : "scenarios"}`
+              : ""}
+          </summary>
+          <div
+            className={
+              p.fill
+                ? "flex flex-col items-start gap-2 py-2"
+                : "flex flex-wrap gap-x-4 gap-y-1.5 py-1"
+            }
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-0.5 w-4 bg-clay" />
+              Recorded cash
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg width="18" height="4" aria-hidden="true" className="shrink-0">
+                <line x1="0" y1="2" x2="18" y2="2" className="stroke-primary" strokeWidth={2.5} />
+              </svg>
+              {mainLabel}
+            </span>
+            {p.parent && !p.comparisons ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Swatch dash={DASHES[0]} />
+                Scenario it started from
+              </span>
+            ) : null}
+            {comparisons.map((entry, index) => (
+              <span
+                key={entry.runId}
+                className="inline-flex max-w-full flex-wrap items-center gap-1.5"
+                data-testid="comparison-legend"
+              >
+                <Swatch
+                  dash={entry.color ? undefined : DASHES[index % DASHES.length]}
+                  color={entry.color}
+                />
+                <span
+                  className={p.fill ? "min-w-0 break-words" : "max-w-48 truncate"}
+                  title={entry.label}
+                >
+                  {entry.label}
+                </span>
+                {entry.startsOn ? (
+                  <span className="shrink-0">· from {formatFullDate(entry.startsOn)}</span>
+                ) : null}
+                {entry.fromIndex === null ? (
+                  <span className="shrink-0">· same as the line it builds on</span>
+                ) : null}
+                {entry.parent ? " (started from)" : ""}
+              </span>
+            ))}
+            {p.limits.length ? (
+              <span className="inline-flex items-center gap-1.5">
+                <svg width="18" height="4" aria-hidden="true" className="shrink-0">
+                  <line
+                    x1="0"
+                    y1="2"
+                    x2="18"
+                    y2="2"
+                    className="stroke-destructive"
+                    strokeDasharray="4 3"
+                  />
+                </svg>
+                Cash minimum
+              </span>
+            ) : null}
+            {anyBreach ? (
+              <span data-testid="breach-legend" className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
+                Week below a cash minimum
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/70" />
+              Scheduled items (original imported dates; scenario changes are in the cash line)
+            </span>
+          </div>
+        </details>
+      </figcaption>
+      <div
+        className={
+          p.fill
+            ? "flex min-h-[180px] min-w-0 flex-1 items-stretch gap-2"
+            : "flex min-w-0 items-start gap-2"
+        }
+        data-testid="chart-scale"
+      >
+        <div
+          ref={wrapRef}
+          className="relative min-h-0 min-w-0 max-w-full flex-1 overscroll-contain"
+        >
           <svg
             id={`${clipId}-chart`}
             viewBox={`0 0 ${W} ${H}`}
-            className="block h-auto w-full touch-pan-y select-none"
+            className={
+              p.fill
+                ? "absolute inset-0 block h-full w-full touch-pan-y select-none"
+                : "block h-auto w-full touch-pan-y select-none"
+            }
             role="img"
             aria-labelledby={titleId}
+            aria-describedby={focusPoint ? `${clipId}-focus-label` : undefined}
             onPointerLeave={() => setHover(null)}
           >
             <title
@@ -506,10 +702,10 @@ export function WorkspaceChart(p: ChartProps) {
                   ) : null,
                 )}
               </g>
-              {selectedIndex >= 0 ? (
+              {focusPoint ? (
                 <line
-                  x1={x(off + selectedIndex)}
-                  x2={x(off + selectedIndex)}
+                  x1={focusPoint.x}
+                  x2={focusPoint.x}
                   y1={PAD.top}
                   y2={H - PAD.bottom}
                   className="stroke-foreground/50"
@@ -529,22 +725,38 @@ export function WorkspaceChart(p: ChartProps) {
               ) : null}
               {weeks.map((w, i) => {
                 const pt = future[i] as Point;
-                const selected = i === selectedIndex;
                 const breached = breachedWeeks.has(w.weekStart);
                 return (
                   <circle
                     key={w.weekStart}
                     cx={pt.x}
                     cy={pt.y}
-                    r={selected ? 5.5 : breached || i === lowIndex ? 4.5 : 2.5}
-                    className={`${breached ? "fill-destructive" : "fill-primary"}${selected || breached ? " stroke-card" : ""}`}
-                    strokeWidth={selected || breached ? 2 : undefined}
+                    r={breached || i === lowIndex ? 4.5 : 2.5}
+                    className={`${breached ? "fill-destructive" : "fill-primary"}${breached ? " stroke-card" : ""}`}
+                    strokeWidth={breached ? 2 : undefined}
                     data-testid={`forecast-point-${w.weekStart}`}
                     data-breached={breached}
                     pointerEvents="none"
                   />
                 );
               })}
+              {focusPoint ? (
+                <circle
+                  cx={focusPoint.x}
+                  cy={focusPoint.y}
+                  r={5.5}
+                  fill={focusCurve.color}
+                  className={`${focusCurve.color ? "" : "fill-primary "}stroke-card`}
+                  strokeWidth={2}
+                  pointerEvents="none"
+                  aria-label={`Chart focus: ${focusLabel}`}
+                  data-testid="chart-focus-point"
+                  data-run-id={focusCurve.runId}
+                  data-slot={focusSlot}
+                >
+                  <title>{focusLabel}</title>
+                </circle>
+              ) : null}
               {notes.map((n) => {
                 const flip = n.pt.x > W * 0.62;
                 return (
@@ -651,18 +863,11 @@ export function WorkspaceChart(p: ChartProps) {
                   width={step}
                   height={H - PAD.top - PAD.bottom}
                   fill="transparent"
-                  className={forecastIndex >= 0 ? "cursor-pointer" : undefined}
+                  className="cursor-pointer"
                   onPointerEnter={(e) => {
                     if (e.pointerType === "mouse") setHover(slot);
                   }}
-                  onClick={
-                    forecastIndex >= 0
-                      ? () => {
-                          const w = weeks[forecastIndex];
-                          if (w) p.onSelectWeek(w.weekStart);
-                        }
-                      : undefined
-                  }
+                  onClick={selectAt}
                   data-testid={forecastIndex >= 0 ? `chart-week-${date}` : undefined}
                 />
               );
@@ -742,75 +947,14 @@ export function WorkspaceChart(p: ChartProps) {
         split={off}
         start={viewStart}
         end={viewEnd}
-        onChange={(next) => setView(next[0] === 0 && next[1] === lastSlot ? null : next)}
+        onChange={(next, mode) => {
+          if (mode === "move") setCashView((current) => current ?? [domainLo, domainHi]);
+          setView(next[0] === 0 && next[1] === lastSlot ? null : next);
+        }}
         onReset={() => setView([0, lastSlot])}
       />
-      <figcaption className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 bg-clay" />
-          Recorded cash
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <svg width="18" height="4" aria-hidden="true" className="shrink-0">
-            <line x1="0" y1="2" x2="18" y2="2" className="stroke-primary" strokeWidth={2.5} />
-          </svg>
-          {mainLabel}
-        </span>
-        {p.parent && !p.comparisons ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Swatch dash={DASHES[0]} />
-            Scenario it started from
-          </span>
-        ) : null}
-        {comparisons.map((entry, index) => (
-          <span
-            key={entry.runId}
-            className="inline-flex max-w-full items-center gap-1.5"
-            data-testid="comparison-legend"
-          >
-            <Swatch
-              dash={entry.color ? undefined : DASHES[index % DASHES.length]}
-              color={entry.color}
-            />
-            <span className="max-w-48 truncate" title={entry.label}>
-              {entry.label}
-            </span>
-            {entry.startsOn ? (
-              <span className="shrink-0">· from {formatFullDate(entry.startsOn)}</span>
-            ) : null}
-            {entry.fromIndex === null ? (
-              <span className="shrink-0">· same as the line it builds on</span>
-            ) : null}
-            {entry.parent ? " (started from)" : ""}
-          </span>
-        ))}
-        {p.limits.length ? (
-          <span className="inline-flex items-center gap-1.5">
-            <svg width="18" height="4" aria-hidden="true" className="shrink-0">
-              <line
-                x1="0"
-                y1="2"
-                x2="18"
-                y2="2"
-                className="stroke-destructive"
-                strokeDasharray="4 3"
-              />
-            </svg>
-            Cash minimum
-          </span>
-        ) : null}
-        {anyBreach ? (
-          <span data-testid="breach-legend" className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
-            Week below a cash minimum
-          </span>
-        ) : null}
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/70" />
-          Scheduled items (original imported dates; scenario changes are in the cash line)
-        </span>
-      </figcaption>
-      <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+
+      <label className="flex min-h-8 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <span className="text-muted-foreground">Pick a week</span>
         <input
           type="range"
@@ -820,17 +964,34 @@ export function WorkspaceChart(p: ChartProps) {
           value={selectedIndex >= 0 ? selectedIndex : 0}
           aria-valuetext={
             selectedIndex >= 0
-              ? `Week of ${formatFullDate(weeks[selectedIndex]?.weekStart ?? "")}`
+              ? `Week of ${formatFullDate(weeks[selectedIndex]?.weekStart ?? "")} · ${focusCurve.label}`
               : "No week chosen"
           }
           onChange={(e) => {
             const w = weeks[Number(e.target.value)];
-            if (w) p.onSelectWeek(w.weekStart);
+            if (w) {
+              setFocus({
+                runId: focusCurve.runId === "recorded" ? mainRunId : focusCurve.runId,
+                slot: off + Number(e.target.value),
+                weekStart: w.weekStart,
+              });
+              p.onSelectWeek(w.weekStart);
+            }
           }}
-          className="h-11 min-w-0 flex-1 accent-primary"
+          className="h-8 min-w-0 flex-1 accent-primary"
           data-testid="week-range"
         />
       </label>
+      {focusPoint ? (
+        <p
+          id={`${clipId}-focus-label`}
+          className="shrink-0 text-xs text-muted-foreground"
+          data-testid="chart-focus-label"
+          aria-live="polite"
+        >
+          Focus: {focusLabel}. Week details use the open scenario.
+        </p>
+      ) : null}
     </figure>
   );
 }
@@ -878,7 +1039,7 @@ function RangeBar({
   split: number;
   start: number;
   end: number;
-  onChange: (view: [number, number]) => void;
+  onChange: (view: [number, number], mode: Drag["mode"]) => void;
   onReset: () => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -888,11 +1049,10 @@ function RangeBar({
   const pct = (slot: number) => (slot / last) * 100;
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   const apply = (mode: Drag["mode"], s0: number, e0: number, delta: number) => {
-    if (mode === "start") onChange([clamp(s0 + delta, 0, e0 - minSpan), e0]);
-    else if (mode === "end") onChange([s0, clamp(e0 + delta, s0 + minSpan, last)]);
+    if (mode === "start") onChange([clamp(s0 + delta, 0, e0 - minSpan), e0], mode);
+    else if (mode === "end") onChange([s0, clamp(e0 + delta, s0 + minSpan, last)], mode);
     else {
-      const s = clamp(s0 + delta, 0, last - (e0 - s0));
-      onChange([s, s + (e0 - s0)]);
+      onChange(panWeekWindow(s0, e0, delta, last), mode);
     }
   };
   const begin = (mode: Drag["mode"]) => (e: PointerEvent<HTMLElement>) => {
@@ -905,7 +1065,7 @@ function RangeBar({
     const d = drag.current;
     const width = track.current?.clientWidth ?? 0;
     if (!d || width <= 0) return;
-    apply(d.mode, d.s0, d.e0, Math.round(((e.clientX - d.x0) / width) * last));
+    apply(d.mode, d.s0, d.e0, ((e.clientX - d.x0) / width) * last);
   };
   const end_ = () => {
     drag.current = null;
@@ -930,12 +1090,14 @@ function RangeBar({
       .map((v, i) => `${pct(from + i).toFixed(2)},${yOf(v).toFixed(2)}`)
       .join(" ");
   const full = start === 0 && end === last;
+  const firstDate = dates[Math.ceil(start)];
+  const lastDate = dates[Math.floor(end)];
   return (
     <div className="space-y-1" data-testid="time-range">
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
-          Showing {dates[start] ? formatFullDate(dates[start]) : ""} to{" "}
-          {dates[end] ? formatFullDate(dates[end]) : ""}
+          Showing {firstDate ? formatFullDate(firstDate) : ""} to{" "}
+          {lastDate ? formatFullDate(lastDate) : ""}
         </span>
         {full ? (
           <span>Swipe to scroll · drag the handles to zoom</span>
@@ -1025,8 +1187,10 @@ function RangeBar({
               aria-valuemax={last}
               aria-valuenow={mode === "start" ? start : end}
               aria-valuetext={
-                dates[mode === "start" ? start : end]
-                  ? formatFullDate(dates[mode === "start" ? start : end] ?? "")
+                dates[mode === "start" ? Math.ceil(start) : Math.floor(end)]
+                  ? formatFullDate(
+                      dates[mode === "start" ? Math.ceil(start) : Math.floor(end)] ?? "",
+                    )
                   : undefined
               }
               className={`absolute inset-y-0 flex w-3 cursor-ew-resize items-center justify-center bg-primary/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${mode === "start" ? "-left-1.5 rounded-l-md" : "-right-1.5 rounded-r-md"}`}

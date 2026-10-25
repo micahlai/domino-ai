@@ -1,4 +1,5 @@
 import type { Forecast } from "@domino/contracts";
+import { scenarioStart } from "../../../convex/timeline/scenarioStart";
 import type { CatalogEntry, Read, WorkspaceRun } from "./api";
 import { readRun } from "./api";
 
@@ -173,18 +174,28 @@ export function readComparison(
   return read;
 }
 
-/** Bounded parent hints stay readable even with missing parents or cycles. */
-export function scenarioDepth(entry: CatalogEntry, entries: CatalogEntry[]): number {
-  const byId = new Map(entries.map((row) => [row.runId, row]));
-  const seen = new Set([entry.runId]);
-  let parent = entry.parentRunId;
-  let depth = 0;
-  while (parent && depth < 3 && !seen.has(parent)) {
-    seen.add(parent);
-    const row = byId.get(parent);
-    if (!row) break;
-    depth += 1;
-    parent = row.parentRunId;
-  }
-  return depth;
+/** Saved scenarios built from the open run's books, always including the open run. */
+export function familyEntries(run: WorkspaceRun, graph: Read<CatalogEntry[]>): CatalogEntry[] {
+  const entries =
+    graph.state === "ready"
+      ? graph.value.filter(
+          (entry) => entry.companyId === run.companyId && entry.baselineRunId === run.baselineRunId,
+        )
+      : [];
+  // A capped family read may omit the current node; its saved record is already available.
+  if (!entries.some((entry) => entry.runId === run.runId))
+    entries.push({
+      runId: run.runId,
+      companyId: run.companyId,
+      baselineRunId: run.baselineRunId,
+      parentRunId: run.parentRunId,
+      kind: run.kind,
+      label: run.label,
+      savedAt: run.savedAt,
+      lowPointCents: run.forecast.lowPoint.usable,
+      lowPointWeek: run.forecast.lowPoint.weekStart,
+      constraintVersion: run.constraintVersion,
+      startsOn: scenarioStart(run.ownChanges, run.baseline.seed.snapshot),
+    });
+  return entries;
 }

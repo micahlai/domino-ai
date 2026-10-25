@@ -1,8 +1,9 @@
 "use client";
 
+import { PanelRightClose } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../ui/sheet";
+import { Button } from "../../ui/button";
 
 export type AssistantTab = "ask" | "chat";
 
@@ -28,7 +29,7 @@ export const useIsDesktop = () =>
 
 /**
  * One chat for questions and what-ifs, pinned to the right of the page at full window
- * height on desktop, a slide-over sheet on phones. Each conversation scrolls on its own with
+ * height on desktop, an overlay sidebar on phones. Each conversation scrolls on its own with
  * its composer pinned at the bottom. Both tabs stay mounted so a typed draft survives switching.
  */
 export function Assistant({
@@ -45,7 +46,7 @@ export function Assistant({
   onTab: (tab: AssistantTab) => void;
   /** Saved one-off questions, reachable from the chat as "Earlier questions". */
   askCount?: number;
-  /** Phones only: whether the sheet is open. */
+  /** Whether the sidebar is expanded at any viewport size. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Changes when a page action asks for the input to be focused. */
@@ -53,7 +54,6 @@ export function Assistant({
   ask: ReactNode;
   chat: ReactNode | null;
 }) {
-  const desktop = useIsDesktop();
   const body = (
     <AssistantBody
       tab={tab}
@@ -64,33 +64,36 @@ export function Assistant({
       askCount={askCount}
     />
   );
-  if (desktop)
-    return (
-      <aside
-        aria-label="Ask Domino"
-        className="hidden min-w-0 lg:sticky lg:top-20 lg:flex lg:h-[calc(100dvh-6rem)] lg:flex-col lg:rounded-lg lg:border lg:bg-card lg:p-4 lg:shadow-xs"
-        data-testid="assistant"
-      >
-        {body}
-      </aside>
-    );
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex h-full w-full flex-col gap-3 p-4 pt-5 sm:max-w-md"
-        data-testid="assistant"
-      >
-        <SheetHeader>
-          <SheetTitle>Ask Domino</SheetTitle>
-          <SheetDescription className="sr-only">
-            Ask about the saved forecast or describe a what-if. Nothing is calculated until you
-            review and save.
-          </SheetDescription>
-        </SheetHeader>
-        {body}
-      </SheetContent>
-    </Sheet>
+    <aside
+      id="workspace-assistant"
+      aria-label="Ask Domino"
+      hidden={!open}
+      className={`${open ? "flex" : "hidden"} absolute inset-y-0 right-0 z-40 min-h-0 w-[min(100%,23rem)] shrink-0 flex-col gap-3 border-l bg-card p-3 lg:relative lg:inset-auto lg:z-auto lg:w-80 xl:w-[22rem]`}
+      data-testid="assistant"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          onOpenChange(false);
+          document.querySelector<HTMLButtonElement>('[data-testid="chat-toggle"]')?.focus();
+        }
+      }}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Ask Domino</h2>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label="Collapse chat"
+          onClick={() => {
+            onOpenChange(false);
+            document.querySelector<HTMLButtonElement>('[data-testid="chat-toggle"]')?.focus();
+          }}
+        >
+          <PanelRightClose aria-hidden="true" />
+        </Button>
+      </div>
+      {body}
+    </aside>
   );
 }
 

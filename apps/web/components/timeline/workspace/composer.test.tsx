@@ -108,7 +108,7 @@ describe("timeline scenario composition", () => {
     expect(html).not.toContain('dateTime="2026-10-19"');
   });
 
-  it("renders exactly one editor beside the chart before week details, leaving questions and rules below", () => {
+  it("keeps exactly one mounted editor and week details below the chart in the bottom tray", () => {
     const actions: WorkspaceActions = {
       simulate: onRun,
       reviseRules: onRun,
@@ -131,8 +131,11 @@ describe("timeline scenario composition", () => {
     expect(html.indexOf('data-testid="workspace-chart"')).toBeLessThan(
       html.indexOf('data-testid="timeline-composer"'),
     );
-    expect(html.indexOf('data-testid="timeline-composer"')).toBeLessThan(
+    expect(html.indexOf('data-testid="workspace-bottom-tray"')).toBeLessThan(
       html.indexOf('data-testid="week-detail"'),
+    );
+    expect(html.indexOf('data-testid="workspace-bottom-tray"')).toBeLessThan(
+      html.indexOf('data-testid="timeline-composer"'),
     );
     expect(html).not.toContain("Add an event</h3>");
   });
