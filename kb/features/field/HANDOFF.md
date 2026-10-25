@@ -1,5 +1,15 @@
 # Field lane handoff, Oct 25
 
+## Current release and active integration, Oct25
+- Current-data release ed66ed3 is fast-forwarded and pushed to field/main. Primary roster is historical2U, Taskline based on Asana and CodeHarbor based on GitLab; current secondary filings are FY2027Q2 ended2026-07-31, reconstructed books2026-10-25 and forecast starts2026-10-26. Legacy2023 identities remain unchanged.
+- Checks reused: full pnpm check web1230, sim129, engine385, agents329, contracts496, mocks19 (2588 tests), six typechecks, Biome663, final webpack build and separate Convex tsc. Exact isolated Asana baseline and GitLab unexpected-expense dashboards equal saved Timeline on all13 cash values and low point; cash equals currentLedger provenance. Production browser and live Asana6/6 sources verified. Evidence /tmp/field-current-*.json/log and /tmp/field-current-live-3114.png.
+- Live Next3114 PID9707, persistent session48498, log /tmp/domino-field-next-3114.log. Restart stopped the entire prior terminal process group and cleared .next successfully. Original Convex3260/3261 remains. Isolated production3138 session38045 and Convex3298/3299 session8812 remain for next integration.
+- Active integration merge/field-explanations-20261025 in domino-merge starts from checked ed66ed3. Friend pushed origin/claude-timeline-chat b9f25bb; repaired branch field/timeline-chat-safe183e655+8f68050 is under further independent audit repair for null-date and weekly recurrence fallback. Do not merge until accepted. No paid provider acceptance claimed.
+- Exact-run backend field/run-trace-backend aaa757e and UI field/run-trace-ui e278807 are committed but unmerged. Backend audit found coordinator reading later findings; author must pin provider flags/counts before acceptance. UI shared contract awaits backend integration. Follow task cards and RUN-TRACES-CONTRACT.
+- Latest user priority: ship connected primary Simulate this option -> exact saved scenario and fix comparison -> editable Timeline assumptions/events -> How we got here. Optional map polish/Try-it redesign deferred behind this journey. Current UI worker owns FIELD-simulate-option; preserve friend-owned WorkspaceView/ScenarioSidebar/ChatView until friend integration. No latest-input fallback or fake agent animation.
+- Runtime log showed duplicate React date keys2023-11-27 while old2U tabs were open. Investigate/fix narrowly before final release; do not claim clean console yet.
+
+
 ## Active filing-backed operating demo work
 - User requested2U as primary full-product demo, one reconciling synthetic operating ledger, four scenarios, exact provenance label, and two additional company-inspired demos researched by subagents.
 - Integration branch `merge/field-2u-ledger-20261025`, base `af7977d`; research merged from Asana `bcdc689` and GitLab `e0baca5`. Contract and scoped task cards are in OPERATING-LEDGER-CONTRACT.md and kb/tasks/FIELD-operating-*.md.

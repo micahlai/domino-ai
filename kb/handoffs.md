@@ -1,3 +1,8 @@
+## 2026-10-25 Current-company release live
+- Done: ed66ed3 pushed to field/main, Next3114 restarted (PID9707/session48498), live Asana6/6 connected verified. Primary current datasets use latest verified2026Q2 filings and explicit syntheticOct25 starting books. Isolated current-company dashboard/Timeline cash matches all13 weeks and low point.
+- Checks: reused passing full2588-test check, web/Convex tsc, Biome663 and webpack build; current-data source unchanged afterward. Evidence and active integration in features/field/HANDOFF.md.
+- Next: finish safety-audited friend Timeline integration and exact suggestion simulation/explanation journey. Optional polish frozen. Preserve main, original Convex and protected ports.
+
 ## 2026-10-25 Field reconstructed operating demo checked
 - Done: primary2U ledger preserves public totals; two fictional Asana/GitLab inspired datasets; four future scenarios; one mock ledger through agents/dashboard/Timeline; full operating pages and explicit provenance. Independent accounting and integration reviews accept. Candidate b53181a.
 - Checks: full pnpm check with web1,215 tests and five passing package test tasks; final scoped route/provenance tests, Convex tsc, webpack build and production browser pass. Actual dashboard/Timeline13-week cash values match.

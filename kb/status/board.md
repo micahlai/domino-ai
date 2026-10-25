@@ -5,7 +5,8 @@
 | Work | Status | Checkout / evidence |
 | --- | --- | --- |
 | Four in-flight Field features | done | Merged in order,1,901 combined tests/checks/build passed, final hydration fix passed focused23/build. Pushed field/main; live3114/3260 verified. Current authority: `../features/field/HANDOFF.md`. |
-| Filing-backed2U operating demo and two inspired datasets | done | 6185334 pushed; Next3114 restarted and live2U verified. Full checks/build and production Timeline pass. |
+| Filing-backed2U and current Asana/GitLab inspired datasets | done | ed66ed3 pushed; live3114 verified, exact current-company dashboard/Timeline parity. Full2588 checks/build pass. |
+| Exact suggestion simulation and saved explanations | doing | merge/field-explanations-20261025; audit repairs before friend/trace integration; optional polish frozen. |
 | Current-company latest-filing refresh | doing | New user clarification:2-3 primary companies; retain historical2U; research confirms Asana/GitLab July2026 quarters, September filings. Preserve old secondary feeds as legacy datasets. |
 | Agent-map vertical shifting during updates | done | b07c8c5: reproduced24px activity reflow;80 update samples stable after fixed two-line summary.63 focused tests/tsc/lint/build and live3114 pass. |
 
