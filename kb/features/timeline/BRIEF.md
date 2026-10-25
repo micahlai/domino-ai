@@ -2,6 +2,16 @@
 
 Vision: ../../spec/weekly-product-vision-2026-10-24.md. Supersedes the SEC-quarterly Timeline brief (kept in git history). Lean: ship working features fast, real behavior over polish.
 
+## User clarification and delivery priority (2026-10-24)
+
+The primary feature is an interactive timeline of existing company data. A person asks questions about it, enters hypothetical events and future events, and sees calculated possible effects. Implement that saved question/event/comparison loop first. The implementation order and acceptance criteria live in [ROADMAP.md](ROADMAP.md).
+
+Questions use the selected timeline context and cite records/assumptions. Structured event entry and natural-language proposals share one validated engine path; missing event details require clarification. Historical what-ifs preserve observed history. Future events are labelled planned or hypothetical. Every simulation and its conversation can be reopened without rerunning work.
+
+Users can also define constraints in the prompt or add/change them later. Show the interpreted rule for confirmation; each simulation reports which action violates which rule, when and why, with the computed value against the limit. Rule edits create new versions and never alter old saved results. This is core scope; see [CONSTRAINTS.md](CONSTRAINTS.md).
+
+The dashboard, automatic analysis and branch rejoin described below remain follow-on milestones after the core loop works.
+
 ## Build
 
 1. **Dashboard (home).** Cash now, 13-week low point and week, runway, AR/AP due, and a health rating (OK / watch / at risk) with the reason. Links to the worker page (Field) and the timeline.
@@ -19,4 +29,6 @@ Tables: risks, branches, fixes, resilience, history, grades, explanations, plus 
 
 ## Done
 
-Seed in -> dashboard health -> timeline with history, scheduled items and branches that rejoin or fail -> auto-analysis finds a risky scenario and explains it -> saved in the catalog and reopens identically. Real backend, tests pass.
+Core: seed in -> timeline with history/scheduled items -> ask and receive an evidence-backed answer -> add an event and inspect engine-computed effect -> add a future/follow-up event -> compare -> save/reopen identically. Real backend, tests/build/browser pass.
+
+Extended: dashboard health, automatic risky-scenario/response analysis and branch rejoin/failure behavior meet their separate roadmap acceptance criteria. Core completion does not claim these extensions are complete.
