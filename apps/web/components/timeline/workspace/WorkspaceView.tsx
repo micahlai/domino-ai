@@ -194,7 +194,7 @@ export function WorkspaceView({
               <span aria-hidden="true" className="max-sm:hidden">
                 ·
               </span>
-              <span>Books as of {formatFullDate(b.seed.asOf)}</span>
+              <span>Books as of {formatFullDate(b.seed.snapshot.asOf)}</span>
             </span>
           }
           title={<span data-testid="workspace-headline">{runHeadline(run)}</span>}
@@ -223,15 +223,17 @@ export function WorkspaceView({
                   How we got here
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
-                <Link
-                  href={risksHref ?? analysisHref(run.companyId, run.runId)}
-                  data-testid="action-risks"
-                >
-                  <ShieldAlert aria-hidden="true" />
-                  See saved risks
-                </Link>
-              </Button>
+              {run.kind !== "scenario" || risksHref ? (
+                <Button variant="outline" asChild>
+                  <Link
+                    href={risksHref ?? analysisHref(run.companyId, run.runId)}
+                    data-testid="action-risks"
+                  >
+                    <ShieldAlert aria-hidden="true" />
+                    See saved risks
+                  </Link>
+                </Button>
+              ) : null}
             </>
           }
         />
