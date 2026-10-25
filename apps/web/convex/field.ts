@@ -95,16 +95,25 @@ async function personName(ctx: { auth: QueryCtx["auth"] }) {
   return identity?.tokenIdentifier ?? "demo-user (unverified)";
 }
 
-/** One new live-feed company with six connected tools (Capital One bank); first ingest queued. */
-async function createFeedCompany(ctx: MutationCtx, seed: number, profile: ProfileId | undefined) {
+/**
+ * One new live-feed company with six connected tools (Capital One bank); its first ingest is queued. `judge`
+ * (fieldJudge.ts) names it "Judge Co. #N" instead of the picker name, so the picker skips it.
+ */
+export async function createFeedCompany(
+  ctx: MutationCtx,
+  seed: number,
+  profile: ProfileId | undefined,
+  judge?: { number: number },
+) {
   const world = newWorld(seed, profile);
-  const name = profileName(profile);
+  const name = judge ? `Judge Co. #${judge.number}` : profileName(profile);
   const companyId = await ctx.db.insert("companies", {
     name,
     profile: "kestrel",
     currentWeek: world.week,
     today: world.today,
     status: "connecting",
+    ...(judge && { judge: true, judgeNumber: judge.number }),
   });
   // A plain starting model: no learned delays or rules yet; constraints are the
   // synthetic loan and board documents.
