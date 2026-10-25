@@ -6,17 +6,13 @@ import { auditSnapshot } from "@domino/engine";
 import { type ProfileId, createProfileCompany } from "@domino/sim";
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import {
-  type ReactNode,
-  createContext,
-  createElement,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { type ReactNode, createContext, createElement, useContext } from "react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { DEFAULT_FIELD_COMPANY, fieldCompany } from "../../../convex/lib/fieldCompanies";
 import { useSelectedCompany, useSelectedProfile } from "../company";
 import { type DashboardResult, deriveDashboard } from "./derive";
+import { type AnalystLatest, type RiskFeed, analystRisks, illustrativeRisks } from "./risks";
 
 // The one switch between the fieldDashboard.summary Convex query and labelled demo data (only
 // when no backend is configured).
@@ -46,7 +42,18 @@ export type DashboardData = {
   header?: DashboardHeader;
   /** Undefined while loading; null when the live feed has no ingested snapshot yet. */
   result?: DashboardResult | null;
+  /** Risk cards: the analyst's latest run when it has finished scenarios, else illustrative. */
+  risks?: RiskFeed;
 };
+
+/** Analyst cards when the live run has finished scenarios; the labelled sample otherwise. */
+export function pickRisks(
+  result: DashboardResult | null | undefined,
+  latest: AnalystLatest | undefined,
+): RiskFeed | undefined {
+  if (!result?.ok) return undefined;
+  return (latest && analystRisks(latest, result.view)) ?? illustrativeRisks(result.view);
+}
 
 /** Mirrors convex/fieldDashboard.ts summary. Referenced by name so it compiles before codegen. */
 export type SummaryResponse = {
@@ -140,21 +147,36 @@ function LiveData({ children }: { children: ReactNode }) {
     DASHBOARD_API.summary,
     companyId === undefined ? "skip" : companyId ? { companyId } : {},
   );
+  // Read-only: the analyst's latest run for the same company the summary returned.
+  const latest = useQuery(
+    api.fieldAnalyst.latest,
+    r?.companyId ? { companyId: r.companyId as Id<"companies"> } : "skip",
+  );
   const value: DashboardData =
     r === undefined
       ? LOADING
       : r === null
         ? { source: "live", note: "Live backend", result: null }
-        : { source: "live", note: "Live backend", header: liveHeader(r), result: r.result };
+        : {
+            source: "live",
+            note: "Live backend",
+            header: liveHeader(r),
+            result: r.result,
+            risks: pickRisks(r.result, latest),
+          };
   return createElement(DashboardContext.Provider, { value }, children);
 }
 
 function DemoData({ note, children }: { note: string; children: ReactNode }) {
-  // "Updated 3 h ago" must use the viewer's clock, not the build machine's, so it is set after mount.
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  useEffect(() => setUpdatedAt(new Date(Date.now() - 3 * 3_600_000).toISOString()), []);
+  // Demo books were never ingested, so there is no "updated" time to show.
   const { header, result } = demo(useSelectedProfile());
-  const value: DashboardData = { source: "demo", note, header: { ...header, updatedAt }, result };
+  const value: DashboardData = {
+    source: "demo",
+    note,
+    header: { ...header, updatedAt: null },
+    result,
+    risks: pickRisks(result, undefined),
+  };
   return createElement(DashboardContext.Provider, { value }, children);
 }
 

@@ -1,6 +1,35 @@
 import type { WithoutSystemFields } from "convex/server";
+import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+
+/** Validator for one AgentRow passed from an action to a mutation. */
+export const agentRowArg = v.object({
+  action: v.string(),
+  agentId: v.string(),
+  agentKind: v.union(
+    v.literal("domino"),
+    v.literal("claude"),
+    v.literal("creao"),
+    v.literal("system"),
+  ),
+  parentAgentId: v.optional(v.string()),
+  summary: v.string(),
+  refs: v.optional(v.array(v.string())),
+  event: v.union(v.literal("status"), v.literal("message"), v.literal("tool")),
+  status: v.optional(
+    v.union(v.literal("spawned"), v.literal("working"), v.literal("done"), v.literal("failed")),
+  ),
+  currentTask: v.optional(v.string()),
+  fromAgentId: v.optional(v.string()),
+  toAgentId: v.optional(v.string()),
+  tool: v.optional(v.string()),
+  toolCategory: v.optional(v.string()),
+  toolLabel: v.optional(v.string()),
+  source: v.optional(v.string()),
+  step: v.optional(v.number()),
+  steps: v.optional(v.number()),
+});
 
 /**
  * One `log` row for the Field agent web. Base fields match fieldJobs.writeLog; the agent

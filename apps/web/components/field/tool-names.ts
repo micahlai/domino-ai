@@ -52,6 +52,10 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "engine.scorefix": { label: "Score a fix", category: "forecast" },
   "engine.scanrisks": { label: "Scan for risks", category: "forecast" },
   "convex.analystruns": { label: "Save analyst run", category: "other" },
+  // Real model calls (convex/fieldAi.ts, convex/fieldAnalyst.ts).
+  "claude.explainflags": { label: "Claude: explain flags", category: "audit" },
+  "claude.summarizescenarios": { label: "Claude: summarize scenarios", category: "other" },
+  "creao.counterpartyrisk": { label: "CREAO: counterparty risk notes", category: "other" },
 };
 
 const CATEGORIES = new Set<string>(Object.keys(TOOL_CATEGORY_LABEL));
