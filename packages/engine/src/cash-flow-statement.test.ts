@@ -330,6 +330,35 @@ describe("projected weeks", () => {
     ]);
   });
 
+  it("pending payouts are customer collections; written-off invoices add nothing; still ties", () => {
+    const withPayout = SnapshotSchema.parse({
+      ...synthetic,
+      // inv_2 (300,000 due 11-10) is now written off, so week 1 loses its collection.
+      invoices: synthetic.invoices.map((i) =>
+        i.id === "inv_2" ? { ...i, writtenOff: "2026-10-27" } : i,
+      ),
+      pendingPayouts: [
+        { id: "po_1", amount: 12_345, expectedArrival: "2026-11-03", invoiceIds: ["inv_1"] },
+      ],
+    });
+    const p = unwrap(projectedCashFlow(withPayout, model, changes));
+    const w = (i: number) => nonZero(p.weeks[i] as CfsWeek);
+    expect(w(0)).toEqual({
+      customer_collections: 12_345,
+      taxes_paid: -20_000,
+      supplier_payments: -40_000,
+      payroll: -200_000,
+    });
+    expect(w(1)).toEqual({});
+    // Base 5,799,000 - 300,000 written off + 12,345 payout = 5,511,345
+    expect(p.weeks.at(-1)?.endingCash).toBe(5_511_345);
+    expect(p.weeks.map((x) => x.endingCash)).toEqual(
+      forecast(withPayout, model, changes).weeks.map((x) => x.closing),
+    );
+    expectTies(p);
+    expect(unwrap(cashFlowStatement(withPayout, model, changes)).weeks.length).toBeGreaterThan(13);
+  });
+
   it("classifies shift_hire savings as payroll", () => {
     const hire: Change[] = [
       {

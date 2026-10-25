@@ -1,0 +1,30 @@
+{
+  "checks": [
+    "cash request clarifies instead of calculating",
+    "date reply retained and next field requested",
+    "short recipient completes original proposal",
+    "same accepted turn returns exact original snapshot",
+    "changed retry payload rejects",
+    "new request with stale revision rejects",
+    "unreviewed confirm rejects",
+    "explicit review saves a new linked scenario",
+    "saved event exactly matches reviewed proposal",
+    "old accepted turn remains exact after confirm",
+    "quiet reopen returns full saved transcript",
+    "wrong company cannot read chat",
+    "missing cash rule asks for limit",
+    "short cash limit yields supported rule",
+    "rule-only save keeps inherited cash event and forecast",
+    "new rule explains actual shortfall",
+    "invoice clarification retains customer and delay",
+    "unsupported daily constraint does not become weekly rule",
+    "ambiguous dates do not yield a financial proposal",
+    "original source remains unchanged",
+    "conversation history lists saved attempts"
+  ],
+  "root": "timeline:workspace/7b750204b9e2d963f740de1ecd2f68fe8bf37b11",
+  "cashConversation": "timeline:chat/fa706082850c733bdc38f7a1cce6e8d100d1f7eb1d540095b03b33728dacf398",
+  "cashResult": "timeline:workspace/7a2ea82141f4a4128dbf29b83d72348f47eb52c9",
+  "ruleConversation": "timeline:chat/b6756abb9806206d51eb120be513208515628fd9aa54db0a7ae813ce4888af92",
+  "ruleResult": "timeline:workspace/4f57851c67657398940b8267817c0cc073b693c4"
+}

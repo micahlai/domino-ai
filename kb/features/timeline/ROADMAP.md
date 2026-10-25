@@ -1,15 +1,58 @@
-# Timeline and Simulations roadmap
+# Timeline roadmap
 
-Owner: friend and their feature lead. Outcome/acceptance: [BRIEF.md](BRIEF.md). This is a full UI/backend feature; owner may reorder internal work and keep steering their agent.
+Owner: friend and their feature lead, on checkpoint branches in `../domino-timeline` (published stable smoke preview: `TL7-checkpoint`; chat integration: `TL9-chat-checkpoint`; lane base: `timeline/main`). Scope: [BRIEF.md](BRIEF.md), [weekly vision](../../spec/weekly-product-vision-2026-10-24.md), with the user's 2026-10-24 clarification below. Inventory checked at split base `ffdb603`. This is the active implementation roadmap for this lane; older global status pages have not been rewritten.
 
-| Milestone | Status | Acceptance |
+## Primary user journey
+
+Open a timeline built from existing company data -> select a date, item or scenario -> ask a question or enter an event -> inspect the explanation or calculated effect -> add a future event or follow-up scenario -> compare and reopen the saved result.
+
+- Questions about existing data return evidence-backed answers scoped to the selected company, saved run and dates. Explain observable cash movements and documented assumptions; do not invent historical causes.
+- A hypothetical event creates a separate scenario. A historical what-if never overwrites observed history. A future event is explicitly planned or hypothetical, with its date, amount and source/assumption retained.
+- Structured event entry works before natural-language event entry. Both use the same validated event-to-engine path. Agents propose `Change` instructions; the engine computes every financial effect.
+- Vague requests enter a clarification state for missing amount, date, counterparty or affected record. They do not silently invent inputs or run a different scenario.
+- Users define constraints in a prompt or add/edit them later. Show the interpreted rule for confirmation, pin its version to the simulation, and explain which action would violate it, when and by how much. See [constraint implementation requirements](CONSTRAINTS.md).
+- The existing dashboard, automatic analysis and rejoin ambitions remain follow-on scope. The first deliverable is the interactive question/event loop above.
+
+## Current implementation
+
+TL1–TL7 are implemented, locally accepted and published on `TL7-checkpoint` (renamed from `TL5-checkpoint`). [Acceptance evidence](TL5-acceptance.md) is the source for checks, runtime results and limits; [smoke tests](SMOKE-TESTS.md) gives the user walkthrough.
+
+| Area | Implemented | Remaining |
 | --- | --- | --- |
-| Shared P0 base | Blocked on implementation/audit | Exact base/fixture hashes/namespace recorded; reviewed S2 preserved; own isolated backend |
-| Frozen snapshot -> saved baseline | Planned | Real validated import, hash/cutoff checks, immutable engine result and source inspection |
-| Event -> costed Response | Planned | Engine-computed scenario, durable lineage, feasibility/cost/range/post-hoc labels |
-| Reveal -> compare | Planned | Separate later outcomes, period-matched comparison, old forecast unchanged |
-| Catalog -> quiet reopen | Planned | Saved baseline/scenarios/reveal survive reload without rerunning or leaking ownership |
-| Feature demo/acceptance | Planned | Real local backend, failures/retries/reopen, checks/build/browser and unchanged seam fixtures |
-| Later joint integration | Separate gate | Real Field export -> Timeline import -> saved result link with both latest features |
+| Independent runtime | Shared shell merged; own app 3107 and backend 3240/3241. | Real Field seed exchange and joint integration remain separate. |
+| Saved weekly input | Server verifies seed/hash, freezes explicit reviewed model/rules, saves 13 weeks and original history. | Field-supplied assumptions require the agreed input seam. Unsupported forward financial fields reject. |
+| Constraints | Add/edit/remove three supported rule types; prompt proposals; confirmed immutable versions; new/pre-existing/resolved/outside-horizon receipts. | Daily floors, category budgets and headcount rules need a shared engine/contract checkpoint. |
+| Events and comparison | Validated forms and language proposals use one engine path; parent-linked scenarios; ancestor effects applied once; weekly/low-point comparisons. | TL7 generates bounded saved risk/response scenarios on TL7-checkpoint. |
+| Questions | Saved run/week/item context, deterministic evidence answers, bounded grammar plus optional one-shot provider intent, clarification/failure/retry receipts, exact result linking. | Arbitrary financial dialogue is outside this bounded reader. Ambiguous requests clarify. |
+| Chart | 26 observed weeks, 13 forecast weeks, parent comparison, rule breaches and original imported schedule annotations. TL7-checkpoint adds saved-scenario sidebar/mobile picker and up to three optional saved curves. | Financial-state rejoin semantics are TL8. Schedule annotations retain original dates; cash values include scenario effects. |
+| Storage and catalog | Timeline-owned immutable runs/questions/request bindings, paginated company catalog, stable links, strict WeeklyResultRefV1 pointers and real OperationSummaryV1 receipts. Reads do not rerun calculations/providers. | Catalog is paginated; ancestry display is capped at 100 runs and question list at 100 receipts per run. |
+| Dashboard handoff | Timeline result pointer identifies the saved seed/run/route. Field owns Dashboard.tsx. | TL6 read envelope is locally verified on TL7-checkpoint; Field adoption remains a joint gate. No dashboard changes in this implementation. |
+| Ingestion and time | Labelled synthetic Kestrel peer seed exercises the complete independent flow. | Field owns ingestion/audit; live feeds and week advancement are not part of this acceptance. |
 
-Accepted chart/historical backend/S3 code is reusable foundation, not evidence these new milestones are complete. Current S2 activity must be checked, not overwritten. Keep branch/base/checks/next step in a feature-local HANDOFF.md when implementation starts; breaking shared requests go in boundary-requests.md. No long-lived feature branch or worker was launched by this planning update.
+## Ordered implementation queue
+
+Revised before any implementation launch to prioritize the clarified user journey. IDs below replace the initial inventory queue; no prior worker assignment is being interrupted. Each phase needs separate scoped cards for backend, schema and UI folders before coding.
+
+| ID | Status / dependency | Implementation | Acceptance |
+| --- | --- | --- | --- |
+| TL0 inventory | Done | Source-backed reuse inventory and isolated checkout | 1,609 tests, five package typechecks, lint and separate Convex typecheck passed at pickup. No runtime/browser claim. |
+| TL1 saved baseline | Done locally; TL1-checkpoint | Timeline-owned seed/run storage and backend functions. Parse JSON and recompute hash on server. Freeze snapshot, explicit model/rules, method version and output. Use domain IDs rather than writing Field's company/input tables. | Pinned Kestrel seed produces a saved 13-week baseline; tampering rejected; retries return same result; changed request payload rejected; later imports cannot rewrite an earlier run. |
+| TL1C user-defined constraints | Done locally; TL5-checkpoint | Constraint form/editor and versioned backend records. Confirm supported parsed rules, retain user wording/provenance, attach exact rule versions to runs, and evaluate baseline/scenario through existing engine rules. [Requirements](CONSTRAINTS.md). | User can add/edit/remove a supported rule after import. A scenario states the violated rule, affected action, first evaluated breach date, threshold and computed outcome. Existing baseline breaches are distinguished from new violations; edits create a new comparison and leave old runs intact. |
+| TL2 timeline and explicit events | Done locally; TL5-checkpoint | Adapt saved baseline/history/scheduled items to existing chart. Create an event from a form (date, kind, target record, amount/delay). Validate `Change[]`, calculate through engine, save parent-linked scenario and baseline differences. Store future items as planned or hypothetical. | User opens baseline, adds a late invoice or future expense, sees the changed cash/low point/failure and evidence, and compares the parent. Scheduled-item markers add no duplicate cash. Original history and baseline remain unchanged. |
+| TL3 questions and natural-language events | Done locally; TL5-checkpoint | Timeline-local question orchestration and UI. Pin selected run/branch/date/item context. Route to evidence-based answer, event proposal or clarification. Reuse validated provider adapters through an owned integration path; private agent changes need the owner checkpoint. Both form and language proposals call the TL2 engine path. Persist question, answer, proposal and linked result with bounded job state. | "Why did cash drop this week?" cites the actual relevant records. "What if Acme pays 14 days late?" creates the same result as the equivalent form event. Missing inputs prompt clarification. Malformed output/provider failure leaves no financial result. Unrelated company/run records cannot enter the answer context. |
+| TL4 saved sessions and catalog | Done locally; TL5-checkpoint | Persist conversation context, follow-up event ancestry, simulation metadata and stable links. Paginated Timeline-owned weekly catalog. Emit validated `WeeklyResultRefV1` and real `OperationSummaryV1` records. | Add a future event to an existing scenario with ancestor effects applied once. Reload or reopen a link and recover the same inputs, answers, events and outputs without an engine/provider rerun. |
+| TL5 core acceptance | Accepted locally; TL5-checkpoint | Run the complete primary journey on this lane's isolated backend with labelled peer fixture. | Existing data -> question -> evidence -> hypothetical event -> future event -> comparison -> catalog/reopen, plus clarification/failure/retry cases. Full checks, build and desktop/mobile browser evidence. No invented financial values or actions executed. |
+| TL6 health/scenario/chart handoff | Accepted locally; TL7-checkpoint; Field adoption separate | Timeline computes health, risk scenarios and 13-week chart output, returning supported WeeklyResultRefV1 fields. Field owns dashboard and components/timeline/dashboard/Dashboard.tsx; do not edit it. Coordinate chart/scenario data access through the shared seam. | Health and every handed-off chart/scenario value match saved runs; Field can consume them after joint integration. Unknown runway remains unknown. |
+| TL7 automatic analysis and responses | Accepted locally; TL7-checkpoint | Bounded background job generates validated plausible events, runs stress tests and scores costed response proposals with the engine; persists explanation and operation status. | A risky scenario and tested response are saved/reopenable, with failure cause and costs; deduplication, retries and failures covered. Resilience labelled as a weighted scenario index. A person approves actions. |
+| TL8 branch rejoin | Follow-on; TL2/TL4 | Timeline-local lifecycle metadata for nested branches and evidence-based rejoin. Agree financial-state semantics first; request checkpoint if shared engine math/contracts must change. | Failing branch ends at the computed breach with cause; rejoin occurs only under the agreed state rule, never merely because `survives` is true. |
+| Joint integration | Separate gate after independent core acceptance; real Field export available | Real Field JSON export -> server verification -> Timeline saved result -> Field result link. Test both latest lanes together. | Same seed hash and result identity end to end; legacy consumers still work. No routine cross-merges or merge into main. |
+
+## Next implementation step and dependencies
+
+On2026-10-25 the user authorized merging the accepted TL7 checkpoint into TL5-checkpoint (merge4ce834b). The3107 smoke preview now includes TL6/TL7/sidebar and retains its existing data. Older isolation holds are superseded by this explicit merge request. TL6/TL7 implementation and local acceptance are complete; [acceptance evidence](TL7-acceptance.md) records 1,942 tests, live API and desktop/phone verification. Cards TL6/TL7B/TL7U and TL6-TL7-interface.md define the delivered scope. Field keeps dashboard ownership; its adoption of the proposed JSON output interface is separate. TL8 remains follow-on.
+
+TL5 uses the pinned, explicitly labelled Kestrel peer fixture and reviewed neutral assumptions. Real Field export integration is a separate gate; this acceptance does not claim production authentication, live ingestion or action execution. Main and timeline/main remain unchanged. Shared requests live in [boundary-requests.md](boundary-requests.md); pickup details live in [HANDOFF.md](HANDOFF.md).
+
+## Separate conversational follow-up (TL9)
+
+User requested chat-based supported rule/scenario drafting with short clarification replies on2026-10-25. [Fixed interface](TL9-chat-interface.md) and [acceptance](TL9-acceptance.md) define a separate TL9-chat-checkpoint worktree, isolated3109/3260 runtime and reviewed save. Work is accepted locally with2,028 tests, typechecks/lint/build and actual API/browser checks. Chat is a right sidebar on the timeline page, responsive in-page on phones. It is ready for a separate checkpoint push and is not part of the published TL7-checkpoint merge. TL8 retains its original branch-rejoin scope.

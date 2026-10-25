@@ -460,4 +460,23 @@ export const fieldTables = {
   })
     .index("by_operationId", ["operationId"])
     .index("by_conversation", ["conversationId", "sequence"]),
+  // TL7 joint seam: one row per "Open in Timeline" import. The WeeklyResultRefV1 pointer back
+  // from Timeline (canonical JSON from timeline/workspace:resultRef) plus the ids needed to read
+  // its saved run, TL6 output and TL7 analysis. Field never copies Timeline's financial values.
+  timelineLinks: defineTable({
+    companyId,
+    /** Timeline's company id: the seed's company.id (the sim profile id). */
+    timelineCompanyId: v.string(),
+    seedId: v.string(),
+    seedHash: v.string(),
+    asOf: v.string(),
+    snapshotVersion: v.number(),
+    baselineRunId: v.string(),
+    runId: v.string(),
+    /** Canonical WeeklyResultRefV1 JSON text, checked by parseWeeklyResultRefJson. */
+    resultRef: v.string(),
+    analysisId: v.union(v.string(), v.null()),
+    analysisError: v.union(v.string(), v.null()),
+    savedAt: v.string(),
+  }).index("by_companyId", ["companyId"]),
 } as const;

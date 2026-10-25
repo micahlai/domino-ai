@@ -1,28 +1,19 @@
-import { PageStub } from "@/components/PageStub";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { SelectedSimulations } from "@/components/field/SelectedSimulations";
 
 export const metadata = { title: "Simulations" };
 
-// Placeholder until the Timeline lane replaces this page.
+// Every saved Timeline run and scenario for the selected company (Timeline's catalog).
 export default function Page() {
   return (
-    <PageStub
-      label="Simulations"
-      title="Every saved simulation, in one list"
-      description="Each what-if you save on the timeline will be listed here, ready to reopen and compare."
-      status="Arrives when the Timeline lane merges"
-    >
-      <Button variant="outline" asChild>
-        <Link href="/case/2u/simulations">2U case simulations</Link>
-      </Button>
-      <Button asChild>
-        <Link href="/c/kestrel">
-          Open the timeline
-          <ArrowRight aria-hidden="true" />
-        </Link>
-      </Button>
-    </PageStub>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-medium">Simulations</h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Every saved forecast and what-if for the selected company. Saved scenarios never change;
+          open one to compare or add an event.
+        </p>
+      </div>
+      <SelectedSimulations />
+    </div>
   );
 }
