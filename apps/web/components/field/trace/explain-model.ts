@@ -70,6 +70,7 @@ export function readableResult(r: ExplainResult): ExplainResult {
 
 export type MapIcon =
   | { type: "vendor"; vendor: string }
+  | { type: "vendors"; vendors: string[] }
   | { type: "agent"; kind: AgentKind }
   | { type: "tool"; category: ToolCategory }
   | { type: "result"; tone: ResultTone };
@@ -241,7 +242,8 @@ export function agentTitle(id: string): string {
   const [role = "", n] = id.split("#");
   const words = role.replace(/[_.-]+/g, " ").trim();
   const base = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Agent";
-  return n && n !== "1" ? `${base} ${n}` : base;
+  // Only forecasters run as numbered copies; single helpers read better without "1".
+  return n && (n !== "1" || role === "forecaster") ? `${base} ${n}` : base;
 }
 
 const providerOf = (tool: string | null): "claude" | "creao" | null => {
@@ -251,7 +253,7 @@ const providerOf = (tool: string | null): "claude" | "creao" | null => {
 const isEngineTool = (tool: string | null) => (tool ?? "").toLowerCase().startsWith("engine.");
 
 const PROVIDER_LABEL = { claude: "Claude", creao: "CREAO" } as const;
-const MAX_SOURCES = 5;
+const MAX_SOURCES = 3;
 
 /**
  * Only the parts that actually did recorded work on this result: saved sources, agents that
@@ -285,17 +287,20 @@ export function agentMapFromOps(input: {
     edgeKeys.add(key);
     edges.push({ from, to, order: edges.length + 1 });
   };
-  const touch = (id: string, kind: AgentKind, parent: string | null) => {
+  /** Parents come only from recorded spawns; messages draw edges but never set hierarchy. */
+  const touch = (id: string, kind: AgentKind | null, parent: string | null) => {
+    if (parent && parent !== id && !agents.has(parent)) touch(parent, null, null);
     const found = agents.get(id);
     if (found) {
-      if (!found.parent && parent && parent !== id && agents.has(parent)) found.parent = parent;
+      if (kind) found.kind = kind;
+      if (!found.parent && parent && parent !== id) found.parent = parent;
       return found;
     }
     const row = {
-      kind,
-      parent: parent && parent !== id && agents.has(parent) ? parent : null,
+      kind: kind ?? "domino",
+      parent: parent && parent !== id ? parent : null,
       order: ++order,
-      tools: [],
+      tools: [] as string[],
       failed: false,
     };
     agents.set(id, row);
@@ -303,14 +308,13 @@ export function agentMapFromOps(input: {
   };
   for (const op of ops) {
     if (!op.agentId) continue;
-    const kind: AgentKind = op.agentKind ?? "domino";
-    const agent = touch(op.agentId, kind, op.parentAgentId);
+    const agent = touch(op.agentId, op.agentKind, op.parentAgentId);
     if (op.status === "failed") agent.failed = true;
     if (op.parentAgentId && agents.has(op.parentAgentId))
       addEdge(`agent:${op.parentAgentId}`, `agent:${op.agentId}`);
     if (op.fromAgentId && op.toAgentId) {
-      touch(op.fromAgentId, "domino", null);
-      touch(op.toAgentId, "domino", op.fromAgentId);
+      touch(op.fromAgentId, null, null);
+      touch(op.toAgentId, null, null);
       addEdge(`agent:${op.fromAgentId}`, `agent:${op.toAgentId}`);
     }
     if (!op.tool) continue;
@@ -338,29 +342,28 @@ export function agentMapFromOps(input: {
 
   const depth = (id: string, seen = new Set<string>()): number => {
     const parent = agents.get(id)?.parent;
-    if (!parent || seen.has(id)) return 0;
+    if (!parent || seen.has(parent) || !agents.has(parent)) return 0;
     seen.add(id);
     return 1 + depth(parent, seen);
   };
   const nodes: MapNode[] = [];
-  const shown = input.sources.slice(0, MAX_SOURCES);
-  const hidden = input.sources.length - shown.length;
-  for (const s of shown)
+  // Saved sources are one grouped input card, so a six-tool company does not dwarf the work.
+  if (input.sources.length)
     nodes.push({
-      id: `source:${s.vendor}`,
+      id: "sources",
       col: 0,
-      label: s.label,
-      sub: null,
-      icon: { type: "vendor", vendor: s.vendor },
-      order: null,
-    });
-  if (hidden > 0)
-    nodes.push({
-      id: "source:more",
-      col: 0,
-      label: `+${hidden} more`,
-      sub: plural(hidden, "source"),
-      icon: { type: "tool", category: "read" },
+      label:
+        input.sources.length === 1
+          ? (input.sources[0]?.label ?? "Saved books")
+          : plural(input.sources.length, "source"),
+      sub:
+        input.sources.length > 1
+          ? input.sources
+              .slice(0, 2)
+              .map((x) => x.label)
+              .join(", ") + (input.sources.length > 2 ? ` +${input.sources.length - 2}` : "")
+          : "Saved books",
+      icon: { type: "vendors", vendors: input.sources.slice(0, MAX_SOURCES).map((x) => x.vendor) },
       order: null,
     });
   const hasSources = nodes.length > 0;
@@ -418,9 +421,7 @@ export function agentMapFromOps(input: {
   // Inputs feed the first top-level agent; work feeds the result.
   const roots = [...agents.entries()].filter(([, a]) => !a.parent).map(([id]) => id);
   const firstRoot = roots[0];
-  if (firstRoot)
-    for (const s of nodes.filter((n) => n.col === 0 && n.id.startsWith("source:")))
-      addEdge(s.id, `agent:${firstRoot}`);
+  if (firstRoot && hasSources) addEdge("sources", `agent:${firstRoot}`);
   if (engineOrder !== null) addEdge("engine", "result");
   for (const provider of ai.keys()) addEdge(`ai:${provider}`, "result");
   if (engineOrder === null && !ai.size) {
@@ -429,13 +430,14 @@ export function agentMapFromOps(input: {
   }
   const columns: string[] = [];
   for (const n of nodes)
-    columns[n.col] = n.id.startsWith("source:")
-      ? "Data read"
-      : n.id.startsWith("agent:")
-        ? "Agents"
-        : n.id === "result"
-          ? "Result"
-          : "AI and engine";
+    columns[n.col] =
+      n.id === "sources"
+        ? "Data read"
+        : n.id.startsWith("agent:")
+          ? "Agents"
+          : n.id === "result"
+            ? "Result"
+            : "AI and engine";
   const agentWork = agents.size > 0;
   return {
     nodes,

@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "../../../lib/utils";
 import { AgentIcon } from "../../icons/AgentIcon";
 import { ToolIcon } from "../../icons/ToolIcon";
@@ -215,14 +215,28 @@ function Stepper({ explain }: { explain: Explain }) {
 
 // ---------- Agent map snapshot ----------
 
-const NODE_W = 156;
+const NODE_MIN = 150;
+const NODE_MAX = 210;
 const NODE_H = 56;
-const COL_GAP = 44;
+const COL_GAP = 32;
 const ROW_GAP = 12;
 const HEAD = 26;
 
 function NodeIcon({ icon }: { icon: MapIcon }) {
   if (icon.type === "vendor") return <ToolLogo vendor={icon.vendor} size={26} />;
+  if (icon.type === "vendors")
+    return (
+      <span className="flex shrink-0 -space-x-2">
+        {icon.vendors.map((v) => (
+          <ToolLogo
+            key={v}
+            vendor={v}
+            size={24}
+            className="outline outline-2 outline-[hsl(var(--card))]"
+          />
+        ))}
+      </span>
+    );
   if (icon.type === "agent") return <AgentIcon kind={icon.kind} size={26} />;
   if (icon.type === "tool") return <ToolIcon category={icon.category} tile size={26} />;
   return (
@@ -235,13 +249,22 @@ function NodeIcon({ icon }: { icon: MapIcon }) {
   );
 }
 
-function MapCard({ node, style }: { node: MapNode; style?: CSSProperties }) {
+function MapCard({
+  node,
+  style,
+  wrap,
+}: {
+  node: MapNode;
+  style?: CSSProperties;
+  /** Let text wrap (narrow screens) instead of truncating in a fixed-size card. */
+  wrap?: boolean;
+}) {
   const result = node.icon.type === "result" ? node.icon.tone : null;
   return (
     <div
       style={{ ...style, ...(result ? toneStyle(result) : {}) }}
       className={cn(
-        "flex items-center gap-2 rounded-[14px] border bg-card px-2.5 py-2 shadow-xs",
+        "relative flex items-center gap-2 rounded-[14px] border bg-card px-2.5 py-2 shadow-xs",
         result && "border-[hsl(var(--tone)/0.45)]",
         node.failed && "border-destructive/50",
       )}
@@ -251,7 +274,8 @@ function MapCard({ node, style }: { node: MapNode; style?: CSSProperties }) {
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "block truncate text-[13px] font-medium leading-5",
+            "block text-[13px] font-medium leading-5",
+            wrap ? "break-words" : "truncate",
             result && "text-[hsl(var(--tone))]",
           )}
         >
@@ -260,7 +284,8 @@ function MapCard({ node, style }: { node: MapNode; style?: CSSProperties }) {
         {node.sub ? (
           <span
             className={cn(
-              "block truncate text-[11px] leading-4 text-muted-foreground",
+              "block text-[11px] leading-4 text-muted-foreground",
+              wrap ? "break-words" : "truncate",
               node.failed && "text-destructive",
             )}
             title={node.sub}
@@ -272,7 +297,7 @@ function MapCard({ node, style }: { node: MapNode; style?: CSSProperties }) {
       {node.order !== null ? (
         <span
           title={`Step ${node.order} in recorded order`}
-          className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground"
+          className="absolute -left-2 -top-2 grid size-5 place-items-center rounded-full border bg-card text-[10px] font-semibold tabular-nums text-muted-foreground"
         >
           {node.order}
         </span>
@@ -281,7 +306,7 @@ function MapCard({ node, style }: { node: MapNode; style?: CSSProperties }) {
   );
 }
 
-function layout(map: AgentMap) {
+function layout(map: AgentMap, nodeW = NODE_MIN) {
   const cols = map.columns.length;
   const byCol = Array.from({ length: cols }, (_, c) => map.nodes.filter((n) => n.col === c));
   const tallest = Math.max(1, ...byCol.map((c) => c.length));
@@ -291,24 +316,42 @@ function layout(map: AgentMap) {
     const block = nodes.length * NODE_H + Math.max(0, nodes.length - 1) * ROW_GAP;
     const top = HEAD + (height - HEAD - block) / 2;
     nodes.forEach((n, i) => {
-      pos.set(n.id, { x: c * (NODE_W + COL_GAP), y: top + i * (NODE_H + ROW_GAP) });
+      pos.set(n.id, { x: c * (nodeW + COL_GAP), y: top + i * (NODE_H + ROW_GAP) });
     });
   });
-  return { byCol, pos, height, width: cols * NODE_W + (cols - 1) * COL_GAP };
+  return { byCol, pos, height, width: cols * nodeW + (cols - 1) * COL_GAP };
+}
+
+/** Card width that fills the panel; below the minimum the map scrolls sideways instead. */
+function useNodeWidth(cols: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [available, setAvailable] = useState(960);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setAvailable(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const fit = Math.floor((available - (cols - 1) * COL_GAP) / Math.max(1, cols));
+  return { ref, nodeW: Math.max(NODE_MIN, Math.min(NODE_MAX, fit)) };
 }
 
 function DesktopMap({ map }: { map: AgentMap }) {
-  const { byCol, pos, height, width } = layout(map);
+  const { ref, nodeW } = useNodeWidth(map.columns.length);
+  const { byCol, pos, height, width } = layout(map, nodeW);
   return (
-    <div className="hidden overflow-x-auto pb-1 md:block">
+    <div ref={ref} className="hidden overflow-x-auto pb-1 md:block">
       <div className="relative mx-auto" style={{ width, height }}>
         {map.columns.map((title, c) => (
           <p
             key={byCol[c]?.[0]?.id ?? title}
             className="absolute top-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            style={{ left: c * (NODE_W + COL_GAP), width: NODE_W }}
+            style={{ left: c * (nodeW + COL_GAP), width: nodeW }}
           >
-            {title}
+            {title === map.columns[c - 1] ? "" : title}
           </p>
         ))}
         <svg
@@ -334,7 +377,7 @@ function DesktopMap({ map }: { map: AgentMap }) {
             const a = pos.get(e.from);
             const b = pos.get(e.to);
             if (!a || !b || b.x <= a.x) return null;
-            const x1 = a.x + NODE_W;
+            const x1 = a.x + nodeW;
             const y1 = a.y + NODE_H / 2;
             const x2 = b.x - 2;
             const y2 = b.y + NODE_H / 2;
@@ -357,7 +400,7 @@ function DesktopMap({ map }: { map: AgentMap }) {
             <MapCard
               key={n.id}
               node={n}
-              style={{ position: "absolute", left: p.x, top: p.y, width: NODE_W, height: NODE_H }}
+              style={{ position: "absolute", left: p.x, top: p.y, width: nodeW, height: NODE_H }}
             />
           ) : null;
         })}
@@ -373,14 +416,19 @@ function MobileMap({ map }: { map: AgentMap }) {
       {byCol.map((nodes, c) => (
         <li key={nodes[0]?.id ?? map.columns[c]}>
           {c > 0 ? (
-            <ChevronDown aria-hidden="true" className="mx-auto mb-1 size-4 text-muted-foreground" />
+            <ChevronDown
+              aria-hidden="true"
+              className="mx-auto my-1 block size-4 text-muted-foreground"
+            />
           ) : null}
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            {map.columns[c]}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
+          {map.columns[c] !== map.columns[c - 1] ? (
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {map.columns[c]}
+            </p>
+          ) : null}
+          <div className={cn("grid gap-2", nodes.length > 1 && "grid-cols-2")}>
             {nodes.map((n) => (
-              <MapCard key={n.id} node={n} />
+              <MapCard key={n.id} node={n} wrap />
             ))}
           </div>
         </li>

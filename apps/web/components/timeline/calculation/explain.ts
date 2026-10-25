@@ -124,7 +124,7 @@ export function calculationExplain(
     title: headline(run, r),
     subtitle: `${baseline.companyName} · ${name}`,
     data: {
-      headline: `${baseline.companyName} books as of ${fullDay(s.asOf)}`,
+      headline: `Books as of ${fullDay(s.asOf)}`,
       facts: [
         { text: `${weeks}-week forecast` },
         ...(counts.length ? [{ text: counts.join(" · ") }] : []),
@@ -156,10 +156,13 @@ export function calculationExplain(
       {
         title: "Source",
         rows: [
-          { label: "Source note", value: source },
-          ...(baseline.assumptionNote && baseline.assumptionNote !== source
-            ? [{ label: "Full saved note", value: baseline.assumptionNote }]
-            : []),
+          // A plain note is shown whole; a structured one gets its readable summary first.
+          ...(/^\s*[[{]/.test(baseline.assumptionNote)
+            ? [
+                { label: "Source note", value: source },
+                { label: "Full saved note", value: baseline.assumptionNote },
+              ]
+            : [{ label: "Source note", value: baseline.assumptionNote.trim() || source }]),
         ],
       },
       {

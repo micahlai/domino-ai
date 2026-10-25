@@ -42,6 +42,45 @@ export function relevantOps(trace: FieldTrace) {
   );
 }
 
+/**
+ * Operations for the map snapshot: agents linked to the selected scenario or option by their
+ * own refs or saved assignment, plus their parents. Run-wide rows from unrelated agents (other
+ * forecasters, advisors of options not chosen) are left out.
+ */
+export function mapOps(trace: FieldTrace) {
+  const ops = relevantOps(trace);
+  const scenario = selectedScenario(trace);
+  const candidate = selectedCandidate(trace);
+  if (!scenario) return ops;
+  const linked = new Set<string>([scenario.agentId, ...(candidate ? [candidate.agentId] : [])]);
+  for (const op of ops)
+    if (
+      op.agentId &&
+      (op.refs.includes(scenario.id) || (candidate && op.refs.includes(candidate.fix.id)))
+    )
+      linked.add(op.agentId);
+  if (candidate)
+    for (const id of [...linked])
+      if (id.startsWith("advisor.") && id !== candidate.agentId) linked.delete(id);
+  const parents = new Map<string, string>();
+  for (const op of trace.operations)
+    if (op.agentId && op.parentAgentId) parents.set(op.agentId, op.parentAgentId);
+  for (const id of [...linked]) {
+    let parent = parents.get(id);
+    while (parent && !linked.has(parent)) {
+      linked.add(parent);
+      parent = parents.get(parent);
+    }
+  }
+  return ops.filter(
+    (op) =>
+      !!op.agentId &&
+      linked.has(op.agentId) &&
+      (!op.toAgentId || linked.has(op.toAgentId)) &&
+      (!op.fromAgentId || linked.has(op.fromAgentId)),
+  );
+}
+
 /** Saved source checks pinned at the run's start, one logo per vendor. */
 export function traceSources(trace: FieldTrace): Logo[] {
   const seen = new Map<string, Logo>();
@@ -146,7 +185,7 @@ export function traceExplain(trace: FieldTrace): Explain {
       .join(" · "),
     data: inputs
       ? {
-          headline: `${inputs.company.name} books as of ${fullDay(inputs.snapshot.asOf)}`,
+          headline: `Books as of ${fullDay(inputs.snapshot.asOf)}`,
           logos: sources,
           facts: [
             ...(weeks ? [{ text: `${weeks}-week forecast` }] : []),
@@ -182,7 +221,7 @@ export function traceExplain(trace: FieldTrace): Explain {
     },
     result: r,
     map: agentMapFromOps({
-      ops,
+      ops: mapOps(trace),
       sources,
       resultLabel: r.badge,
       resultTone: r.tone,

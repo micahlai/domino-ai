@@ -73,6 +73,7 @@ const recorded = {
   scenarios: [
     {
       id: "late",
+      agentId: "forecaster#2",
       title: "Late payments",
       basis: "Invoice synthetic/plan/17/invoice/2026-10-18 delayed.",
       changes: [
@@ -93,6 +94,7 @@ const recorded = {
   candidates: [
     {
       scenarioId: "late",
+      agentId: "advisor.delay_bill",
       scenarioTitle: "Late payments",
       fix: { id: "fix-1", kind: "delay_bill", label: "Delay a bill", costNote: "Vendor goodwill" },
       effect: {
@@ -226,8 +228,7 @@ describe("Field run explanation", () => {
     const { map } = traceExplain(recorded);
     const ids = map.nodes.map((n) => n.id);
     expect(ids).toEqual([
-      "source:stripe",
-      "source:qbo",
+      "sources",
       "agent:analyst#1",
       "agent:forecaster#2",
       "agent:advisor.delay_bill",
@@ -236,6 +237,7 @@ describe("Field run explanation", () => {
       "result",
     ]);
     expect(ids).not.toContain("agent:forecaster#1");
+    expect(ids).not.toContain("agent:advisor.credit_line_draw");
     expect(map.edges.map((e) => `${e.from}>${e.to}`)).toEqual([
       "agent:analyst#1>agent:forecaster#2",
       "agent:analyst#1>agent:advisor.delay_bill",
@@ -243,14 +245,14 @@ describe("Field run explanation", () => {
       "agent:analyst#1>engine",
       "agent:forecaster#2>engine",
       "agent:advisor.delay_bill>engine",
-      "source:stripe>agent:analyst#1",
-      "source:qbo>agent:analyst#1",
+      "sources>agent:analyst#1",
       "engine>result",
       "ai:creao>result",
     ]);
     const forecaster = map.nodes.find((n) => n.id === "agent:forecaster#2");
     expect(forecaster).toMatchObject({ col: 2, order: 3, sub: "Run forecast, Stress test" });
     expect(map.nodes.find((n) => n.id === "ai:creao")?.col).toBe(3);
+    expect(map.nodes[0]).toMatchObject({ label: "2 sources", sub: "Stripe, QuickBooks" });
     expect(map.note).toContain("AI used: CREAO");
   });
 
