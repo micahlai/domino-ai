@@ -1,5 +1,12 @@
 # Handoffs
 
+## 2026-10-24 Codex new lead: required-loop design
+- Fresh fetch/main/S2/worktrees/processes checked; monitor confirmed PAUSED. No implementation launched. S3 real saved-baseline defect reproduced despite50passing focused tests.
+- Added reviewed supported-source/reconciliation/rule design, frozen evaluation recipe with pending seals, exact additiveS4 design and7 bounded cards/manual L0/E0 prompts. Six independent design issues corrected.
+- pnpm check passed cached typechecks/tests and fresh lint. Expanded planned PNG/PDF generated and inspected. Existing runtimes/data/main preserved.
+- Next: human S3 repair/friend S2; L0/E0 only as slots permit. Follow learning-loop-design dependency order. All L1-L4 and real CREAO remain required and incomplete; no improvement evidence yet.
+
+
 ## 2026-10-24 Codex team reset and manual launches
 - Fetched origin; no new remote main or S2 implementation to merge. Preview remains the accepted integration branch, main unchanged.
 - S3 finished38297d4 but independent audit reproduced rejection of real saved2U baseline with AS-RESTRICTED.50focusedtests pass; hold feature integration.

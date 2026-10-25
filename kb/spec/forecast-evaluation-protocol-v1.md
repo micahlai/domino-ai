@@ -1,0 +1,48 @@
+# Quarterly cash evaluation v1: frozen recipe, seal pending
+
+This freezes design choices before fetching test values. It is NOT yet a sealed dataset or a positive result. The E0 source hashes and E2 candidate/evaluator hashes must be committed before test release. No claim of an untouched corpus until the exposure ledger and custody check pass.
+
+## Cohort and exposure
+
+- Development: Amplitude calendar 2021-2022 origins; validation: Amplitude 2023 origins. Those sources and all of 2U, PagerDuty, Box, Freshworks and Sprout Social are DEVELOPMENT/EXPOSED. Earlier calibration used them. This lead also saw Freshworks 2025 cash values during source research. They cannot become untouched evidence.
+- Proposed test, selected before cash-value inspection: Tenable and Varonis, target calendar quarters 2024 Q1 through 2025 Q4, eight targets each, sixteen planned pairs. No matching names were found in tracked kb/data/packages at takeover. This is an exposure check, not proof against all prior human or model knowledge. E0 checks the named prior research and reports any additional exposure before sealing.
+- Only consolidated USD, calendar-quarter, standard-tag packages with verified acceptance times and cash identity are eligible. E0 may inspect test coverage/labels as the separate data custodian; no model implementation/selection and no test amounts/errors returned to the lead or model worker. Shared filesystem isolation is procedural, not an enforced security boundary. Log every reader and purpose.
+- If either company is exposed or coverage fails, stop with a coverage/exposure report. Do not silently replace companies or cherry-pick quarters. Amend the protocol before inspecting substitute outcomes and record why. Minimum evidence below is unchanged unless explicitly preregistered anew.
+
+## Origins and availability
+
+One origin per planned target: acceptance of the first original 10-Q/10-K for the immediately preceding quarter/year, provided that instant falls strictly inside the target quarter. At origin only source records with verified publication/acceptance <= origin are visible. When only a filing date is known, mark the origin ineligible until an instant is verified. No use of latest-restated comparative figures or frames to reconstruct earlier knowledge. Original accession snapshots win over today's view of the same past period.
+
+The target is reported quarter-end cash and equivalents excluding restricted cash, USD cents. Use the first original periodic filing reporting that balance, with its actual publication/acceptance time. No retrospective replacement by a later amendment; report restatements separately. Report combined-cash error as secondary when comparable. Financial frequency is quarterly. No weekly interpolation is scored.
+
+Quarter bridge assumptions remain visible: restricted held flat; financing and FX forecast zero. Zero is a MODEL assumption, never a reported value or missing-data substitution. Preserve stale origin balance and shared origin-to-cutoff nowcast.
+
+## Baseline and candidate, fixed before test
+
+Baseline B: accepted quarterly_cash_bridge 0.1.0 using latest available YTD OCF and ICF divided by elapsed calendar quarters; explicit zero financing/FX. Primary forecast is next-quarter usable cash with restricted held flat. Reuse existing exact ratio/rounding behavior.
+
+Candidate C: identical cash definitions, origin, target and financing/FX. Keep baseline B's origin-to-cutoff nowcast unchanged. For the POST-CUTOFF interval only, replace each OCF/ICF quarterly estimate with the latest fully reported comparable single quarter known at origin. Q1 uses Q1 YTD, Q2/Q3 subtract compatible preceding YTD, Q4 subtracts nine-month YTD from FY with matching scope/basis. Let D=target-quarter days, e=origin-balance-to-cutoff days, Bq=baseline quarterly net change and Cq=last-quarter OCF+ICF with zero financing/FX. Candidate target combined cash = origin combined cash + Bq*e/D + Cq*(D-e)/D. Use exact rational values and round once at final target, never add a rounded displayed nowcast. Subtract the same held-flat restricted cash for usable cash. This intentionally tests a post-cutoff update, not replacing the historical nowcast. No blending weights, company exceptions, outcome-driven overrides or further hyperparameters. Missing predecessor/definition conflict makes the pair fail eligibility, not become zero. Record all derivation and resolution IDs. Human acceptance of this finite method change is stored as present-day experimental feedback; do not backdate it as historical knowledge.
+
+Use development and validation only to debug code, verify derivations and decide whether this candidate is worth the single test. Candidate identity and recipe cannot change after test release. If validation does not justify proceeding, keep test sealed. A later candidate requires genuinely unused evidence and a new protocol.
+
+Deterministic experimental preprocessing is also version-sealed today. Parsing, exact deduplication and preregistered original-accession selection are computations performed now on source facts that were available at each origin; retain computedAt separately from source availableAt. They are not historical human feedback. A manual conflict resolution or learned authority rule accepted after an origin cannot enter that origin. If source-only deterministic validation cannot resolve a used role, list an ineligible pair and fail the completeness gate. Never backdate a manual decision to rescue coverage.
+
+## Metrics and acceptance, fixed now
+
+- For pair i, signed error = prediction minus observed; absolute error = abs(signed error), both integer cents. This evaluator convention is the OPPOSITE of existing compareRun.errorCents (observed minus prediction); use an explicit adapter and tests, do not change legacy comparison semantics. Primary: arithmetic mean absolute error (MAE) across common planned pairs, with exact rational aggregate before display rounding. Also show each company MAE, median absolute error, signed bias, wins/ties/losses and every pair's origin/target/source IDs.
+- Minimum: all sixteen planned pairs, eight per company, usable by BOTH methods with no unreported failure. Missing inputs, unresolved conflicts and runtime failures are listed by method and period. An incomplete cohort cannot pass. Do not drop large financing/FX surprises or acquisitions to flatter the models.
+- Pass: candidate pooled absolute-error sum is at least 5% lower than baseline (100*C <= 95*B), candidate sum is no higher on EITHER company, and candidate strictly improves on at least nine of sixteen pairs. If B=0, no improvement pass is possible. These are practical acceptance thresholds, not statistical significance.
+- Report 5% as a preregistered engineering threshold, not an expected result. No confidence interval/significance claim from sixteen dependent quarters in two companies. Report sample limits, shared macro conditions, serial dependence and aggregate sensitivity to the largest miss. Secondary metrics cannot override primary failure.
+- Separate data-quality performance (correct mapping, conflict handling, cash tie-out) from forecast method performance. Both methods consume the SAME reconciled origin snapshot. A separate before/after mapping demo is not counted as a model win.
+
+Predictions and facts remain safe integer cents. Compute signed differences, absolute differences, aggregate sums and threshold products with BigInt/rational arithmetic, because subtracting two safe amounts can exceed the safe range. Serialize arbitrary-size error totals as validated base-10 integer strings with explicit cents units; JSON cannot carry BigInt directly. Round display-only MAE/percentages, never the acceptance comparison. Do not reuse compareRun's numeric subtraction for evaluator aggregates.
+
+## Seals and execution boundary
+
+E0 writes the protocol version/hash, company/quarter manifest, raw hashes, origin-slice hashes, label hashes, original accessions/acceptance instants and exposure ledger. Keep raw full companyfacts and later outcomes in evaluator custody. Provide implementation workers ONLY development data and synthetic test fixtures. Test input slices can also reveal past test targets in rolling evaluation, so do not hand ANY test slices to a model-selection worker before candidate seal.
+
+Before E2, record exact Git commit/tree for B/C, rule versions, dependency lock, evaluator, normalizer/reconciler and sealed package hashes, then commit the evaluation lock. No blanks, placeholders or `latest`. Candidate has no filesystem/network/label access; evaluator loads an origin slice, calls pure numeric models, commits both predictions, then joins the evaluator-only observation. Test targets never appear in company context, agent memory, prompts, source nodes or pre-reveal browser payloads. No live LLM belongs inside the numeric test.
+
+Single E2 release produces append-only predictions/report, input/output hashes, eligibility/failure ledger and exposure timestamp. Print every planned row, including failures. The team can inspect outcomes only after predictions are frozen. Once viewed, these periods are exposed permanently. Debugging on their errors cannot yield another untouched score. Product UI receives an approved report, not the answer-key store.
+
+Gate L4 passes only on a qualifying result. If it fails, say `forecast improvement not demonstrated`, preserve the report and leave L4 open. Software completion, lower development error and persisted feedback do not substitute for that result. This is a controlled retrospective experiment on public records, not a prospective trading test or universal improvement claim.

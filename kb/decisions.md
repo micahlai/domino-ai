@@ -1,5 +1,8 @@
 # Decisions
 
+- 2026-10-24 Codex lead: use bounded SEC JSON onboarding and source-dated reconciliation, scoped feedback receipts and a separately sealed quarterly evaluation. Preserve old run contracts, data and UI. Candidate changes only post-cutoff flows; proposed 16-pair Tenable/Varonis test stays sealed until exact hashes are recorded. Counterargument: narrow sources and strict improvement gates may leave completion unmet; do not broaden claims or relax gates after seeing outcomes. Human launches Claude; monitor remains PAUSED.
+
+
 - 2026-10-24 08:49 Codex: stop overnight dispatch and pause monitoring after the independently checked preview passes815tests/build and browser flow. Keep main frozen for review. Counterargument: debt-aware warning evidence would strengthen the pitch, but expanding now would exceed the accepted cash-only case and require another evidence gate.
 
 - 2026-10-24 Codex: user requested four toggleable visual styles and meaningful activity motion. Use one shared component system and a separate H4 worktree after H3 releases UI ownership; reuse installed Radix/shadcn/Motion. Counterargument: per-style apps could match layouts more literally, but duplicate state, bugs and usage. Preserve Original default, match public Ramp/Hyphenate references, expose actual events only.

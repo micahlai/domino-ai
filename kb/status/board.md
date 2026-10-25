@@ -2,6 +2,22 @@
 
 Current authority: `../coordination/historical/team-checkpoint.md` and active-run. G6/G7/G8a/G8/S1/U1 accepted; 1,185 combined tests/build/browser at the last feature checkpoint. S3 38297d4 is blocked by independent saved-baseline compatibility audit, awaiting a human-launched repair. Friend S2 remains reserved with no implementation pushed. Codex audits and integrates preview only; user launches implementation manually. S4 design and U2 wiring are gated. CREAO/coordinator is not verified. Older task rows below are historical, not current worker status.
 
+## Required-loop takeover queue
+
+Authority: ../spec/learning-loop-design-2026-10-24.md. User launches Claude; Codex audits. No implementation launched in this checkpoint. Monitor confirmed PAUSED; main unchanged.
+
+| Work | Status | Gate / owner |
+| --- | --- | --- |
+| Lead reuse/design/evaluation recipe | done | Independent design recheck clear; data/candidate seals still pending |
+| S2 catalog | reserved | Friend only; origin1154972, no implementation submitted |
+| S3 scenario engine | blocked |38297d4; 50 focused tests pass, actual saved2U manifest rejected; manual repair |
+| L0 contracts / E0 custody | todo | Manual prompts prepared; actual slot check first |
+| L1 normalization / L2 reconciliation / L3 rules | blocked | Ordered contracts/development-data dependencies; no sealed test reads |
+| L5 durable knowledge / E1 evaluator | blocked | Frozen pure interfaces; L5 owns backend before S4 |
+| S4 / U2 | blocked | Reviewed exact design; accepted dependencies; joint activation/legacy compatibility |
+| L4 measured improvement | unmet |16 planned pairs, data/candidate seals pending, no positive result |
+| C2 real coordinator | blocked | Dedicated app isolation/instructions/visibility not verified |
+
 ## Current scope: agent canvas centerpiece, supervised Claude implementation
 
 Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Current integration uses `preview/historical-overnight` in `../domino-preview`.

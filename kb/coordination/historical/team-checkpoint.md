@@ -1,37 +1,14 @@
-# Team checkpoint: manual Claude launches
+# Team checkpoint: required loop and manual Claude launches
 
-> Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
+Current authority: ../../spec/required-learning-loop-2026-10-24.md. Implementation order and supported boundary: ../../spec/learning-loop-design-2026-10-24.md. All four L gates are required; broader source access and forecast improvement are not claimed.
 
-This is a coordination reset, not a Git reset. Preserve branches, local data and worktrees.
-
-## Agreed product
-
-One historical 2U journey: conversation and grouped agent map, inspectable frozen company evidence, quarterly forecast, separate observed reveal, and hypothetical Event/Response with explicit cost and uncertainty. No new themes. Real CREAO coordination remains a required gate, not a label for the fixed workflow.
-
-## Shared baseline
-
-- Integration branch: preview/historical-overnight in domino-preview. Main remains 694ab2a and must not be merged into or changed.
-- Accepted UI/backend foundation: G6/G7/G8a/G8/S1/U1. Last feature checkpoint 0f87ed2 passed 1,185 combined tests, typecheck, lint, production build and desktop/mobile/keyboard browser checks.
-- Stable preview: http://127.0.0.1:3102/case/2u. Existing data and backend processes stay in place.
-- Fresh fetch found no remote-only commits in main or S2 beyond preview. S2 remote remains 1154972 with task documentation only. No feature merge was needed.
-- S3 local commit 38297d4 is not accepted. Independent review passed 50 focused tests but reproduced rejection of actual saved 2U baseline inputs. Keep it isolated until repaired and audited.
-
-## Owners and launch prompts
-
-| Owner | Assignment | Prompt | State |
-| --- | --- | --- | --- |
-| Friend's Claude | S2 read-only saved investigation catalog and one conversation index | prompts/shared/S2-friend-catalog.md | Reserved; human launches or continues existing session |
-| Jayden's Claude | S3 saved-baseline compatibility repair | prompts/shared/S3-local-repair.md | Human launches; previous PID 7799 has exited |
-| Codex | Independent audits, persistence design, integration and preview validation | prompts/shared/C1-canvas-supervisor.md | Active audit/coordination only; no new implementation auto-launch |
-
-One worker per checkout. Friend's second computer is useful if they can own S2 through commit/push; it does not remove shared account usage limits. Otherwise explicitly transfer S2 ownership before running it locally. Never run both.
-
-## Next gates
-
-1. Audit repaired S3 and friend's S2; integrate only accepted changes into preview.
-2. Finalize and independently audit S4 persistence schema/API/hash design. Reuse historicalRuns and investigation operations, preserve old records, immutable baseline and idempotence. Baseline snapshots omit A1, so freeze a deliberate response extension. Preserve protocol.response.postHoc independently of user reveal timing.
-3. Human launches Claude S4 only after the design and dependencies pass. U2 then wires the real catalog, event/response results and chart details with one UI writer.
-4. Verify dedicated CREAO identity/instructions/isolation, then bounded actual coordinator acceptance. Old app-scoped API only. No account key, purchases or fake execution.
-5. Full saved journey and browser audit, publish preview, no main merge.
-
-The monitor may fetch, review, check and publish accepted work. It must prepare prompts instead of launching implementation until Jayden changes the manual-launch preference.
+- Integration: preview/historical-overnight in domino-preview. Main 694ab2a untouched. Accepted G6/G7/G8a/G8/S1/U1 and stable 3102 preserved.
+- Fresh fetch: friend S2 origin 1154972, no implementation submitted. Exclusive friend ownership remains. Remote process state unknown; never duplicate locally.
+- S3 clean 38297d4 not accepted. 50 focused tests pass; real persisted 2U baseline probe still rejects AS-RESTRICTED. Human prompt: prompts/shared/S3-local-repair.md.
+- Codex completed reuse assessment and independently reviewed source/evaluation/S4 designs. No implementation launched. Seven new bounded cards are prepared; exact plan has dependency/ownership table.
+- Human launch queue: existing S3 repair and friend S2 first; L0 contracts and E0 data custody next as slots permit. At most 3 implementation processes including friend/children; one UI writer. Manual prompts in prompts/shared. Do not launch all prepared cards.
+- L0 -> L1 normalization -> L2 reconciliation -> L3 rules -> L5 knowledge runtime. E0 custody is independent; E1 evaluator follows frozen interfaces. S4 waits accepted S2/S3/L0, serialized after L5. U2 consumes accepted APIs; S4/U2 activate together with legacy/V2 compatibility. C2 needs verified platform isolation then its own exact implementation card.
+- Evaluation recipe ../../spec/forecast-evaluation-protocol-v1.md is frozen, but dataset/candidate seals and 16-pair coverage are pending. Test cohort Tenable/Varonis has not been viewed by lead. Exposed Freshworks 2023Q3 is separate mapping acceptance after normalizer freeze. Report failures honestly; L4 stays open without actual qualifying improvement.
+- CREAO historical gate OFF. Existing dedicated evidence app retained; full instructions/visibility/memory isolation and real coordinator unverified. Old app-scoped route only, no account/developer wallet or purchases.
+- Automation domino-overnight-audit confirmed PAUSED. Keep paused during transfer; no duplicate and no implementation auto-launch.
+- Preserve existing data/backend 3214/3210 and stable 3102. Actual runtime identities and audit evidence: active-run.md and ../../reviews/lead-takeover-2026-10-24.md.

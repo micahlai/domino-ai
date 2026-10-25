@@ -74,31 +74,35 @@ def current(out: Path) -> None:
 
 
 def planned(out: Path) -> None:
-    with graph("DOMINO / PLANNED COMPLETE DEMO\nBlue = retained  |  Amber dashed = unfinished work", out / "domino-planned"):
-        with Cluster("Frontend", graph_attr=box(PLANNED)):
-            ui = React("Next.js + React\nLive map + conversation\nSaved simulations + impact chart")
-        with Cluster("Backend", graph_attr=box(PLANNED)):
-            flow = Server("Convex durable execution\nValidated capability choices\nRetries + records + cutoff boundary")
-            source = Document("Versioned company evidence\nCurated 2U source first\nSeparate pre-cutoff and reveal data")
-            engine = TypeScript("Domino financial engine\nBaseline / Event / Response\nCosts + timing + uncertainty")
-            boundary = Action("CREAO boundary\nVerify identities + isolation\nValidate plans and specialist output")
-        with Cluster("Database", graph_attr=box(PLANNED)):
-            db = Database("Same Convex database\nImmutable scenario branches\nEvidence, profiles, jobs and results")
-        with Cluster("External APIs", graph_attr=box(PLANNED)):
-            coordinator = Server("CREAO coordinator\nSelect allowed capabilities\nBounded decisions and follow-up")
-            specialists = Action("CREAO specialists\nEvidence analysis\nCosted-response review")
+    with graph("DOMINO / REQUIRED COMPLETION\nDashed = planned  |  Accuracy and live isolation remain unproved", out / "domino-planned"):
+        with Cluster("Preserved frontend", graph_attr=box(BUILT)):
+            ui = React("Map + conversation + cash chart\nOnboard / resolve / accept feedback\nSaved simulations + read-only reopen")
+        with Cluster("Supported inputs", graph_attr=box(PLANNED)):
+            source = Document("Authorized SEC JSON packages\nStandard USD consolidated cash\nVerified accession dates + hashes")
+        with Cluster("Domino backend / required additions", graph_attr=box(PLANNED)):
+            flow = Server("Convex durable operations\nValidate capability choices\nBounded calls + truthful statuses")
+            knowledge = Action("L1 / L2 / L3\nMap / validate / reconcile\nScoped dated feedback rules")
+            engine = TypeScript("Pure financial engine\nQuarterly baseline + candidate\nEvent / costed response")
+        with Cluster("Same product database", graph_attr=box(PLANNED)):
+            db = Database("One Convex database\nVersioned knowledge + feedback\nFrozen runs / jobs / separate reveals")
+        with Cluster("External API / isolation gate", graph_attr=box(GATED)):
+            creao = Server("Existing CREAO app API\nReal coordinator + specialist jobs\nIdentity / instructions / isolation pending")
+        with Cluster("Independent evaluation / evaluator-only data", graph_attr=box(GATED)):
+            sealed = Document("Sealed source + outcome custody\nTenable / Varonis proposed\nDataset and candidate seals pending")
+            evaluation = Action("L4 paired quarterly comparison\n16 pairs / 5% lower error\nPer-company gate + honest failures")
 
-        ui >> link("Question + explicit scenario request", "planned") >> flow
-        source >> link("Frozen facts + source dates") >> flow
-        flow >> link("Validated scenario input", "planned") >> engine
-        engine >> link("Computed branches + causal basis", "planned") >> flow
-        flow >> link("Persist immutable scenario records", "planned") >> db
-        db >> link("Reactive results + real job events", "planned", constraint="false") >> ui
-        flow >> link("Allowed task + cutoff packet", "planned") >> boundary
-        boundary >> link("Bounded plan request", "planned") >> coordinator
-        coordinator >> link("Capability choices", "planned", constraint="false") >> boundary
-        boundary >> link("Actual app jobs", "planned") >> specialists
-        specialists >> link("Cited results", "planned", constraint="false") >> boundary
+        ui >> link("Upload / question / feedback", "planned") >> flow
+        source >> link("Origin-only records", "planned") >> knowledge
+        flow >> link("Recorded knowledge work", "planned") >> knowledge
+        knowledge >> link("Resolved roles + eligible rules", "planned") >> engine
+        engine >> link("Immutable predictions + scenarios", "planned") >> db
+        flow >> link("Messages / receipts / jobs", "planned", constraint="false") >> db
+        db >> link("Reactive saved results", "planned", constraint="false") >> ui
+        flow >> link("Validated allowlisted tasks", "gated") >> creao
+        creao >> link("Actual coarse status + output", "gated", constraint="false") >> flow
+        engine >> link("Sealed numeric model versions", "planned") >> evaluation
+        sealed >> link("Origin inputs / labels after prediction", "gated") >> evaluation
+        evaluation >> link("Approved report only", "planned", constraint="false") >> ui
 
 
 def main() -> None:

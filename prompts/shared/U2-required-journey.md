@@ -1,0 +1,11 @@
+# Manual Claude U2: blocked until real APIs pass
+
+Do not launch yet. Require accepted S2, L5, E1 and isolated S4 backend/API design, plus exact frontend component ownership. Sole UI writer. User launches personally; at most three implementation processes, no nested workers. Use an isolated U2 worktree from accepted preview; preserve all existing components and other writers.
+
+Read AGENTS/HANDOFF, apps/web/AGENTS.md and relevant installed Next documentation, repository orchestrator, installed ponytail, skills/taste/SKILL.md, installed ui-ux-pro-max, kb/tasks/U2-complete-simulation-journey.md, learning-loop design and scenario-persistence-v1. Apply orchestrator/ponytail/taste/ui-ux-pro-max without creating another UI process.
+
+Wire the preserved Workspace / Company / Simulations product to actual APIs: supported-source onboarding/mapping/gaps, reconciliation receipts, accepted/rejected feedback and later eligible application, real catalog/status/lineage, baseline/event/costed response, separate observed reveal, saved reopen and approved evaluation report. V2 operation parsing and renderers must accept the new recorded kinds while legacy reads still work. No fixtures standing in for missing data, arbitrary source access, generic learning claims or improvement claim without passing L4. Keep pending/failed/unknown visible.
+
+Own only frontend case/company/investigation/historical components and their tests, as explicitly frozen before launch. Small presentation-only HistoricalReplay cleanup may move technical IDs/hashes into accessible details while preserving uncertainty/method caveats and all math/view building. No convex/backend/contracts/dependencies or theme rewrite. Reuse grouped canvas, inspector and readable financial chart. Source/agent/tool motion follows actual persisted operations; history/reload stays quiet.
+
+Run focused tests/typecheck/lint, update only own Result, commit U2 branch and stop for Codex desktop/mobile/keyboard/reduced-motion and read-only reload audit. Joint S4/U2 shared activation is gated on combined acceptance. No shared backend deployment, full suite/build/browser/server/provider call unless Codex assigns it; no secrets/env/account changes or main/preview merge.

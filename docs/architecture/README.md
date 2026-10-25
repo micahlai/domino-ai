@@ -4,7 +4,7 @@
 
 See [the shared product plan](../../kb/product/team-reset-2026-10-24.md) for scope, status, order and the Hyphenate gap analysis.
 
-These diagrams document the accepted preview and the planned complete demo. They do not imply that unmerged code or gated CREAO calls work. Generic icons represent Convex and CREAO, not additional products. There is one Convex database.
+These diagrams document the accepted preview and the expanded required completion, including onboarding, reconciliation, scoped feedback and a separate sealed evaluation boundary. See the [reviewed implementation design](../../kb/spec/learning-loop-design-2026-10-24.md) and [evaluation recipe](../../kb/spec/forecast-evaluation-protocol-v1.md). Dataset/candidate seals and forecast improvement remain pending. They do not imply that unmerged code or gated CREAO calls work. Generic icons represent Convex and CREAO, not additional products. There is one Convex database.
 
 Install Graphviz through your normal package manager if `dot` is not on PATH. Then, from the repo root:
 
