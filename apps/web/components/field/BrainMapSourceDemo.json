@@ -1,596 +1,589 @@
 {
- "at": "2026-10-30T12:00:00.000Z",
- "asOf": "2026-10-30",
- "sources": {
-  "stripe": {
-   "tool": "stripe",
-   "name": "Stripe",
-   "kind": "Billing",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 22,
-   "endpoints": [
-    "/v1/customers",
-    "/v1/invoices",
-    "/v1/charges",
-    "/v1/payouts",
-    "/v1/subscriptions"
-   ],
-   "recordsIn": 2111,
-   "recordsOut": 1143,
-   "skipped": 968,
-   "checksOk": 484,
-   "checksTotal": 484,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "customers",
-     "label": "Customers",
-     "count": 300,
-     "stale": false
+  "at": "2026-10-30T12:00:00.000Z",
+  "asOf": "2026-10-30",
+  "sources": {
+    "stripe": {
+      "tool": "stripe",
+      "name": "Stripe",
+      "kind": "Billing",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 22,
+      "endpoints": [
+        "/v1/customers",
+        "/v1/invoices",
+        "/v1/charges",
+        "/v1/payouts",
+        "/v1/subscriptions"
+      ],
+      "recordsIn": 2111,
+      "recordsOut": 1143,
+      "skipped": 968,
+      "checksOk": 484,
+      "checksTotal": 484,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "customers",
+          "label": "Customers",
+          "count": 300,
+          "stale": false
+        },
+        {
+          "list": "invoices",
+          "label": "Invoices",
+          "count": 547,
+          "stale": false
+        },
+        {
+          "list": "billingPlans",
+          "label": "Subscriptions",
+          "count": 296,
+          "stale": false
+        },
+        {
+          "list": "pendingPayouts",
+          "label": "Payouts on the way",
+          "count": 0,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "inv_bp_nov",
+          "type": "Invoice sent",
+          "counterparty": "Brightpath Retail",
+          "amount": 3600000,
+          "date": "2026-10-30",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_acme_2027",
+          "type": "Invoice sent",
+          "counterparty": "Acme Logistics",
+          "amount": 24000000,
+          "date": "2026-10-26",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cus_223_annual",
+          "type": "Invoice paid",
+          "counterparty": "Kestrel Customer 223",
+          "amount": 7783401,
+          "date": "2026-10-18",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cus_053_annual",
+          "type": "Invoice paid",
+          "counterparty": "Kestrel Customer 053",
+          "amount": 6716827,
+          "date": "2026-10-16",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cus_269_annual",
+          "type": "Invoice paid",
+          "counterparty": "Kestrel Customer 269",
+          "amount": 9068083,
+          "date": "2026-10-16",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cobalt_2027",
+          "type": "Invoice sent",
+          "counterparty": "Cobalt Labs",
+          "amount": 9600000,
+          "date": "2026-10-15",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cus_021_m6",
+          "type": "Invoice paid",
+          "counterparty": "Kestrel Customer 021",
+          "amount": 493660,
+          "date": "2026-10-15",
+          "list": "invoices"
+        },
+        {
+          "id": "inv_cus_061_m6",
+          "type": "Invoice paid",
+          "counterparty": "Kestrel Customer 061",
+          "amount": 539190,
+          "date": "2026-10-15",
+          "list": "invoices"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 2111 records from Stripe in 22 pages",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
     },
-    {
-     "list": "invoices",
-     "label": "Invoices",
-     "count": 547,
-     "stale": false
+    "ramp": {
+      "tool": "ramp",
+      "name": "Ramp",
+      "kind": "Cards and bill pay",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 3,
+      "endpoints": [
+        "/developer/v1/transactions",
+        "/developer/v1/bills",
+        "/developer/v1/reimbursements"
+      ],
+      "recordsIn": 46,
+      "recordsOut": 6,
+      "skipped": 40,
+      "checksOk": 26,
+      "checksTotal": 26,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "cardTxns",
+          "label": "Card charges",
+          "count": 6,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "card_6",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-10-25",
+          "list": "cardTxns"
+        },
+        {
+          "id": "card_5",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-09-25",
+          "list": "cardTxns"
+        },
+        {
+          "id": "card_4",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-08-25",
+          "list": "cardTxns"
+        },
+        {
+          "id": "card_3",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-07-25",
+          "list": "cardTxns"
+        },
+        {
+          "id": "card_2",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-06-25",
+          "list": "cardTxns"
+        },
+        {
+          "id": "card_1",
+          "type": "Card charge",
+          "counterparty": "SOFTWARE VENDORS",
+          "amount": -3800000,
+          "date": "2026-05-25",
+          "list": "cardTxns"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 46 records from Ramp in 3 pages",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
     },
-    {
-     "list": "billingPlans",
-     "label": "Subscriptions",
-     "count": 296,
-     "stale": false
+    "qbo": {
+      "tool": "qbo",
+      "name": "QuickBooks Online",
+      "kind": "Books",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 5,
+      "endpoints": [
+        "query Account",
+        "query Bill",
+        "query BillPayment",
+        "query Invoice",
+        "query Payment"
+      ],
+      "recordsIn": 1119,
+      "recordsOut": 52,
+      "skipped": 1065,
+      "checksOk": 61,
+      "checksTotal": 61,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "bills",
+          "label": "Bills",
+          "count": 52,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "bill_ops_25",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-26",
+          "list": "bills"
+        },
+        {
+          "id": "bill_ops_24",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-19",
+          "list": "bills"
+        },
+        {
+          "id": "bill_ops_23",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-12",
+          "list": "bills"
+        },
+        {
+          "id": "bill_rent_6",
+          "type": "Bill paid",
+          "counterparty": "Office landlord",
+          "amount": -6200000,
+          "date": "2026-10-10",
+          "list": "bills"
+        },
+        {
+          "id": "bill_ops_22",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-05",
+          "list": "bills"
+        },
+        {
+          "id": "bill_cloud_2",
+          "type": "Bill paid",
+          "counterparty": "Cloud provider",
+          "amount": -21000000,
+          "date": "2026-09-30",
+          "list": "bills"
+        },
+        {
+          "id": "bill_ops_21",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-09-28",
+          "list": "bills"
+        },
+        {
+          "id": "bill_ops_20",
+          "type": "Bill paid",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-09-21",
+          "list": "bills"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 1119 records from QuickBooks Online in 5 pages",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
     },
-    {
-     "list": "pendingPayouts",
-     "label": "Payouts on the way",
-     "count": 0,
-     "stale": false
+    "gusto": {
+      "tool": "gusto",
+      "name": "Gusto",
+      "kind": "Payroll",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 1,
+      "endpoints": ["/v1/companies/:company_uuid/payrolls"],
+      "recordsIn": 20,
+      "recordsOut": 20,
+      "skipped": 0,
+      "checksOk": 13,
+      "checksTotal": 13,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "payroll",
+          "label": "Payroll runs",
+          "count": 20,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "pay_12",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-10-23",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_11",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-10-09",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_10",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-09-25",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_09",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-09-11",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_08",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-08-28",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_07",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-08-14",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_06",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-07-31",
+          "list": "payroll"
+        },
+        {
+          "id": "pay_05",
+          "type": "Payroll run",
+          "counterparty": "Team pay",
+          "amount": -60000000,
+          "date": "2026-07-17",
+          "list": "payroll"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 20 records from Gusto in 1 page",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
+    },
+    "hubspot": {
+      "tool": "hubspot",
+      "name": "HubSpot",
+      "kind": "Sales",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 1,
+      "endpoints": ["/crm/v3/objects/deals"],
+      "recordsIn": 2,
+      "recordsOut": 2,
+      "skipped": 0,
+      "checksOk": 0,
+      "checksTotal": 0,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "deals",
+          "label": "Deals",
+          "count": 2,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "deal_acme_renewal",
+          "type": "Deal won",
+          "counterparty": "Acme Logistics",
+          "amount": 24000000,
+          "date": "2026-10-20",
+          "list": "deals"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 2 records from HubSpot in 1 page",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
+    },
+    "plaid": {
+      "tool": "plaid",
+      "name": "Simulated bank (via Plaid)",
+      "kind": "Bank",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": "JTdCJTIyaSUyMiUzQTUzNyUyQyUyMmglMjIlM0ElMjIxaDNtbmRyJTIyJTdE",
+      "position": "Saved sync cursor: the next read asks only for new activity",
+      "pages": 3,
+      "endpoints": ["/accounts/get", "/transactions/sync"],
+      "recordsIn": 539,
+      "recordsOut": 537,
+      "skipped": 0,
+      "checksOk": 532,
+      "checksTotal": 532,
+      "asOf": "2026-10-30",
+      "lists": [
+        {
+          "list": "bankTxns",
+          "label": "Bank transactions",
+          "count": 537,
+          "stale": false
+        }
+      ],
+      "recent": [
+        {
+          "id": "bank_bill_ops_25",
+          "type": "Payment",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-26",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_card_6",
+          "type": "Payment",
+          "counterparty": "Card issuer",
+          "amount": -3800000,
+          "date": "2026-10-25",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_pay_12",
+          "type": "Payment",
+          "counterparty": "Gusto",
+          "amount": -60000000,
+          "date": "2026-10-23",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_inv_cus_223_annual",
+          "type": "Deposit",
+          "counterparty": "Stripe",
+          "amount": 7557682,
+          "date": "2026-10-20",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_bill_ops_24",
+          "type": "Payment",
+          "counterparty": "Operations vendors",
+          "amount": -3500000,
+          "date": "2026-10-19",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_inv_cus_053_annual",
+          "type": "Deposit",
+          "counterparty": "Stripe",
+          "amount": 6522039,
+          "date": "2026-10-19",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_inv_cus_021_m6",
+          "type": "Deposit",
+          "counterparty": "Stripe",
+          "amount": 479344,
+          "date": "2026-10-18",
+          "list": "bankTxns"
+        },
+        {
+          "id": "bank_inv_cus_061_m6",
+          "type": "Deposit",
+          "counterparty": "Stripe",
+          "amount": 523553,
+          "date": "2026-10-18",
+          "list": "bankTxns"
+        }
+      ],
+      "task": {
+        "state": "done",
+        "text": "Read 539 records from Simulated bank (via Plaid) in 3 pages",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
+    },
+    "nessie": {
+      "tool": "nessie",
+      "name": "Capital One (Nessie sandbox)",
+      "kind": "Bank",
+      "status": "connected",
+      "account": "Kestrel Data (sandbox)",
+      "connectedAt": "2026-10-30T12:00:00.000Z",
+      "lastReadAt": "2026-10-30T12:00:00.000Z",
+      "lastError": null,
+      "cursor": null,
+      "position": "No cursor: every read starts again from page 1",
+      "pages": 0,
+      "endpoints": [],
+      "recordsIn": 0,
+      "recordsOut": 0,
+      "skipped": 0,
+      "checksOk": 532,
+      "checksTotal": 532,
+      "asOf": "2026-10-30",
+      "lists": [],
+      "recent": [],
+      "task": {
+        "state": "done",
+        "text": "Read 0 records from Capital One (Nessie sandbox) in 0 pages",
+        "at": "2026-10-30T12:00:00.000Z"
+      }
     }
-   ],
-   "recent": [
-    {
-     "id": "inv_bp_nov",
-     "type": "Invoice sent",
-     "counterparty": "Brightpath Retail",
-     "amount": 3600000,
-     "date": "2026-10-30",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_acme_2027",
-     "type": "Invoice sent",
-     "counterparty": "Acme Logistics",
-     "amount": 24000000,
-     "date": "2026-10-26",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cus_223_annual",
-     "type": "Invoice paid",
-     "counterparty": "Kestrel Customer 223",
-     "amount": 7783401,
-     "date": "2026-10-18",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cus_053_annual",
-     "type": "Invoice paid",
-     "counterparty": "Kestrel Customer 053",
-     "amount": 6716827,
-     "date": "2026-10-16",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cus_269_annual",
-     "type": "Invoice paid",
-     "counterparty": "Kestrel Customer 269",
-     "amount": 9068083,
-     "date": "2026-10-16",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cobalt_2027",
-     "type": "Invoice sent",
-     "counterparty": "Cobalt Labs",
-     "amount": 9600000,
-     "date": "2026-10-15",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cus_021_m6",
-     "type": "Invoice paid",
-     "counterparty": "Kestrel Customer 021",
-     "amount": 493660,
-     "date": "2026-10-15",
-     "list": "invoices"
-    },
-    {
-     "id": "inv_cus_061_m6",
-     "type": "Invoice paid",
-     "counterparty": "Kestrel Customer 061",
-     "amount": 539190,
-     "date": "2026-10-15",
-     "list": "invoices"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 2111 records from Stripe in 22 pages",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "ramp": {
-   "tool": "ramp",
-   "name": "Ramp",
-   "kind": "Cards and bill pay",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 3,
-   "endpoints": [
-    "/developer/v1/transactions",
-    "/developer/v1/bills",
-    "/developer/v1/reimbursements"
-   ],
-   "recordsIn": 46,
-   "recordsOut": 6,
-   "skipped": 40,
-   "checksOk": 26,
-   "checksTotal": 26,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "cardTxns",
-     "label": "Card charges",
-     "count": 6,
-     "stale": false
-    }
-   ],
-   "recent": [
-    {
-     "id": "card_6",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-10-25",
-     "list": "cardTxns"
-    },
-    {
-     "id": "card_5",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-09-25",
-     "list": "cardTxns"
-    },
-    {
-     "id": "card_4",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-08-25",
-     "list": "cardTxns"
-    },
-    {
-     "id": "card_3",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-07-25",
-     "list": "cardTxns"
-    },
-    {
-     "id": "card_2",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-06-25",
-     "list": "cardTxns"
-    },
-    {
-     "id": "card_1",
-     "type": "Card charge",
-     "counterparty": "SOFTWARE VENDORS",
-     "amount": -3800000,
-     "date": "2026-05-25",
-     "list": "cardTxns"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 46 records from Ramp in 3 pages",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "qbo": {
-   "tool": "qbo",
-   "name": "QuickBooks Online",
-   "kind": "Books",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 5,
-   "endpoints": [
-    "query Account",
-    "query Bill",
-    "query BillPayment",
-    "query Invoice",
-    "query Payment"
-   ],
-   "recordsIn": 1119,
-   "recordsOut": 52,
-   "skipped": 1065,
-   "checksOk": 61,
-   "checksTotal": 61,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "bills",
-     "label": "Bills",
-     "count": 52,
-     "stale": false
-    }
-   ],
-   "recent": [
-    {
-     "id": "bill_ops_25",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-26",
-     "list": "bills"
-    },
-    {
-     "id": "bill_ops_24",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-19",
-     "list": "bills"
-    },
-    {
-     "id": "bill_ops_23",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-12",
-     "list": "bills"
-    },
-    {
-     "id": "bill_rent_6",
-     "type": "Bill paid",
-     "counterparty": "Office landlord",
-     "amount": -6200000,
-     "date": "2026-10-10",
-     "list": "bills"
-    },
-    {
-     "id": "bill_ops_22",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-05",
-     "list": "bills"
-    },
-    {
-     "id": "bill_cloud_2",
-     "type": "Bill paid",
-     "counterparty": "Cloud provider",
-     "amount": -21000000,
-     "date": "2026-09-30",
-     "list": "bills"
-    },
-    {
-     "id": "bill_ops_21",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-09-28",
-     "list": "bills"
-    },
-    {
-     "id": "bill_ops_20",
-     "type": "Bill paid",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-09-21",
-     "list": "bills"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 1119 records from QuickBooks Online in 5 pages",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "gusto": {
-   "tool": "gusto",
-   "name": "Gusto",
-   "kind": "Payroll",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 1,
-   "endpoints": [
-    "/v1/companies/:company_uuid/payrolls"
-   ],
-   "recordsIn": 20,
-   "recordsOut": 20,
-   "skipped": 0,
-   "checksOk": 13,
-   "checksTotal": 13,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "payroll",
-     "label": "Payroll runs",
-     "count": 20,
-     "stale": false
-    }
-   ],
-   "recent": [
-    {
-     "id": "pay_12",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-10-23",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_11",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-10-09",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_10",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-09-25",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_09",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-09-11",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_08",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-08-28",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_07",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-08-14",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_06",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-07-31",
-     "list": "payroll"
-    },
-    {
-     "id": "pay_05",
-     "type": "Payroll run",
-     "counterparty": "Team pay",
-     "amount": -60000000,
-     "date": "2026-07-17",
-     "list": "payroll"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 20 records from Gusto in 1 page",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "hubspot": {
-   "tool": "hubspot",
-   "name": "HubSpot",
-   "kind": "Sales",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 1,
-   "endpoints": [
-    "/crm/v3/objects/deals"
-   ],
-   "recordsIn": 2,
-   "recordsOut": 2,
-   "skipped": 0,
-   "checksOk": 0,
-   "checksTotal": 0,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "deals",
-     "label": "Deals",
-     "count": 2,
-     "stale": false
-    }
-   ],
-   "recent": [
-    {
-     "id": "deal_acme_renewal",
-     "type": "Deal won",
-     "counterparty": "Acme Logistics",
-     "amount": 24000000,
-     "date": "2026-10-20",
-     "list": "deals"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 2 records from HubSpot in 1 page",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "plaid": {
-   "tool": "plaid",
-   "name": "Simulated bank (via Plaid)",
-   "kind": "Bank",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": "JTdCJTIyaSUyMiUzQTUzNyUyQyUyMmglMjIlM0ElMjIxaDNtbmRyJTIyJTdE",
-   "position": "Saved sync cursor: the next read asks only for new activity",
-   "pages": 3,
-   "endpoints": [
-    "/accounts/get",
-    "/transactions/sync"
-   ],
-   "recordsIn": 539,
-   "recordsOut": 537,
-   "skipped": 0,
-   "checksOk": 532,
-   "checksTotal": 532,
-   "asOf": "2026-10-30",
-   "lists": [
-    {
-     "list": "bankTxns",
-     "label": "Bank transactions",
-     "count": 537,
-     "stale": false
-    }
-   ],
-   "recent": [
-    {
-     "id": "bank_bill_ops_25",
-     "type": "Payment",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-26",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_card_6",
-     "type": "Payment",
-     "counterparty": "Card issuer",
-     "amount": -3800000,
-     "date": "2026-10-25",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_pay_12",
-     "type": "Payment",
-     "counterparty": "Gusto",
-     "amount": -60000000,
-     "date": "2026-10-23",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_inv_cus_223_annual",
-     "type": "Deposit",
-     "counterparty": "Stripe",
-     "amount": 7557682,
-     "date": "2026-10-20",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_bill_ops_24",
-     "type": "Payment",
-     "counterparty": "Operations vendors",
-     "amount": -3500000,
-     "date": "2026-10-19",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_inv_cus_053_annual",
-     "type": "Deposit",
-     "counterparty": "Stripe",
-     "amount": 6522039,
-     "date": "2026-10-19",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_inv_cus_021_m6",
-     "type": "Deposit",
-     "counterparty": "Stripe",
-     "amount": 479344,
-     "date": "2026-10-18",
-     "list": "bankTxns"
-    },
-    {
-     "id": "bank_inv_cus_061_m6",
-     "type": "Deposit",
-     "counterparty": "Stripe",
-     "amount": 523553,
-     "date": "2026-10-18",
-     "list": "bankTxns"
-    }
-   ],
-   "task": {
-    "state": "done",
-    "text": "Read 539 records from Simulated bank (via Plaid) in 3 pages",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
-  },
-  "nessie": {
-   "tool": "nessie",
-   "name": "Capital One (Nessie sandbox)",
-   "kind": "Bank",
-   "status": "connected",
-   "account": "Kestrel Data (sandbox)",
-   "connectedAt": "2026-10-30T12:00:00.000Z",
-   "lastReadAt": "2026-10-30T12:00:00.000Z",
-   "lastError": null,
-   "cursor": null,
-   "position": "No cursor: every read starts again from page 1",
-   "pages": 0,
-   "endpoints": [],
-   "recordsIn": 0,
-   "recordsOut": 0,
-   "skipped": 0,
-   "checksOk": 532,
-   "checksTotal": 532,
-   "asOf": "2026-10-30",
-   "lists": [],
-   "recent": [],
-   "task": {
-    "state": "done",
-    "text": "Read 0 records from Capital One (Nessie sandbox) in 0 pages",
-    "at": "2026-10-30T12:00:00.000Z"
-   }
   }
- }
 }
