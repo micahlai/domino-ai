@@ -472,7 +472,7 @@ function InstanceBody({ node, data, done }: { node: BrainNode; data: CardData; d
   // The kind of tool it used last: enough to see what it is doing without crowding the name.
   const lastTool = [...node.operations].reverse().find((op) => op.tool);
   const categories = lastTool
-    ? [describeTool(lastTool.tool ?? "", lastTool.toolCategory).category]
+    ? [describeTool(lastTool.tool ?? "", lastTool.toolCategory, lastTool.toolLabel).category]
     : [];
   const working = isWorking(node);
   const detail = working || done ? node.currentTask : (node.currentTask ?? node.brief);
@@ -633,7 +633,7 @@ function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; ab
         <p className="text-sm font-medium">{chip.label}</p>
         <ul className="mt-1.5 space-y-0.5 text-xs">
           {tools.map((op) => {
-            const info = describeTool(op.tool ?? "", op.toolCategory);
+            const info = describeTool(op.tool ?? "", op.toolCategory, op.toolLabel);
             return (
               <li key={op.tool} className="flex items-center gap-1.5">
                 <span className="truncate">{info.label}</span>
@@ -1266,7 +1266,9 @@ export function BrainMap() {
   const vendorsShown = [
     ...new Set(graph.nodes.flatMap((n) => (n.kind === "source" && n.vendor ? [n.vendor] : []))),
   ];
-  const apifyUsed = graph.nodes.some((n) => n.kind === "tool" && n.tool?.category === "apify");
+  const apifyTools = graph.nodes.filter((n) => n.kind === "tool" && n.tool?.category === "apify");
+  const apifyUsed = apifyTools.length > 0;
+  const apifyDemo = apifyUsed && apifyTools.every((n) => n.tool?.demoActor);
   const messageLines = layout.routes.some((r) => r.kind === "message");
   const showList = narrow && !mobileMap;
 
@@ -1442,6 +1444,7 @@ export function BrainMap() {
           kinds={kindsShown}
           vendors={vendorsShown}
           apify={apifyUsed}
+          apifyDemo={apifyDemo}
           messages={messageLines}
           motion={!reduced}
         />
@@ -1457,12 +1460,14 @@ function Legend({
   kinds,
   vendors,
   apify,
+  apifyDemo,
   messages,
   motion: moving,
 }: {
   kinds: AgentKind[];
   vendors: VendorId[];
   apify: boolean;
+  apifyDemo: boolean;
   messages: boolean;
   motion: boolean;
 }) {
@@ -1490,7 +1495,7 @@ function Legend({
         {apify && !vendors.includes("apify") ? (
           <span className={item}>
             <ToolLogo vendor="apify" size={18} />
-            Apify (demo actors)
+            {apifyDemo ? "Apify (demo actors)" : "Apify"}
           </span>
         ) : null}
       </div>
@@ -1758,7 +1763,7 @@ function ActivityList({
   return (
     <ol className="space-y-3">
       {operations.map((op) => {
-        const tool = op.tool ? describeTool(op.tool, op.toolCategory) : undefined;
+        const tool = op.tool ? describeTool(op.tool, op.toolCategory, op.toolLabel) : undefined;
         return (
           <li key={op.id} className="flex gap-2.5">
             <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">

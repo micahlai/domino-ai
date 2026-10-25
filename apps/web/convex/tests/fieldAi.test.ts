@@ -15,6 +15,7 @@ const newBackend = () => convexTest(schema, modules);
 type T = ReturnType<typeof newBackend>;
 
 const ENV_KEYS = [
+  "APIFY_TOKEN",
   "ANTHROPIC_API_KEY",
   "CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID",
   "CREAO_HISTORICAL_EVIDENCE_ANALYST_API_KEY",

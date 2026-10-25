@@ -1,0 +1,95 @@
+[
+  {
+    "searchQuery": {
+      "term": "\"Northwind Health\" (layoffs OR funding OR bankruptcy OR lawsuit OR acquisition OR CEO)",
+      "page": 1,
+      "type": "SEARCH",
+      "countryCode": "US"
+    },
+    "organicResults": [
+      {
+        "title": "Northwind Health Company's Post",
+        "url": "https://www.linkedin.com/posts/northwind-health_northwind-can-get-you-a-2027-proposal-in-activity-7510412281969561600-TzL1",
+        "displayedUrl": "3 weeks ago",
+        "description": "",
+        "position": 1,
+        "type": "organic"
+      },
+      {
+        "title": "Northwind Health Company posted on the topic",
+        "url": "https://www.linkedin.com/posts/northwind-health_most-pbms-focus-on-copays-at-northwind-activity-7494107601249390593-ePX6",
+        "displayedUrl": "20+ reactions  ·  2 months ago",
+        "description": "",
+        "position": 2,
+        "type": "organic"
+      },
+      {
+        "title": "11500 Member Self-funded Employer | Phillip Berry",
+        "url": "https://www.linkedin.com/posts/phillipberry_our-two-fold-approach-begins-with-identifying-activity-7493017113931153409-K2t5",
+        "displayedUrl": "7 reactions",
+        "description": "Phillip Berry's Post. View profile for Phillip Berry. Phillip Berry. Founder and CEO, Northwind Health Company ... Northwind Health to deploy a high-touch ...Read more",
+        "position": 3,
+        "type": "organic"
+      },
+      {
+        "title": "Northwind Health: Employee Directory",
+        "url": "https://www.zoominfo.com/pic/northwind-health/540085632",
+        "displayedUrl": "https://www.zoominfo.com › pic › northwind-health",
+        "description": "Search our free database to find email addresses and direct dials for Northwind Health employees.",
+        "date": "2026-02-23T12:00:00.000Z",
+        "position": 4,
+        "type": "organic"
+      },
+      {
+        "title": "Diabetes Clinical Blueprint® Case Study",
+        "url": "https://northwindhealth.com/case-studies/diabetes-care/",
+        "displayedUrl": "https://northwindhealth.com › Case Studies",
+        "description": "A large self-funded employer partnered with Northwind Health to deploy a high-touch, clinically-driven diabetes program — and the results speak for themselves.Read more",
+        "date": "2026-05-13T12:00:00.000Z",
+        "position": 5,
+        "type": "organic"
+      },
+      {
+        "title": "Caryn Rasnick on Independent TPAs, Specialty Drugs & ...",
+        "url": "https://www.linkedin.com/posts/avelis-ai_on-episode-3-our-ceo-angel-onuoha-sat-down-activity-7436803005007429634-bZsd",
+        "displayedUrl": "10+ reactions  ·  7 months ago",
+        "description": "",
+        "position": 6,
+        "type": "organic"
+      },
+      {
+        "title": "Because Northwind Health Company is the TPA and PBM, we ...",
+        "url": "https://www.linkedin.com/posts/northwind-health_because-northwind-health-company-is-the-tpa-activity-7485857182383513601-LntO",
+        "displayedUrl": "30+ reactions  ·  3 months ago",
+        "description": "",
+        "position": 7,
+        "type": "organic"
+      },
+      {
+        "title": "How Phillip Berry Bootstrapped Northwind for 18 Years to Do ...",
+        "url": "https://www.youtube.com/watch?v=qyl8BhYdSZI",
+        "displayedUrl": "140+ views  ·  1 month ago",
+        "description": "",
+        "position": 8,
+        "type": "organic"
+      },
+      {
+        "title": "Employers Prioritize Value Over Cost Containment",
+        "url": "https://www.linkedin.com/posts/northwind-health_pbms-pitch-bolder-ways-to-rein-in-employer-activity-7487914308249546752-QoYN",
+        "displayedUrl": "10+ reactions",
+        "description": "Employers Prioritize Value Over Cost Containment. View organization page for Northwind Health Company · Northwind Health Company. 2,998 followers. 2mo. Report ...Read more",
+        "position": 9,
+        "type": "organic"
+      },
+      {
+        "title": "Northwind - Apps on Google Play",
+        "url": "https://play.google.com/store/apps/details?id=com.nwpharma.rxsteward&hl=en_US",
+        "displayedUrl": "https://play.google.com › store › apps › details",
+        "description": "Northwind. Northwind Health. 2.0star. 7 reviews. Content rating. Everyone. info ... Northwind Health Company, LLC. mobile.support@nwpharma.com. 4838 Fletcher ...Read more",
+        "date": "2026-01-08T12:00:00.000Z",
+        "position": 10,
+        "type": "organic"
+      }
+    ]
+  }
+]

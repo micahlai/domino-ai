@@ -13,6 +13,10 @@ source ~/.nvm/nvm.sh && nvm use 24
 # 1. Isolated local Convex. Writes apps/web/.env.local (gitignored) pointing Next at it.
 CONVEX_AGENT_MODE=anonymous npx convex dev --local-cloud-port 3260 --local-site-port 3261
 
+# Optional: real Apify searches for counterparty news (capped at 3 runs per ingest and 20 per
+# day, cached 24 h). Without it the research agent logs "Apify not configured" and skips.
+# npx convex env set APIFY_TOKEN <token>
+
 # 2. Create the live feed (six mock sources, first ingest queued). Run again for a fresh
 #    company: the pages follow the newest feed.
 npx convex run field:setup '{}'

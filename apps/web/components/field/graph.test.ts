@@ -162,6 +162,22 @@ describe("friendly tool names", () => {
     });
   });
 
+  it("labels a live Apify run by its actor name and only demo rows as demo actors", () => {
+    expect(
+      describeTool("apify/google-search-scraper", "apify", "Google Search Results Scraper"),
+    ).toEqual({
+      label: "Google Search Results Scraper",
+      category: "apify",
+      group: "category:apify",
+    });
+    expect(describeTool("apify/demo-news-search", "apify", "demo actor")).toMatchObject({
+      label: "News search",
+      demoActor: true,
+    });
+    // The offline fixture logs no label: still a demo actor.
+    expect(describeTool("apify.google-search-scraper", "apify").demoActor).toBe(true);
+  });
+
   it("collapses an agent's read tools into one chip and keeps the rest apart", () => {
     const graph = buildBrainGraph([
       op({ id: "1", tool: "mock.billing.list", source: "stripe" }),

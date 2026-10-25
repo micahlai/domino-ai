@@ -32,7 +32,7 @@ export type SwarmLogFields = {
   toAgentId?: string;
   /** "engine" | "apify" | "convex". */
   toolCategory?: string;
-  /** "demo actor" on Apify rows. */
+  /** Actor name on live Apify rows, "demo actor" on demo rows. */
   toolLabel?: string;
   step?: number;
   steps?: number;
@@ -193,6 +193,7 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
       ...(name(row.toAgentId) && { to: name(row.toAgentId) }),
       ...(str(row.currentTask) && { currentTask: str(row.currentTask) }),
       ...(str(row.toolCategory) && { toolCategory: str(row.toolCategory) }),
+      ...(str(row.toolLabel) && { toolLabel: str(row.toolLabel) }),
       ...(progress !== undefined && { progress }),
       kind,
       status,

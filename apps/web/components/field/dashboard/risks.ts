@@ -29,6 +29,17 @@ export type RiskFeed = {
   /** Analyst only: how many scenarios the run finished, and the books date it read. */
   total: number;
   asOf: ISODate | null;
+  /** Analyst only: public web signals the research agent found (real Apify runs). */
+  signals?: CounterpartySignals[];
+};
+
+export type CounterpartySignals = {
+  counterparty: string;
+  role: "customer" | "vendor" | null;
+  /** Apify run id the signals came from. */
+  runId: string;
+  fetchedAt: string;
+  headlines: { title: string; url: string; source: string; date: string | null; kinds: string[] }[];
 };
 
 /** The parts of fieldAnalyst.latest the dashboard reads (kept structural so tests need no Convex). */
@@ -44,7 +55,40 @@ export type AnalystLatest = {
     lowPointImpact: number | null;
     bestFix: { label: string; costNote: string; survivesWithFix: boolean } | null;
   }[];
+  research?: unknown[];
 } | null;
+
+const text = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** Apify entries of the analyst's research list, one per counterparty (newest wins). */
+export function counterpartySignals(research: unknown[] | undefined): CounterpartySignals[] {
+  const out = new Map<string, CounterpartySignals>();
+  for (const raw of research ?? []) {
+    const r = raw as Record<string, unknown>;
+    if (r.provider !== "apify" || !text(r.input) || !text(r.remoteRunId)) continue;
+    const signals = Array.isArray(r.signals) ? (r.signals as Record<string, unknown>[]) : [];
+    out.set(text(r.input), {
+      counterparty: text(r.input),
+      role: r.role === "customer" || r.role === "vendor" ? r.role : null,
+      runId: text(r.remoteRunId),
+      fetchedAt: text(r.fetchedAt),
+      headlines: signals.flatMap((s) =>
+        text(s.title) && /^https?:\/\//.test(text(s.url))
+          ? [
+              {
+                title: text(s.title),
+                url: text(s.url),
+                source: text(s.source),
+                date: text(s.date) || null,
+                kinds: Array.isArray(s.kinds) ? s.kinds.map(text).filter(Boolean) : [],
+              },
+            ]
+          : [],
+      ),
+    });
+  }
+  return [...out.values()];
+}
 
 const SHOWN = 3;
 
@@ -99,7 +143,14 @@ export function analystRisks(latest: AnalystLatest, view: DashboardView): RiskFe
         ? { label: s.bestFix.label, note: s.bestFix.costNote, holds: s.bestFix.survivesWithFix }
         : null,
     }));
-  return { source: "analyst", cards, total: done.length, asOf: latest.asOf };
+  const signals = counterpartySignals(latest.research);
+  return {
+    source: "analyst",
+    cards,
+    total: done.length,
+    asOf: latest.asOf,
+    ...(signals.length > 0 && { signals }),
+  };
 }
 
 export const OUTCOME_WORDS: Record<RiskOutcome, string> = {

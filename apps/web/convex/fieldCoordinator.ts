@@ -7,7 +7,7 @@
  * amounts; anything else rejects the whole plan) and executed here by deterministic code:
  *   escalate_flag          mark the open finding escalated for review (a person decides)
  *   focus_scenario         the summary leads with that scenario
- *   research_counterparty  research#1 runs the demo news check on that counterparty
+ *   research_counterparty  research#1 searches public signals on it (Apify; cache first, caps apply)
  * Each action is logged as a coordinator -> sub-agent message. There is no Claude fallback and
  * no canned plan: without CREAO the agents keep their default order and the log says why.
  */
@@ -32,9 +32,9 @@ import {
   creaoRunOptions,
 } from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
+import { NOT_CONFIGURED, apifyConfigured, searchReport, searchSignals } from "./fieldApify";
 import type { AgentRow } from "./lib/agentLog";
-import type { Inputs } from "./lib/analystScenarios";
-import { APIFY_LABEL, checkCustomerNews } from "./lib/apifyDemo";
+import { APIFY_ACTOR, signalLines } from "./lib/apify";
 import type { CoordinatorRecord } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
 import { parse } from "./lib/parse";
@@ -331,41 +331,60 @@ export async function coordinate(
   }
   if (plan.research) {
     const { counterparty, reason } = plan.research;
-    const inputs: Inputs = await ctx.runQuery(internal.fieldAnalyst.inputs, { runId });
-    const news = checkCustomerNews(inputs.snapshot, counterparty);
+    const role = data.counterparties.find((c) => c.name === counterparty)?.role;
     const r = (body: Omit<AgentRow, "agentId" | "agentKind" | "parentAgentId">): AgentRow => ({
       agentId: RESEARCH,
       agentKind: "domino",
       parentAgentId: ANALYST,
       ...body,
     });
+    await write([
+      say(RESEARCH, `Research ${counterparty} next: ${reason}`, [counterparty]),
+      ...(apifyConfigured()
+        ? []
+        : [
+            r({
+              action: "research.apifySkipped",
+              event: "status",
+              status: "working",
+              currentTask: `Research: public signals for ${counterparty} (for the coordinator)`,
+              summary: NOT_CONFIGURED,
+            }),
+          ]),
+    ]);
+    // Usually answered from this run's own search (cache); a live run still obeys the caps.
+    const search = apifyConfigured()
+      ? await searchSignals(ctx, {
+          counterparty,
+          ...(role && { role }),
+          companyId,
+          analystRunId: runId,
+          onStart: () =>
+            write([
+              r({
+                action: "agent.working",
+                event: "status",
+                status: "working",
+                currentTask: `Research: public signals for ${counterparty} (for the coordinator)`,
+                summary: `Searching public news on ${counterparty} with the Apify ${APIFY_ACTOR.name}`,
+              }),
+            ]),
+        })
+      : undefined;
+    const report = search ? searchReport(search) : { rows: [] };
+    const answer = search?.remoteRunId
+      ? signalLines(counterparty, search.signals).join("; ")
+      : (search?.reason ?? NOT_CONFIGURED);
     await write(
       [
-        say(RESEARCH, `Research ${counterparty} next: ${reason}`, [counterparty]),
-        r({
-          action: "agent.working",
-          event: "status",
-          status: "working",
-          currentTask: `Research: ${news.name} (${counterparty}) for the coordinator`,
-          summary: `Calling the ${news.name} ${APIFY_LABEL} for ${counterparty}`,
-        }),
-        r({
-          action: "agent.tool",
-          event: "tool",
-          tool: news.actor,
-          toolCategory: "apify",
-          toolLabel: APIFY_LABEL,
-          source: "apify",
-          refs: [counterparty],
-          summary: `${news.name}: ${news.items.join("; ")}`,
-        }),
+        ...report.rows.map(r),
         r({
           action: "agent.message",
           event: "message",
           fromAgentId: RESEARCH,
           toAgentId: COORDINATOR,
-          refs: [counterparty],
-          summary: `${counterparty}: ${news.items.join("; ")}`,
+          refs: [...(search?.remoteRunId ? [search.remoteRunId] : []), counterparty],
+          summary: `${counterparty}: ${answer}`,
         }),
         r({
           action: "agent.done",
@@ -375,7 +394,7 @@ export async function coordinate(
           summary: `${RESEARCH} done: coordinator follow-up on ${counterparty}`,
         }),
       ],
-      { ...news, requestedBy: COORDINATOR },
+      report.research && { ...report.research, requestedBy: COORDINATOR },
     );
     executed.push(`research ${counterparty}`);
   }

@@ -1,0 +1,101 @@
+[
+  {
+    "searchQuery": {
+      "term": "\"Acme Logistics\" (layoffs OR funding OR bankruptcy OR lawsuit OR acquisition OR CEO)",
+      "page": 1,
+      "type": "SEARCH",
+      "countryCode": "US"
+    },
+    "organicResults": [
+      {
+        "title": "Recent Articles By Emily",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2530232/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Emily ; September 29, 2026. Crypto Biz Poolin To Redo Contested Ch. 11 Auction ; September 29, 2026. Salad Chain Gets OK For $143M Lease Sale ...Read more",
+        "date": "2026-09-30T12:00:00.000Z",
+        "position": 1,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Emily",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2520313/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Emily. Clawing Back $560K … $3.5M Directors Claims Deal September. NYC Bankruptcy Judge. Catching Up With New Bankruptcy Case Action",
+        "date": "2026-09-29T12:00:00.000Z",
+        "position": 2,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Yun",
+        "url": "https://www.mealeys.com/bankruptcy-authority/articles/2521850/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mealeys.com › articles › sidebar_articles",
+        "description": "Recent Articles By Yun. Bankruptcy News You May Have Missed. Pandemic Fallout, Catching Up With New Bankruptcy Case",
+        "date": "2026-09-09T12:00:00.000Z",
+        "position": 3,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Emily",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2530777/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Emily. Salad Chain Gets OK For $143M. Katerra Inks Deal Clawing Back $560K … $3.5M Directors Claims Deal September",
+        "date": "2026-09-30T12:00:00.000Z",
+        "position": 4,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Daniel",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2526451/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Daniel. September 28, 2026. Defendants Get Costs For Ralan Liquidators' Late Doc Drop. July 01, 2026. Bankruptcy No Barrier To Running ...Read more",
+        "date": "2026-09-28T12:00:00.000Z",
+        "position": 5,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Alex",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2531381/sidebar_articles?section=Bankruptcy+Authority+Large+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Alex ; September 29, 2026. Dish DBS Gets OK To Cut $4.75B In Debt Under Ch. 11 Plan ; September 28, 2026. 777 Partners Gets OK On $10M DIP From ...Read more",
+        "date": "2026-09-30T12:00:00.000Z",
+        "position": 6,
+        "type": "organic"
+      },
+      {
+        "title": "Steve",
+        "url": "https://www.facebook.com/61594277182888/posts/122115443913475906/",
+        "displayedUrl": "https://www.facebook.com › posts",
+        "description": "American trucking firms have been filing for bankruptcy and laying off hundreds of workers as logistics businesses struggle amid soaring fuel costs.",
+        "position": 7,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Alex",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2499375/sidebar_articles?section=Bankruptcy+Authority+Large+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Alex. Plan Cutting $900M In Debt September 23, 2026 Spirit Airlines Gets OK To Sell 27 Planes For $668M",
+        "date": "2026-09-29T12:00:00.000Z",
+        "position": 8,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Carolyn",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/1786106/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Carolyn ; September 09, 2026. Mass. Justices Probe $8M Waterfront Sale To Audubon Group ; August 13, 2026. Israeli Company Must Face $30M Quinn ...Read more",
+        "date": "2026-09-30T12:00:00.000Z",
+        "position": 9,
+        "type": "organic"
+      },
+      {
+        "title": "Recent Articles By Daniel",
+        "url": "https://www.mlex.com/bankruptcy-authority/articles/2530460/sidebar_articles?section=Bankruptcy+Authority+Mid+Cap",
+        "displayedUrl": "https://www.mlex.com › articles › sidebar_articles › sect...",
+        "description": "Recent Articles By Daniel. September 17, 2026. WMG Administrator Denied Liquidator Role After Errors. July 01, 2026. Bankruptcy No Barrier To Running ...Read more",
+        "date": "2026-09-17T12:00:00.000Z",
+        "position": 10,
+        "type": "organic"
+      }
+    ]
+  }
+]

@@ -182,6 +182,41 @@ export const fieldTables = {
   })
     .index("by_hour", ["hour"])
     .index("by_companyId_and_kind_and_scope", ["companyId", "kind", "scope"]),
+  // Apify actor runs (fieldApify.ts): one row per live run of the public signal search, with
+  // its signals. Doubles as the 24 h cache per counterparty (key) and the run caps (per UTC day,
+  // per analyst run). Reserved and failed rows count toward the caps.
+  apifyRuns: defineTable({
+    key: v.string(),
+    counterparty: v.string(),
+    query: v.string(),
+    actorId: v.string(),
+    companyId: v.optional(companyId),
+    analystRunId: v.optional(v.string()),
+    day: v.string(),
+    at: v.string(),
+    status: v.union(v.literal("reserved"), v.literal("ok"), v.literal("failed")),
+    detail: v.optional(v.string()),
+    remoteRunId: v.optional(v.string()),
+    datasetId: v.optional(v.string()),
+    itemCount: v.optional(v.number()),
+    resultCount: v.optional(v.number()),
+    usageUsd: v.optional(v.number()),
+    signals: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          url: v.string(),
+          source: v.string(),
+          date: v.optional(v.string()),
+          snippet: v.string(),
+          kinds: v.array(v.string()),
+        }),
+      ),
+    ),
+  })
+    .index("by_day", ["day"])
+    .index("by_key_and_at", ["key", "at"])
+    .index("by_analystRunId", ["analystRunId"]),
   analystScenarios: defineTable({
     companyId,
     runId: v.string(),

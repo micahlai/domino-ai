@@ -10,7 +10,10 @@ export type ToolInfo = {
   category: ToolCategory;
   /** Chips with the same group collapse into one ("Read data · 6") inside an agent card. */
   group: string;
-  /** Apify actors here are demo actors: they return canned pages, not live scrapes. */
+  /**
+   * Demo Apify actors (the offline fixture) return canned pages. Live runs log the actor's name
+   * as the tool label and are not demo actors.
+   */
   demoActor?: boolean;
 };
 
@@ -90,16 +93,19 @@ const groupOf = (category: ToolCategory) => `category:${category}`;
 /**
  * Raw tool id (and the log's category, when it records one) -> label, category and chip group.
  * Apify actors ("apify.website-content-crawler", category "apify") get their own Apify group.
+ * `label` is the log's toolLabel: a live run's actor name, or "demo actor" on demo rows.
  */
-export function describeTool(raw: string, category?: string): ToolInfo {
+export function describeTool(raw: string, category?: string, label?: string): ToolInfo {
   const key = raw.trim().toLowerCase();
-  if (category === "apify" || key.startsWith("apify.") || key.startsWith("apify/"))
+  if (category === "apify" || key.startsWith("apify.") || key.startsWith("apify/")) {
+    const live = Boolean(label?.trim()) && label?.trim().toLowerCase() !== "demo actor";
     return {
-      label: humanize(raw.replace(/(^|[./])demo-/i, "$1")),
+      label: live ? (label?.trim() ?? "") : humanize(raw.replace(/(^|[./])demo-/i, "$1")),
       category: "apify",
       group: groupOf("apify"),
-      demoActor: true,
+      ...(!live && { demoActor: true }),
     };
+  }
   const known = KNOWN[key];
   if (known) return { ...known, group: groupOf(known.category) };
   if (isCategory(category)) return { label: humanize(raw), category, group: groupOf(category) };

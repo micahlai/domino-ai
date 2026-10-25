@@ -133,7 +133,7 @@ export function outputOf(op: FieldOperation): string | undefined {
     const key = op.tool.trim().toLowerCase();
     return NO_OUTPUT.has(key)
       ? undefined
-      : OUTPUT_OF_CATEGORY[describeTool(key, op.toolCategory).category];
+      : OUTPUT_OF_CATEGORY[describeTool(key, op.toolCategory, op.toolLabel).category];
   }
   return OUTPUT_OF_KIND[op.kind];
 }
@@ -323,12 +323,16 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
     }
     if (op.tool) {
       const tool = toolNodeId(op.tool);
-      const info = describeTool(op.tool, op.toolCategory);
+      const info = describeTool(op.tool, op.toolCategory, op.toolLabel);
       touch(tool, op, () => ({
         id: tool,
         kind: "tool",
         title: info.label,
-        brief: info.demoActor ? "An Apify demo actor an agent called." : "A tool an agent called.",
+        brief: info.demoActor
+          ? "An Apify demo actor an agent called."
+          : info.category === "apify"
+            ? "An Apify actor run an agent started."
+            : "A tool an agent called.",
         status: "idle",
         tool: { ...info, raw: op.tool ?? "" },
       }));
@@ -374,7 +378,7 @@ export function toolChips(agent: BrainNode): ToolChip[] {
   const chips = new Map<string, ToolChip>();
   for (const op of agent.operations) {
     if (!op.tool) continue;
-    const info = describeTool(op.tool, op.toolCategory);
+    const info = describeTool(op.tool, op.toolCategory, op.toolLabel);
     const id = chipId(agent.id, info.group);
     const chip = chips.get(id) ?? {
       id,
@@ -400,7 +404,9 @@ export function toolChips(agent: BrainNode): ToolChip[] {
 
 /** The chip an operation lights up, if it called a tool. */
 export function chipOf(op: FieldOperation): string | undefined {
-  return op.tool ? chipId(opAgentId(op), describeTool(op.tool, op.toolCategory).group) : undefined;
+  return op.tool
+    ? chipId(opAgentId(op), describeTool(op.tool, op.toolCategory, op.toolLabel).group)
+    : undefined;
 }
 
 /**
