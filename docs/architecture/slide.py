@@ -228,10 +228,10 @@ def slide() -> str:
         vy = TOP + 84 + i * 36
         add(mark(name, x + 24, vy, 26))
         add(t(x + 60, vy + 19, label, 18, INK, 500))
-        add(f'<line x1="{x + 170}" y1="{vy + 13}" x2="{bus_x}" y2="{vy + 13}" stroke="{DATA}" '
-            f'stroke-width="1.6" stroke-opacity="0.55"/>')
-    add(f'<line x1="{bus_x}" y1="{TOP + 38}" x2="{bus_x}" y2="{TOP + 84 + 4 * 36 + 13}" '
-        f'stroke="{DATA}" stroke-width="2.4"/>')
+        if i < len(vendors) - 1:       # the last row is the start of the bus path itself
+            add(f'<path d="M {x + 170} {vy + 13} L {bus_x - 10} {vy + 13} Q {bus_x} {vy + 13} '
+                f'{bus_x} {vy + 3}" fill="none" stroke="{DATA}" stroke-width="2.4"/>')
+    bus_y = TOP + 84 + (len(vendors) - 1) * 36 + 13
     add(card(x, TOP + 290, w, 200))
     add(t(x + 24, TOP + 328, "Real sandboxes", 21, INK, 650))
     add(item(x + 24, TOP + 352, "", "Capital One", "Nessie bank", BLUE, logo="capitalone"))
@@ -303,12 +303,12 @@ def slide() -> str:
     ai0 = TOP + 288
     add(card(ex, ai0, ew, 276))
     add(t(ex + 24, ai0 + 38, "AI providers", 21, INK, 650))
-    creao_y, claude_y, apify_y = ai0 + 56, ai0 + 132, ai0 + 196
+    apify_y, creao_y, claude_y = ai0 + 54, ai0 + 124, ai0 + 208
     add(item(ex + 24, creao_y, "", "CREAO", "primary agents", VIOLET, logo="creao"))
     add(item(ex + 24, claude_y, "", "Claude", "fallback · Ask Domino", VIOLET, logo="claude"))
     add(flow([(ex + 44, creao_y + 42), (ex + 44, claude_y - 2)], AIC, dashed=True))
-    add(t(ex + 58, creao_y + 66, "fallback", 15, AIC, 600))
-    add(item(ex + 24, apify_y + 12, "", "Apify", "web search tool", VIOLET, logo="apify"))
+    add(t(ex + 58, creao_y + 70, "fallback", 15, AIC, 600))
+    add(item(ex + 24, apify_y, "", "Apify", "web search tool", VIOLET, logo="apify"))
 
     # 4. App: the Worker first, where decisions are made.
     ax, aw = COLS["app"]
@@ -335,7 +335,8 @@ def slide() -> str:
     # ---- flows between containers ----
     sx, sw = COLS["sources"]
     # Vendors -> webhooks trigger; triggers wake ingestion.
-    add(flow([(bus_x, TOP + 38), (x, TOP + 38)], DATA, "new entries", ((sx + sw + x) / 2, TOP + 20)))
+    add(flow([(sx + 170, bus_y), (bus_x, bus_y), (bus_x, TOP + 38), (x, TOP + 38)], DATA,
+             "new entries", ((sx + sw + x) / 2, TOP + 20)))
     add(flow([(x + 44, TOP + 98), (x + 44, rows["ingest"] - 2)], DATA, "wake",
              (x + 82, TOP + 108)))
     # Nessie -> Ingestion; CRS -> Audit swarm.
@@ -345,19 +346,18 @@ def slide() -> str:
               (x + 22, rows["audit"] + 20)], DATA, "identity", (sx + sw + 64, TOP + 410)))
     # Agents <-> Engine.
     gx = x + w                           # right edge of the Convex column
-    add(flow([(x + 202, rows["forecast"] + 12), (gx + 36, rows["forecast"] + 12),
-              (gx + 36, cash_y + 20), (ex - 2, cash_y + 20)], DATA,
-             "scenarios ⇄ forecasts", (x + 304, rows["forecast"] - 1), both=True))
-    add(flow([(ex - 2, risk_y + 20), (gx + 62, risk_y + 20), (gx + 62, rows["forecast"] + 32),
-              (x + 208, rows["forecast"] + 32)], DATA, "domino effects",
-             (x + 300, rows["forecast"] + 49)))
-    # Agents <-> CREAO (plan, explain); Advisors -> Apify (research).
+    add(flow([(x + 202, rows["forecast"] + 8), (gx + 36, rows["forecast"] + 8),
+              (gx + 36, cash_y + 20), (ex - 2, cash_y + 20)], DATA, both=True))
+    add(flow([(ex - 2, risk_y + 20), (gx + 62, risk_y + 20), (gx + 62, rows["forecast"] + 26),
+              (x + 212, rows["forecast"] + 26)], DATA))
+    add(pill(x + 300, rows["forecast"] - 22, "scenarios ⇄ forecasts\ndomino effects", DATA))
+    # Forecasting -> Apify (the research agent runs in the forecasting swarm);
+    # Agents <-> CREAO (plan, explain).
+    add(flow([(x + 212, rows["forecast"] + 44), (ex - 2, rows["forecast"] + 44)], AIC,
+             "research", (x + 300, rows["forecast"] + 62)))
     add(flow([(x + 176, rows["advisors"] + 10), (gx + 76, rows["advisors"] + 10),
               (gx + 76, creao_y + 20), (ex - 2, creao_y + 20)], AIC, "plan · explain",
-             (x + 296, rows["advisors"] - 5), both=True))
-    add(flow([(x + 176, rows["advisors"] + 32), (gx + 50, rows["advisors"] + 32),
-              (gx + 50, apify_y + 36), (ex - 2, apify_y + 36)], AIC, "research",
-             (x + 270, rows["advisors"] + 50)))
+             (x + 300, rows["advisors"] + 28), both=True))
     # Agents -> Mutations; Live queries -> App pages.
     add(flow([(x + 120, ay0 + 354), (x + 120, sy0 + 46), (x + 45, sy0 + 46),
               (x + 45, sy0 + 72)], RES, "results", (x + 120, ay0 + 364)))
