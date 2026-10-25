@@ -21,7 +21,7 @@ export function OperatingProvenanceStrip() {
     operatingDemoCatalog.find((item) => item.id === selection.company)?.label ??
     "Filing-backed reconstruction";
   return (
-    <div className="border-t bg-muted/35 px-4 py-2 text-xs md:px-6">
+    <div className="relative border-t bg-muted/35 px-4 py-2 text-xs md:px-6">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-1">
         <span className="font-medium">{label}</span>
         <span className="text-muted-foreground">
@@ -52,11 +52,11 @@ function LiveSources() {
       </span>
     );
   return (
-    <details className="relative">
+    <details>
       <summary className="cursor-pointer font-medium text-primary underline-offset-2 hover:underline">
         Sources and cash bridge
       </summary>
-      <div className="absolute left-0 top-full z-50 mt-2 max-h-[min(70vh,38rem)] w-[min(37rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-card p-4 text-foreground shadow-lg">
+      <div className="absolute right-4 top-full z-50 mt-2 max-h-[min(70vh,38rem)] w-[min(37rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-card p-4 text-foreground shadow-lg">
         {context === undefined ? (
           <p className="text-muted-foreground">Reading the selected company's source anchors...</p>
         ) : context === null ? (
