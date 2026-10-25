@@ -3,7 +3,7 @@
 import { ChevronRight, GitBranch } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { friendlyLabel } from "../../../convex/timeline/recordNames";
 import { formatCents } from "../../../lib/format";
 import { timelineCalculationHref } from "../../../lib/trace-links";
@@ -102,6 +102,21 @@ export function ScenarioNav({
 }) {
   const entries = familyEntries(run, graph);
   const root = treeOf(entries, baseRunId);
+  const showNow = (id: string) => {
+    if (comparisons.ids.includes(id)) return;
+    const next = showWithAncestors(comparisons.ids, id, entries, baseRunId ?? "");
+    if (next) comparisons.onChange(next);
+  };
+  // A run saved in the background (a prediction) can finish before the saved-scenario list
+  // lists it; drawing it then would be dropped, so wait until it is in the tree.
+  const [pendingShow, setPendingShow] = useState<string | null>(null);
+  const listed = (id: string) => entries.some((e) => e.runId === id);
+  useEffect(() => {
+    if (pendingShow && listed(pendingShow)) {
+      setPendingShow(null);
+      showNow(pendingShow);
+    }
+  });
   const ctx: RowContext = {
     wide,
     run,
@@ -118,11 +133,7 @@ export function ScenarioNav({
     highlighted: new Set(highlighted ?? []),
     onHover,
     rowExtra,
-    show: (id) => {
-      if (comparisons.ids.includes(id)) return;
-      const next = showWithAncestors(comparisons.ids, id, entries, baseRunId ?? "");
-      if (next) comparisons.onChange(next);
-    },
+    show: (id) => (listed(id) ? showNow(id) : setPendingShow(id)),
   };
   return (
     <nav
