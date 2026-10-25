@@ -12,14 +12,17 @@ import {
   activityFor,
   buildBrainGraph,
   freshOperations,
+  idleAgents,
   isAgent,
+  mapCounts,
   neighbors,
   pulsePath,
   pulsesFor,
   toCanvasStatus,
   toolChips,
+  withSavedState,
 } from "./graph";
-import { clusterRoots, layoutMap, overlaps } from "./map-layout";
+import { IDLE_CLUSTER, IDLE_STACK, clusterRoots, layoutMap, overlaps } from "./map-layout";
 import { initialSwarm, swarmStep } from "./swarm-demo";
 import { describeTool } from "./tool-names";
 import type { FieldOperation } from "./types";
@@ -383,6 +386,63 @@ describe("map layout", () => {
     const feeds = graph.edges.filter((e) => e.kind === "feeds").map((e) => e.id);
     expect(new Set(feeds).size).toBe(feeds.length);
     expect(graph.nodes.filter(isAgent).length).toBeGreaterThan(0);
+  });
+
+  it("folds unused built-in agents and completed helpers, expandable, without overlaps", () => {
+    for (const [name, graph] of sampleGraphs()) {
+      const idle = idleAgents(graph);
+      const done = new Set(
+        graph.nodes.filter((n) => n.kind === "subagent" && n.lifecycle === "done").map((n) => n.id),
+      );
+      const folded = layoutMap(graph, { collapsed: done, idle });
+      expect(overlaps(folded, 8), name).toEqual([]);
+      for (const id of [...idle, ...done])
+        expect(folded.boxes.has(id), `${name} ${id}`).toBe(false);
+      if (idle.length)
+        expect(folded.stacks.find((s) => s.id === IDLE_STACK)?.members).toEqual(idle);
+      // Expanding every stack shows its members and keeps a card to fold them again.
+      const open = new Set([IDLE_CLUSTER, ...folded.stacks.map((s) => s.clusterId)]);
+      const shown = layoutMap(graph, { collapsed: done, idle, expanded: open });
+      expect(overlaps(shown, 8), name).toEqual([]);
+      for (const id of [...idle, ...done]) expect(shown.boxes.has(id), `${name} ${id}`).toBe(true);
+      expect(shown.stacks.every((s) => s.expanded)).toBe(true);
+    }
+  });
+
+  it("puts lane headings above their lane, clear of every card", () => {
+    for (const [name, graph] of sampleGraphs()) {
+      const layout = layoutMap(graph, { idle: idleAgents(graph) });
+      const cards = [...layout.boxes.values(), ...layout.stacks.map((s) => s.box)];
+      for (const lane of layout.lanes) {
+        const clash = cards.some(
+          (b) =>
+            lane.x < b.x + b.w && b.x < lane.x + lane.w && lane.y < b.y + b.h && b.y < lane.y + 20,
+        );
+        expect(clash, `${name} ${lane.id}`).toBe(false);
+      }
+      const side = (kind: "source" | "output") =>
+        graph.nodes.filter((n) => n.kind === kind).flatMap((n) => layout.boxes.get(n.id) ?? []);
+      const top = (kind: "source" | "output") => Math.min(...side(kind).map((b) => b.y));
+      expect(layout.lanes.find((l) => l.id === "source")?.y).toBeLessThan(top("source"));
+      expect(layout.lanes.find((l) => l.id === "output")?.y).toBeLessThan(top("output"));
+    }
+  });
+
+  it("uses one count definition for the headline and the lanes", () => {
+    const graph = withSavedState(buildBrainGraph([]), {
+      booksVersions: 3,
+      flags: { total: 2, open: 1 },
+      sources: [{ id: "billing", lastPull: "2026-11-02" }],
+    });
+    expect(mapCounts(graph)).toMatchObject({ agents: 0, sources: 1, outputs: 2 });
+    expect(graph.nodes.find((n) => n.id === "output:flags")?.saved).toBe("2 flags, 1 open");
+    // Unused built-ins fold away; an agent with saved-state outputs only is still unused.
+    expect(idleAgents(graph)).toEqual([
+      "agent:ingestion",
+      "agent:audit",
+      "agent:forecaster",
+      "agent:analyst",
+    ]);
   });
 
   it("is deterministic", () => {

@@ -55,6 +55,11 @@ export type BrainNode = {
   startedAt?: string;
   endedAt?: string;
   progress?: number;
+  /**
+   * Sources and outputs: what saved state says, independent of how much of the log is loaded
+   * ("Data through Nov 2", "12 versions saved"). Set by withSavedState().
+   */
+  saved?: string;
 };
 
 export type BrainEdge = { id: string; source: string; target: string; kind: EdgeKind };
@@ -511,11 +516,93 @@ export const isWorking = (n: BrainNode) =>
   isAgent(n) &&
   (n.lifecycle ? n.lifecycle === "spawned" || n.lifecycle === "working" : n.status === "running");
 
-/** Ms since a finished agent copy finished, or undefined while it runs (or has no lifecycle). */
+/**
+ * Ms since a helper finished, or undefined while it runs or after it failed (failures stay in
+ * view). Helpers without status rows count as finished from their last recorded step.
+ */
 export function finishedAge(n: BrainNode, now: number): number | undefined {
-  if (n.kind !== "subagent" || n.lifecycle !== "done" || !n.endedAt) return undefined;
-  const at = Date.parse(n.endedAt);
+  if (n.kind !== "subagent") return undefined;
+  const done = n.lifecycle ? n.lifecycle === "done" : n.status === "succeeded";
+  const end = n.lifecycle ? n.endedAt : n.lastAt;
+  if (!done || !end) return undefined;
+  const at = Date.parse(end);
   return Number.isNaN(at) ? undefined : Math.max(0, now - at);
+}
+
+/** A node with recorded work: log rows, messages, or saved state. */
+export const hasWork = (n: BrainNode) =>
+  n.operations.length > 0 || n.messages.length > 0 || n.saved !== undefined;
+
+/** Built-in agents with no recorded work and no helpers: the map folds them into one card. */
+export function idleAgents(graph: BrainGraph): string[] {
+  const parents = new Set(graph.nodes.flatMap((n) => (n.parentId ? [n.parentId] : [])));
+  return graph.nodes
+    .filter((n) => BUILT_IN_IDS.has(n.id) && !hasWork(n) && !parents.has(n.id))
+    .map((n) => n.id);
+}
+
+/** Saved state the map reads besides the log (field.status and field.findings). */
+export type SavedState = {
+  /** Catalog source id -> the company date its data runs through, with the saved step line. */
+  sources?: { id: string; lastPull: string | null; step?: string | null }[];
+  /** Books versions saved so far. */
+  booksVersions?: number;
+  /** Flags recorded so far, and how many are still open. */
+  flags?: { total: number; open: number };
+};
+
+const shortDate = (iso: string) => {
+  const at = Date.parse(iso.length === 10 ? `${iso}T12:00:00Z` : iso);
+  return Number.isNaN(at)
+    ? iso
+    : new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+};
+
+/**
+ * Marks sources and outputs that saved state says have work, so a source read before the
+ * loaded part of the log still counts. Returns a new graph; the input is not changed.
+ */
+export function withSavedState(graph: BrainGraph, saved: SavedState): BrainGraph {
+  const notes = new Map<string, string>();
+  for (const s of saved.sources ?? [])
+    if (s.lastPull) notes.set(sourceNodeId(s.id), `Data through ${shortDate(s.lastPull)}`);
+  const versions = saved.booksVersions ?? 0;
+  if (versions > 0)
+    notes.set(
+      outputNodeId("books"),
+      `${versions} ${versions === 1 ? "version" : "versions"} saved`,
+    );
+  const flags = saved.flags;
+  if (flags && flags.total > 0)
+    notes.set(
+      outputNodeId("flags"),
+      `${flags.total} ${flags.total === 1 ? "flag" : "flags"}, ${flags.open} open`,
+    );
+  if (!notes.size) return graph;
+  return {
+    edges: graph.edges,
+    nodes: graph.nodes.map((n) => {
+      const note = notes.get(n.id);
+      return note ? { ...n, saved: note } : n;
+    }),
+  };
+}
+
+/** The one set of counts the headline, lane headings and stats all use. */
+export function mapCounts(graph: BrainGraph) {
+  const agents = graph.nodes.filter(isAgent);
+  return {
+    agents: agents.filter(hasWork).length,
+    working: agents.filter(isWorking).length,
+    sources: graph.nodes.filter((n) => n.kind === "source" && hasWork(n)).length,
+    outputs: graph.nodes.filter((n) => n.kind === "output" && hasWork(n)).length,
+    completedHelpers: agents.filter(
+      (n) =>
+        n.kind === "subagent" && (n.lifecycle ? n.lifecycle === "done" : n.status === "succeeded"),
+    ).length,
+    /** Each message touches both agents, so count message rows once. */
+    messages: new Set(agents.flatMap((n) => n.messages.map((m) => m.id))).size,
+  };
 }
 
 /** Finished agent copies that have faded out: the map folds them into a "+N finished" stack. */

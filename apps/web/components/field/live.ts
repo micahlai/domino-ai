@@ -89,8 +89,28 @@ const SOURCE_NAME: Record<string, string> = {
   qbo: "books",
   payroll: "payroll",
   gusto: "payroll",
+  plaid: "plaid",
   nessie: "bank",
 };
+
+/**
+ * Saved `sources` row kinds (convex/fieldSources.ts SOURCE_OF_TOOL) -> catalog source ids. The
+ * connectors write the Plaid bank read to the old "nessie" row, so that row is Plaid here.
+ */
+const SAVED_SOURCE: Record<string, string> = {
+  stripe: "billing",
+  crm: "crm",
+  ramp: "cards",
+  books: "books",
+  payroll: "payroll",
+  nessie: "plaid",
+};
+
+/** "stripe.read" -> "stripe": a pull row that lost its source still names its connector. */
+const sourceOfPull = (row: LiveLogRow) =>
+  row.action === "ingest.pulled" && row.tool
+    ? /^([a-z0-9-]+)\.read$/i.exec(row.tool)?.[1]
+    : undefined;
 
 /** Rows written by shared engine code carry no agent; name them by actor instead. */
 const ACTOR_NAME: Record<string, string> = {
@@ -156,6 +176,7 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
       typeof row.step === "number" && typeof row.steps === "number" && row.steps > 0
         ? Math.min(1, Math.max(0, row.step / row.steps))
         : undefined;
+    const source = row.source ?? sourceOfPull(row);
     return {
       id: row._id,
       at: row.at,
@@ -163,7 +184,7 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
       agent: named && !instanceId ? named : liveAgentName(row.agent, row.actor),
       actor: row.actor,
       ...(row.tool && { tool: row.tool }),
-      ...(row.source && { source: liveSourceName(row.source) }),
+      ...(source && { source: liveSourceName(source) }),
       ...(instanceId && { instanceId }),
       ...(agentKind &&
         AGENT_KINDS.has(agentKind) && { agentKind: agentKind as FieldOperation["agentKind"] }),
@@ -203,6 +224,12 @@ export function toStatus(status: LiveStatus, rows: LiveLogRow[]): FieldStatus {
     week: status.week,
     lastError: status.lastError,
     openEscalations: status.openEscalations,
+    sources: status.sources.map((s) => ({
+      id: SAVED_SOURCE[s.kind] ?? liveSourceName(s.kind),
+      lastPull: s.lastPull,
+      step: s.step ?? null,
+      tieOut: s.tieOut ?? null,
+    })),
   };
 }
 
@@ -217,5 +244,7 @@ export function toFinding(f: LiveFinding): FieldFinding {
     status: f.status,
     escalated: f.escalated,
     ...(f.note && { note: f.note }),
+    ...(f.explanation?.text && { explanation: f.explanation.text }),
+    ...(f.explanation?.suggestedCheck && { suggestedCheck: f.explanation.suggestedCheck }),
   };
 }

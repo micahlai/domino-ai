@@ -25,41 +25,59 @@ export type Route = {
   points: Point[];
   path: string;
 };
-/** Finished agent copies of one cluster, folded into a single card. */
-export type Stack = { id: string; clusterId: string; members: string[]; box: Box };
+/**
+ * Agents of one cluster folded into a single card: a manager's completed helpers, or (cluster
+ * "idle") built-in agents with no work yet. `expanded` stacks show their members and offer to
+ * fold them again.
+ */
+export type Stack = {
+  id: string;
+  clusterId: string;
+  members: string[];
+  box: Box;
+  expanded?: boolean;
+};
 export type Cluster = { id: string; members: string[]; bounds: Box };
+/** A heading above one lane: data sources, agents or outputs. Not a card. */
+export type Lane = { id: "source" | "agent" | "output"; x: number; y: number; w: number };
 export type MapLayout = {
   boxes: Map<string, Box>;
   routes: Route[];
   chips: Map<string, ToolChip[]>;
   stacks: Stack[];
   clusters: Cluster[];
+  lanes: Lane[];
   width: number;
   height: number;
 };
 
-export const ROOT_W = 256;
-export const ROOT_HEADER_H = 60;
-export const PILL_H = 26;
-export const PILL_GAP = 6;
+export const ROOT_W = 272;
+export const ROOT_HEADER_H = 64;
+export const PILL_H = 28;
+export const PILL_GAP = 8;
 export const PILL_PAD = 10;
-export const INSTANCE_W = 184;
-export const INSTANCE_H = 58;
-export const STACK_W = 140;
-export const STACK_H = 34;
-export const SIDE_W = 204;
-export const SIDE_H = 52;
-const SIDE_GAP = 12;
+export const INSTANCE_W = 240;
+export const INSTANCE_H = 64;
+export const STACK_W = 240;
+export const STACK_H = 44;
+export const SIDE_W = 240;
+export const SIDE_H = 60;
+export const LANE_H = 20;
+const SIDE_GAP = 16;
 /** Horizontal room between the side columns and the web, for the links to curve through. */
 const SIDE_MARGIN = 110;
 const CLUSTER_GAP = 52;
-const CHILD_GAP = 14;
+const CHILD_GAP = 16;
+/** Room between a lane heading and the first card under it. */
+const LANE_GAP = 12;
 /** Rings hold at least this many slots, so a cluster keeps its size while copies come and go. */
 const MIN_RING = 8;
 const PAD = 8;
+export const IDLE_CLUSTER = "idle";
+export const IDLE_STACK = `stack:${IDLE_CLUSTER}`;
 
 /** Port height on a card: the middle of its header row. */
-export const PORT_Y = 30;
+export const PORT_Y = 32;
 
 /** Chips sit two per row under an agent's header. */
 export const rootHeight = (chips: number) =>
@@ -152,12 +170,19 @@ const boundsOf = (items: Local[]) => {
 };
 
 export type LayoutOptions = {
-  /** Finished agent copies to fold into their cluster's "+N finished" stack. */
+  /** Completed helpers to fold into their cluster's "N completed helpers" stack. */
   collapsed?: ReadonlySet<string>;
+  /** Top-level agents with no work: folded into one "not used yet" card of their own. */
+  idle?: readonly string[];
+  /** Cluster ids (or IDLE_CLUSTER) whose folded agents are shown, with a card to fold them. */
+  expanded?: ReadonlySet<string>;
 };
 
 export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLayout {
   const collapsed = options.collapsed ?? new Set<string>();
+  const expanded = options.expanded ?? new Set<string>();
+  const idle = new Set(options.idle ?? []);
+  const showIdle = expanded.has(IDLE_CLUSTER);
   const chips = new Map<string, ToolChip[]>();
   for (const n of graph.nodes) if (isAgent(n)) chips.set(n.id, toolChips(n));
 
@@ -165,10 +190,11 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
   const roots = clusterRoots(graph);
   const agents = graph.nodes.filter(isAgent);
   const rootNodes = agents
-    .filter((n) => roots.get(n.id) === n.id)
+    .filter((n) => roots.get(n.id) === n.id && (showIdle || !idle.has(n.id)))
     .map((n, i) => ({ n, i }))
     .sort((a, b) => late(a.n) - late(b.n) || a.i - b.i)
     .map(({ n }) => n);
+  const idleIds = agents.filter((n) => idle.has(n.id)).map((n) => n.id);
   const center =
     rootNodes.find((n) => n.id === "agent:analyst") ??
     [...rootNodes].sort(
@@ -182,8 +208,9 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
   for (const root of rootNodes) {
     const members = agents.filter((n) => n.id !== root.id && roots.get(n.id) === root.id);
     const folded = members.filter((n) => collapsed.has(n.id)).map((n) => n.id);
+    const open = expanded.has(root.id);
     const items: Local[] = members
-      .filter((n) => !collapsed.has(n.id))
+      .filter((n) => open || !collapsed.has(n.id))
       .map((n) => ({ id: n.id, cx: 0, cy: 0, w: INSTANCE_W, h: INSTANCE_H, depth: 1 }));
     const stackId = `stack:${root.id}`;
     if (folded.length) items.push({ id: stackId, cx: 0, cy: 0, w: STACK_W, h: STACK_H, depth: 1 });
@@ -194,7 +221,19 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
         clusterId: root.id,
         members: folded,
         box: { x: 0, y: 0, w: STACK_W, h: STACK_H, depth: 1 },
+        ...(open && { expanded: true }),
       });
+  }
+  // Agents not used yet: one card of their own, placed like a cluster after the rest.
+  if (idleIds.length) {
+    locals.set(IDLE_CLUSTER, [{ id: IDLE_STACK, cx: 0, cy: 0, w: STACK_W, h: STACK_H, depth: 0 }]);
+    stacks.push({
+      id: IDLE_STACK,
+      clusterId: IDLE_CLUSTER,
+      members: idleIds,
+      box: { x: 0, y: 0, w: STACK_W, h: STACK_H, depth: 0 },
+      ...(showIdle && { expanded: true }),
+    });
   }
 
   // Place clusters: the center one at the origin, the rest pushed out along fixed directions.
@@ -209,9 +248,12 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
         r.y0 < p.y1 + CLUSTER_GAP &&
         p.y0 < r.y1 + CLUSTER_GAP,
     );
-  const order = center ? [center, ...rootNodes.filter((n) => n !== center)] : rootNodes;
-  order.forEach((root, i) => {
-    const b = boundsOf(locals.get(root.id) ?? []);
+  const order = [
+    ...(center ? [center, ...rootNodes.filter((n) => n !== center)] : rootNodes).map((n) => n.id),
+    ...(idleIds.length ? [IDLE_CLUSTER] : []),
+  ];
+  order.forEach((rootId, i) => {
+    const b = boundsOf(locals.get(rootId) ?? []);
     const deg =
       i === 0
         ? 0
@@ -232,14 +274,14 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
       }
       d += 8;
     }
-    offset.set(root.id, at);
+    offset.set(rootId, at);
   });
 
   const boxes = new Map<string, Box>();
   const clusters: Cluster[] = [];
-  for (const root of order) {
-    const at = offset.get(root.id) ?? { x: 0, y: 0 };
-    const items = locals.get(root.id) ?? [];
+  for (const rootId of order) {
+    const at = offset.get(rootId) ?? { x: 0, y: 0 };
+    const items = locals.get(rootId) ?? [];
     for (const it of items) {
       const box = {
         x: at.x + it.cx - it.w / 2,
@@ -254,7 +296,7 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     }
     const b = boundsOf(items);
     clusters.push({
-      id: root.id,
+      id: rootId,
       members: items.map((i) => i.id).filter((id) => !id.startsWith("stack:")),
       bounds: { x: at.x + b.x0, y: at.y + b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0, depth: 0 },
     });
@@ -289,21 +331,29 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     sorted.forEach(({ n }, i) =>
       boxes.set(n.id, { x, y: top + i * (SIDE_H + SIDE_GAP), w: SIDE_W, h: SIDE_H, depth: 0 }),
     );
+    return top;
   };
-  column("source", web.x0 - SIDE_MARGIN - SIDE_W);
-  column("output", web.x1 + SIDE_MARGIN);
+  const above = (top: number) => top - LANE_H - LANE_GAP;
+  const sourceX = web.x0 - SIDE_MARGIN - SIDE_W;
+  const outputX = web.x1 + SIDE_MARGIN;
+  const lanes: Lane[] = [
+    { id: "source", x: sourceX, y: above(column("source", sourceX)), w: SIDE_W },
+    { id: "agent", x: web.x0, y: above(web.y0), w: Math.max(ROOT_W, web.x1 - web.x0) },
+    { id: "output", x: outputX, y: above(column("output", outputX)), w: SIDE_W },
+  ];
 
   // Shift everything so the top-left corner is (PAD, PAD).
   const all = [...boxes.values(), ...stacks.map((s) => s.box)];
   const minX = Math.min(...all.map((b) => b.x));
-  const minY = Math.min(...all.map((b) => b.y));
-  const shift = (b: Box) => {
+  const minY = Math.min(...all.map((b) => b.y), ...lanes.map((l) => l.y));
+  const shift = (b: { x: number; y: number }) => {
     b.x = Math.round(b.x - minX + PAD);
     b.y = Math.round(b.y - minY + PAD);
   };
   for (const b of boxes.values()) shift(b);
   for (const s of stacks) shift(s.box);
   for (const c of clusters) shift(c.bounds);
+  for (const l of lanes) shift(l);
 
   const routes: Route[] = [];
   for (const e of drawn) {
@@ -319,7 +369,16 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return { boxes, routes, chips, stacks, clusters, width: width + PAD, height: height + PAD };
+  return {
+    boxes,
+    routes,
+    chips,
+    stacks,
+    clusters,
+    lanes,
+    width: width + PAD,
+    height: height + PAD,
+  };
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10;

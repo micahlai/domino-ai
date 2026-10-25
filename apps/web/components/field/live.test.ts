@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildBrainGraph, isWorking, pulsePath, pulsesFor, toolChips } from "./graph";
 import {
+  buildBrainGraph,
+  hasWork,
+  isWorking,
+  pulsePath,
+  pulsesFor,
+  toolChips,
+  withSavedState,
+} from "./graph";
+import {
+  type LiveFinding,
   type LiveLogRow,
   type LiveStatus,
   type SwarmLogFields,
+  toFinding,
   toOperations,
   toStatus,
 } from "./live";
@@ -224,5 +234,87 @@ describe("live log mapping", () => {
     expect(research && toolChips(research).map((c) => [c.label, c.category])).toEqual([
       ["Apify actors", "apify"],
     ]);
+  });
+
+  it("lights one source node per connector pull, all six of them", () => {
+    const tools = ["stripe", "ramp", "qbo", "gusto", "hubspot", "plaid"];
+    const rows = [
+      row({ action: "ingest.started", agent: "field.ingest", runId: "r9" }),
+      // Rows from one mutation share a time; a row that lost its source still names its tool.
+      ...tools.map((t, i) =>
+        row({
+          action: "ingest.pulled",
+          agent: "field.ingest",
+          tool: `${t}.read`,
+          ...(i < 5 && { source: t }),
+          runId: "r9",
+          at: "2026-10-30T11:00:00Z",
+        }),
+      ),
+    ];
+    const graph = buildBrainGraph(toOperations(rows));
+    const read = graph.nodes.filter((n) => n.kind === "source" && n.operations.length === 1);
+    expect(read.map((n) => n.vendor).sort()).toEqual([...tools].sort());
+    expect(graph.edges.filter((e) => e.kind === "feeds")).toHaveLength(6);
+  });
+
+  it("counts sources read before the loaded events from saved source rows", () => {
+    const status = {
+      auto: false,
+      lastIngestAt: null,
+      lastIngestStatus: null,
+      snapshotVersion: 4,
+      openFindings: 0,
+      openEscalations: 0,
+      asOf: "2026-11-02",
+      week: 3,
+      lastError: null,
+      sources: ["stripe", "crm", "ramp", "books", "payroll", "nessie"].map((kind) => ({
+        kind,
+        lastPull: "2026-11-02",
+        tieOut: "ok",
+        step: `${kind}: 3 records`,
+      })),
+    } as unknown as LiveStatus;
+    const mapped = toStatus(status, []);
+    expect(mapped.sources?.map((s) => s.id)).toEqual([
+      "billing",
+      "crm",
+      "cards",
+      "books",
+      "payroll",
+      "plaid",
+    ]);
+    // An empty log window: every source still shows as read, with the date its data runs to.
+    const graph = withSavedState(buildBrainGraph([]), {
+      sources: mapped.sources,
+      booksVersions: mapped.counts.snapshots,
+    });
+    const sources = graph.nodes.filter((n) => n.kind === "source");
+    expect(sources.every(hasWork)).toBe(true);
+    expect(sources[0]?.saved).toBe("Data through Nov 2");
+    expect(graph.nodes.find((n) => n.id === "output:books")?.saved).toBe("4 versions saved");
+  });
+
+  it("passes Claude's explanation and suggested check through to the finding", () => {
+    const base = {
+      findingId: "f1",
+      kind: "duplicate",
+      severity: "medium",
+      summary: "Two charges",
+      refs: ["card_1"],
+      detectedAt: "2026-10-30",
+      status: "open",
+      escalated: false,
+    };
+    const explained = toFinding({
+      ...base,
+      explanation: { text: "Same amount twice.", suggestedCheck: "Ask Ramp.", model: "m", at: "t" },
+    } as unknown as LiveFinding);
+    expect(explained).toMatchObject({
+      explanation: "Same amount twice.",
+      suggestedCheck: "Ask Ramp.",
+    });
+    expect(toFinding(base as unknown as LiveFinding)).not.toHaveProperty("explanation");
   });
 });
