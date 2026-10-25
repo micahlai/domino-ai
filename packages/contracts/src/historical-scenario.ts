@@ -453,8 +453,13 @@ export const StoredHistoricalScenarioSchema = z
       t.responseSelectedAfterReveal || t.protocolResponsePostHoc || t.assumptionPostHoc;
     if (!s.result.response) {
       if (responseTaint) issue(["taint"], "an event-only scenario has no response taint");
-    } else if (responseTaint && !s.result.response.postHoc)
-      issue(["result", "response", "postHoc"], "response taint must mark the response post-hoc");
+    } else {
+      if (responseTaint && !s.result.response.postHoc)
+        issue(["result", "response", "postHoc"], "response taint must mark the response post-hoc");
+      // A response inherits its parent event's disclosure taint.
+      if (t.eventSelectedAfterReveal && !s.result.response.postHoc)
+        issue(["result", "response", "postHoc"], "event taint must mark the response post-hoc");
+    }
   });
 export type StoredHistoricalScenario = z.infer<typeof StoredHistoricalScenarioSchema>;
 
@@ -487,7 +492,16 @@ export const ScenarioResponseExtensionSchema = z
           if (!facts.has(id))
             issue(["facts", i, "derivedFrom"], "derived input missing from closure");
     }
+    // Same rule as HistoricalCase: depend only on earlier assumptions, so no cycle or self-loop.
+    const earlier = new Set<string>();
     for (const [i, a] of x.assumptions.entries()) {
+      for (const id of a.dependsOn)
+        if (assumptions.has(id) && !earlier.has(id))
+          issue(
+            ["assumptions", i, "dependsOn"],
+            "an assumption may depend only on assumptions listed before it",
+          );
+      earlier.add(a.id);
       for (const id of a.basisFactIds)
         if (!facts.has(id))
           issue(["assumptions", i, "basisFactIds"], "basis fact missing from closure");

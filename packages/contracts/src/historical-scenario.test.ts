@@ -791,6 +791,17 @@ describe("stored scenario envelope", () => {
     ).toEqual([]);
   });
 
+  it("a response inherits the parent event taint", () => {
+    expect(
+      badStored((s) => {
+        s.taint.eventSelectedAfterReveal = true;
+        s.taint.reason = "Event chosen after reveal.";
+        s.result.event.postHoc = true;
+        s.result.postHoc = true;
+      }),
+    ).toContain("event taint must mark the response post-hoc");
+  });
+
   it("does not parse as a legacy run", () => {
     expect(HistoricalRunSchema.safeParse(stored()).success).toBe(false);
   });
@@ -824,6 +835,15 @@ describe("stored scenario envelope", () => {
     mutate(s);
     return messages(StoredScenarioSnapshotSchema.safeParse(s));
   };
+
+  it("rejects cyclic or self-dependent extension assumptions", () => {
+    const a0 = at(fx.historicalCase.assumptions, 0).id;
+    expect(
+      badSnap((s) => {
+        at(s.responseExtension!.assumptions, 0).dependsOn = [a0];
+      }),
+    ).toContain("an assumption may depend only on assumptions listed before it");
+  });
 
   it("accepts a pinned snapshot and rejects broken closure or untagged empty knowledge", () => {
     expect(badSnap(() => {})).toEqual([]);

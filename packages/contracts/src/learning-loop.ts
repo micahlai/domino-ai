@@ -31,6 +31,14 @@ const issuer =
 
 /** Exact semantic version. Rejects "latest", blanks and placeholders. */
 export const SemverSchema = z.string().regex(/^\d+\.\d+\.\d+$/, "expected an exact x.y.z version");
+/**
+ * Sealed identity: no whitespace, blanks or the moving alias "latest" (any case).
+ * Pins name exact content; nothing in a seal may float.
+ */
+export const SealIdentitySchema = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/, "expected a nonblank identity without whitespace")
+  .refine((s) => s.toLowerCase() !== "latest", "a sealed identity cannot be latest");
 /** Full 40-hex Git object ID. */
 export const GitObjectIdSchema = z.string().regex(/^[0-9a-f]{40}$/, "expected a full git hash");
 /** SEC CIK, zero-padded to ten digits. */
@@ -226,6 +234,8 @@ export const MappingReceiptSchema = z
       issue(["validationErrors"], "rejected or needs_input needs errors; other statuses have none");
     if ((m.status === "needs_input") !== (m.question !== undefined))
       issue(["question"], "needs_input needs a question, and only needs_input has one");
+    if (m.key.currency !== "USD")
+      issue(["key", "currency"], "a USD transform needs a USD observation");
     if (m.status === "validated" && m.unit !== m.key.currency)
       issue(["unit"], "a validated money mapping needs the unit to equal the key currency");
   });
@@ -248,6 +258,8 @@ export const NormalizedObservationSchema = z
   })
   .strict()
   .superRefine((o, ctx) => {
+    if (o.key.currency !== "USD")
+      issuer(ctx)(["key", "currency"], "a USD transform needs a USD observation");
     const exact = dollarLexemeToCents(o.rawValue);
     const want =
       exact === undefined
@@ -432,10 +444,20 @@ export type LearnedRuleVersion = z.infer<typeof LearnedRuleVersionSchema>;
 export type RuleTask = { cik: string; schemaVersion: 1; sourceSignature: string; cutoff: string };
 export type RuleEligibility =
   | { eligible: true }
-  | { eligible: false; reason: "not_accepted" | "out_of_scope" | "after_cutoff" };
+  | {
+      eligible: false;
+      reason: "invalid_time" | "not_accepted" | "out_of_scope" | "after_cutoff";
+    };
 
 /** Accepted, in scope, and recorded and effective no later than the task's knowledge cutoff. */
 export function ruleEligibility(rule: LearnedRuleVersion, task: RuleTask): RuleEligibility {
+  // Fail closed: NaN comparisons are false, so an unparsed instant would look eligible.
+  if (
+    ![task.cutoff, rule.recordedAt, rule.effectiveFrom].every(
+      (t) => TimestampSchema.safeParse(t).success,
+    )
+  )
+    return { eligible: false, reason: "invalid_time" };
   if (rule.status !== "accepted") return { eligible: false, reason: "not_accepted" };
   const s = rule.scope;
   if (
@@ -540,8 +562,9 @@ export type CompanyKnowledgeSnapshot = z.infer<typeof CompanyKnowledgeSnapshotSc
 // ---------- Sealed quarterly evaluation ----------
 
 export const EvaluationProtocolSchema = z
-  .object({ id: IdSchema, version: SemverSchema, contentHash: Sha256Schema })
-  .strict();
+  .object({ id: SealIdentitySchema, version: SemverSchema, contentHash: Sha256Schema })
+  .strict()
+  .readonly();
 
 const QUARTER = /^(\d{4})Q([1-4])$/;
 const quarterBounds = (q: string): [string, string] | undefined => {
@@ -597,12 +620,13 @@ export type EvaluationManifest = z.infer<typeof EvaluationManifestSchema>;
 
 const MethodPinSchema = z
   .object({
-    methodId: IdSchema,
+    methodId: SealIdentitySchema,
     version: SemverSchema,
     gitCommit: GitObjectIdSchema,
     gitTree: GitObjectIdSchema,
   })
-  .strict();
+  .strict()
+  .readonly();
 
 /** Separate identities for protocol, dataset, sources, methods, rules and evaluator. No blanks or "latest". */
 export const EvaluationSealSchema = z
@@ -610,26 +634,29 @@ export const EvaluationSealSchema = z
     protocol: EvaluationProtocolSchema,
     manifestHash: Sha256Schema,
     datasetHash: Sha256Schema,
-    sourceHashes: z.array(Sha256Schema).min(1),
+    sourceHashes: z.array(Sha256Schema).min(1).readonly(),
     baseline: MethodPinSchema,
     candidate: MethodPinSchema,
-    ruleVersionIds: z.array(IdSchema),
+    ruleVersionIds: z.array(SealIdentitySchema).readonly(),
     normalizerHash: Sha256Schema,
     reconcilerHash: Sha256Schema,
     evaluatorHash: Sha256Schema,
     dependencyLockHash: Sha256Schema,
     sealedAt: TimestampSchema,
   })
-  .strict();
+  .strict()
+  .readonly();
 export type EvaluationSeal = z.infer<typeof EvaluationSealSchema>;
 
-/** signed = prediction - observed (opposite of compareRun.errorCents); exact strings. */
+/** Protocol v1 cohort: two companies, eight target quarters each, nine strict wins. */
+export const EVALUATION_V1_COHORT = { companies: 2, pairsPerCompany: 8, minWins: 9 } as const;
+
+/** signed = prediction - row.observedCents (opposite of compareRun.errorCents); exact strings. */
 const PairOutcomeSchema = z.discriminatedUnion("status", [
   z
     .object({
       status: z.literal("predicted"),
       predictionCents: SafeCentsSchema,
-      observedCents: SafeCentsSchema,
       signedErrorCents: BigCentsStringSchema,
       absErrorCents: BigCentsStringSchema,
     })
@@ -641,12 +668,16 @@ export const EvaluationReportSchema = z
   .object({
     seal: EvaluationSealSchema,
     sealHash: Sha256Schema,
+    /** The complete planned cohort. Every planned pair needs exactly one row. */
+    manifest: EvaluationManifestSchema,
     rows: z
       .array(
         z
           .object({
             pairId: IdSchema,
             cik: CikSchema,
+            /** One evaluator observation shared by both methods. */
+            observedCents: SafeCentsSchema,
             baseline: PairOutcomeSchema,
             candidate: PairOutcomeSchema,
           })
@@ -667,6 +698,23 @@ export const EvaluationReportSchema = z
       (i) => ["rows", i, "pairId"],
       "duplicate pair id",
     );
+    const planned = new Map(r.manifest.pairs.map((p) => [p.pairId, p]));
+    const reported = new Set(r.rows.map((row) => row.pairId));
+    for (const [i, row] of r.rows.entries()) {
+      const p = planned.get(row.pairId);
+      if (!p) issue(["rows", i, "pairId"], "report row is not a planned pair");
+      else if (p.cik !== row.cik)
+        issue(["rows", i, "cik"], "report row company differs from the planned pair");
+    }
+    for (const [i, p] of r.manifest.pairs.entries())
+      if (!reported.has(p.pairId))
+        issue(["manifest", "pairs", i], "planned pair has no report row");
+    const plannedPerCompany = new Map<string, number>();
+    for (const p of r.manifest.pairs)
+      plannedPerCompany.set(p.cik, (plannedPerCompany.get(p.cik) ?? 0) + 1);
+    const fullCohort =
+      plannedPerCompany.size === EVALUATION_V1_COHORT.companies &&
+      [...plannedPerCompany.values()].every((n) => n === EVALUATION_V1_COHORT.pairsPerCompany);
     const sums = { baseline: 0n, candidate: 0n };
     const perCompany = new Map<string, { baseline: bigint; candidate: bigint }>();
     let complete = true;
@@ -679,9 +727,9 @@ export const EvaluationReportSchema = z
           complete = false;
           continue;
         }
-        if (!Number.isSafeInteger(o.predictionCents) || !Number.isSafeInteger(o.observedCents))
+        if (!Number.isSafeInteger(o.predictionCents) || !Number.isSafeInteger(row.observedCents))
           return;
-        const signed = BigInt(o.predictionCents) - BigInt(o.observedCents);
+        const signed = BigInt(o.predictionCents) - BigInt(row.observedCents);
         const a = signed < 0n ? -signed : signed;
         if (o.signedErrorCents !== String(signed))
           issue(
@@ -706,11 +754,14 @@ export const EvaluationReportSchema = z
     if (r.candidateAbsErrorSum !== String(sums.candidate))
       issue(["candidateAbsErrorSum"], "candidate sum is wrong");
     const pass =
+      fullCohort &&
+      r.rows.length === r.manifest.pairs.length &&
+      r.manifest.pairs.every((p) => reported.has(p.pairId)) &&
       complete &&
       sums.baseline > 0n &&
       100n * sums.candidate <= 95n * sums.baseline &&
       [...perCompany.values()].every((c) => c.candidate <= c.baseline) &&
-      wins * 16 >= r.rows.length * 9;
+      wins >= EVALUATION_V1_COHORT.minWins;
     if (r.pass !== pass) issue(["pass"], "pass does not match the frozen acceptance rule");
   });
 export type EvaluationReport = z.infer<typeof EvaluationReportSchema>;

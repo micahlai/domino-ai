@@ -6,7 +6,6 @@ import {
   EvaluationManifestSchema,
   type EvaluationReport,
   EvaluationReportSchema,
-  type EvaluationSeal,
   EvaluationSealSchema,
   FeedbackRecordSchema,
   type LearnedRuleVersion,
@@ -272,6 +271,19 @@ describe("exact units", () => {
       }),
     ).toContain("raw value is not exact safe cents");
   });
+  it("rejects a USD transform on a non-USD observation", () => {
+    expect(
+      mutated(NormalizedObservationSchema, obs, (o) => {
+        o.key.currency = "EUR";
+      }),
+    ).toContain("a USD transform needs a USD observation");
+    expect(
+      mutated(MappingReceiptSchema, mapping, (m) => {
+        m.key.currency = "EUR";
+        m.unit = "EUR";
+      }),
+    ).toContain("a USD transform needs a USD observation");
+  });
   it("needs metric/period agreement and keys compare by value", () => {
     expect(
       mutated(MappingReceiptSchema, mapping, (m) => {
@@ -404,6 +416,15 @@ describe("scoped, versioned rule eligibility", () => {
   });
   it("is eligible only when accepted, in scope and not after the cutoff", () => {
     expect(ruleEligibility(rule, task)).toEqual({ eligible: true });
+    // Audit P2 (finding 6): invalid instants fail closed.
+    expect(ruleEligibility(rule, { ...task, cutoff: "invalid" })).toEqual({
+      eligible: false,
+      reason: "invalid_time",
+    });
+    expect(ruleEligibility({ ...rule, recordedAt: "nope" }, task)).toEqual({
+      eligible: false,
+      reason: "invalid_time",
+    });
     expect(ruleEligibility({ ...rule, status: "rejected" }, task)).toEqual({
       eligible: false,
       reason: "not_accepted",
@@ -465,14 +486,14 @@ describe("evaluator seals", () => {
     gitCommit: g("1"),
     gitTree: g("2"),
   };
-  const seal: EvaluationSeal = {
+  const seal = {
     protocol: { id: "quarterly-cash-eval", version: "1.0.0", contentHash: h("d") },
     manifestHash: h("e"),
     datasetHash: h("f"),
     sourceHashes: [h("a")],
     baseline: pin,
     candidate: { ...pin, methodId: "last_quarter_flow" },
-    ruleVersionIds: [],
+    ruleVersionIds: [] as string[],
     normalizerHash: h("1"),
     reconcilerHash: h("2"),
     evaluatorHash: h("3"),
@@ -526,60 +547,108 @@ describe("evaluator seals", () => {
       }).length,
     ).toBeGreaterThan(0);
   });
-  it("checks exact BigInt errors, sums and the frozen pass rule", () => {
-    const row = (id: string, cik: string, b: number, c: number) => ({
-      pairId: id,
-      cik,
-      baseline: {
-        status: "predicted" as const,
-        predictionCents: b,
-        observedCents: 0,
-        signedErrorCents: String(b),
-        absErrorCents: String(Math.abs(b)),
-      },
-      candidate: {
-        status: "predicted" as const,
-        predictionCents: c,
-        observedCents: 0,
-        signedErrorCents: String(c),
-        absErrorCents: String(Math.abs(c)),
-      },
-    });
-    const rows = Array.from({ length: 16 }, (_, i) =>
-      row(`p${i}`, i < 8 ? CIK : "0000000002", -100, i < 9 ? 90 : 100),
-    );
-    const report: EvaluationReport = {
-      seal,
-      sealHash: h("7"),
-      rows,
-      baselineAbsErrorSum: "1600",
-      candidateAbsErrorSum: "1510",
-      pass: true,
-    };
-    // 100 * 1510 <= 95 * 1600, 9 of 16 strict wins, each company no worse.
-    expect(EvaluationReportSchema.safeParse(report).success).toBe(true);
+  const planned = Array.from({ length: 16 }, (_, i) => ({
+    pairId: `p${i}`,
+    cik: i < 8 ? CIK : "0000000002",
+    targetQuarter: `${2031 + Math.floor((i % 8) / 4)}Q${(i % 4) + 1}`,
+    targetDate: `${2031 + Math.floor((i % 8) / 4)}-${["03-31", "06-30", "09-30", "12-31"][i % 4]}`,
+    originAccession: ACC_Q,
+    originAcceptedAt: `${2031 + Math.floor((i % 8) / 4)}-${["02", "05", "08", "11"][i % 4]}-09T16:45:46-05:00`,
+    originSliceHash: h("5"),
+    labelHash: h("6"),
+  }));
+  const plannedManifest = { protocol: seal.protocol, sourceHashes: [h("a")], pairs: planned };
+  const outcome = (prediction: number, observed: number) => ({
+    status: "predicted" as const,
+    predictionCents: prediction,
+    signedErrorCents: String(prediction - observed),
+    absErrorCents: String(Math.abs(prediction - observed)),
+  });
+  const row = (id: string, cik: string, b: number, c: number) => ({
+    pairId: id,
+    cik,
+    observedCents: 0,
+    baseline: outcome(b, 0),
+    candidate: outcome(c, 0),
+  });
+  // 9 of 16 strict wins; 100 * 1510 <= 95 * 1600; each company no worse.
+  const report: EvaluationReport = {
+    seal,
+    sealHash: h("7"),
+    manifest: plannedManifest,
+    rows: planned.map((p, i) => row(p.pairId, p.cik, -100, i < 9 ? 90 : 100)),
+    baselineAbsErrorSum: "1600",
+    candidateAbsErrorSum: "1510",
+    pass: true,
+  };
+  it("accepts a complete passing report with exact errors", () => {
+    expect(messages(EvaluationReportSchema.safeParse(report))).toEqual([]);
+    expect(
+      mutated(EvaluationReportSchema, report, (r) => {
+        r.rows[0]!.baseline = { ...outcome(-100, 0), signedErrorCents: "100" };
+      }),
+    ).toContain("signed error is not prediction minus observed");
+  });
+  it("fails pass when any planned pair is ineligible", () => {
     expect(
       mutated(EvaluationReportSchema, report, (r) => {
         r.rows[15]!.candidate = { status: "ineligible", reason: "Missing prior quarter." };
         r.candidateAbsErrorSum = "1410";
       }),
     ).toContain("pass does not match the frozen acceptance rule");
+  });
+  it("binds rows to every planned pair and the full 2 x 8 cohort", () => {
+    // Audit P1: one winning row from one company must not pass.
+    const short = {
+      ...clone(report),
+      manifest: { ...plannedManifest, pairs: [planned[0]!] },
+      rows: [row("p0", CIK, -100, 90)],
+      baselineAbsErrorSum: "100",
+      candidateAbsErrorSum: "90",
+      pass: true,
+    };
+    expect(messages(EvaluationReportSchema.safeParse(short))).toContain(
+      "pass does not match the frozen acceptance rule",
+    );
     expect(
       mutated(EvaluationReportSchema, report, (r) => {
-        r.rows[0]!.baseline = { ...row("p0", CIK, -100, 0).baseline, signedErrorCents: "100" };
+        r.rows.pop();
+        r.baselineAbsErrorSum = "1500";
+        r.candidateAbsErrorSum = "1410";
       }),
-    ).toContain("signed error is not prediction minus observed");
+    ).toContain("planned pair has no report row");
+    expect(
+      mutated(EvaluationReportSchema, report, (r) => {
+        r.rows[0]!.pairId = "extra";
+      }),
+    ).toContain("report row is not a planned pair");
+    expect(
+      mutated(EvaluationReportSchema, report, (r) => {
+        r.rows[0]!.cik = "0000000002";
+      }),
+    ).toContain("report row company differs from the planned pair");
+  });
+  it("uses one shared observation per pair", () => {
+    // Audit P2 (finding 2): sides cannot carry different observed values.
+    expect(
+      mutated(EvaluationReportSchema, report, (r) => {
+        (r.rows[0]!.candidate as Record<string, unknown>).observedCents = 5;
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+  it("keeps differences beyond the safe range exact", () => {
     const max = Number.MAX_SAFE_INTEGER;
     const huge = {
       ...clone(report),
+      manifest: { ...plannedManifest, pairs: [planned[0]!] },
       rows: [
         {
           pairId: "p0",
           cik: CIK,
+          observedCents: -max,
           baseline: {
             status: "predicted",
             predictionCents: max,
-            observedCents: -max,
             signedErrorCents: "18014398509481982",
             absErrorCents: "18014398509481982",
           },
@@ -591,5 +660,28 @@ describe("evaluator seals", () => {
       pass: false,
     };
     expect(messages(EvaluationReportSchema.safeParse(huge))).toEqual([]);
+  });
+  it("rejects blank, padded or latest seal identities and freezes the parse", () => {
+    for (const bad of [" ", "", "latest", " rv1", "LATEST"]) {
+      expect(
+        mutated(EvaluationSealSchema, seal, (s) => {
+          s.ruleVersionIds = [bad];
+        }).length,
+      ).toBeGreaterThan(0);
+      expect(
+        mutated(EvaluationSealSchema, seal, (s) => {
+          s.candidate.methodId = bad;
+        }).length,
+      ).toBeGreaterThan(0);
+      expect(
+        mutated(EvaluationSealSchema, seal, (s) => {
+          s.protocol.id = bad;
+        }).length,
+      ).toBeGreaterThan(0);
+    }
+    const parsed = EvaluationSealSchema.parse(seal);
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.candidate)).toBe(true);
+    expect(Object.isFrozen(parsed.ruleVersionIds)).toBe(true);
   });
 });
