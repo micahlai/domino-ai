@@ -4,7 +4,7 @@ import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -46,6 +46,8 @@ function LiveOpen({
   const { companyId } = useSelectedCompany();
   const open = useAction(api.fieldTimeline.openInTimeline);
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   async function go() {
@@ -72,7 +74,7 @@ function LiveOpen({
       <Button
         variant={variant}
         onClick={go}
-        disabled={!companyId || pending}
+        disabled={!hydrated || !companyId || pending}
         title={OPEN_IN_TIMELINE_NOTE}
         data-testid="open-in-timeline"
         className={cn("h-11 shrink-0 sm:h-9", className)}
