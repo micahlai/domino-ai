@@ -3,6 +3,7 @@ import { addDays, isRealDate } from "../create.ts";
 import { daysBetween, mulDiv, sum } from "../drivers/basics.ts";
 import { companySpec, operatingScenarioCatalog } from "./anchors.ts";
 import { historicalLedger, observableLedger } from "./ledger.ts";
+import { payablesBridge } from "./payables.ts";
 import {
   OPERATING_COMPANY_IDS,
   OPERATING_SCENARIO_IDS,
@@ -27,6 +28,7 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
   validate(selection, seed);
   const spec = companySpec(selection.company);
   const ledger = historicalLedger(spec, seed);
+  const payables = payablesBridge(spec, seed);
   const bankTotal = sum(ledger.snapshot.bankTxns.map((txn) => txn.amount));
   const closingAR = sum(ledger.snapshot.invoices.filter((i) => !i.paid).map((i) => i.amount));
   const categoryMatches = (
@@ -58,6 +60,7 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
       "The existing engine's three-section reconstructed statement may classify the separate FX reconciliation amount under other operating. The four filing-category totals in this provenance reconciliation are authoritative; that engine grouping is not reported operating cash flow.",
       "Future billing plans use the latest reported quarter's monthly revenue scale and a synthetic mix of monthly, quarterly and annual renewals. Future payroll and recurring supplier bills are known expectations through the 13-week horizon. Private collection outcomes remain inside the simulator.",
       "Future recurring cash costs use the historical average monthly cash-payment bridge. Payroll uses the 15th and last calendar day, moved to the preceding weekday. Holidays and future financing, investment transfers and FX are not modeled.",
+      ...(payables ? [payables.note] : []),
       spec.id === "2u"
         ? "2U uses the nine months ended September 30 for cash and revenue; July through September recognition separately equals reported Q3 revenue. Cash on hand includes restricted cash, which is subtracted to obtain usable cash. Reported debt and guidance anchors are context, not invented lending rules or future cash receipts."
         : "This is a fictional company inspired by public-company anchors. Customer records are reconstructed cohorts and invoices summarize customer pools, not individual real customers. Receivables are assumed at 15% of quarterly revenue on opening and 25% on closing; deferred revenue is assumed at 20% and 25%. Restricted cash is assumed zero, not a verified disclosure. Investments are excluded from cash.",
@@ -90,6 +93,7 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
       modeledOperatingPaymentsCents: ledger.payments,
       note: "GAAP costs and expenses - identified noncash expenses + cash-conversion adjustment = modeled cash payments. The adjustment combines unmodeled accrual timing, other operating cash costs and working capital; it is synthetic and not a payroll estimate. Identified noncash expenses are not claimed exhaustive.",
     },
+    ...(payables && { payablesBridge: payables }),
     aggregateBasis: {
       cash:
         spec.id === "2u"
@@ -110,6 +114,9 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
         spec.id === "2u"
           ? "Reported opening and closing deferred revenue balances; simplified synthetic billing bridge."
           : "Synthetic opening and closing deferred revenue at 20% and 25% of reported quarterly revenue.",
+      payables: payables
+        ? "Reported combined AP/accrual balances; explicit synthetic allocation against existing future bill/payroll expectations. No added cash payments or verified settlement schedule."
+        : "No reported AP/accrual anchor supplied; future bills and payroll are reconstructed expectations, not reported closing payables.",
       invoicingAndCollections:
         "Reconstructed using the explicit accrual bridge; neither is reported revenue.",
       expenses:
