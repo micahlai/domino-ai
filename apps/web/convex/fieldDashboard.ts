@@ -1,0 +1,79 @@
+/**
+ * Field dashboard (public, read-only). One query that reads the latest ingested snapshot for a
+ * feed and runs the pure engine on it (cash flow statement, summary, scheduled items) through
+ * the same derivation the demo uses. Integer cents out; the UI formats.
+ *
+ *   fieldDashboard.summary({ companyId? })   latest feed when omitted. null when no feed.
+ *     { companyId, name, asOf, lastSnapshotAt, lastIngestStatus, lastError, auto,
+ *       autoIntervalMs, sources: { total, connected }, openFindings, openEscalations,
+ *       result: DashboardResult | null }   result is null before the first ingest.
+ */
+import { CompanyModelSchema, ConstraintSchema, SnapshotSchema } from "@domino/contracts";
+import { v } from "convex/values";
+import { type DashboardResult, deriveDashboard } from "../components/field/dashboard/derive";
+import { query } from "./_generated/server";
+import { AUTO_INTERVAL_MS } from "./fieldJobs";
+
+const EMPTY_MODEL = { version: 0, customerDelayDays: {}, recurringSpend: [], rules: [] };
+
+export const summary = query({
+  args: { companyId: v.optional(v.id("companies")) },
+  handler: async (ctx, args) => {
+    const feed = args.companyId
+      ? await ctx.db
+          .query("feeds")
+          .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId!))
+          .unique()
+      : await ctx.db.query("feeds").order("desc").first();
+    if (!feed) return null;
+    const { companyId } = feed;
+    const company = await ctx.db.get("companies", companyId);
+    const sources = await ctx.db
+      .query("sources")
+      .withIndex("by_company", (q) => q.eq("companyId", companyId))
+      .take(20);
+    const open = await ctx.db
+      .query("findings")
+      .withIndex("by_companyId_and_status", (q) =>
+        q.eq("companyId", companyId).eq("status", "open"),
+      )
+      .take(500);
+
+    let result: DashboardResult | null = null;
+    const row = feed.lastSnapshotId ? await ctx.db.get("snapshots", feed.lastSnapshotId) : null;
+    if (row) {
+      const modelRow = await ctx.db
+        .query("models")
+        .withIndex("by_company_version", (q) => q.eq("companyId", companyId))
+        .order("desc")
+        .first();
+      const constraintRows = await ctx.db
+        .query("constraints")
+        .withIndex("by_company", (q) => q.eq("companyId", companyId))
+        .take(50);
+      result = deriveDashboard({
+        snapshot: SnapshotSchema.parse(row.data),
+        model: CompanyModelSchema.parse(modelRow?.data ?? EMPTY_MODEL),
+        constraints: constraintRows.map((c) => ConstraintSchema.parse(c.data)),
+      });
+    }
+
+    return {
+      companyId,
+      name: company?.name ?? "",
+      asOf: company?.today ?? null,
+      lastSnapshotAt: feed.lastSnapshotAt,
+      lastIngestStatus: feed.lastIngestStatus,
+      lastError: feed.lastError,
+      auto: feed.auto,
+      autoIntervalMs: AUTO_INTERVAL_MS,
+      sources: {
+        total: sources.length,
+        connected: sources.filter((s) => s.lastPull !== null).length,
+      },
+      openFindings: open.length,
+      openEscalations: open.filter((f) => f.escalated).length,
+      result,
+    };
+  },
+});
