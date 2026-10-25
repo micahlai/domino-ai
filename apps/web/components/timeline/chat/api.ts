@@ -1,6 +1,7 @@
 import { ChangeSchema, ConstraintSchema, canonicalJson } from "@domino/contracts";
 import { makeFunctionReference } from "convex/server";
 import { z } from "zod";
+import { WorkerChatContextSchema } from "../../../lib/worker-chat-context";
 import type { Read, RunKey, WorkspaceRun } from "../workspace/api";
 
 const Id = z.string().min(1).max(240);
@@ -69,6 +70,7 @@ const Receipt = z
     proposal: Proposal.nullable(),
     linkedRunId: Id.nullable(),
     pendingField: z.string().min(1).max(200).nullable(),
+    workerContext: WorkerChatContextSchema.optional(),
   })
   .strict();
 export type ChatReceipt = z.infer<typeof Receipt>;
@@ -114,6 +116,20 @@ function parse(raw: unknown): ChatReceipt | undefined {
   }
 }
 export function matchesSource(r: ChatReceipt, run: WorkspaceRun): boolean {
+  const context = r.workerContext;
+  if (
+    context &&
+    (context.fixRunId !== run.runId ||
+      context.scenarioRunId !== run.parentRunId ||
+      context.inputs.snapshot.companyId !== run.companyId ||
+      canonicalJson(context.inputs.model.data) !== canonicalJson(run.baseline.model) ||
+      canonicalJson(context.inputs.constraints) !== canonicalJson(run.constraints) ||
+      canonicalJson(context.candidate.fix.changes) !== canonicalJson(run.ownChanges) ||
+      context.candidate.effect.lowPoint !== run.forecast.lowPoint.usable ||
+      context.candidate.effect.lowWeekStart !== run.forecast.lowPoint.weekStart ||
+      context.candidate.effect.gain !== run.comparison?.lowPointDelta)
+  )
+    return false;
   const { snapshot, scheduledItems } = run.baseline.seed;
   const recordIds = new Set(
     [...snapshot.invoices, ...snapshot.bills, ...snapshot.payroll].map((record) => record.id),

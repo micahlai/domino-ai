@@ -14,6 +14,7 @@ import {
   decideArgs,
   demoSuggestions,
   isNotDeployed,
+  readSimulationResult,
   simulationArgs,
   toSuggestion,
 } from "./suggestions";
@@ -23,7 +24,7 @@ import {
 export function useLiveSuggestions(companyId: string | null | undefined): {
   state: SuggestionsState;
   decide: DecideSuggestion;
-  simulate: (suggestion: Suggestion) => Promise<SimulationResult>;
+  simulate: (suggestion: Suggestion, note: string) => Promise<SimulationResult>;
 } {
   const queries = useMemo(() => {
     const request: RequestForQueries = {};
@@ -44,7 +45,10 @@ export function useLiveSuggestions(companyId: string | null | undefined): {
     [mutate, companyId],
   );
   const simulate = useCallback(
-    async (suggestion: Suggestion) => simulateOnServer(simulationArgs(companyId ?? "", suggestion)),
+    async (suggestion: Suggestion, note: string) =>
+      readSimulationResult(
+        await simulateOnServer(simulationArgs(companyId ?? "", suggestion, note)),
+      ),
     [companyId, simulateOnServer],
   );
   let state: SuggestionsState;

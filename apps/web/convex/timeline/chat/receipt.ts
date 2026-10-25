@@ -1,5 +1,6 @@
 import { canonicalJson } from "@domino/contracts";
 import { z } from "zod";
+import { WorkerChatContextSchema } from "../../../lib/worker-chat-context";
 import { CitationSchema, QuestionProposalSchema } from "../questions/receipt";
 import { isCalendarDate, reject } from "../workspaceInput";
 
@@ -49,6 +50,7 @@ export const ChatReceiptSchema = z
     proposal: QuestionProposalSchema.nullable(),
     linkedRunId: Id.nullable(),
     pendingField: z.string().min(1).max(200).nullable(),
+    workerContext: WorkerChatContextSchema.optional(),
   })
   .strict()
   .superRefine((r, ctx) => {
