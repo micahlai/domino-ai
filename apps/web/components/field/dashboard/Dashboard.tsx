@@ -10,8 +10,9 @@ import { Button } from "../../ui/button";
 import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { useSelectedCompanyName, useSelectedProfile } from "../company";
+import { useIsReplayCompany, useSelectedCompanyName, useSelectedProfile } from "../company";
 import { EmptyRow, Panel } from "../panel";
+import { RewindDashboard } from "../rewind/RewindDashboard";
 import { CashFlowBars, CashLine, FLOW_SECTIONS } from "./charts";
 import {
   type DashboardData,
@@ -32,6 +33,8 @@ const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function Dashboard() {
+  // 2U is a real company replayed from quarterly filings: its own quarterly rewind view.
+  if (useIsReplayCompany()) return <RewindDashboard />;
   return (
     <DashboardDataProvider>
       <DashboardBody />
