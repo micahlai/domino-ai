@@ -16,8 +16,8 @@ import {
 import { formatCents, formatDate } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { BrainMap } from "../field/BrainMap";
-import { OpenInTimeline } from "../field/OpenInTimeline";
 import { CrsCheck } from "../field/CrsCheck";
+import { OpenInTimeline } from "../field/OpenInTimeline";
 import { FieldCompanyOverride } from "../field/company";
 import { FieldDataProvider } from "../field/data";
 import { Button } from "../ui/button";
