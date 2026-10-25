@@ -6,7 +6,10 @@
   "reportedUnit": "USD thousands",
   "reportedValueEncoding": "Strings preserve filing presentation: parentheses indicate negative values; commas are digit separators. A dash in a filing is not encoded as a monetary zero here.",
   "eligibilityAsOf": "2026-10-25",
-  "demoPeriod": { "start": "2026-05-01", "end": "2026-07-31" },
+  "demoPeriod": {
+    "start": "2026-05-01",
+    "end": "2026-07-31"
+  },
   "sources": {
     "q2": {
       "url": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
@@ -34,12 +37,17 @@
     "secCompanyFilings": {
       "url": "https://www.sec.gov/edgar/browse/?CIK=1653482",
       "checkedAsOf": "2026-10-25"
+    },
+    "latestQuarter": {
+      "url": "https://ir.gitlab.com/OVERVIEW/DEFAULT.ASPX",
+      "checkedAsOf": "2026-10-25",
+      "label": "Latest Quarter | Q2 Fiscal Year 2027"
     }
   },
   "latestEligibility": {
     "status": "latest verified GitLab quarterly financial filing available by the cutoff",
     "basis": "The SEC filing sequence and GitLab investor-relations results show FY2027 Q2 as the latest published quarterly result by 2026-10-25. The next fiscal quarter ends 2026-10-31, after the cutoff; Q3 figures in the Q2 release are guidance, not actuals.",
-    "sourceKeys": ["secCompanyFilings", "q2", "release"]
+    "sourceKeys": ["secCompanyFilings", "q2", "release", "latestQuarter"]
   },
   "reported": {
     "cashOpeningQuarter": {
@@ -210,9 +218,21 @@
         "otherCashTaxesPaid": "139"
       },
       "note": "Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure."
+    },
+    "cashFlowQuarterRelease": {
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "unit": "USD thousands",
+      "source": "release",
+      "section": "Reconciliation of GAAP Cash Flow from Operating Activities to Adjusted Free Cash Flow",
+      "lines": {
+        "operating": "(3,092)",
+        "propertyAndEquipmentPurchases": "(213)"
+      },
+      "note": "Exact quarter source crosschecks. Adjusted free cash flow is a non-GAAP measure, not a bank inflow."
     }
   },
-  "quarterCashFlowStatus": "Quarter cash-flow totals and comparable components are not directly reported in the 10-Q statements. Derive each 2026-05-01 through 2026-07-31 component in deterministic integer-cent code from reported six-month minus three-month values and reconcile to the April 30 and July 31 cash-and-equivalents endpoints. The earnings release separately reports quarter operating cash flow rounded to $(3.1) million.",
+  "quarterCashFlowStatus": "Quarter cash-flow totals and comparable components in the 10-Q derive in deterministic integer-cent code from six-month minus three-month values. The earnings release separately provides exact quarter operating cash flow (3,092) and capex (213), USD thousands, as independent crosschecks; other quarter categories remain derived. Reconcile all four categories to cash endpoints.",
   "syntheticAssumptions": {
     "status": "Any generated records, dates, counterparties, and undisclosed component residuals belong to the fictional CodeHarbor demo, not to GitLab reported operations.",
     "generationRules": [
