@@ -13,6 +13,7 @@ import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
 import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
+import { WorkerContext } from "./WorkerContext";
 import { type ChatReceipt, chatHref, displayedReceipt, newerReceipt } from "./api";
 import { type ChatCommand, type ChatOutcome, ChatWriteGuard } from "./requests";
 
@@ -283,6 +284,11 @@ export function ChatView({
       aria-relevant="additions"
       className="space-y-4 py-3"
     >
+      {receipt.workerContext ? (
+        <li>
+          <WorkerContext context={receipt.workerContext} companyId={run.companyId} />
+        </li>
+      ) : null}
       <AnimatePresence initial={false}>
         {receipt.turns.map((turn) => (
           <motion.li

@@ -36,7 +36,7 @@ export type DecideSuggestion = (
   decision: SuggestionDecision,
   note: string,
 ) => Promise<void>;
-export type SimulateSuggestion = (suggestion: Suggestion) => Promise<void>;
+export type SimulateSuggestion = (suggestion: Suggestion, note: string) => Promise<void>;
 
 export const NEVER_MOVES_MONEY = "Simulated only. Nothing is paid or moved.";
 
@@ -64,7 +64,7 @@ export function SuggestionsSection({
       step={1}
       title="Suggestions"
       count={state.kind === "ready" ? open.length : null}
-      description="Fixes tested on your forecast. Try one or dismiss it."
+      description="Fixes tested on your forecast. Show one on the timeline or decline it."
     >
       {state.kind === "loading" ? (
         <div className="space-y-3" aria-busy="true">
@@ -197,13 +197,13 @@ function SuggestionCard({
     setBusy("simulate");
     setError(null);
     try {
-      await onSimulate(s);
+      await onSimulate(s, note);
     } catch (e) {
       const data = e instanceof ConvexError ? (e.data as { message?: unknown }) : null;
       setError(
         typeof data?.message === "string"
           ? data.message
-          : "Could not try this fix. Nothing was changed.",
+          : "Could not open this suggestion. Try again to reopen the saved comparison.",
       );
       setBusy(null);
     }
@@ -240,7 +240,7 @@ function SuggestionCard({
           disabled={busy !== null || !onSimulate || !hasSavedInputs}
           onClick={simulate}
         >
-          Try this fix
+          Show on Timeline
         </button>
       </p>
 
@@ -301,24 +301,25 @@ function SuggestionCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder="Why you dismissed this"
+            placeholder="Add context for Domino or a reason for declining"
             className="h-11 sm:h-9 sm:flex-1"
           />
           <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
             <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
               <ArrowRight aria-hidden="true" />
-              {busy === "simulate" ? "Trying..." : "Try this fix"}
+              {busy === "simulate" ? "Opening..." : "Show on Timeline"}
             </Button>
             <Button variant="outline" disabled={busy !== null} onClick={dismiss}>
               <X aria-hidden="true" />
-              {busy === "declined" ? "Saving..." : "Dismiss"}
+              {busy === "declined" ? "Saving..." : "Decline"}
             </Button>
           </div>
         </div>
         <p className="text-xs leading-5 text-muted-foreground">{NEVER_MOVES_MONEY}</p>
         {companyId && !hasSavedInputs ? (
           <p className="text-xs leading-5 text-muted-foreground">
-            This older suggestion cannot be tried. You can still see how or dismiss it.
+            This older suggestion has no saved inputs for Timeline. You can still see how or decline
+            it.
           </p>
         ) : null}
       </div>

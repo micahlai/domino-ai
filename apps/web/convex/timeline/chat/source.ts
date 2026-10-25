@@ -73,4 +73,18 @@ export function checkPinned(run: WorkspaceRun, receipt: ChatReceipt) {
   )
     reject("CHAT_INTEGRITY", "This chat no longer matches its saved source. Start a new chat.");
   checkSelection(run, receipt.selectedWeek, receipt.selectedItemId);
+  const context = receipt.workerContext;
+  if (
+    context &&
+    (context.fixRunId !== run.runId ||
+      context.scenarioRunId !== run.parentRunId ||
+      context.inputs.snapshot.companyId !== run.companyId ||
+      canonicalJson(context.inputs.model.data) !== canonicalJson(run.baseline.model) ||
+      canonicalJson(context.inputs.constraints) !== canonicalJson(run.constraints) ||
+      canonicalJson(context.candidate.fix.changes) !== canonicalJson(run.ownChanges) ||
+      context.candidate.effect.lowPoint !== run.forecast.lowPoint.usable ||
+      context.candidate.effect.lowWeekStart !== run.forecast.lowPoint.weekStart ||
+      context.candidate.effect.gain !== run.comparison?.lowPointDelta)
+  )
+    reject("CHAT_INTEGRITY", "The saved Worker context does not match this forecast.");
 }

@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-25 Micah: Worker suggestions offer Decline or Show on Timeline with an optional note. Showing opens the exact frozen risk/fix comparison and an inspectable Ask Domino context thread without accepting or invoking a provider. Keep this change on a separate worktree/branch. See features/field/WORKER-TIMELINE-CHAT.md.
+
 - 2026-10-25 Micah: the Timeline route fills the window below navigation. Scenario/chat sidebars collapse, financial details stay in a bottom tray, and chart panning uses continuous drawing coordinates. Build on remains visible and explicit; branch focus changes only chart inspection. See features/timeline/TL11-layout.md.
 
 - 2026-10-25: Jayden authorized publishing verified field/main to main, superseding the historical main freeze for this release. Preserve remote main commits and use an isolated release checkout; TL9 LLM conversation remains incomplete.

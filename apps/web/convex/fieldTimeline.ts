@@ -34,6 +34,7 @@ import {
 import { type OperatingProvenance, operatingProvenance } from "@domino/sim";
 import { ConvexError, v } from "convex/values";
 import { FieldTraceSchema } from "../lib/field-trace-contract";
+import { WorkerSourceSchema } from "../lib/worker-chat-context";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery, query } from "./_generated/server";
@@ -180,6 +181,17 @@ export const suggestionInputs = internalQuery({
       periodStart: pinned.provenance?.periodStart ?? null,
       periodEnd: pinned.provenance?.periodEnd ?? null,
       reportedAt: pinned.provenance?.reportedAt ?? null,
+      workerContextJson: canonicalJson(
+        WorkerSourceSchema.parse({
+          fieldCompanyId: args.companyId,
+          runId: args.runId,
+          snapshotId: run.snapshotId,
+          snapshotVersion: run.snapshotVersion,
+          scenario,
+          candidate,
+          inputs: pinned,
+        }),
+      ),
     };
   },
 });

@@ -1,3 +1,8 @@
+## 2026-10-25 Codex Worker to contextual Timeline
+- Done: separate codex/worker-timeline-context worktree from origin/main 0f2874f. Worker actions are Decline / Show on Timeline; notes persist through decisions or context chats. Exact frozen risk/fix forecasts and sources open in Ask Domino, with no implicit acceptance or provider call on opening.
+- Checks: full pnpm check passes 2,741 tests, typechecks and lint; separate Convex tsc passes. Props browser confirms note/context handoff and declined-note history. Mocked action tests exercise actual saved run/chat APIs, retry reuse, identity checks and untrusted-note rejection. Details: features/field/WORKER-TIMELINE-CHAT.md.
+- Limits: this branch is not merged into main or claude-timeline-chat. Existing Ask Domino answers remain bounded; broad advisory narration is unchanged. No new backend deployment, environment copy, schema change or user-runtime restart. Root-owned frontend-only preview is 3126; existing production runtimes/data preserved.
+
 ## 2026-10-25 Saved suggestion journey live
 - Done: af76dda pushed; Next3114 restarted, Convex3260 watcher recovered after locked dependency install with data preserved. Live2U Late payments analysis completed; primary Simulate opened exact saved risk/fix comparison, required label and How links. Existing baseline91-day history preserved. Isolated3138/3298 stopped.
 - Runtime: Next92582/session61687; Convex94703/watcher94604/session28954. Checks/build reused from the checked candidate. No main/protected-port/data changes. Optional Try-it/map polish remains queued. See features/field/HANDOFF.md and /tmp/field-suggestion-live-3114.png.
