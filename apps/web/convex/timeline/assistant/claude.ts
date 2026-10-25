@@ -40,6 +40,8 @@ export async function runStructured(opts: {
   schema: Record<string, unknown>;
   tools?: ClaudeTool[];
   maxSteps?: number;
+  /** Returns a correction for an unusable final reply, or null. One correction is sent back. */
+  check?: (value: unknown) => string | null;
 }): Promise<unknown> {
   const config = assistantConfig();
   if (!config) throw new AssistantUnavailable("ANTHROPIC_API_KEY is not set");
@@ -53,8 +55,11 @@ export async function runStructured(opts: {
       reject(new Error("PROVIDER_TIMEOUT"));
     }, ASSISTANT_TOTAL_TIMEOUT_MS);
   });
+  let repairs = opts.check ? 1 : 0;
+  // The repair turn gets its own step so a tool-heavy reply can still be corrected.
+  const steps = (opts.maxSteps ?? 5) + repairs;
   try {
-    for (let step = 0; step < (opts.maxSteps ?? 5); step++) {
+    for (let step = 0; step < steps; step++) {
       if (abort.signal.aborted) throw new Error("PROVIDER_TIMEOUT");
       const response = await Promise.race([
         config.client.beta.messages.create(
@@ -111,7 +116,12 @@ export async function runStructured(opts: {
       if (response.stop_reason !== "end_turn") throw new Error("PROVIDER_MALFORMED");
       const text = response.content.find((b) => b.type === "text");
       if (!text || text.type !== "text") throw new Error("PROVIDER_MALFORMED");
-      return JSON.parse(text.text);
+      const value: unknown = JSON.parse(text.text);
+      const issue = opts.check?.(value) ?? null;
+      if (!issue) return value;
+      if (repairs === 0) throw new Error(`PROVIDER_REPLY_REJECTED: ${issue}`);
+      repairs = 0;
+      messages.push({ role: "user", content: `Your reply was not accepted: ${issue}` });
     }
     throw new Error("PROVIDER_MALFORMED");
   } finally {

@@ -8,6 +8,7 @@ import { type FieldSource, brainContext } from "./chat/brain";
 import {
   type DraftUpdate,
   LookupSchema,
+  REPLY_MAX,
   type TurnPlan,
   TurnPlanSchema,
   activeUserTurns,
@@ -60,8 +61,8 @@ Use lookup_forecast or lookup_records for detailed saved answers and sources. Yo
 Use update_draft only when the person wants a supported hypothetical change. It replaces the current draft, not the source Timeline. Use exact copied user spans for every *Text field, null when missing. Its request is a plain restatement using those exact values (for example pay $50,000 to Atlas Legal on 2026-11-17); it is checked by code. Retain current values for references such as 'same date', and honor all new corrections. Empty intents explicitly clear a draft. Never manufacture a counterparty, amount, date or direction from source data. For a lawsuit, ask whether it is a cash payment, settlement assumption or possible liability before treating it as money paid. A contingent liability does not automatically reduce cash.
 For percentage vendor/category spend changes, hires, and recurring price changes, call preview_plan on the latest message. Code computes those plans; never make up amounts yourself. Use explain_saved for broader cash/runway explanations computed from the saved books. A supported draft can have up to four one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
 Questions during a pending/ready draft do not replace its values. Use tools to inspect it or the forecast, then answer. For an invalid tool result, explain or clarify it; do not claim a proposal is ready. For a valid draft, tell the person to review the displayed proposal. Never say it has been saved/calculated or acted on.
-Return JSON {"reply":"your conversational response"}, at most 1500 characters. The reply is shown verbatim; write the whole useful response yourself, including any missing detail question.`;
-const ReplySchema = z.object({ reply: z.string().trim().min(1).max(1500) }).strict();
+Return JSON {"reply":"your conversational response"}. Keep it short: two to four plain sentences, under 500 characters (${REPLY_MAX} is a hard limit). Lead with the answer and only the one or two numbers that matter. No headings, bold or lists unless the person asks. Ask at most one question, and offer more detail instead of writing it. The reply is shown verbatim; write the whole useful response yourself, including any missing detail question.`;
+const ReplySchema = z.object({ reply: z.string().trim().min(1).max(REPLY_MAX) }).strict();
 const REPLY_JSON = {
   type: "object" as const,
   additionalProperties: false,
@@ -109,9 +110,28 @@ async function converse(
   const checkedTexts: string[] = [];
   const questions: TurnPlan["questions"] = [];
   const recordIds: string[] = [];
+  /** Why a final reply cannot be shown, phrased as a correction the model can act on. */
+  const replyIssue = (value: unknown): string | null => {
+    const parsed = ReplySchema.safeParse(value);
+    if (!parsed.success) {
+      const reply = (value as { reply?: unknown } | null)?.reply;
+      if (typeof reply === "string" && reply.trim().length > REPLY_MAX)
+        return `the reply is ${reply.trim().length} characters and the limit is ${REPLY_MAX}. Rewrite it in two to four sentences under 500 characters, keeping the answer and the key number.`;
+      return 'return only JSON {"reply":"..."} with a non-empty reply.';
+    }
+    const unknown = unverifiedAmounts(
+      parsed.data.reply,
+      [run, company, brain, receipt.workerContext, receipt.proposal, claim.savedResult],
+      [...userTurns.map((t) => t.text), ...checkedTexts],
+    );
+    return unknown.length
+      ? `these amounts have no saved, tool or user evidence: ${unknown.join(", ")}. Remove them, quote saved values exactly, or call a tool that computes them.`
+      : null;
+  };
   const raw = await runStructured({
     system: SYSTEM,
     schema: REPLY_JSON,
+    check: replyIssue,
     messages: [
       {
         role: "user",
@@ -258,13 +278,10 @@ async function converse(
       },
     ],
   });
+  // runStructured already applied the check; repeat it so an unchecked reply can never be saved.
+  const issue = replyIssue(raw);
+  if (issue) throw new Error(`PROVIDER_REPLY_REJECTED: ${issue}`);
   const { reply } = ReplySchema.parse(raw);
-  const unknown = unverifiedAmounts(
-    reply,
-    [run, company, brain, receipt.workerContext, receipt.proposal, claim.savedResult],
-    [...userTurns.map((t) => t.text), ...checkedTexts],
-  );
-  if (unknown.length) throw new Error("The reply quoted an amount without saved or user evidence.");
   return TurnPlanSchema.parse({ reply, draft: draftUpdate, questions, recordIds, planText });
 }
 
@@ -295,6 +312,11 @@ export const send = action({
         planJson: JSON.stringify(plan),
       });
     } catch (error) {
+      // The person sees a generic retry message; keep the real cause in the deployment logs.
+      console.error(
+        "timeline chat turn failed:",
+        error instanceof Error ? `${error.name}: ${error.message}` : error,
+      );
       const accepted = await ctx.runMutation(refs.fail, turn);
       if (accepted) return accepted;
       if (error instanceof ConvexError) throw error;

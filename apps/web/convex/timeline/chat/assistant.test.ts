@@ -365,7 +365,7 @@ describe("Claude Timeline chat safety", () => {
 
   it("releases definite provider failure for an exact retry without changing the conversation", async () => {
     const t = setup();
-    scriptClaude([final({ wrong: true })]);
+    scriptClaude([final({ wrong: true }), final({ wrong: true })]);
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
     const input = turn(r);
     await expect(t.action(assistantSend, input)).rejects.toThrow(/could not finish/);
@@ -677,11 +677,40 @@ describe("conversational context and required LLM", () => {
   it("rejects fabricated money narration and leaves the turn retryable", async () => {
     const t = setup();
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
-    scriptClaude([final({ reply: "The cash forecast is $999M." })]);
+    const { bodies } = scriptClaude([
+      final({ reply: "The cash forecast is $999M." }),
+      final({ reply: "The cash forecast is $998M." }),
+    ]);
     await expect(t.action(assistantSend, turn(r, "How are we doing?"))).rejects.toThrow(
       /could not finish/,
     );
+    expect(bodies).toHaveLength(2);
+    expect(JSON.stringify(bodies[1]?.messages)).toContain("$999M");
     expect(await t.query(chatRefs.get, key(r))).toEqual(r);
+  });
+
+  it("sends an unsupported amount back once and saves the corrected reply", async () => {
+    const t = setup();
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const { bodies } = scriptClaude([
+      final({ reply: "The cash forecast is $999M." }),
+      final({ reply: "I can walk through the saved forecast with you." }),
+    ]);
+    const saved = await t.action(assistantSend, turn(r, "How are we doing?"));
+    expect(saved.turns.at(-1)?.text).toBe("I can walk through the saved forecast with you.");
+    expect(JSON.stringify(bodies[1]?.messages)).toMatch(/no saved, tool or user evidence: \$999M/);
+  });
+
+  it("asks for a shorter rewrite when the reply is over the length limit", async () => {
+    const t = setup();
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const { bodies } = scriptClaude([
+      final({ reply: "word ".repeat(400) }),
+      final({ reply: "Short answer: let's go through it together." }),
+    ]);
+    const saved = await t.action(assistantSend, turn(r, "Explain everything in detail"));
+    expect(saved.turns.at(-1)?.text).toBe("Short answer: let's go through it together.");
+    expect(JSON.stringify(bodies[1]?.messages)).toContain("the limit is 1500");
   });
 
   it("routes hiring plans through the LLM and the checked plan tool", async () => {
