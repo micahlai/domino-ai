@@ -271,6 +271,8 @@ export type AnalystDigest = {
   baseline: { survives: boolean; lowPoint: string } | null;
   scenarios: ScenarioDigest[];
   failedForecasters: number;
+  /** Scenario index the CREAO coordinator asked the analyst to look at first. */
+  focusScenario?: number;
 };
 export type AnalystSummary = {
   recommendation: string;
@@ -295,6 +297,11 @@ export function buildAnalystRequest(digest: AnalystDigest) {
   const system = [
     ...SHARED_RULES,
     "Task: forecaster agents stress-tested the 13-week cash forecast. Read their engine results and write the analyst's recommendation for the finance lead: which scenarios fail, when, how big the impact is, and which scored fix to look at first. A person decides; never promise an outcome.",
+    ...(digest.focusScenario === undefined
+      ? []
+      : [
+          "focusScenario is the scenario index the coordinator asked the analyst to look at first: lead with it.",
+        ]),
     "recommendation: exactly three sentences, at most 450 characters. rationale: one or two sentences on why, at most 300 characters. citedScenarios: the scenario index numbers you relied on.",
   ].join("\n");
   const user = `Forecaster results:\n<domino_input>\n${encodeData(digest)}\n</domino_input>`;

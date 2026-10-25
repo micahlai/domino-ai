@@ -125,8 +125,28 @@ export const fieldTables = {
         rationale: v.optional(v.string()),
         citedScenarios: v.optional(v.array(v.number())),
         model: v.optional(v.string()),
+        provider: v.optional(v.union(v.literal("claude"), v.literal("creao"))),
+        remoteRunId: v.optional(v.string()),
         inputTokens: v.optional(v.number()),
         outputTokens: v.optional(v.number()),
+        at: v.string(),
+      }),
+    ),
+    // CREAO coordinator plan (fieldCoordinator.ts) after validation and execution.
+    coordinator: v.optional(
+      v.object({
+        status: v.union(
+          v.literal("done"),
+          v.literal("unavailable"),
+          v.literal("skipped"),
+          v.literal("failed"),
+        ),
+        reason: v.optional(v.string()),
+        summary: v.optional(v.string()),
+        escalate: v.optional(v.array(v.object({ findingId: v.string(), reason: v.string() }))),
+        focus: v.optional(v.object({ scenarioIndex: v.number(), reason: v.string() })),
+        research: v.optional(v.object({ counterparty: v.string(), reason: v.string() })),
+        remoteRunId: v.optional(v.string()),
         at: v.string(),
       }),
     ),
@@ -137,7 +157,12 @@ export const fieldTables = {
   // of each kind per snapshot version, and at most AI_CALLS_PER_HOUR rows per hour in total.
   aiCalls: defineTable({
     companyId,
-    kind: v.union(v.literal("audit"), v.literal("analyst"), v.literal("research")),
+    kind: v.union(
+      v.literal("audit"),
+      v.literal("analyst"),
+      v.literal("research"),
+      v.literal("coordinator"),
+    ),
     provider: v.union(v.literal("claude"), v.literal("creao")),
     /** Snapshot version this call belongs to, as "v3". */
     scope: v.string(),
@@ -232,6 +257,8 @@ export const fieldTables = {
         text: v.string(),
         suggestedCheck: v.string(),
         model: v.string(),
+        provider: v.optional(v.union(v.literal("claude"), v.literal("creao"))),
+        remoteRunId: v.optional(v.string()),
         at: v.string(),
       }),
     ),

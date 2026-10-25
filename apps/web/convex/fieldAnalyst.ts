@@ -5,12 +5,14 @@
  * actions (engine work) that write through one internal mutation (`record`), all in parallel;
  * the analyst aggregates when every child reported. Every log row comes from the operation it
  * describes. Forecasters and all money math are deterministic engine code; the Apify actors are
- * demos with canned results. Two real model steps, both budgeted (fieldAi.ts) and both logged
- * with the agentKind that actually ran: after aggregation, "scenario-summarizer#1" (Claude)
- * writes a three-sentence recommendation from the engine results; the research agent starts
- * "counterparty-research#1" (one CREAO app run) when CREAO is configured and its profile is
- * verified. Neither has a canned fallback: unavailable means no result, and the log says why.
- * Nothing moves money.
+ * demos with canned results. Real model steps are budgeted (fieldAi.ts) and logged with the
+ * agentKind that actually ran: the research agent starts "counterparty-research#1" (one CREAO
+ * app run) when CREAO is configured and its profile is verified; after aggregation the CREAO
+ * coordinator ("coordinator#1", fieldCoordinator.ts) returns a validated plan that Domino
+ * executes deterministically (escalate flags, focus scenario, next research), then
+ * "scenario-summarizer#1" writes a three-sentence recommendation from the engine results on
+ * CREAO first, Claude only as the fallback (fieldAi.runAiStep). None has a canned fallback:
+ * unavailable means no result, and the log says why. Nothing moves money.
  *
  * Triggers: after each ingest (fieldJobs.runIngest schedules afterIngest after recompute), on
  * demand (fieldAnalyst.run) and on a loop every 60 s while auto-ingest is on, at most 120 runs
@@ -37,7 +39,11 @@
  *       base, cents <= 0), cashImpactWeek, lowPointImpact, bestFix, fixes, error }],
  *     research: [{ actor, name, input, items, provider?: "creao", remoteRunId? }],
  *     aiSummary: null | { status: "done"|"unavailable"|"skipped", reason?, recommendation?,
- *       rationale?, citedScenarios?, model?, inputTokens?, outputTokens?, at, runId } }
+ *       rationale?, citedScenarios?, model?, provider?: "creao"|"claude", remoteRunId?,
+ *       inputTokens?, outputTokens?, at, runId },
+ *     coordinator: null | { status: "done"|"unavailable"|"skipped"|"failed", reason?,
+ *       summary?, escalate?: [{ findingId, reason }], focus?: { scenarioIndex, reason },
+ *       research?: { counterparty, reason }, remoteRunId?, at, runId } }
  *   (newest finished run, else newest)
  * Mutations
  *   fieldAnalyst.run({ companyId, paceMs? }) -> { runId, skipped }
@@ -54,10 +60,10 @@ import {
   type AnalystDigest,
   counterpartyCreaoEnv,
   counterpartyProfileVersion,
-  fieldClaude,
   runCreaoCounterpartyResearch,
   summarizeScenarios,
 } from "../../../packages/agents/src/fieldAi";
+import { summaryCreaoJob } from "../../../packages/agents/src/fieldCreao";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
@@ -70,7 +76,8 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import type { Reservation } from "./fieldAi";
+import { type Reservation, runAiStep } from "./fieldAi";
+import { type CoordinatorRecord, coordinate, coordinatorRecordArg } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 import {
@@ -715,46 +722,52 @@ export const digest = internalQuery({
   handler: async (ctx, { runId }) => {
     const run = await runRow(ctx, runId);
     if (!run || run.status !== "running") return null;
-    const rows = await ctx.db
-      .query("analystScenarios")
-      .withIndex("by_runId_and_index", (q) => q.eq("runId", runId))
-      .take(20);
-    const done = rows.filter((r) => r.status === "done" && r.work);
-    const first = done[0]?.work as ForecastWork | undefined;
-    const digest: AnalystDigest = {
-      asOf: run.asOf,
-      snapshotVersion: run.snapshotVersion,
-      baseline: first ? { survives: first.baseSurvives, lowPoint: usd(first.baseLow) } : null,
-      failedForecasters: rows.length - done.length,
-      scenarios: done.map((r) => {
-        const w = r.work as ForecastWork;
-        const fix = (r.fixes as FixResult[] | undefined)?.[0];
-        return {
-          index: r.index,
-          title: r.title,
-          basis: r.basis,
-          survives: w.survives,
-          breaksWeek: w.breaksWeek ?? null,
-          brokenRule: w.brokenConstraintId ?? null,
-          lowPoint: usd(w.low),
-          lowWeek: w.lowWeek,
-          worstWeekVsBase: usd(w.cashImpact),
-          worstWeek: w.cashImpactWeek,
-          bestFix: fix
-            ? {
-                label: fix.label,
-                gain: usd(fix.gain),
-                survivesWithFix: fix.survivesWithFix,
-                risk: fix.risk,
-                costNote: fix.costNote,
-              }
-            : null,
-        };
-      }),
-    };
-    return { companyId: run.companyId, digest };
+    return { companyId: run.companyId, digest: await buildDigest(ctx, run) };
   },
 });
+
+export async function buildDigest(
+  ctx: Pick<QueryCtx, "db">,
+  run: Doc<"analystRuns">,
+): Promise<AnalystDigest> {
+  const rows = await ctx.db
+    .query("analystScenarios")
+    .withIndex("by_runId_and_index", (q) => q.eq("runId", run.runId))
+    .take(20);
+  const done = rows.filter((r) => r.status === "done" && r.work);
+  const first = done[0]?.work as ForecastWork | undefined;
+  return {
+    asOf: run.asOf,
+    snapshotVersion: run.snapshotVersion,
+    baseline: first ? { survives: first.baseSurvives, lowPoint: usd(first.baseLow) } : null,
+    failedForecasters: rows.length - done.length,
+    scenarios: done.map((r) => {
+      const w = r.work as ForecastWork;
+      const fix = (r.fixes as FixResult[] | undefined)?.[0];
+      return {
+        index: r.index,
+        title: r.title,
+        basis: r.basis,
+        survives: w.survives,
+        breaksWeek: w.breaksWeek ?? null,
+        brokenRule: w.brokenConstraintId ?? null,
+        lowPoint: usd(w.low),
+        lowWeek: w.lowWeek,
+        worstWeekVsBase: usd(w.cashImpact),
+        worstWeek: w.cashImpactWeek,
+        bestFix: fix
+          ? {
+              label: fix.label,
+              gain: usd(fix.gain),
+              survivesWithFix: fix.survivesWithFix,
+              risk: fix.risk,
+              costNote: fix.costNote,
+            }
+          : null,
+      };
+    }),
+  };
+}
 
 const aiSummaryArg = v.object({
   status: v.union(v.literal("done"), v.literal("unavailable"), v.literal("skipped")),
@@ -763,6 +776,8 @@ const aiSummaryArg = v.object({
   rationale: v.optional(v.string()),
   citedScenarios: v.optional(v.array(v.number())),
   model: v.optional(v.string()),
+  provider: v.optional(v.union(v.literal("claude"), v.literal("creao"))),
+  remoteRunId: v.optional(v.string()),
   inputTokens: v.optional(v.number()),
   outputTokens: v.optional(v.number()),
   at: v.string(),
@@ -770,133 +785,99 @@ const aiSummaryArg = v.object({
 type AiSummary = Infer<typeof aiSummaryArg>;
 
 /**
- * Analyst's Claude step: one budgeted call that turns the engine results into a three-sentence
- * recommendation. Without a key, over budget or on failure the run closes on the engine summary
- * alone and the log says why. Never throws.
+ * After aggregation: the CREAO coordinator plans and Domino executes its allowlisted actions,
+ * then one budgeted summary (CREAO first, Claude fallback) turns the engine results into a
+ * three-sentence recommendation that leads with the coordinator's focus scenario. Without a
+ * provider, over budget or on failure the run closes on the engine summary alone and the log
+ * says why. Never throws.
  */
 export const summarize = internalAction({
   args: { runId: v.string(), summary: v.string() },
   handler: async (ctx, { runId, summary }) => {
     const at = () => new Date().toISOString();
+    let plan: CoordinatorRecord;
+    try {
+      plan = await coordinate(ctx, runId);
+    } catch (error) {
+      plan = { status: "failed", reason: `Coordinator step failed: ${errorText(error)}`, at: at() };
+    }
     let ai: AiSummary;
     try {
-      ai = await claudeSummary(ctx, runId, at);
+      ai = await aiSummary(ctx, runId, at, plan.focus?.scenarioIndex);
     } catch (error) {
-      ai = { status: "unavailable", reason: `Claude step failed: ${errorText(error)}`, at: at() };
+      ai = { status: "unavailable", reason: `Summary step failed: ${errorText(error)}`, at: at() };
     }
-    await ctx.runMutation(internal.fieldAnalyst.finish, { runId, summary, aiSummary: ai });
+    await ctx.runMutation(internal.fieldAnalyst.finish, {
+      runId,
+      summary,
+      aiSummary: ai,
+      coordinator: plan,
+    });
     return null;
   },
 });
 
-async function claudeSummary(ctx: ActionCtx, runId: string, at: () => string): Promise<AiSummary> {
+async function aiSummary(
+  ctx: ActionCtx,
+  runId: string,
+  at: () => string,
+  focusScenario: number | undefined,
+): Promise<AiSummary> {
   const d: { companyId: Id<"companies">; digest: AnalystDigest } | null = await ctx.runQuery(
     internal.fieldAnalyst.digest,
     { runId },
   );
   if (!d) return { status: "skipped", reason: "run is no longer active", at: at() };
-  const { digest, companyId } = d;
+  const { companyId } = d;
+  const digest: AnalystDigest =
+    focusScenario === undefined ? d.digest : { ...d.digest, focusScenario };
   if (digest.scenarios.length === 0)
     return { status: "skipped", reason: "no finished scenarios to summarize", at: at() };
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return { status: "unavailable", reason: "ANTHROPIC_API_KEY not set", at: at() };
-  const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
+  const n = digest.scenarios.length;
+  const task = `Summarize ${n} scenario reports on v${digest.snapshotVersion}`;
+  const out = await runAiStep(ctx, {
     companyId,
     kind: "analyst",
-    provider: "claude",
     scope: `v${digest.snapshotVersion}`,
-  });
-  if (!reservation.ok) return { status: "skipped", reason: reservation.reason, at: at() };
-  const task = `Summarize ${digest.scenarios.length} scenario reports on v${digest.snapshotVersion}`;
-  const as = (r: Omit<AgentRow, "agentId" | "agentKind" | "parentAgentId">): AgentRow => ({
     agentId: SUMMARIZER,
-    agentKind: "claude",
     parentAgentId: ANALYST,
-    ...r,
-  });
-  const write = (rows: AgentRow[]) =>
-    ctx.runMutation(internal.fieldAnalyst.record, { runId, rows });
-  await write([
-    as({
-      action: "agent.spawned",
-      event: "status",
-      status: "spawned",
-      currentTask: task,
-      summary: `Analyst spawned ${SUMMARIZER} (Claude) to summarize the engine results`,
-    }),
-    {
-      action: "agent.message",
-      agentId: ANALYST,
-      agentKind: "domino",
-      event: "message",
-      fromAgentId: ANALYST,
-      toAgentId: SUMMARIZER,
-      summary: `${task}: survives or fails, week, engine impact, best scored fix`,
+    task,
+    ask: `${task}: survives or fails, week, engine impact, best scored fix${
+      focusScenario === undefined ? "" : `; lead with scenario ${focusScenario + 1}`
+    }`,
+    spawned: (provider) =>
+      `Analyst spawned ${SUMMARIZER} (${provider}) to summarize the engine results`,
+    creao: {
+      job: summaryCreaoJob(digest),
+      tool: "creao.summarizeScenarios",
+      toolLabel: "CREAO: summarize scenarios",
     },
-    as({
-      action: "agent.working",
-      event: "status",
-      status: "working",
-      currentTask: task,
-      summary: task,
-    }),
-  ]);
-  const out = await summarizeScenarios(fieldClaude(apiKey), digest);
-  await ctx.runMutation(internal.fieldAi.settle, {
-    callId: reservation.callId,
-    status: out.ok ? "ok" : "failed",
-    ...(out.ok ? { model: out.model } : { detail: `${out.reason}: ${out.detail}` }),
-    ...(out.usage && out.usage),
-  });
-  const tokens = out.usage
-    ? `${out.usage.inputTokens} in / ${out.usage.outputTokens} out tokens`
-    : "no usage reported";
-  if (!out.ok) {
-    await write([
-      as({
-        action: "agent.failed",
-        event: "status",
-        status: "failed",
-        currentTask: task,
-        summary: `Claude call failed (${out.reason}: ${out.detail}); ${tokens}`,
-      }),
-    ]);
-    return { status: "unavailable", reason: `Claude ${out.reason}: ${out.detail}`, at: at() };
-  }
-  await write([
-    as({
-      action: "agent.tool",
-      event: "tool",
+    claude: {
+      call: (send) => summarizeScenarios(send, digest),
       tool: "claude.summarizeScenarios",
-      toolCategory: "claude",
       toolLabel: "Claude: summarize scenarios",
-      currentTask: task,
-      refs: out.value.citedScenarios.map((i) => `scenario ${i + 1}`),
-      summary: `Summarized ${digest.scenarios.length} scenarios with ${out.model} (${tokens})`,
+    },
+    report: (value, via) => ({
+      refs: value.citedScenarios.map((i) => `scenario ${i + 1}`),
+      tool: `Summarized ${n} scenarios with ${via}`,
+      reply: value.recommendation,
+      done: `${SUMMARIZER} done`,
     }),
-    as({
-      action: "agent.message",
-      event: "message",
-      fromAgentId: SUMMARIZER,
-      toAgentId: ANALYST,
-      summary: out.value.recommendation,
-    }),
-    as({
-      action: "agent.done",
-      event: "status",
-      status: "done",
-      currentTask: "Idle",
-      summary: `${SUMMARIZER} done`,
-    }),
-  ]);
+    log: (rows) => ctx.runMutation(internal.fieldAnalyst.record, { runId, rows }),
+  });
+  if (!out.ok) return { status: out.status, reason: out.reason, at: at() };
   return {
     status: "done",
     recommendation: out.value.recommendation,
     rationale: out.value.rationale,
     citedScenarios: out.value.citedScenarios,
     model: out.model,
-    inputTokens: out.usage.inputTokens,
-    outputTokens: out.usage.outputTokens,
+    provider: out.provider,
+    ...(out.remoteRunId && { remoteRunId: out.remoteRunId }),
+    ...(out.usage && {
+      inputTokens: out.usage.inputTokens,
+      outputTokens: out.usage.outputTokens,
+    }),
     at: at(),
   };
 }
@@ -1080,27 +1061,33 @@ export const companyName = internalQuery({
   handler: async (ctx, { companyId }) => (await ctx.db.get("companies", companyId))?.name ?? "",
 });
 
-/** Closes the run with the engine summary and whatever the Claude step produced. */
+/** Closes the run with the engine summary, the coordinator plan and the AI summary. */
 export const finish = internalMutation({
-  args: { runId: v.string(), summary: v.string(), aiSummary: aiSummaryArg },
-  handler: async (ctx, { runId, summary, aiSummary }) => {
+  args: {
+    runId: v.string(),
+    summary: v.string(),
+    aiSummary: aiSummaryArg,
+    coordinator: v.optional(coordinatorRecordArg),
+  },
+  handler: async (ctx, { runId, summary, aiSummary, coordinator }) => {
     const run = await runRow(ctx, runId);
     if (!run || run.status !== "running") return null;
     if (aiSummary.status !== "done")
       await agentLog(ctx, run.companyId, runId, {
-        action: "analyst.claudeSkipped",
+        action: "analyst.aiSummarySkipped",
         agentKind: "domino",
         agentId: ANALYST,
         event: "status",
         status: "working",
         currentTask: "Writing the engine summary",
-        summary: `Claude summary ${aiSummary.status} (${aiSummary.reason ?? "no reason"}); engine summary only`,
+        summary: `AI summary ${aiSummary.status} (${aiSummary.reason ?? "no reason"}); engine summary only`,
       });
     await ctx.db.patch("analystRuns", run._id, {
       status: "done",
       finishedAt: new Date().toISOString(),
       summary,
       aiSummary,
+      ...(coordinator && { coordinator }),
     });
     const failing = (
       await ctx.db
@@ -1250,8 +1237,8 @@ export const latest = query({
       .withIndex("by_runId_and_index", (q) => q.eq("runId", pick.runId))
       .take(20);
     const firstWork = rows.find((r) => r.work)?.work as ForecastWork | undefined;
-    // One Claude summary per snapshot version: later runs on the same version show it with the
-    // run that made it, instead of a second call.
+    // One AI summary and one coordinator plan per snapshot version: later runs on the same
+    // version show them with the run that made them, instead of a second call.
     const summarized =
       pick.aiSummary?.status === "done"
         ? pick
@@ -1259,8 +1246,16 @@ export const latest = query({
             (r) => r.snapshotVersion === pick.snapshotVersion && r.aiSummary?.status === "done",
           );
     const aiSummary = summarized?.aiSummary ?? pick.aiSummary;
+    const planned =
+      pick.coordinator?.status === "done"
+        ? pick
+        : runs.find(
+            (r) => r.snapshotVersion === pick.snapshotVersion && r.coordinator?.status === "done",
+          );
+    const coordinator = planned?.coordinator ?? pick.coordinator;
     return {
       aiSummary: aiSummary ? { ...aiSummary, runId: (summarized ?? pick).runId } : null,
+      coordinator: coordinator ? { ...coordinator, runId: (planned ?? pick).runId } : null,
       runId: pick.runId,
       status: pick.status,
       trigger: pick.trigger,
