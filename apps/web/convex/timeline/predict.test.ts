@@ -12,13 +12,22 @@ import type { WorkspaceRun } from "./questions/context";
 import { baselineRefs } from "./refs";
 import { workspaceRefs as w } from "./workspaceRefs";
 
-const agent = vi.hoisted(() => ({ configured: false, answer: null as unknown }));
+const agent = vi.hoisted(() => ({
+  configured: false,
+  answer: null as unknown,
+  /** The first message the agents were sent, parsed. */
+  told: null as Record<string, unknown> | null,
+}));
 vi.mock("./assistant/claude", async (load) => {
   const real = await load<typeof import("./assistant/claude")>();
   return {
     ...real,
     assistantConfig: () => (agent.configured ? { client: {}, model: "test" } : null),
-    runStructured: async () => agent.answer,
+    runStructured: async (opts: { messages: { content: unknown }[] }) => {
+      const first = opts.messages[0]?.content;
+      agent.told = typeof first === "string" ? JSON.parse(first) : null;
+      return agent.answer;
+    },
   };
 });
 
@@ -94,6 +103,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   agent.configured = false;
   agent.answer = null;
+  agent.told = null;
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -155,6 +165,7 @@ describe("timeline/predict", () => {
           evidence: [],
         },
       ],
+      response: null,
     };
     const receipt = await predictAndWait(t, runId);
     expect(receipt.status).toBe("done");
@@ -182,5 +193,107 @@ describe("timeline/predict", () => {
     await expect(
       t.mutation(p.start, { companyId: "kestrel", runId: rootId, requestId: "req-root-1" }),
     ).rejects.toThrow(/Only a saved scenario/);
+  });
+
+  it("applies the agents' company response as engine spending and billing changes", async () => {
+    const t = setup();
+    const { runId } = await scenario(t);
+    agent.configured = true;
+    agent.answer = {
+      summary: "Management cuts marketing right after the purchase.",
+      effects: [],
+      response: {
+        respondFrom: "event",
+        growthSpend: ["Northlight Marketing"],
+        spendCutPercent: 50,
+        reactionDays: 0,
+        growthSensitivity: 0.3,
+        revenueLagDays: 30,
+        likelihood: "likely",
+        reason: "The purchase was planned against marketing budget.",
+        evidence: ["Ask Domino conversation"],
+      },
+    };
+    const receipt = await predictAndWait(t, runId);
+    expect(receipt.status).toBe("done");
+    expect(receipt.response).toMatchObject({
+      source: "agents",
+      applied: true,
+      growthSpend: ["Northlight Marketing"],
+      trigger: { date: "2026-11-10", usable: null },
+    });
+    const predicted = await get(t, receipt.resultRunId ?? "");
+    expect(predicted.ownChanges[0]).toEqual({
+      kind: "scale_recurring",
+      label: "Response: growth spending cut 50%",
+      flows: "spend",
+      names: ["Northlight Marketing"],
+      percent: -50,
+      fromDate: "2026-11-10",
+    });
+  });
+
+  it("gives the agents the Ask Domino conversation that made the scenario", async () => {
+    const t = setup();
+    const { rootId, runId } = await scenario(t);
+    const at = "2026-10-31T12:00:00.000Z";
+    await t.run((ctx) =>
+      ctx.db.insert("timelineChats", {
+        companyId: "kestrel",
+        conversationId: "timeline:chat/test",
+        runId: rootId,
+        data: {
+          segmentStart: 0,
+          draft: {},
+          receipt: {
+            schemaVersion: 1,
+            methodVersion: "timeline_chat@1",
+            companyId: "kestrel",
+            conversationId: "timeline:chat/test",
+            runId: rootId,
+            inputHash: "a".repeat(64),
+            constraintVersion: "c1",
+            revision: 2,
+            status: "saved",
+            selectedWeek: null,
+            selectedItemId: null,
+            createdAt: at,
+            updatedAt: at,
+            turns: [
+              {
+                id: "t1",
+                role: "user",
+                text: "We have to buy new servers because the old ones failed an audit.",
+                createdAt: at,
+              },
+              { id: "t2", role: "assistant", text: "Saved as a new scenario.", createdAt: at },
+            ],
+            proposal: {
+              label: "Buy equipment",
+              changes: [purchase],
+              constraints: null,
+              constraintNote: null,
+            },
+            linkedRunId: runId,
+            pendingField: null,
+          },
+        },
+      }),
+    );
+    agent.configured = true;
+    agent.answer = { summary: "Servers replace failed ones.", effects: [], response: null };
+    const receipt = await predictAndWait(t, runId);
+    const stories = agent.told?.scenarioStories as {
+      relation: string;
+      askDomino: { conversation: { text: string }[] } | null;
+    }[];
+    expect(stories[0]?.relation).toBe("this scenario");
+    expect(stories[0]?.askDomino?.conversation[0]?.text).toMatch(/failed an audit/);
+    expect(agent.told?.spendNames).toEqual(["Northlight Marketing"]);
+    expect(receipt.context).toEqual([
+      { label: "Buy equipment", relation: "this scenario", sources: ["Ask Domino conversation"] },
+    ]);
+    // The agents said no response, so none is applied even though a default exists.
+    expect(receipt.response).toBeNull();
   });
 });

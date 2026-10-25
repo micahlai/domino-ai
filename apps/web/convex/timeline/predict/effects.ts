@@ -1,5 +1,10 @@
 import type { Change, Forecast } from "@domino/contracts";
-import { cashYieldChanges, engine } from "@domino/engine";
+import {
+  type CashResponsePolicy,
+  cashResponseChanges,
+  cashYieldChanges,
+  engine,
+} from "@domino/engine";
 import { ConvexError } from "convex/values";
 import { z } from "zod";
 import type { WorkspaceRun } from "../questions/context";
@@ -153,8 +158,156 @@ export function screenEffects(
   return { accepted, rejected };
 }
 
+/**
+ * How management would respond to being shorter of cash. The agents choose the parameters for
+ * this company within the engine's bounds; without them, DEFAULT_RESPONSE applies. The engine
+ * turns the policy into spending and billing changes (packages/engine/src/cash-response.ts).
+ */
+export const ProposedResponseSchema = z
+  .object({
+    respondFrom: z.enum(["breach", "event"]),
+    growthSpend: z.array(z.string().trim().min(1).max(200)).max(12),
+    spendCutPercent: z.number().min(0).max(60),
+    reactionDays: z.number().int().min(0).max(60),
+    growthSensitivity: z.number().min(0).max(1),
+    revenueLagDays: z.number().int().min(0).max(180),
+    likelihood: z.enum(["likely", "possible"]),
+    reason: z.string().trim().min(1).max(600),
+    evidence: z.array(z.string().trim().min(1).max(300)).max(4),
+  })
+  .strict();
+export type ProposedResponse = z.infer<typeof ProposedResponseSchema>;
+
+/** Spending that usually buys growth rather than keeping the lights on. */
+const GROWTH_WORDS =
+  /\b(campaigns?|marketing|advertis\w*|ads?|sales|sponsor\w*|events?|travel|growth|brand\w*|promotion\w*)\b/i;
+
+/** Conservative stand-in when no agent answers. Every number is a labelled assumption. */
+export const DEFAULT_RESPONSE = {
+  respondFrom: "breach",
+  spendCutPercent: 20,
+  reactionDays: 14,
+  growthSensitivity: 0.25,
+  revenueLagDays: 56,
+  likelihood: "possible",
+  reason:
+    "Default assumption: once usable cash falls below the lowest cash rule, management cuts growth spending by 20% two weeks later, and recurring billing grows a quarter as much less eight weeks after that.",
+  evidence: [],
+} as const;
+
+/** Bill vendors and recurring spend labels a response can name, as the engine matches them. */
+export function spendNames(run: WorkspaceRun): string[] {
+  const { snapshot } = run.baseline.seed;
+  const open = snapshot.bills
+    .filter((b) => b.paid === undefined && !b.critical)
+    .map((b) => b.vendor);
+  const recurring = run.baseline.model.recurringSpend.map((r) => r.label);
+  return [...new Set([...open, ...recurring])].sort();
+}
+
+/** The cash rule a response reacts to: the highest minimum, so the first one crossed. */
+export function cashFloor(run: WorkspaceRun): number | null {
+  const limits = run.constraints.filter((c) => c.kind === "min_cash").map((c) => c.limit);
+  return limits.length ? Math.max(...limits) : null;
+}
+
+export type ScreenedResponse = {
+  source: "agents" | "default";
+  policy: CashResponsePolicy;
+  likelihood: "likely" | "possible";
+  reason: string;
+  evidence: string[];
+  trigger: { date: string; usable: number | null } | null;
+  notes: string[];
+  changes: Change[];
+  /** Why nothing was applied, when nothing was. */
+  skipped: string | null;
+};
+
+/**
+ * Builds the response on top of the scenario and its effects with the engine, and keeps it only
+ * if it passes the checks every saved run passes. Unknown spend names are dropped and listed.
+ */
+export function screenResponse(
+  run: WorkspaceRun,
+  floor: string | null,
+  effects: Change[],
+  proposed: ProposedResponse | null,
+): ScreenedResponse {
+  const snapshot = run.baseline.seed.snapshot;
+  const model = run.baseline.model;
+  const known = new Map(spendNames(run).map((n) => [n.toLowerCase(), n]));
+  const source = proposed ? "agents" : "default";
+  const chosen = proposed ?? {
+    ...DEFAULT_RESPONSE,
+    growthSpend: spendNames(run).filter((n) => GROWTH_WORDS.test(n)),
+    evidence: [] as string[],
+  };
+  const names = chosen.growthSpend.flatMap((n) => known.get(n.toLowerCase()) ?? []);
+  const unknown = chosen.growthSpend.filter((n) => !known.has(n.toLowerCase()));
+  const policy: CashResponsePolicy = {
+    respondFrom: chosen.respondFrom,
+    floor: cashFloor(run),
+    notBefore: floor ?? horizonOf(run).firstWeek,
+    growthSpend: names,
+    spendCutPercent: chosen.spendCutPercent,
+    reactionDays: chosen.reactionDays,
+    growthSensitivity: chosen.growthSensitivity,
+    revenueLagDays: chosen.revenueLagDays,
+  };
+  const base: Omit<ScreenedResponse, "trigger" | "notes" | "changes" | "skipped"> = {
+    source,
+    policy,
+    likelihood: chosen.likelihood,
+    reason: chosen.reason,
+    evidence: [...chosen.evidence],
+  };
+  const skip = (skipped: string): ScreenedResponse => ({
+    ...base,
+    trigger: null,
+    notes: unknown.length ? [`Not in these books: ${unknown.join(", ")}`] : [],
+    changes: [],
+    skipped,
+  });
+  if (!names.length) return skip("No growth spending was named, so nothing was cut.");
+  if (policy.respondFrom === "breach" && policy.floor === null)
+    return skip("These books have no cash rule to cross, so no response was triggered.");
+  const prior = [...run.changes, ...effects];
+  let built: ReturnType<typeof cashResponseChanges>;
+  try {
+    built = cashResponseChanges(snapshot, model, prior, policy);
+  } catch (e) {
+    return skip(message(e));
+  }
+  if (!built.trigger)
+    return skip("Cash stays above the lowest cash rule, so management has no reason to cut.");
+  if (!built.changes.length) return skip("The response would start after the forecast ends.");
+  // Keep each change only if it moves cash: books without billing plans have nothing to slow,
+  // and a cut dated after the last growth bill saves nothing. With no cut, nothing slows.
+  const horizon = horizonOf(run);
+  const kept: Change[] = [];
+  const notes: string[] = [];
+  for (const [i, change] of built.changes.entries()) {
+    if (i > 0 && kept.length === 0) break;
+    const all = [...prior, ...kept, change];
+    try {
+      checkChanges(all, snapshot, horizon);
+      checkEffects(all, snapshot, model, horizon);
+      checkMoneyBound(snapshot, model, run.constraints, all);
+      kept.push(change);
+      notes.push(built.notes[i] ?? "");
+    } catch (e) {
+      notes.push(`Left out: ${message(e)}`);
+    }
+  }
+  if (unknown.length) notes.push(`Not in these books: ${unknown.join(", ")}`);
+  if (!kept.length)
+    return { ...skip("The growth spending has no payments left after the cut date."), notes };
+  return { ...base, trigger: built.trigger, notes, changes: kept, skipped: null };
+}
+
 export type Prediction = {
-  /** Effects then interest, in the order they are applied on top of the scenario. */
+  /** Effects, then the response, then interest, in the order they apply on top of the scenario. */
   changes: Change[];
   interest: { annualBps: number; weeks: number; netCents: number } | null;
   warnings: string[];
@@ -162,18 +315,20 @@ export type Prediction = {
 };
 
 /**
- * The predicted line: the scenario, its accepted knock-on effects, then the interest the
- * resulting cash gap to the scenario's parent gains or loses. The engine computes all of it.
+ * The predicted line: the scenario, its accepted knock-on effects, management's response to the
+ * cash they leave, then the interest the resulting cash gap to the scenario's parent gains or
+ * loses. The engine computes all of it.
  */
 export function predict(
   run: WorkspaceRun,
   parent: Forecast,
   floor: string | null,
   effects: AcceptedEffect[],
+  response: ScreenedResponse | null = null,
 ): Prediction {
   const snapshot = run.baseline.seed.snapshot;
   const model = run.baseline.model;
-  const own = effects.map((e) => e.change);
+  const own = [...effects.map((e) => e.change), ...(response?.changes ?? [])];
   const withEffects = engine.forecast(snapshot, model, [...run.changes, ...own]);
   const warnings: string[] = [];
   let interest = cashYieldChanges(parent, withEffects, CASH_YIELD_BPS).filter((c) => {

@@ -87,6 +87,8 @@ export function PredictionView({
       </span>
     );
   const count = prediction.effects.length;
+  const response = prediction.response;
+  const read = [...new Set((prediction.context ?? []).flatMap((c) => c.sources))];
   return (
     <div className="w-full space-y-1 pt-0.5" data-testid="prediction-result">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -107,6 +109,7 @@ export function PredictionView({
           {count === 0
             ? "No knock-on effects found"
             : `${count} knock-on ${count === 1 ? "effect" : "effects"}`}
+          {response?.applied ? ` · growth spending cut ${response.spendCutPercent}%` : ""}
           {prediction.interest
             ? ` · interest ${prediction.interest.netCents < 0 ? "lost" : "gained"} ${formatCents(Math.abs(prediction.interest.netCents))} at ${prediction.interest.annualBps / 100}%/yr`
             : ""}
@@ -135,6 +138,37 @@ export function PredictionView({
               ))}
             </ul>
           ) : null}
+          {response ? (
+            <div data-testid="prediction-response">
+              <span className="font-medium text-foreground/90">
+                {response.applied ? "Management response" : "No management response"}
+              </span>{" "}
+              <span className="rounded bg-muted px-1 py-px text-[10px]">
+                {response.source === "agents" ? response.likelihood : "default assumption"}
+              </span>
+              {response.applied ? (
+                <span className="block">
+                  {response.respondFrom === "event"
+                    ? "Responds to the event itself"
+                    : "Responds once cash falls below the lowest cash rule"}
+                  {response.trigger ? ` (${response.trigger.date})` : ""}.
+                </span>
+              ) : null}
+              {response.notes.map((n) => (
+                <span key={n} className="block">
+                  {n}
+                </span>
+              ))}
+              {response.skipped ? <span className="block">{response.skipped}</span> : null}
+              <span className="block">{response.reason}</span>
+              {response.evidence.length ? (
+                <span className="block italic">Evidence: {response.evidence.join("; ")}</span>
+              ) : null}
+            </div>
+          ) : null}
+          {read.length ? (
+            <p>Agents read: {read.join(", ")}, plus the brain map and books.</p>
+          ) : null}
           {prediction.rejected.length ? (
             <p>Not used: {prediction.rejected.map((r) => `${r.title} (${r.reason})`).join("; ")}</p>
           ) : null}
@@ -142,8 +176,8 @@ export function PredictionView({
             <p key={w}>{w}</p>
           ))}
           <p>
-            Agents only name records; the engine computes every amount. A prediction is a
-            hypothesis, not a forecast of record.
+            Agents only name records and choose bounded assumptions; the engine computes every
+            amount. A prediction is a hypothesis, not a forecast of record.
           </p>
         </div>
       </details>

@@ -33,6 +33,10 @@ describe("PredictionView", () => {
     expect(html).toContain("1 knock-on effect");
     expect(html).toContain("interest lost $68.2K at 4.5%/yr");
     expect(html).toContain("Not used: Acme leaves");
+    expect(html).toContain("growth spending cut 25%");
+    expect(html).toContain("Management response");
+    expect(html).toContain("Cut Campaign services by 25% from 2026-11-24");
+    expect(html).toContain("Agents read: Ask Domino conversation");
     expect(html).toContain("Predict again");
   });
 

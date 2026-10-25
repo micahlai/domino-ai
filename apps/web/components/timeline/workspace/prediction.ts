@@ -29,6 +29,26 @@ export const PredictionSchema = z
     interest: z
       .object({ annualBps: z.number(), weeks: z.number(), netCents: z.number() })
       .nullable(),
+    response: z
+      .object({
+        source: z.enum(["agents", "default"]),
+        respondFrom: z.enum(["breach", "event"]),
+        growthSpend: z.array(z.string()),
+        spendCutPercent: z.number(),
+        likelihood: z.enum(["likely", "possible"]),
+        reason: z.string(),
+        evidence: z.array(z.string()),
+        trigger: z.object({ date: z.string() }).passthrough().nullable(),
+        notes: z.array(z.string()),
+        applied: z.boolean(),
+        skipped: z.string().nullable(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    context: z
+      .array(z.object({ label: z.string(), relation: z.string(), sources: z.array(z.string()) }))
+      .optional(),
     resultRunId: z.string().nullable(),
     warnings: z.array(z.string()),
     error: z.string().nullable(),

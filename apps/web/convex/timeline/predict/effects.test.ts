@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { kestrelSeed, makeRun } from "../questions.fake-workspace.test-support";
 import {
   CASH_YIELD_BPS,
+  DEFAULT_RESPONSE,
   MAX_EFFECTS,
   type ProposedEffect,
+  cashFloor,
   horizonOf,
   predict,
   screenEffects,
+  screenResponse,
+  spendNames,
 } from "./effects";
 
 const snapshot = kestrelSeed.snapshot;
@@ -108,5 +112,85 @@ describe("predict", () => {
   it("adds no interest when nothing changes cash", () => {
     const same = makeRun({ runId: "same", parentRunId: "base", kind: "scenario" });
     expect(predict(same, base.forecast, null, []).changes).toEqual([]);
+  });
+});
+
+describe("screenResponse", () => {
+  // Kestrel's only growth bill is Northlight Marketing on 2026-11-15, and it has no billing plans.
+  const big = {
+    kind: "remove_cash" as const,
+    date: "2026-11-03",
+    amount: 300_000_000,
+    label: "Lawsuit",
+  };
+  const hit = makeRun({ runId: "hit", parentRunId: "base", kind: "scenario", ownChanges: [big] });
+  const agents = {
+    respondFrom: "event" as const,
+    growthSpend: ["northlight marketing", "Imaginary Ads"],
+    spendCutPercent: 40,
+    reactionDays: 0,
+    growthSensitivity: 0.5,
+    revenueLagDays: 28,
+    likelihood: "likely" as const,
+    reason: "A $3M judgment forces cuts.",
+    evidence: ["Ask Domino: lawsuit"],
+  };
+
+  it("lists the open, non-critical spend the engine can scale", () => {
+    expect(spendNames(hit)).toEqual(["Northlight Marketing"]);
+  });
+
+  it("by default picks growth spending and reacts to the cash rule two weeks late", () => {
+    const out = screenResponse(hit, big.date, [], null);
+    expect(out.source).toBe("default");
+    expect(out.policy).toMatchObject({
+      respondFrom: "breach",
+      floor: cashFloor(hit),
+      growthSpend: ["Northlight Marketing"],
+      spendCutPercent: DEFAULT_RESPONSE.spendCutPercent,
+    });
+    // The two-week reaction lands after the Nov 15 bill, so there is nothing left to cut.
+    expect(out.changes).toEqual([]);
+    expect(out.skipped).toMatch(/no payments left after the cut date/);
+  });
+
+  it("applies the agents' cut, drops the slowdown with no plans, and lists unknown spend", () => {
+    const out = screenResponse(hit, big.date, [], agents);
+    expect(out.source).toBe("agents");
+    expect(out.skipped).toBeNull();
+    expect(out.trigger?.date).toBe(big.date);
+    expect(out.changes).toEqual([
+      {
+        kind: "scale_recurring",
+        label: "Response: growth spending cut 40%",
+        flows: "spend",
+        names: ["Northlight Marketing"],
+        percent: -40,
+        fromDate: big.date,
+      },
+    ]);
+    expect(out.notes[1]).toMatch(/^Left out: /);
+    expect(out.notes).toContain("Not in these books: Imaginary Ads");
+  });
+
+  it("skips a breach response when there is no cash rule", () => {
+    const free = makeRun({
+      runId: "free",
+      parentRunId: "base",
+      kind: "scenario",
+      constraints: [],
+      ownChanges: [big],
+    });
+    expect(screenResponse(free, big.date, [], null).skipped).toMatch(/no cash rule/);
+  });
+
+  it("puts the response before interest and moves the gap to the scenario", () => {
+    const response = screenResponse(hit, big.date, [], agents);
+    const result = predict(hit, base.forecast, big.date, [], response);
+    expect(result.changes[0]).toEqual(response.changes[0]);
+    const gap = result.forecast.weeks.map(
+      (w, i) => w.usable - (hit.forecast.weeks[i]?.usable ?? 0),
+    );
+    expect(new Set(gap.filter((g) => g !== 0)).size).toBeGreaterThan(2);
   });
 });

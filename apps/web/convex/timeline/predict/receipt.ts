@@ -50,6 +50,43 @@ export const PredictionReceiptSchema = z
       })
       .strict()
       .nullable(),
+    /** Management's response to having less cash; absent on predictions saved before it. */
+    response: z
+      .object({
+        source: z.enum(["agents", "default"]),
+        respondFrom: z.enum(["breach", "event"]),
+        floor: z.number().int().nullable(),
+        growthSpend: z.array(z.string()),
+        spendCutPercent: z.number(),
+        reactionDays: z.number().int(),
+        growthSensitivity: z.number(),
+        revenueLagDays: z.number().int(),
+        likelihood: z.enum(["likely", "possible"]),
+        reason: z.string(),
+        evidence: z.array(z.string()),
+        trigger: z
+          .object({ date: z.string(), usable: z.number().int().nullable() })
+          .strict()
+          .nullable(),
+        notes: z.array(z.string()),
+        applied: z.boolean(),
+        skipped: z.string().nullable(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    /** Which saved stories the agents were given, nearest scenario first. */
+    context: z
+      .array(
+        z
+          .object({
+            label: z.string(),
+            relation: z.enum(["this scenario", "builds on"]),
+            sources: z.array(z.string()),
+          })
+          .strict(),
+      )
+      .optional(),
     resultRunId: z.string().nullable(),
     warnings: z.array(z.string()),
     error: z.string().nullable(),
@@ -65,6 +102,8 @@ export const PredictionOutcomeSchema = PredictionReceiptSchema.pick({
   effects: true,
   rejected: true,
   interest: true,
+  response: true,
+  context: true,
   resultRunId: true,
   warnings: true,
   error: true,

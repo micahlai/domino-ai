@@ -47,5 +47,24 @@ export const donePrediction: Prediction = {
   ],
   rejected: [{ title: "Acme leaves", reason: "No customer cust_acme in these books" }],
   interest: { annualBps: 450, weeks: 9, netCents: -6_820_000 },
+  response: {
+    source: "agents",
+    respondFrom: "event",
+    growthSpend: ["Campaign services"],
+    spendCutPercent: 25,
+    likelihood: "likely",
+    reason: "A known one-time loss this size leads management to trim campaigns within weeks.",
+    evidence: ["Ask Domino conversation: equipment failed an audit"],
+    trigger: { date: "2026-11-10", usable: null },
+    notes: [
+      "Cut Campaign services by 25% from 2026-11-24",
+      "Recurring billing 7.5% lower from 2027-01-19 after the cut",
+    ],
+    applied: true,
+    skipped: null,
+  },
+  context: [
+    { label: "Buy equipment", relation: "this scenario", sources: ["Ask Domino conversation"] },
+  ],
   resultRunId: "fixture-predicted",
 };
