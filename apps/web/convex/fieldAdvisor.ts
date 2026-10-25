@@ -1,4 +1,4 @@
-import type { Change } from "@domino/contracts";
+import { type Change, canonicalJson } from "@domino/contracts";
 /**
  * Advisor swarm, only when it makes sense: after the analyst's forecasters report, if a scenario
  * takes usable cash below the lender's minimum, the analyst ("analyst#1") starts one advisor per
@@ -26,7 +26,7 @@ import {
 } from "@domino/engine";
 import { v } from "convex/values";
 import { type AdvisorInput, advisorCreaoJob } from "../../../packages/agents/src/fieldCreao";
-import { FieldTraceCandidateSchema } from "../lib/field-trace-contract";
+import { FieldTraceCandidateSchema, FieldTraceSchema } from "../lib/field-trace-contract";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -121,10 +121,67 @@ export const targets = internalQuery({
   },
 });
 
-/** True when this scenario already got an advisor round on this snapshot version. */
+/** Skip only a completed, verifiable round for the same frozen inputs and scenario changes. */
 export const advised = internalQuery({
-  args: { companyId: v.id("companies"), scenarioId: v.string(), snapshotVersion: v.number() },
-  handler: async (ctx, { companyId, scenarioId, snapshotVersion }) => {
+  args: {
+    companyId: v.id("companies"),
+    runId: v.string(),
+    scenarioId: v.string(),
+    snapshotVersion: v.number(),
+  },
+  handler: async (ctx, { companyId, runId, scenarioId, snapshotVersion }) => {
+    const current = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_company_and_runId", (q) => q.eq("companyId", companyId).eq("runId", runId))
+      .unique();
+    if (!current || current.snapshotVersion !== snapshotVersion) return false;
+    const pins = pinnedInputs(current);
+    if (!pins) return false;
+    const scenario = (
+      await ctx.db
+        .query("analystScenarios")
+        .withIndex("by_runId_and_index", (q) => q.eq("runId", runId))
+        .take(20)
+    ).find((row) => row.companyId === companyId && row.scenarioId === scenarioId);
+    if (!scenario) return false;
+    const matches = (origin: typeof current | null) => {
+      if (
+        !origin ||
+        origin.status !== "done" ||
+        !origin.traceReceipt ||
+        origin.snapshotId !== current.snapshotId ||
+        origin.snapshotVersion !== snapshotVersion
+      )
+        return false;
+      try {
+        const previous = pinnedInputs(origin);
+        if (
+          !previous ||
+          canonicalJson(previous.model.data) !== canonicalJson(pins.model.data) ||
+          canonicalJson(previous.constraints) !== canonicalJson(pins.constraints)
+        )
+          return false;
+        const receipt = FieldTraceSchema.parse(JSON.parse(origin.traceReceipt));
+        if (
+          receipt.run.companyId !== companyId ||
+          receipt.run.runId !== origin.runId ||
+          receipt.run.snapshotId !== origin.snapshotId ||
+          receipt.run.snapshotVersion !== snapshotVersion ||
+          !receipt.inputs ||
+          canonicalJson(receipt.inputs) !== canonicalJson(previous)
+        )
+          return false;
+        const saved = receipt.scenarios.find((row) => row.id === scenarioId);
+        return (
+          saved !== undefined &&
+          canonicalJson(saved.changes) === canonicalJson(scenario.changes) &&
+          receipt.candidates.some((candidate) => candidate.scenarioId === scenarioId)
+        );
+      } catch {
+        // Missing or malformed historical evidence is not proof of a reusable advisor round.
+        return false;
+      }
+    };
     for (const kind of [
       "credit_line_draw",
       "delay_bill",
@@ -137,8 +194,28 @@ export const advised = internalQuery({
           q.eq("companyId", companyId).eq("suggestionId", `${scenarioId}:${kind}`),
         )
         .unique();
-      if (row && row.snapshotVersion >= snapshotVersion) return true;
+      if (row && row.snapshotVersion === snapshotVersion) {
+        const origin = await ctx.db
+          .query("analystRuns")
+          .withIndex("by_company_and_runId", (q) =>
+            q.eq("companyId", companyId).eq("runId", row.runId),
+          )
+          .unique();
+        if (matches(origin)) return true;
+      }
     }
+    // Decided suggestion rows keep their old origin. Find the new round without rewriting them.
+    const rounds = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_company_snapshot_advisor", (q) =>
+        q
+          .eq("companyId", companyId)
+          .eq("snapshotVersion", snapshotVersion)
+          .eq("advisorScenarioId", scenarioId),
+      )
+      .order("desc")
+      .take(20);
+    if (rounds.some(matches)) return true;
     return false;
   },
 });
@@ -282,6 +359,7 @@ export const store = internalMutation({
       throw new Error("Advisor candidates exceed the saved evidence limit");
     await ctx.db.patch("analystRuns", run._id, {
       traceCandidates,
+      ...(run.traceInputs && { advisorScenarioId: a.scenarioId }),
     });
     const feed = await ctx.db
       .query("feeds")
@@ -479,6 +557,7 @@ async function advisorRound(
   const { sc, input, low } = pick;
   const already = await ctx.runQuery(internal.fieldAdvisor.advised, {
     companyId: t.companyId,
+    runId,
     scenarioId: sc.scenarioId,
     snapshotVersion: t.snapshotVersion,
   });

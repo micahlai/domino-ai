@@ -16,6 +16,7 @@ Reflect.deleteProperty(process.env, "APIFY_TOKEN");
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 async function drain(t: T, rounds = 1) {
@@ -34,6 +35,71 @@ async function logRows(t: T, companyId: Id<"companies">) {
 }
 
 describe("field analyst", () => {
+  it.each(["open", "accepted"] as const)(
+    "rebuilds legacy %s suggestions with actual pinned advisor work, then deduplicates",
+    async (status) => {
+      vi.useFakeTimers();
+      for (const key of [
+        "APIFY_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID",
+        "CREAO_HISTORICAL_EVIDENCE_ANALYST_API_KEY",
+        "DOMINO_CREAO_VERIFIED_PROFILES",
+      ])
+        vi.stubEnv(key, "");
+      const t = newBackend();
+      const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
+      await drain(t, 31);
+      const first = await t.query(api.fieldAnalyst.latest, { companyId });
+      if (!first || first.status !== "done") throw new Error("Missing initial analyst result");
+      const legacy = await t.run(async (ctx) => {
+        const run = await ctx.db
+          .query("analystRuns")
+          .withIndex("by_runId", (q) => q.eq("runId", first.runId))
+          .unique();
+        if (!run) throw new Error("Missing initial run");
+        await ctx.db.patch("analystRuns", run._id, {
+          traceInputs: undefined,
+          traceReceipt: undefined,
+          advisorScenarioId: undefined,
+        });
+        const suggestions = await ctx.db.query("suggestions").collect();
+        for (const row of suggestions)
+          await ctx.db.patch("suggestions", row._id, {
+            status,
+            ...(status === "accepted" && {
+              decidedBy: "fixture reviewer",
+              decidedAt: new Date().toISOString(),
+            }),
+          });
+        return ctx.db.query("suggestions").collect();
+      });
+      expect(legacy.length).toBeGreaterThanOrEqual(2);
+      const { runId } = await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
+      await drain(t, 30);
+      const rebuilt = await t.query(api.fieldTrace.get, { companyId, runId });
+      expect(rebuilt?.run.status).toBe("done");
+      expect(rebuilt?.candidates.length).toBeGreaterThanOrEqual(2);
+      expect(rebuilt?.operations.some((row) => row.tool === "engine.adviseFix")).toBe(true);
+      if (status === "accepted")
+        expect(await t.run((ctx) => ctx.db.query("suggestions").collect())).toEqual(legacy);
+      else
+        expect(
+          (await t.query(api.fieldSuggestions.list, { companyId })).every(
+            (row) => row.runId === runId,
+          ),
+        ).toBe(true);
+      const repeat = await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
+      await drain(t, 30);
+      const repeated = await t.query(api.fieldTrace.get, { companyId, runId: repeat.runId });
+      expect(repeated?.run.status).toBe("done");
+      expect(repeated?.candidates).toEqual([]);
+      expect(repeated?.operations.some((row) => row.tool === "engine.adviseFix")).toBe(false);
+      expect(await t.run((ctx) => ctx.db.query("aiCalls").collect())).toEqual([]);
+    },
+    120_000,
+  );
+
   it("spawns parallel forecasters on kestrel-crunch, logs the agent web and aggregates", async () => {
     vi.useFakeTimers();
     const t = newBackend();
