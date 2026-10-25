@@ -190,11 +190,17 @@ function RunReady({
           .map((entry) => entry.runId)
       : [];
   const selectedComparisons = comparisonIds(chosenComparisons ?? defaults, run.runId);
-  const comparisonQueries = Object.fromEntries(
-    selectedComparisons.map((id, i) => [
-      `comparison${i}`,
-      { query: getRunRef, args: { companyId, runId: id } },
-    ]),
+  const [firstComparison, secondComparison, thirdComparison] = selectedComparisons;
+  // Convex stores subscription callbacks by query-bag identity and updates state during render
+  // when they change. Memoize on these bounded ID values, not the freshly parsed graph array.
+  const comparisonQueries = useMemo(
+    () =>
+      Object.fromEntries(
+        [firstComparison, secondComparison, thirdComparison]
+          .filter((id): id is string => id !== undefined)
+          .map((id, i) => [`comparison${i}`, { query: getRunRef, args: { companyId, runId: id } }]),
+      ),
+    [companyId, firstComparison, secondComparison, thirdComparison],
   );
   const comparisonRaw = useQueries(comparisonQueries) as Record<string, unknown>;
   const comparisonReads: Record<string, Read<import("./api").WorkspaceRun>> = {};
