@@ -27,6 +27,21 @@ describe("saved chat boundary", () => {
       expect(readChat(receipt, key, run)).toEqual({ state: "ready", value: receipt });
     },
   );
+  it("reads a reply that carries the what-if's brief", () => {
+    const receipt = {
+      ...fixtureReady,
+      brief: {
+        event: "A data breach makes the news",
+        cause: null,
+        involves: [{ name: "Education partner 01", kind: "customer" }],
+        customersAffected: "yes",
+        duration: "ongoing",
+        visibility: "public",
+        notes: null,
+      },
+    };
+    expect(readChat(receipt, key, run)).toEqual({ state: "ready", value: receipt });
+  });
   it("accepts saved history context and raw invoice, bill and payroll IDs", () => {
     const snapshot = run.baseline.seed.snapshot;
     const ids = [...snapshot.invoices, ...snapshot.bills, ...snapshot.payroll].map(

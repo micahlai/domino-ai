@@ -1,6 +1,7 @@
 import { ChangeSchema, ConstraintSchema, canonicalJson } from "@domino/contracts";
 import { makeFunctionReference } from "convex/server";
 import { z } from "zod";
+import { ScenarioBriefSchema } from "../../../convex/timeline/chat/brief";
 import { WorkerChatContextSchema } from "../../../lib/worker-chat-context";
 import type { Read, RunKey, WorkspaceRun } from "../workspace/api";
 
@@ -71,6 +72,8 @@ const Receipt = z
     linkedRunId: Id.nullable(),
     pendingField: z.string().min(1).max(200).nullable(),
     workerContext: WorkerChatContextSchema.optional(),
+    /** The what-if's story Ask Domino recorded; shown nowhere yet, read by predictions. */
+    brief: ScenarioBriefSchema.optional(),
   })
   .strict();
 export type ChatReceipt = z.infer<typeof Receipt>;
