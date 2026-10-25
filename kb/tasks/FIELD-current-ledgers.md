@@ -5,4 +5,4 @@
 - Deliver: two new immutable company IDs; primary roster constant; date/source catalogs; reported AR/deferred/cash/restricted; component cash flows; current roll-forward; future-only scenarios and exact cent tests.
 - No: contracts/engine/web edits, protected2U data/assumptions/held-out/evaluation, providers, main, live runtimes, root handoff, merges/pushes.
 - Checks: sim tsc/Vitest/Biome; legacy unchanged, all supported IDs/current primary12 cases, reported+current cash, component totals, revenue/AR/AP and scenario observation custody.
-- Result: pending.
+- Result: implemented current IDs, primary catalog, July reported anchors/components and October 25 reconstructed cash; October 26 forecasts; future-only scenarios; explicit GitLab rounded customer-advance scope adjustment. Full sim suite 128 tests, sim TypeScript, Biome (32 files), and diff whitespace check pass. All 36 captured legacy complete-output hashes unchanged. Handoff: `kb/features/field/TAKEOVER-CURRENT-LEDGERS.md`. Adapter/integration owns mock roundtrip and web acceptance.

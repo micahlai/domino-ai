@@ -229,7 +229,11 @@ function monthPayments(
 }
 
 export function historicalLedger(spec: OperatingSpec, seed: number): Ledger {
-  const invoiced = spec.revenue + spec.closingDeferred - spec.openingDeferred;
+  const invoiced =
+    spec.revenue +
+    spec.closingDeferred -
+    spec.openingDeferred -
+    (spec.deferredScopeAdjustment ?? 0);
   const collections = spec.openingAR + invoiced - spec.closingAR;
   const ledger: Ledger = {
     snapshot: {
@@ -272,6 +276,10 @@ export function historicalLedger(spec: OperatingSpec, seed: number): Ledger {
   const payments = allocate(ledger.payments, Array(spec.months).fill(1));
   for (let m = 0; m < spec.months; m++)
     monthPayments(ledger, spec, monthStart(spec, m), payments[m]!, spec.periodEnd, spec.periodEnd);
+  if (spec.cashFlowComponents) {
+    postCashComponents(ledger, spec);
+    return ledger;
+  }
   for (const [category, amount] of [
     ["investing", spec.icf],
     ["financing", spec.fcf],
@@ -293,6 +301,25 @@ export function historicalLedger(spec: OperatingSpec, seed: number): Ledger {
   return ledger;
 }
 
+/** Disclosed investment/financing totals retain their own bank entries and named residual. */
+function postCashComponents(ledger: Ledger, spec: OperatingSpec) {
+  for (const component of spec.cashFlowComponents ?? []) {
+    for (const [m, cents] of allocate(component.cents, Array(spec.months).fill(1)).entries()) {
+      post(
+        ledger,
+        {
+          id: `${prefix(spec)}/${component.category}/${component.id}/${m}`,
+          date: monthEnd(monthStart(spec, m)),
+          amount: cents,
+          description: `Synthetic date allocation: ${component.label}; not an actual transaction`,
+        },
+        component.category,
+        component.anchorId,
+      );
+    }
+  }
+}
+
 function futurePlans(
   spec: OperatingSpec,
   seed: number,
@@ -311,7 +338,7 @@ function futurePlans(
       nextInvoiceDate: nextOccurrence(anchorDate, today, everyMonths),
       everyMonths,
       paymentTermsDays: 15 + (scenario === "late-payments" && i < 8 ? 21 : 0),
-      ...(scenario === "customer-loss" && i < 8 && { endDate: spec.periodEnd }),
+      ...(scenario === "customer-loss" && i < 8 && { endDate: spec.simulationAsOf }),
     };
   });
 }
@@ -327,7 +354,9 @@ function futureInvoices(
     const i = ledger.snapshot.customers.findIndex((c) => c.id === invoice.customerId);
     const day = addDays(
       spec.periodEnd,
-      1 + keyedInt(seed, invoice.id, 0, 40) + (scenario === "late-payments" && i < 8 ? 21 : 0),
+      1 +
+        keyedInt(seed, invoice.id, 0, 40) +
+        (scenario === "late-payments" && i < 8 && spec.simulationAsOf === spec.periodEnd ? 21 : 0),
     );
     if (day <= today) collect(ledger, invoice, day);
   }
@@ -345,7 +374,7 @@ function futureInvoices(
         customerId: plan.customerId,
         amount: plan.amount,
         issued,
-        due: addDays(issued, plan.paymentTermsDays),
+        due: addDays(issued, issued <= spec.simulationAsOf ? 15 : plan.paymentTermsDays),
         billingPlanId: plan.id,
       };
       ledger.snapshot.invoices.push(invoice);
@@ -371,7 +400,7 @@ function futureCosts(
     monthPayments(ledger, spec, start, monthly, today, horizon);
   }
   if (scenario === "unexpected-expense") {
-    const due = addDays(spec.periodEnd, 35);
+    const due = addDays(spec.simulationAsOf, 35);
     const bill = {
       id: `${prefix(spec)}/bill/illustrative-emergency`,
       vendor: "Synthetic urgent remediation services",

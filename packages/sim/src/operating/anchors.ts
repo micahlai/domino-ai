@@ -1,6 +1,15 @@
 import { mulDiv } from "../drivers/basics.ts";
+import currentSourceAnchors from "./current-source-anchors.json";
+import { currentCompanySpec } from "./current-spec.ts";
 import sourceAnchors from "./source-anchors.json";
-import { OPERATING_DEMO_LABEL, type OperatingCompanyId, type ReportedAnchor } from "./types.ts";
+import {
+  type CashFlowCategory,
+  OPERATING_CURRENT_AS_OF,
+  OPERATING_DEMO_LABEL,
+  type OperatingCompanyCatalogEntry,
+  type OperatingCompanyId,
+  type ReportedAnchor,
+} from "./types.ts";
 
 /** Source tables say USD thousands. Parentheses encode negatives, not missing values. */
 export function thousandsToCents(value: string): number {
@@ -11,7 +20,25 @@ export function thousandsToCents(value: string): number {
   return cents;
 }
 
-export const operatingDemoCatalog = [
+/** Preserve original units and decimal precision without floating-point money arithmetic. */
+export function reportedValueToCents(value: string, unit: string): number {
+  if (unit === "USD thousands") return thousandsToCents(value);
+  if (
+    unit !== "USD millions" ||
+    !/^(?:-?\d[\d,]*(?:\.\d{1,8})?|\(\d[\d,]*(?:\.\d{1,8})?\))$/.test(value)
+  )
+    throw new Error("invalid source money or unit");
+  const plain = value.replaceAll(",", "").replace("(", "-").replace(")", "");
+  const negative = plain.startsWith("-");
+  const [whole, fraction = ""] = plain.replace("-", "").split(".");
+  const cents = Number(
+    (BigInt(whole!) * 100_000_000n + BigInt(fraction.padEnd(8, "0"))) * (negative ? -1n : 1n),
+  );
+  if (!Number.isSafeInteger(cents)) throw new Error("unsafe source money");
+  return cents;
+}
+
+export const operatingDemoCatalog: readonly OperatingCompanyCatalogEntry[] = [
   {
     id: "2u",
     name: "2U",
@@ -20,6 +47,7 @@ export const operatingDemoCatalog = [
     periodStart: "2023-01-01",
     periodEnd: "2023-09-30",
     reportedAt: "2023-11-09",
+    simulationAsOf: "2023-09-30",
   },
   {
     id: "asana-inspired",
@@ -30,6 +58,7 @@ export const operatingDemoCatalog = [
     periodStart: "2023-08-01",
     periodEnd: "2023-10-31",
     reportedAt: "2023-12-05",
+    simulationAsOf: "2023-10-31",
   },
   {
     id: "gitlab-inspired",
@@ -40,6 +69,31 @@ export const operatingDemoCatalog = [
     periodStart: "2023-08-01",
     periodEnd: "2023-10-31",
     reportedAt: "2023-12-05",
+    simulationAsOf: "2023-10-31",
+  },
+  {
+    id: "asana-current",
+    name: "Taskline (inspired by Asana)",
+    referenceCompany: "Asana, Inc.",
+    label:
+      "Fictional Taskline demo based on Asana, Inc. filings for May 1 to July 31, 2026, published September 3, 2026; reconstructed books as of October 25, 2026.",
+    periodStart: "2026-05-01",
+    periodEnd: "2026-07-31",
+    reportedAt: "2026-09-03",
+    filedAt: "2026-09-03",
+    simulationAsOf: OPERATING_CURRENT_AS_OF,
+  },
+  {
+    id: "gitlab-current",
+    name: "CodeHarbor (inspired by GitLab)",
+    referenceCompany: "GitLab Inc.",
+    label:
+      "Fictional CodeHarbor demo based on GitLab Inc. filings for May 1 to July 31, 2026, published September 1 and filed September 2, 2026; reconstructed books as of October 25, 2026.",
+    periodStart: "2026-05-01",
+    periodEnd: "2026-07-31",
+    reportedAt: "2026-09-01",
+    filedAt: "2026-09-02",
+    simulationAsOf: OPERATING_CURRENT_AS_OF,
   },
 ] as const;
 
@@ -71,9 +125,13 @@ export const operatingScenarioCatalog = [
 ] as const;
 
 export function reportedAnchors(company: OperatingCompanyId): ReportedAnchor[] {
-  return sourceAnchors[company].map((entry) => ({
+  const entries =
+    company === "asana-current" || company === "gitlab-current"
+      ? currentSourceAnchors[company]
+      : sourceAnchors[company];
+  return entries.map((entry) => ({
     ...entry,
-    cents: thousandsToCents(entry.sourceValue),
+    cents: reportedValueToCents(entry.sourceValue, entry.sourceUnit),
     basis:
       "basis" in entry && entry.basis === "derived-from-reported"
         ? "derived-from-reported"
@@ -81,9 +139,11 @@ export function reportedAnchors(company: OperatingCompanyId): ReportedAnchor[] {
   }));
 }
 
-export function companySpec(company: OperatingCompanyId) {
+export function companySpec(company: OperatingCompanyId): OperatingSpec {
   const catalog = operatingDemoCatalog.find((entry) => entry.id === company)!;
   const reported = reportedAnchors(company);
+  if (company === "asana-current" || company === "gitlab-current")
+    return currentCompanySpec({ ...catalog, id: company }, reported);
   const value = (id: string) => {
     const anchor = reported.find((entry) => entry.id === id);
     if (!anchor) throw new Error(`missing anchor ${id}`);
@@ -200,4 +260,31 @@ export function companySpec(company: OperatingCompanyId) {
     noncash: asana ? value("stock_based_compensation") : value("quarterStockBasedCompensation"),
   };
 }
-export type OperatingSpec = ReturnType<typeof companySpec>;
+export interface OperatingCashComponent {
+  id: string;
+  label: string;
+  category: Exclude<CashFlowCategory, "operating">;
+  cents: number;
+  anchorId?: string;
+}
+export interface OperatingSpec extends OperatingCompanyCatalogEntry {
+  reported: ReportedAnchor[];
+  months: number;
+  openingCash: number;
+  endingCash: number;
+  restrictedCash: number;
+  ocf: number;
+  icf: number;
+  fcf: number;
+  fx: number;
+  revenue: number;
+  quarterRevenue: number;
+  openingAR: number;
+  closingAR: number;
+  openingDeferred: number;
+  closingDeferred: number;
+  expenses: number;
+  noncash: number;
+  cashFlowComponents?: OperatingCashComponent[];
+  deferredScopeAdjustment?: number;
+}
