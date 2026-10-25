@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronsUpDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,13 +34,18 @@ const demoLinks = [
   { href: "/c/kestrel/record", label: "Decision record" },
 ];
 
+// Until companies are real records, the switcher names the demo company (or the id in view).
+const companyLabel = (id: string) =>
+  !id || id === "kestrel" ? "Kestrel Data" : `${id.charAt(0).toUpperCase()}${id.slice(1)}`;
+
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inDemo = pathname.startsWith("/c/");
-  const companyId = inDemo ? pathname.split("/")[2] : "";
+  const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
+  const companyName = companyLabel(companyId);
   // The agent canvas and the case workspace own the whole window and pin Original tokens, so they skip the shared header.
   if (pathname.startsWith("/investigate") || pathname.startsWith("/case/")) {
     return (
@@ -59,70 +65,99 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Suspense>
       <a
         href="#main"
-        className="sr-only z-50 rounded bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         Skip to content
       </a>
-      {/* On small screens the page links drop to their own scrollable row under the logo. */}
-      <header className="flex flex-wrap items-center gap-x-6 border-b px-4 md:min-h-16 md:flex-nowrap md:px-10">
-        <Link
-          href="/"
-          aria-label="Domino home"
-          className={cn(
-            "flex min-h-14 shrink-0 items-center gap-2.5 rounded font-semibold tracking-tight",
-            focusRing,
-          )}
-        >
-          <Image src="/domino-logo.svg" width={28} height={28} alt="" priority />
-          <span className="text-lg">
-            domino<span className="text-primary">.</span>
-          </span>
-        </Link>
-        <nav
-          aria-label="Main navigation"
-          className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto border-t px-4 md:order-none md:mx-0 md:w-auto md:flex-1 md:border-t-0 md:px-0"
-        >
-          <ul className="flex gap-1 py-2 md:py-0">
-            {primaryLinks.map(({ href, label, on }) => {
-              const active = on(pathname);
-              return (
-                <li key={href} className="shrink-0">
-                  <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-10 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                      focusRing,
-                      active && "bg-muted font-medium text-foreground",
-                    )}
-                  >
-                    {label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        <Link
-          href="/case"
-          aria-current={pathname === "/case" ? "page" : undefined}
-          className={cn(
-            "ml-auto flex min-h-11 shrink-0 items-center rounded px-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline",
-            focusRing,
-          )}
-        >
-          2U case study
-        </Link>
+      {/* Top bar: logo, page links, then company and case study on the right. On small screens the
+          page links drop to their own scrollable row under the logo. */}
+      <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 px-4 md:h-14 md:flex-nowrap md:px-6">
+          <Link
+            href="/"
+            aria-label="Domino home"
+            className={cn(
+              "flex h-14 shrink-0 items-center gap-2 rounded-md text-[15px] font-semibold tracking-[-0.01em]",
+              focusRing,
+            )}
+          >
+            <Image src="/domino-logo.svg" width={24} height={24} alt="" priority />
+            <span>domino</span>
+          </Link>
+          <nav
+            aria-label="Main navigation"
+            className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto border-t px-2 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:border-t-0 md:px-0"
+          >
+            <ul className="flex h-11 gap-1 md:h-full">
+              {primaryLinks.map(({ href, label, on }) => {
+                const active = on(pathname);
+                return (
+                  <li key={href} className="flex shrink-0">
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "relative flex items-center px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground",
+                        // A 2px bar on the header's bottom hairline marks the current page.
+                        "after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent after:transition-colors",
+                        focusRing,
+                        "focus-visible:outline-offset-[-2px]",
+                        active && "font-medium text-foreground after:bg-foreground",
+                      )}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
+            <Link
+              href="/case"
+              aria-current={pathname === "/case" ? "page" : undefined}
+              className={cn(
+                "flex h-9 items-center rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground",
+                focusRing,
+              )}
+            >
+              2U case study
+            </Link>
+            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+            {/* Placeholder until companies can be switched; it names the company in view. */}
+            <button
+              type="button"
+              aria-disabled="true"
+              title="Switching companies is not available yet"
+              className={cn(
+                "flex h-9 cursor-default items-center gap-2 rounded-md border bg-card pl-1.5 pr-2 text-[13px] font-medium shadow-xs",
+                focusRing,
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className="flex size-6 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground"
+              >
+                {companyName.charAt(0)}
+              </span>
+              <span className="hidden sm:inline">{companyName}</span>
+              <span className="sr-only sm:hidden">Company: {companyName}</span>
+              <ChevronsUpDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </header>
       <div
         className={cn(
           "mx-auto max-w-[1600px]",
-          inDemo && "lg:grid lg:grid-cols-[224px_minmax(0,1fr)]",
+          inDemo && "lg:grid lg:grid-cols-[216px_minmax(0,1fr)]",
         )}
       >
         {inDemo ? (
-          <aside className="border-b bg-muted/50 px-4 py-3 md:px-10 lg:min-h-[calc(100vh-64px)] lg:border-b-0 lg:border-r lg:px-5 lg:py-8">
-            <p className="mb-2 hidden px-3 text-sm font-medium lg:block">Demo company</p>
+          <aside className="border-b px-4 py-3 md:px-6 lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:border-b-0 lg:border-r lg:px-3 lg:py-6">
+            <p className="mb-2 hidden px-2.5 text-xs font-medium text-muted-foreground lg:block">
+              Demo company
+            </p>
             <nav aria-label="Timeline pages" className="flex flex-wrap gap-1 lg:flex-col">
               {demoNav.map(({ href, label }) => (
                 <Link
@@ -130,23 +165,23 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={href}
                   aria-current={pathname === href ? "page" : undefined}
                   className={cn(
-                    "flex min-h-10 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground",
+                    "flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
                     focusRing,
-                    pathname === href && "bg-background font-medium text-primary",
+                    pathname === href && "bg-secondary font-medium text-foreground",
                   )}
                 >
                   {label}
                 </Link>
               ))}
             </nav>
-            <p className="mt-10 hidden px-3 text-xs leading-5 text-muted-foreground lg:block">
+            <p className="mt-8 hidden px-2.5 text-xs leading-5 text-muted-foreground lg:block">
               Your judgment comes first.
               <br />
               Domino never moves money.
             </p>
           </aside>
         ) : null}
-        <main id="main" className="min-w-0 px-4 py-8 md:px-10 md:py-10">
+        <main id="main" className="min-w-0 px-4 py-6 md:px-8 md:py-8">
           {children}
         </main>
       </div>

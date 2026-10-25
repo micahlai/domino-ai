@@ -3,23 +3,23 @@
 
 /** Registry of selectable looks. Order is the selector order; the first is the default. */
 export const STYLES = [
-  { id: "original", label: "Original" },
   { id: "ramp", label: "Ramp" },
+  { id: "original", label: "Original" },
   { id: "hyphenate", label: "Hyphenate" },
   { id: "shadcn", label: "shadcn" },
 ] as const;
 
 export type StyleId = (typeof STYLES)[number]["id"];
-export const DEFAULT_STYLE: StyleId = "original";
+export const DEFAULT_STYLE: StyleId = "ramp";
 export const STYLE_STORAGE_KEY = "domino-style";
 const ids: readonly string[] = STYLES.map((style) => style.id);
 
-/** Anything that is not an exact registry id (null, "RAMP", "ramp ", markup) becomes Original. */
+/** Anything that is not an exact registry id (null, "RAMP", "ramp ", markup) becomes the default. */
 export function parseStyle(value: unknown): StyleId {
   return typeof value === "string" && ids.includes(value) ? (value as StyleId) : DEFAULT_STYLE;
 }
 
-/** A ?style= param that is present decides alone: a valid id wins, an invalid one means Original
+/** A ?style= param that is present decides alone: a valid id wins, an invalid one means the default
  * even if a choice is stored, so a bad review link is never silently themed. Only an absent
  * param falls back to the stored choice. The URL value is never written to storage. */
 export function resolveStyle(urlValue: string | null, stored: string | null): StyleId {

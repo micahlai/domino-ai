@@ -30,6 +30,7 @@ describe("style tokens", () => {
     "destructive",
     "danger-text",
     "safe",
+    "warning",
     "border",
     "input",
     "ring",
@@ -39,6 +40,9 @@ describe("style tokens", () => {
     "control-h",
     "row-h",
     "card-pad",
+    "shadow-xs",
+    "shadow",
+    "shadow-lg",
   ];
 
   // Nested comparison scopes inherit any omitted token from the page style, so none may be omitted.

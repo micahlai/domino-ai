@@ -14,6 +14,7 @@ import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
 import { StyleComparison } from "@/components/StyleComparison";
+import { ThemePrimitives } from "@/components/ThemePrimitives";
 import { FixtureCompany } from "@/components/company/FixtureCompany";
 import { HistoricalReplay } from "@/components/historical/HistoricalReplay";
 import { previewView } from "@/components/historical/preview";
@@ -32,6 +33,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 const sections = [
+  "Primitives",
   "CompanyWorkspace",
   "Headline",
   "ResilienceBar",
@@ -167,6 +169,12 @@ export function Playground() {
           </a>
         ))}
       </nav>
+      <PreviewSection
+        name="Primitives"
+        description="Shared theme primitives and layout helpers (components/ui). Preview values only."
+      >
+        <ThemePrimitives />
+      </PreviewSection>
       <PreviewSection
         name="CompanyWorkspace"
         description="The assembled main screen. Sample approvals only; no records change."
