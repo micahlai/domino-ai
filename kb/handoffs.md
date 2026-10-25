@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-25 Codex Field integration
+- Done: took over five worktrees; convex-depth already merged. Finished and committed remaining work, independently reviewed swarm durability/version/caching fixes, merged the four branches in order in domino-merge. Isolated backend and browser decision smoke passed; one real synthetic CREAO advisor request validated.
+- Next: finish combined checks, fast-forward field/main only, push and restart Next3114; exact live state goes in features/field/HANDOFF.md.
+- Watch out: default Turbopack production build cannot bind its worker port here; supported webpack build is the checked fallback. No main or protected-port change.
+
 ## 2026-10-24 Independent full-feature ownership prepared
 - Done: replaced tiny T1 split with complete Field/Knowledge and Timeline/Simulations briefs, continuous owner prompts, explicit UI/backend ownership and shared P0 setup cards. See spec/independent-feature-lanes.md. Documentation only, no worker/branch/runtime launch.
 - Next: current Claude lead reads ../prompts/shared/prepare-independent-features.md, checks actual L1/S2 activity, checkpoints safely, then assigns P0. Exact accepted common base precedes long forks; each lane then steers its own internal queue.

@@ -1,5 +1,12 @@
 # Field lane handoff (Claude lead -> Codex), Oct 25
 
+## Integrated candidate, Oct 25
+- All four feature branches merged in the required order on `merge/field-codex-20261025` in `../domino-merge`. Conflict resolutions preserve webhook registrations, both new swarm tables (46 total composed tables), and optimistic flag-decision errors in the moved FlagsSection.
+- Combined web/Convex/engine/agents TypeScript checks pass. Full combined Vitest, root Biome and production webpack build are running; no live fast-forward yet.
+- Isolated integration runtime: Convex3298/3299, Next3138. Real backend smoke passes: audit child lifecycle, engine advisor suggestions, stale decision refusal, saved decline, unchanged cash. Browser accepted a second suggestion with a note and showed it under Decided. Screenshot `/tmp/field-integrated-worker-smoke.png`.
+- One real synthetic CREAO advisor request passed validation on profile `field_advisor@creao-3e8215ca6876`; no credentials or provider text printed/saved. After source identity check and combined acceptance, append the configured app/profile pair to live3260 verified profiles in memory via stdin, preserving existing entries.
+- Next exact step: finish combined acceptance, commit final evidence, fast-forward `../domino-field` only, push `field/main`, enable tested advisor profile, restart only Next3114, verify live backend and pages, stop isolated test servers. Main and protected ports remain untouched.
+
 ## Codex takeover, Oct 25
 - User authorized Codex as Field lead to finish and integrate this wave. Fresh integration checkout: `../domino-merge`, branch `merge/field-codex-20261025`, based on `field/main` at `8dbba79`. Main remains untouched.
 - Inspected all five worktrees: convex-depth clean and already merged; worker-page clean at `e9b2e0b`; swarms at `8857294` with unfinished backend changes; judge-simple and timeline-ux have unfinished changes based on `95d646d`.
