@@ -14,7 +14,7 @@ export const CitationSchema = z
 export const QuestionProposalSchema = z
   .object({
     label: z.string().min(1).max(200),
-    changes: z.array(ChangeSchema).max(16),
+    changes: z.array(ChangeSchema).max(64),
     constraints: z.array(ConstraintSchema).max(32).nullable(),
     constraintNote: z.string().max(500).nullable(),
   })

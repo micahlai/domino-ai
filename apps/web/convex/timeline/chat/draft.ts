@@ -31,11 +31,20 @@ const FieldSchema = z.enum([
   "monthsText",
 ]);
 type Field = z.infer<typeof FieldSchema>;
+/** One-time changes a draft may hold. */
+export const MAX_DRAFT_INTENTS = 8;
 export const DraftSchema = z
   .object({
-    intents: z.array(IntentSchema).max(4),
+    intents: z.array(IntentSchema).max(MAX_DRAFT_INTENTS),
     pending: z
-      .object({ index: z.number().int().min(0).max(3), field: FieldSchema })
+      .object({
+        index: z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_DRAFT_INTENTS - 1),
+        field: FieldSchema,
+      })
       .strict()
       .nullable(),
   })

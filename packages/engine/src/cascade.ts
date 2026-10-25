@@ -17,12 +17,13 @@ import { bucketOf } from "./schedule";
 /**
  * Second-order consequences ("cascades"), pure and deterministic. A scenario's forecast is
  * scanned for TRIGGERS (a lender-minimum breach, a cash gap, a big customer shock, stretched
- * vendors, a credit line draw, a windfall). Each trigger proposes up to two follow-on events
- * as ordinary Changes, taken from standard treasury practice, and each follow-on is re-run
- * through forecast() on the complete change list, so every number comes from the engine.
+ * vendors, a credit line draw, a windfall). Each trigger proposes follow-on events as ordinary
+ * Changes, taken from standard treasury practice; an estimator may combine up to three of them
+ * into one branch (companies usually respond with several actions at once). Each follow-on is
+ * re-run through forecast() on the complete change list, so every number comes from the engine.
  * Likelihoods are stated labels, not probabilities. Nothing here moves money.
  */
-export const CASCADE_VERSION = "cascade@1.1.0";
+export const CASCADE_VERSION = "cascade@1.2.0";
 
 export type CascadeLikelihood = "Expected" | "Likely" | "Possible";
 export type TriggerKind =
@@ -91,8 +92,24 @@ export type CascadeResult = {
   nodes: CascadeNode[];
 };
 
-export type CascadeLimits = { maxDepth: number; maxBranches: number; maxNodes: number };
-export const CASCADE_LIMITS: CascadeLimits = { maxDepth: 3, maxBranches: 2, maxNodes: 8 };
+export type CascadeLimits = {
+  maxDepth: number;
+  /** Follow-on branches per parent when `branchesByDepth` names none for its depth */
+  maxBranches: number;
+  maxNodes: number;
+  /** Branches per parent by the parent's depth (0 = the scenario itself) */
+  branchesByDepth?: number[];
+};
+/** Two branches at the first two levels, one at levels 3 and 4: at most 2 + 4 + 4 + 4 = 14. */
+export const CASCADE_LIMITS: CascadeLimits = {
+  maxDepth: 4,
+  maxBranches: 2,
+  maxNodes: 14,
+  branchesByDepth: [2, 2, 1, 1],
+};
+/** An estimator's branch combines at most this many catalog reactions, applied together. */
+export const MAX_REACTION_KINDS = 3;
+const MAX_REACTION_BRANCHES = 2;
 
 // Stated assumptions (standard practice; shown in each reason).
 const WAIVER_FEE_BPS = 25n; // amendment/waiver fee ~0.25% of the covenant level
@@ -124,6 +141,8 @@ type Level = {
   schedule: CashSchedule;
   forecast: Forecast;
   fired: Set<string>;
+  /** Follow-on events on this branch so far, oldest first (the scenario itself excluded) */
+  chain: string[];
 };
 type Option = {
   event: string;
@@ -161,7 +180,9 @@ export async function cascadeWith(
     } catch {
       raw = null;
     }
-    step = steps.next(raw === null ? null : resolveReactions(step.value.catalog, raw));
+    step = steps.next(
+      raw === null ? null : resolveReactions(step.value.catalog, raw, step.value.branches),
+    );
   }
   return step.value;
 }
@@ -174,8 +195,12 @@ export type ReactionRequest = {
   key: string;
   trigger: CascadeTrigger;
   event: string;
+  /** Follow-on events already on this branch, oldest first, after the scenario itself */
+  chain: string[];
   lowPoint: Forecast["lowPoint"];
   catalog: ReactionCatalogEntry[];
+  /** How many alternative branches this trigger may still add */
+  branches: number;
 };
 export type ReactionCatalogEntry = {
   kindId: string;
@@ -186,50 +211,65 @@ export type ReactionCatalogEntry = {
   external: boolean;
   param: { name: "days" | "percent"; min: number; max: number; default: number } | null;
 };
+/** One alternative branch: 1-3 catalog reactions that happen together. */
 export type ReactionChoice = {
-  kindId: string;
+  kinds: { kindId: string; param: number | null }[];
   probability: number;
   reason: string;
-  param: number | null;
 };
 export type CascadeEstimate =
   | { source: "ai"; probability: number; reason: string }
   | { source: "rule" };
 
 /**
- * Keep only catalog kinds, at most two distinct ones, clamp parameters to their bounds and
- * renormalize probabilities to sum to 1. Anything unusable yields null (fixed rules).
+ * Read `{ branches: [{ kinds: [{ kindId, param }], probability, reason }] }`: keep only catalog
+ * kinds (1-3 distinct per branch), at most `maxBranches` branches with distinct kind sets, clamp
+ * parameters to their bounds and renormalize probabilities to sum to 1 across the kept branches.
+ * Anything unusable yields null (fixed rules).
  */
 export function resolveReactions(
   catalog: ReactionCatalogEntry[],
   raw: unknown,
+  maxBranches = MAX_REACTION_BRANCHES,
 ): ReactionChoice[] | null {
   const list =
-    raw && typeof raw === "object" && Array.isArray((raw as { reactions?: unknown }).reactions)
-      ? ((raw as { reactions: unknown[] }).reactions ?? [])
+    raw && typeof raw === "object" && Array.isArray((raw as { branches?: unknown }).branches)
+      ? ((raw as { branches: unknown[] }).branches ?? [])
       : [];
+  const limit = Math.max(1, Math.min(MAX_REACTION_BRANCHES, Math.floor(maxBranches)));
   const out: ReactionChoice[] = [];
-  for (const r of list) {
-    if (!r || typeof r !== "object" || out.length >= 2) continue;
-    const row = r as Record<string, unknown>;
-    const entry = catalog.find((c) => c.kindId === row.kindId);
-    if (!entry || out.some((o) => o.kindId === entry.kindId)) continue;
+  const seen = new Set<string>();
+  for (const b of list) {
+    if (!b || typeof b !== "object" || out.length >= limit) continue;
+    const row = b as Record<string, unknown>;
     const p =
       typeof row.probability === "number" && Number.isFinite(row.probability) ? row.probability : 0;
     if (p <= 0) continue;
-    const value = typeof row.param === "number" && Number.isFinite(row.param) ? row.param : null;
-    const param = entry.param
-      ? Math.round(
-          Math.min(entry.param.max, Math.max(entry.param.min, value ?? entry.param.default)),
-        )
-      : null;
+    const kinds: ReactionChoice["kinds"] = [];
+    const reasons: string[] = [];
+    for (const k of Array.isArray(row.kinds) ? row.kinds : []) {
+      if (!k || typeof k !== "object" || kinds.length >= MAX_REACTION_KINDS) continue;
+      const pick = k as Record<string, unknown>;
+      const entry = catalog.find((c) => c.kindId === pick.kindId);
+      if (!entry || kinds.some((o) => o.kindId === entry.kindId)) continue;
+      const value =
+        typeof pick.param === "number" && Number.isFinite(pick.param) ? pick.param : null;
+      const param = entry.param
+        ? Math.round(
+            Math.min(entry.param.max, Math.max(entry.param.min, value ?? entry.param.default)),
+          )
+        : null;
+      kinds.push({ kindId: entry.kindId, param });
+      reasons.push(entry.reason);
+    }
+    const key = kinds
+      .map((k) => k.kindId)
+      .sort()
+      .join("+");
+    if (!kinds.length || seen.has(key)) continue;
+    seen.add(key);
     const reason = typeof row.reason === "string" ? row.reason.trim().slice(0, 160) : "";
-    out.push({
-      kindId: entry.kindId,
-      probability: Math.min(1, p),
-      reason: reason || entry.reason,
-      param,
-    });
+    out.push({ kinds, probability: Math.min(1, p), reason: reason || reasons.join(" ") });
   }
   if (!out.length) return null;
   const total = out.reduce((a, o) => a + o.probability, 0);
@@ -263,6 +303,7 @@ function* cascadeSteps(
       schedule,
       forecast,
       fired: new Set(),
+      chain: [],
     },
   ];
   // Breadth first, so the node budget is shared fairly across the first levels.
@@ -275,9 +316,10 @@ function* cascadeSteps(
     const found = triggers(ctx, level).filter(
       (f) => !level.fired.has(f.key) && (!terminal || f.key === "cash_gap"),
     );
+    const cap = limits.branchesByDepth?.[level.depth] ?? limits.maxBranches;
     let n = 0;
     for (const f of found) {
-      if (n >= limits.maxBranches || nodes.length >= limits.maxNodes) break;
+      if (n >= cap || nodes.length >= limits.maxNodes) break;
       const external = terminal ? [] : externalReactions(ctx, level, f);
       const kinds = [
         ...f.options.map((o) => ({ option: o, external: false, param: null })),
@@ -297,16 +339,22 @@ function* cascadeSteps(
         key: f.key,
         trigger: f.trigger,
         event: input.eventLabel,
+        chain: level.chain,
         lowPoint: level.forecast.lowPoint,
         catalog,
+        branches: cap - n,
       };
-      // Rule-based: the trigger's own options, in order. AI: the chosen kinds with parameters.
+      // Rule-based: the trigger's own options, in order. AI: each branch's chosen kinds with
+      // their parameters, applied together as one combined reaction.
       const picks: { option: Option; estimate: CascadeEstimate }[] = choices
         ? choices.flatMap((c) => {
-            const i = catalog.findIndex((e) => e.kindId === c.kindId);
-            const k = kinds[i];
-            if (!k) return [];
-            const option = k.param ? k.param.build(c.param ?? k.param.bounds.default) : k.option;
+            const parts = c.kinds.flatMap((pick) => {
+              const k = kinds[catalog.findIndex((e) => e.kindId === pick.kindId)];
+              if (!k) return [];
+              return [k.param ? k.param.build(pick.param ?? k.param.bounds.default) : k.option];
+            });
+            const option = combine(level.all, parts);
+            if (!option) return [];
             return [
               {
                 option,
@@ -316,7 +364,7 @@ function* cascadeSteps(
           })
         : f.options.map((option) => ({ option, estimate: { source: "rule" as const } }));
       for (const { option, estimate } of picks) {
-        if (n >= limits.maxBranches || nodes.length >= limits.maxNodes) break;
+        if (n >= cap || nodes.length >= limits.maxNodes) break;
         const childAll = [...level.all, ...option.changes];
         let childSchedule: CashSchedule;
         try {
@@ -354,6 +402,7 @@ function* cascadeSteps(
           schedule: childSchedule,
           forecast: childForecast,
           fired: new Set([...level.fired, f.key]),
+          chain: [...level.chain, option.event],
         });
       }
     }
@@ -364,6 +413,55 @@ function* cascadeSteps(
     forecast,
     outOfCash: outOfCash(forecast),
     nodes,
+  };
+}
+
+const LIKELIHOOD_ORDER: CascadeLikelihood[] = ["Expected", "Likely", "Possible"];
+
+/**
+ * Several reactions that happen together, as one option. Later parts skip any change to a bill,
+ * invoice or customer an earlier part already moved (two delays of one bill would stack), and
+ * labelled cash gets a label no other change uses. The joint likelihood is the weakest part's.
+ */
+function combine(prior: Change[], parts: Option[]): Option | null {
+  if (parts.length <= 1) return parts[0] ?? null;
+  const changes: Change[] = [];
+  const used: Option[] = [];
+  const targetOf = (c: Change): string | null =>
+    c.kind === "delay_bill"
+      ? `bill:${c.billId}`
+      : c.kind === "delay_invoice" || c.kind === "lose_invoice" || c.kind === "discount_early_pay"
+        ? `invoice:${c.invoiceId}`
+        : c.kind === "delay_customer"
+          ? `customer:${c.customerId}`
+          : null;
+  const taken = new Set(prior.flatMap((c) => targetOf(c) ?? []));
+  for (const part of parts) {
+    const own: Change[] = [];
+    for (const c of part.changes) {
+      const target = targetOf(c);
+      if (target && taken.has(target)) continue;
+      if (target) taken.add(target);
+      own.push(
+        "label" in c
+          ? ({ ...c, label: unique([...prior, ...changes, ...own], c.label) } as Change)
+          : c,
+      );
+    }
+    if (!own.length) continue;
+    changes.push(...own);
+    used.push(part);
+  }
+  if (!used.length) return null;
+  if (used.length === 1) return { ...(used[0] as Option), changes };
+  return {
+    event: used.map((o) => o.event).join("; "),
+    branchLabel: used.map((o) => o.branchLabel).join(" + "),
+    reason: used.map((o) => o.reason).join(" "),
+    likelihood:
+      LIKELIHOOD_ORDER[Math.max(...used.map((o) => LIKELIHOOD_ORDER.indexOf(o.likelihood)))] ??
+      "Possible",
+    changes,
   };
 }
 

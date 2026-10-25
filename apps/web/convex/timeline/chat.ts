@@ -17,8 +17,8 @@ import { type ChatTool, chatFailureArg, chatToolsArg, logChatActivity } from "./
 import {
   TurnPlanSchema,
   activeUserTurns,
+  checkCompound,
   checkDraft,
-  checkPlan,
   citationsFor,
   segmentStartOf,
 } from "./chat/conversation";
@@ -26,6 +26,7 @@ import {
   type Result as DraftResult,
   DraftSchema,
   GREETING,
+  MAX_DRAFT_INTENTS,
   advance,
   emptyDraft,
   evaluateIntents,
@@ -667,20 +668,25 @@ export const saveAssistantTurn = internalMutation({
     if (planJson !== undefined) {
       const plan = TurnPlanSchema.parse(JSON.parse(planJson));
       const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
-      if (plan.planText !== null && plan.planText !== undefined && plan.planText !== args.text)
-        reject("INVALID_INPUT", "The plan must use the latest message exactly.");
+      const userTexts = activeUserTurns(receipt, segmentStart, args.text).map((t) => t.text);
+      // A plan is re-computed from its saved parts with the same source guard, never trusted.
       const checked =
         receipt.status === "saved"
           ? null
-          : plan.planText
-            ? checkPlan(run, args.text, floor, plan.macro ?? null)
+          : plan.planItems
+            ? checkCompound(run, plan.planItems, floor, plan.macro ?? null, {
+                conversationId: receipt.conversationId,
+                selectedItemId: receipt.selectedItemId,
+                userTexts,
+                referenceText: receipt.workerContext?.note ?? null,
+              })
             : plan.draft === null
               ? null
               : checkDraft(run, plan.draft, {
                   selectedItemId: receipt.selectedItemId,
                   conversationId: receipt.conversationId,
                   floor,
-                  userTexts: activeUserTurns(receipt, segmentStart, args.text).map((t) => t.text),
+                  userTexts,
                   referenceText: receipt.workerContext?.note ?? null,
                 });
       const nextDraft = checked?.draft ?? draft;
@@ -723,7 +729,9 @@ export const saveAssistantTurn = internalMutation({
     // Compatibility for existing internal proposal-integrity fixtures. The public action
     // always supplies a model-authored plan, never this deterministic test path.
     const intents =
-      intentsJson === null ? null : z.array(IntentSchema).max(4).parse(JSON.parse(intentsJson));
+      intentsJson === null
+        ? null
+        : z.array(IntentSchema).max(MAX_DRAFT_INTENTS).parse(JSON.parse(intentsJson));
     // Existing supplied slots are changed only by the deterministic pending-field/correction
     // path. A model cannot silently replace them or pull values from an earlier reset draft.
     // Enforce the original wording even when no model ran or returned no usable intents.
