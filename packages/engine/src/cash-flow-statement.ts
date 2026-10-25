@@ -254,6 +254,8 @@ export function classifyCashItem(
     case "invoice":
     case "deal":
       return { line: "customer_collections", rule: `forecast ${item.kind}`, classified: true };
+    case "plan":
+      return { line: "customer_collections", rule: "forecast billing plan", classified: true };
     case "payroll":
       return { line: "payroll", rule: "forecast payroll", classified: true };
     case "recurring":
@@ -500,7 +502,11 @@ export type CfsSummary = {
   /** Lowest projected ending cash; ties go to the earliest week. Null with no projected weeks. */
   lowestProjected: { weekStart: ISODate; endingCash: Cents; usable: Cents } | null;
   runway: {
-    /** Average weekly net outflow over the complete actual weeks in `basis`, rounded to cents. */
+    /**
+     * Average weekly net outflow over the weeks in `basis`, rounded to cents: the projected
+     * weeks when the statement has them (forward burn, including expected recurring billing),
+     * else the last complete actual weeks.
+     */
     weeklyBurn: Cents;
     /** Whole weeks usable cash (latest actual ending - restrictedCash) lasts. Null if not burning. */
     weeks: number | null;
@@ -510,8 +516,10 @@ export type CfsSummary = {
 };
 
 /**
- * `burnWeeks` complete actual weeks (the partial week of asOf is skipped) set the current burn.
- * Runway uses exact integer division, so it never rounds up into a week the cash cannot cover.
+ * Runway uses projected burn: the average net change of the projected weeks. A statement with
+ * no projected weeks falls back to `burnWeeks` complete actual weeks (the partial week of asOf
+ * is skipped). Runway uses exact integer division, so it never rounds up into a week the cash
+ * cannot cover.
  */
 export function cashFlowSummary(statement: CashFlowStatement, burnWeeks = 4): CfsSummary {
   const projected = statement.weeks.filter((w) => w.kind === "projected");
@@ -521,7 +529,7 @@ export function cashFlowSummary(statement: CashFlowStatement, burnWeeks = 4): Cf
     null,
   );
   const complete = actual.filter((w) => w.weekEnd === addDays(w.weekStart, 6));
-  const basis = complete.slice(-burnWeeks);
+  const basis = projected.length > 0 ? projected : complete.slice(-burnWeeks);
   const burned = -basis.reduce((sum, w) => sum + w.netChange, 0);
   const n = basis.length;
   const weeklyBurn = n === 0 ? 0 : roundHalfUp(burned, n);

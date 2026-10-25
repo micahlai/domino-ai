@@ -3,8 +3,8 @@ import { addDays, toMs, weekIndexOf } from "./dates";
 
 /** One dated cash movement. Positive = money in, negative = money out. */
 export type CashItem = {
-  kind: "invoice" | "deal" | "bill" | "payroll" | "recurring" | "change";
-  /** Source record id, or the change label */
+  kind: "invoice" | "deal" | "bill" | "payroll" | "recurring" | "change" | "plan";
+  /** Source record id, the change label, or `planId@issueDate` for a projected plan invoice */
   id: string;
   customerId?: string;
   date: ISODate;

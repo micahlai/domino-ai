@@ -6,7 +6,14 @@ import {
   SnapshotSchema,
   type WorldState,
 } from "@domino/contracts";
-import { simulator } from "@domino/sim";
+import {
+  PROFILES,
+  type ProfileId,
+  advanceProfileWeek,
+  createProfileCompany,
+  isProfileWorld,
+  simulator,
+} from "@domino/sim";
 
 /**
  * Field mock feed (pure, no Convex functions). The feed is a private sim WorldState plus an
@@ -43,13 +50,21 @@ export const emptyOverlay = (): Overlay => ({
 /** Convex stores plain JSON: drop undefined fields the sim leaves on records. */
 const plain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-export function newWorld(seed: number): WorldState {
-  return plain(simulator.createCompany("kestrel", seed));
+/** No profile: the legacy Kestrel world. A profile id: the driver-based company for it. */
+export function newWorld(seed: number, profile?: ProfileId): WorldState {
+  return plain(
+    profile ? createProfileCompany(profile, seed) : simulator.createCompany("kestrel", seed),
+  );
 }
 
 export function nextWorld(world: WorldState): WorldState {
-  return plain(simulator.advanceWeek(world, []));
+  return plain(
+    isProfileWorld(world) ? advanceProfileWeek(world) : simulator.advanceWeek(world, []),
+  );
 }
+
+export const profileName = (profile?: ProfileId) =>
+  profile ? `${PROFILES[profile].name} (live feed)` : "Kestrel Data (live feed)";
 
 /** The observable snapshot the mock sources serve: world snapshot with the overlay applied. */
 export function servedSnapshot(world: WorldState, overlay: Overlay): Snapshot {

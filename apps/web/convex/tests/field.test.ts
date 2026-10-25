@@ -44,6 +44,40 @@ async function actions(t: T, companyId: Id<"companies">) {
   return page.page.map((r) => r.action);
 }
 
+describe("field profiles", () => {
+  it.each(["kestrel", "kestrel-churn", "kestrel-late", "kestrel-crunch"] as const)(
+    "%s sets up, ingests every source and advances without escalations",
+    async (profile) => {
+      vi.useFakeTimers();
+      const t = newBackend();
+      const { companyId } = await t.mutation(api.field.setup, { profile });
+      await drain(t);
+      const first = await t.query(api.field.status, { companyId });
+      expect(first).toMatchObject({ snapshotVersion: 1, lastIngestStatus: "ok" });
+      expect(first?.name).toContain("Kestrel Data");
+      expect(first?.sources.every((s) => s.tieOut === "ok")).toBe(true);
+      const snapshot = await t.run(async (ctx) => {
+        const row = await ctx.db
+          .query("snapshots")
+          .withIndex("by_company_asOf", (q) => q.eq("companyId", companyId))
+          .first();
+        return row?.data as { companyId: string } | undefined;
+      });
+      expect(snapshot?.companyId).toBe(profile);
+      await t.mutation(api.field.advanceFeed, { companyId });
+      const after = await ingest(t, companyId);
+      const findings = await t.query(api.field.findings, { companyId, escalatedOnly: true });
+      expect(findings.map((f) => f.summary)).toEqual([]);
+      expect(after).toMatchObject({
+        snapshotVersion: 2,
+        lastIngestStatus: "ok",
+        openEscalations: 0,
+      });
+    },
+    60_000,
+  );
+});
+
 describe("field ingest", () => {
   it("new mock entries -> ingest -> new snapshot version -> recompute, all logged", async () => {
     const { t, companyId } = await setup();

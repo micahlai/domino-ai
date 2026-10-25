@@ -18,7 +18,9 @@
  *   field.exportSeed({ companyId })   { seedId, contentHash, json } where json is
  *     WeeklySeedV1 text for the latest snapshot, already checked by parseWeeklySeedJson.
  * Mutations
- *   field.setup({ seed? })            new live-feed company (sim Kestrel); first ingest queued.
+ *   field.setup({ seed?, profile? })  new live-feed company; first ingest queued. No profile =
+ *     legacy sim Kestrel; profile "kestrel" | "kestrel-churn" | "kestrel-late" | "kestrel-crunch"
+ *     = driver-based company whose mock sources report that profile id as companyId.
  *   field.advanceFeed({ companyId, advance?, anomaly? })  advance the mock world one week
  *     (default) and/or plant one anomaly: duplicate | unusual_amount | unusual_timing |
  *     conflict | missing_expected. Returns { asOf, week, planted: string[] }.
@@ -40,12 +42,21 @@ import {
 } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { scheduledItems } from "@domino/engine";
+import { PROFILE_IDS } from "@domino/sim";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { type QueryCtx, mutation, query } from "./_generated/server";
-import { ANOMALIES, type Anomaly, emptyOverlay, newWorld, nextWorld, plant } from "./fieldFeed";
+import {
+  ANOMALIES,
+  type Anomaly,
+  emptyOverlay,
+  newWorld,
+  nextWorld,
+  plant,
+  profileName,
+} from "./fieldFeed";
 import {
   AGENT,
   AUTO_INTERVAL_MS,
@@ -67,6 +78,7 @@ const SOURCES = [
 ] as const;
 const ESCALATION_BRANCH = "field:escalation";
 const anomaly = v.union(...ANOMALIES.map((a) => v.literal(a)));
+const profileArg = v.union(...PROFILE_IDS.map((p) => v.literal(p)));
 const findingStatus = v.union(v.literal("open"), v.literal("approved"), v.literal("rejected"));
 
 async function personName(ctx: { auth: QueryCtx["auth"] }) {
@@ -75,11 +87,11 @@ async function personName(ctx: { auth: QueryCtx["auth"] }) {
 }
 
 export const setup = mutation({
-  args: { seed: v.optional(v.number()) },
-  handler: async (ctx, { seed }) => {
-    const world = newWorld(Number.isSafeInteger(seed) ? (seed as number) : 1);
+  args: { seed: v.optional(v.number()), profile: v.optional(profileArg) },
+  handler: async (ctx, { seed, profile }) => {
+    const world = newWorld(Number.isSafeInteger(seed) ? (seed as number) : 1, profile);
     const companyId = await ctx.db.insert("companies", {
-      name: "Kestrel Data (live feed)",
+      name: profileName(profile),
       profile: "kestrel",
       currentWeek: world.week,
       today: world.today,

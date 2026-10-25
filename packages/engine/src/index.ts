@@ -35,6 +35,12 @@ export {
   projectedCashFlow,
   recordIndex,
 } from "./cash-flow-statement";
+/** Expected collections from billing plans; the forecast adds these to its schedule. */
+export {
+  RECURRING_REVENUE_METHOD,
+  recurringAssumptions,
+  recurringBillingItems,
+} from "./recurring-revenue";
 /** Historical quarterly cash bridge; engine-local, not part of the Engine contract. */
 export {
   QUARTER_BRIDGE_METHOD,
