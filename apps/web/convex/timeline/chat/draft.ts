@@ -334,7 +334,9 @@ export function isQuestion(text: string): boolean {
   const t = normalizeQuestion(text).trim();
   if (/^what if\b/i.test(t) || /^(suppose|assume|imagine)\b/i.test(t)) return false;
   return (
-    /^(why|how|what|when|where|which|who|explain|is|are|does|do|did)\b/i.test(t) &&
+    // "is/do/does" open a question only with a question mark: "do not pay..." is a request.
+    (/^(why|how|what|when|where|which|who|explain)\b/i.test(t) ||
+      (/^(is|are|does|do|did)\b/i.test(t) && /\?\s*$/.test(t))) &&
     // "How about paying Acme on Nov 3" is a request, not a question.
     !/^how about\b/i.test(t)
   );

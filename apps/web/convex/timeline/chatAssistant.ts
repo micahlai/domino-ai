@@ -126,8 +126,8 @@ export const send = action({
       const intents =
         assistantConfig() &&
         !claim.draft.intents.length &&
-        !isQuestion(args.text) &&
-        !groundingIssue(args.text, [])
+        // Questions still reach the reader (it sees Worker context); answers stay deterministic.
+        (isQuestion(args.text) || !groundingIssue(args.text, []))
           ? await readIntents(claim.run, claim.receipt, args.text, claim.floor)
           : null;
       return await ctx.runMutation(refs.save, {
