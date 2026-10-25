@@ -53,6 +53,22 @@ describe("filing-backed operating selection", () => {
     ).toBe("second");
   });
 
+  it("shows a chosen replay for its selection, else the original", () => {
+    const records = [
+      { company: "2u" as const, scenario: "baseline" as const, companyId: "orig", replayOf: null },
+      {
+        company: "2u" as const,
+        scenario: "baseline" as const,
+        companyId: "copy",
+        replayOf: "orig",
+      },
+    ];
+    const selection = { company: "2u", scenario: "baseline" } as const;
+    expect(selectedOperatingRecord(records, selection)?.companyId).toBe("orig");
+    expect(selectedOperatingRecord(records, selection, "copy")?.companyId).toBe("copy");
+    expect(selectedOperatingRecord(records, selection, "gone")?.companyId).toBe("orig");
+  });
+
   it("keeps each Timeline route scoped to its company and scenario", () => {
     const selection = { company: "2u", scenario: "customer-loss" } as const;
     const world = operatingWorldId(selection);

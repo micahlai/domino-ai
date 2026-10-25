@@ -52,7 +52,13 @@ describe("fieldOperating", { timeout: 60_000 }, () => {
     expect(first.created).toBe(true);
     expect(again).toEqual({ ...first, created: false });
     expect(await t.query(api.fieldOperating.list, {})).toEqual([
-      { companyId: first.companyId, ...selection, name: first.name },
+      {
+        companyId: first.companyId,
+        ...selection,
+        name: first.name,
+        replayOf: null,
+        started: false,
+      },
     ]);
     expect(await t.query(api.fieldOperating.context, { companyId: first.companyId })).toEqual(
       operatingProvenance(selection),
@@ -62,6 +68,66 @@ describe("fieldOperating", { timeout: 60_000 }, () => {
     const tools = await t.query(api.connections.list, { companyId: first.companyId });
     expect(tools?.tools.find((tool) => tool.tool === "plaid")?.status).toBe("connected");
     expect(tools?.tools.find((tool) => tool.tool === "nessie")?.status).toBe("disconnected");
+  });
+
+  it("replays a company as a fresh idle copy without touching the original", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const selection = { company: "2u", scenario: "late-payments" } as const;
+    const original = await t.mutation(api.fieldOperating.ensure, selection);
+    await t.mutation(api.fieldAgents.start, { companyId: original.companyId });
+    vi.runOnlyPendingTimers();
+    await t.finishInProgressScheduledFunctions();
+    const copy = await t.mutation(api.fieldOperating.replay, { companyId: original.companyId });
+    expect(copy.replayOf).toBe(original.companyId);
+    expect(copy.companyId).not.toBe(original.companyId);
+    // ensure still returns the original; the copy is idle and the original keeps its data.
+    expect((await t.mutation(api.fieldOperating.ensure, selection)).companyId).toBe(
+      original.companyId,
+    );
+    expect((await t.query(api.fieldAgents.state, { companyId: copy.companyId }))?.phase).toBe(
+      "idle",
+    );
+    expect((await t.query(api.fieldAgents.state, { companyId: original.companyId }))?.started).toBe(
+      true,
+    );
+    const listed = await t.query(api.fieldOperating.list, {});
+    expect(listed.map((r) => [r.companyId, r.replayOf, r.started])).toEqual([
+      [original.companyId, null, true],
+      [copy.companyId, original.companyId, false],
+    ]);
+    // A replay of a replay still points at the original.
+    const again = await t.mutation(api.fieldOperating.replay, { companyId: copy.companyId });
+    expect(again.replayOf).toBe(original.companyId);
+  });
+
+  it("starts with only the chosen sources and refuses to drop the bank", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const { companyId } = await t.mutation(api.fieldOperating.ensure, {
+      company: "asana-current",
+      scenario: "baseline",
+    });
+    const tools = (await t.query(api.fieldAgents.state, { companyId }))!.tools;
+    await expect(
+      t.mutation(api.fieldAgents.start, {
+        companyId,
+        sources: tools.filter((tool) => tool !== "plaid"),
+      }),
+    ).rejects.toThrow();
+    await expect(
+      t.mutation(api.fieldAgents.start, {
+        companyId,
+        sources: tools.filter((tool) => tool !== "stripe"),
+      }),
+    ).rejects.toThrow();
+    const keep = tools.filter((tool) => tool !== "ramp");
+    await t.mutation(api.fieldAgents.start, { companyId, sources: keep });
+    vi.runOnlyPendingTimers();
+    await t.finishInProgressScheduledFunctions();
+    const state = await t.query(api.fieldAgents.state, { companyId });
+    expect(state?.tools).toEqual(keep);
+    expect(state?.phase).toBe("ready");
   });
 
   it("exports the ingested operating books under a unique scenario identity", async () => {

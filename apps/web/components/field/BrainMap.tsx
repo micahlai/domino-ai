@@ -63,7 +63,7 @@ import { type PanelFocusState, panelFocus } from "./BrainMapFocus";
 import { type Draw, EDGE_SECONDS, type GrowNode, growthPlan } from "./BrainMapGrowth";
 import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
-import { BrainMapIdle, useAgentsState } from "./agents";
+import { AgentsIdleCard, BrainMapIdle, ReplayAction, useAgentsState } from "./agents";
 import { useSelectedCompanyName } from "./company";
 import { nodeResults, resolveMapNode } from "./cross-links";
 import { useFieldData } from "./data";
@@ -1235,13 +1235,17 @@ export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
     return (
       <div className="space-y-5">
         {embedded ? null : (
-          <PageHeader
-            eyebrow={company}
-            title="Your agents are ready to start"
-            description="The tools are connected but nothing has been read yet. Press Start agents: the coordinator calls in helpers as real work is recorded."
-          />
+          <>
+            <PageHeader
+              eyebrow={company}
+              title="Your agents are ready to start"
+              actions={<ReplayAction />}
+              description="The tools are connected but nothing has been read yet. Start the agents: the coordinator calls in helpers as real work is recorded."
+            />
+            <AgentsIdleCard state={agents} />
+          </>
         )}
-        <BrainMapIdle state={agents} />
+        <BrainMapIdle state={agents} showStart={embedded} />
       </div>
     );
   return <BrainMapLive embedded={embedded} />;
@@ -1836,6 +1840,7 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
             </span>
           }
           title={headline}
+          actions={<ReplayAction />}
           description={
             // Activity messages wrap differently; fixed heights keep the canvas in place.
             <span className="flex h-12 items-start gap-1.5 sm:h-6">

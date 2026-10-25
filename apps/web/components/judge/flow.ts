@@ -1,5 +1,6 @@
 // Judge flow helpers shared by the steps: the stored company id (this browser only) and the
 // data source tiles.
+import type { ToolId } from "../../convex/connectors/types";
 import type { JudgeSource } from "../../convex/lib/judge";
 
 const KEY = "domino.judge.company";
@@ -13,6 +14,12 @@ export const SOURCE_TILE: Record<JudgeSource, { vendor: string; name: string; gi
   qbo: { vendor: "qbo", name: "QuickBooks", gives: "Bills to pay" },
   gusto: { vendor: "gusto", name: "Gusto", gives: "Payroll" },
   hubspot: { vendor: "hubspot", name: "HubSpot", gives: "Deals in the pipeline" },
+};
+
+/** Every tool's tile, for operating companies that read a Plaid bank feed instead. */
+export const TOOL_TILE: Record<ToolId, { vendor: string; name: string; gives: string }> = {
+  ...SOURCE_TILE,
+  plaid: { vendor: "plaid", name: "Bank feed (Plaid)", gives: "Cash balance and payments" },
 };
 
 export function readStored(): string | null {

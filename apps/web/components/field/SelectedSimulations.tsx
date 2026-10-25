@@ -15,7 +15,7 @@ export function SelectedSimulations() {
         idle={(state) => (
           <AgentsIdleCard
             state={state}
-            detail="Saved forecasts and what-ifs start from the books the agents read. Start the agents on the Brain map; the first forecast appears here once they finish."
+            detail="Saved forecasts and what-ifs start from the books the agents read. Start them here; the first forecast appears once they finish."
           />
         )}
       >

@@ -12,7 +12,7 @@ import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
 import { OpenInTimeline } from "../OpenInTimeline";
-import { AgentsGate } from "../agents";
+import { AgentsGate, AgentsIdleCard } from "../agents";
 import { useSelectedCompany, useSelectedCompanyName } from "../company";
 import { formatCents } from "../dashboard/money";
 import type { CustomerRow, CustomersView, RiskLevel } from "./derive";
@@ -39,12 +39,12 @@ function Live() {
   if (!companyId) return <Loading />;
   return (
     <AgentsGate
-      idle={() => (
+      idle={(state) => (
         <Shell>
-          <Notice title="Books not read yet">
-            Customer balances, payment behavior and risk appear after the agents read the books.
-            Start the agents on the Brain map.
-          </Notice>
+          <AgentsIdleCard
+            state={state}
+            detail="Customer balances, payment behavior and risk appear after the agents read the books. Choose the tools they may read and start them; the Brain map shows the work as it happens."
+          />
         </Shell>
       )}
     >
