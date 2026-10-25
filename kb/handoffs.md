@@ -1,3 +1,8 @@
+## 2026-10-25 Field reconstructed operating demo checked
+- Done: primary2U ledger preserves public totals; two fictional Asana/GitLab inspired datasets; four future scenarios; one mock ledger through agents/dashboard/Timeline; full operating pages and explicit provenance. Independent accounting and integration reviews accept. Candidate b53181a.
+- Checks: full pnpm check with web1,215 tests and five passing package test tasks; final scoped route/provenance tests, Convex tsc, webpack build and production browser pass. Actual dashboard/Timeline13-week cash values match.
+- Next: authorized field/main fast-forward/push, Next3114 restart, one live verification, isolated3138/3298 stop. Main/protected ports/data preserved. Exact evidence and limitations: features/field/HANDOFF.md.
+
 # Handoffs
 
 ## 2026-10-25 Field map stability fixed
