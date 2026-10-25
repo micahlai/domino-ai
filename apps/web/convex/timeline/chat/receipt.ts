@@ -7,17 +7,26 @@ export const CHAT_METHOD = "timeline_chat@1";
 export const Id = z.string().trim().min(1).max(240);
 export const DateOnly = z.string().refine(isCalendarDate, "Use a real YYYY-MM-DD date");
 const Timestamp = z.string().datetime();
+/** A tappable reply Claude offers, such as an open invoice to pick. `value` is sent as text. */
+export const ChatChoiceSchema = z
+  .object({ label: z.string().min(1).max(120), value: z.string().min(1).max(200) })
+  .strict();
+export type ChatChoice = z.infer<typeof ChatChoiceSchema>;
+export const MAX_CHOICES = 12;
 export const ChatTurnSchema = z
   .object({
     id: Id,
     role: z.enum(["user", "assistant"]),
     text: z.string().min(1).max(2000),
     createdAt: Timestamp,
+    choices: z.array(ChatChoiceSchema).min(1).max(MAX_CHOICES).optional(),
   })
   .strict()
   .superRefine((turn, ctx) => {
     if (turn.role === "user" && turn.text.length > 1000)
       ctx.addIssue({ code: "custom", message: "User messages are at most 1,000 characters" });
+    if (turn.role === "user" && turn.choices)
+      ctx.addIssue({ code: "custom", message: "Only assistant messages offer choices" });
   });
 export const ChatReceiptSchema = z
   .object({

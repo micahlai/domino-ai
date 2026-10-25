@@ -87,6 +87,56 @@ export function ReviewProposal({
     </div>
   );
 }
+type Choice = { label: string; value: string };
+/** Claude's offered replies: buttons for a few, a dropdown for longer lists like invoices. */
+function Choices({
+  choices,
+  disabled,
+  onPick,
+}: { choices: Choice[]; disabled: boolean; onPick: (value: string) => void }) {
+  const [picked, setPicked] = useState("");
+  if (choices.length <= 5)
+    return (
+      <div className="flex flex-wrap gap-2" data-testid="chat-choices">
+        {choices.map((c) => (
+          <Button
+            key={c.value}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => onPick(c.value)}
+          >
+            {c.label}
+          </Button>
+        ))}
+      </div>
+    );
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-testid="chat-choices">
+      <label className="sr-only" htmlFor="chat-choice">
+        Choose an option
+      </label>
+      <select
+        id="chat-choice"
+        className={`${inputClass} min-w-0 flex-1`}
+        value={picked}
+        disabled={disabled}
+        onChange={(e) => setPicked(e.target.value)}
+      >
+        <option value="">Choose an option…</option>
+        {choices.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+      <Button type="button" disabled={disabled || !picked} onClick={() => onPick(picked)}>
+        Use this
+      </Button>
+    </div>
+  );
+}
 export function ChatView({
   run,
   selected,
@@ -296,6 +346,13 @@ export function ChatView({
                   </li>
                 ))}
               </ol>
+              {receipt.status !== "saved" && receipt.turns.at(-1)?.choices ? (
+                <Choices
+                  choices={receipt.turns.at(-1)?.choices ?? []}
+                  disabled={pending || blocked || turns >= 20}
+                  onPick={(value) => void write({ kind: "send", receipt, text: value })}
+                />
+              ) : null}
               {receipt.status !== "saved" ? (
                 <form
                   className="space-y-2"

@@ -2,10 +2,34 @@ import { canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
 import { z } from "zod";
 import type { Doc } from "../_generated/dataModel";
-import { type MutationCtx, type QueryCtx, mutation, query } from "../_generated/server";
-import { DraftSchema, GREETING, advance, emptyDraft, validateProposal } from "./chat/draft";
-import { CHAT_METHOD, type ChatReceipt, DateOnly, Id, exactReceipt } from "./chat/receipt";
+import {
+  type MutationCtx,
+  type QueryCtx,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "../_generated/server";
+import {
+  DraftSchema,
+  GREETING,
+  advance,
+  emptyDraft,
+  evaluateIntents,
+  validateProposal,
+} from "./chat/draft";
+import {
+  CHAT_METHOD,
+  type ChatChoice,
+  ChatChoiceSchema,
+  type ChatReceipt,
+  DateOnly,
+  Id,
+  MAX_CHOICES,
+  exactReceipt,
+} from "./chat/receipt";
 import { checkPinned, checkSelection, source } from "./chat/source";
+import { IntentSchema } from "./questions/intent";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
 
@@ -96,6 +120,7 @@ function append(
   role: "user" | "assistant",
   text: string,
   now: string,
+  choices?: ChatChoice[],
 ): ChatReceipt {
   if (receipt.turns.length >= 42)
     reject("CHAT_LIMIT", "This chat has reached 42 messages. Start a new chat to continue.");
@@ -103,7 +128,13 @@ function append(
     ...receipt,
     turns: [
       ...receipt.turns,
-      { id: `${receipt.conversationId}:${receipt.turns.length}`, role, text, createdAt: now },
+      {
+        id: `${receipt.conversationId}:${receipt.turns.length}`,
+        role,
+        text,
+        createdAt: now,
+        ...(choices?.length ? { choices } : {}),
+      },
     ],
   };
 }
@@ -303,6 +334,91 @@ export const confirm = mutation({
       now,
     );
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft } });
+    return accept(ctx, args, prior.hash, updated);
+  },
+});
+/** Current receipt and draft for the Claude chat action (timeline/chatAssistant:send). */
+export const assistantState = internalQuery({
+  args: keyArgs,
+  handler: async (ctx, raw) => {
+    const args = parse(KeySchema, raw);
+    const row = await rowOf(ctx, args.companyId, args.conversationId);
+    if (!row) reject("CHAT_NOT_FOUND", "This chat was not found for this company.");
+    const { receipt, draft } = await read(ctx, row);
+    return { receipt, draft };
+  },
+});
+const AssistantTurnSchema = WriteSchema.extend({
+  text: z
+    .string()
+    .min(1)
+    .max(1000)
+    .refine((s) => s.trim().length > 0),
+  reply: z.string().min(1).max(2000),
+  choices: z.array(ChatChoiceSchema).max(MAX_CHOICES),
+  intents: z.array(IntentSchema).max(4).nullable(),
+}).strict();
+/**
+ * Save one Claude-assisted turn. Claude only proposes slot values; the draft is re-checked
+ * here with the same validator and resolver as the fixed grammar, so the saved proposal is
+ * exactly what the deterministic path would build from those values.
+ */
+export const saveAssistantTurn = internalMutation({
+  args: {
+    ...writeArgs,
+    text: v.string(),
+    reply: v.string(),
+    choicesJson: v.string(),
+    intentsJson: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, raw): Promise<ChatReceipt> => {
+    const { choicesJson, intentsJson, ...rest } = raw;
+    const args = parse(AssistantTurnSchema, {
+      ...rest,
+      choices: JSON.parse(choicesJson),
+      intents: intentsJson === null ? null : JSON.parse(intentsJson),
+    });
+    const prior = await request(ctx, "assistant", {
+      companyId: args.companyId,
+      requestId: args.requestId,
+    });
+    if (prior.receipt) return prior.receipt;
+    const { row, receipt, draft, run } = await current(ctx, args);
+    if (
+      receipt.turns.filter((t) => t.role === "user").length >= 20 ||
+      receipt.turns.length + 2 > 42
+    )
+      reject(
+        "CHAT_LIMIT",
+        "This chat has reached 20 user turns or 42 messages. Start a new chat to continue.",
+      );
+    let nextDraft = draft;
+    let proposal = receipt.proposal;
+    let pendingField = receipt.pendingField;
+    if (args.intents !== null) {
+      const result = evaluateIntents(run, args.intents, receipt.conversationId);
+      nextDraft = result.draft;
+      proposal = result.proposal;
+      pendingField = result.proposal ? null : result.pendingField;
+    }
+    const now = new Date().toISOString();
+    let updated: ChatReceipt = {
+      ...receipt,
+      revision: receipt.revision + 1,
+      status: proposal ? "ready" : "collecting",
+      proposal,
+      pendingField,
+      updatedAt: now,
+    };
+    updated = append(
+      append(updated, "user", args.text, now),
+      "assistant",
+      args.reply,
+      now,
+      args.choices,
+    );
+    checkRowSize({ receipt: updated, draft: nextDraft });
+    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: nextDraft } });
     return accept(ctx, args, prior.hash, updated);
   },
 });

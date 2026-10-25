@@ -377,6 +377,8 @@ describe("timeline questions: clarification", () => {
 });
 
 describe("timeline questions: provider", () => {
+  // The earlier one-shot reader; the Claude assistant path is covered in assistant.test.ts.
+  beforeEach(() => vi.stubEnv("TIMELINE_ASSISTANT", "off"));
   const unknown = "Could you sort out the thing with the agency bill being slow?";
 
   it("saves a failure without any call when the provider is not configured", async () => {

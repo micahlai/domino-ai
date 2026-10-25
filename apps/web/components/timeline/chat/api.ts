@@ -43,6 +43,15 @@ const Receipt = z
             role: z.enum(["user", "assistant"]),
             text: z.string().min(1).max(2000),
             createdAt: Stamp,
+            choices: z
+              .array(
+                z
+                  .object({ label: z.string().min(1).max(120), value: z.string().min(1).max(200) })
+                  .strict(),
+              )
+              .min(1)
+              .max(12)
+              .optional(),
           })
           .strict(),
       )
@@ -180,7 +189,10 @@ export type ConfirmArgs = TurnArgs & { reviewed: true };
 export const beginRef = makeFunctionReference<"mutation", BeginArgs, unknown>(
   "timeline/chat:begin",
 );
-export const sendRef = makeFunctionReference<"mutation", SendArgs, unknown>("timeline/chat:send");
+// Claude answers when the deployment has a key; otherwise the action uses the fixed grammar.
+export const sendRef = makeFunctionReference<"action", SendArgs, unknown>(
+  "timeline/chatAssistant:send",
+);
 export const resetRef = makeFunctionReference<"mutation", TurnArgs, unknown>("timeline/chat:reset");
 export const confirmRef = makeFunctionReference<"mutation", ConfirmArgs, unknown>(
   "timeline/chat:confirm",

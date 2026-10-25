@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQueries } from "convex/react";
+import { useAction, useMutation, useQueries } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { WorkspaceRun } from "../workspace/api";
@@ -44,7 +44,7 @@ function Ready({
   );
   const raw = useQueries(queries) as Record<string, unknown>;
   const begin = useMutation(beginRef);
-  const send = useMutation(sendRef);
+  const send = useAction(sendRef);
   const reset = useMutation(resetRef);
   const confirm = useMutation(confirmRef);
   const [ledger] = useState(() => new RequestLedger());
