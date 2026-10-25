@@ -7,13 +7,17 @@ import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
+import { useSelectedProfile } from "./field/company";
 
 // Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
 // harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
 // case study opens from the company switcher.
 const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
+/** Timeline's own routes (TL7): /c/<company>/timeline and its analysis page. */
+const TIMELINE = /^\/c\/[^/]+\/timeline(\/|$)/;
 const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
-const primaryLinks = [
+/** The Timeline link follows the company picked in the top bar. */
+const primaryLinks = (profile: string) => [
   { href: "/", label: "Dashboard", on: (p: string) => p === "/" },
   {
     href: "/field",
@@ -27,7 +31,7 @@ const primaryLinks = [
     on: (p: string) => under(p, "/field/connect"),
   },
   {
-    href: "/c/kestrel",
+    href: `/c/${profile}/timeline`,
     label: "Timeline",
     on: (p: string) => under(p, "/c") && !SIMULATIONS.test(p),
   },
@@ -51,7 +55,8 @@ const focusRing =
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const inDemo = pathname.startsWith("/c/");
+  // The older demo sub-navigation stays on the legacy /c pages; Timeline pages have their own.
+  const inDemo = pathname.startsWith("/c/") && !TIMELINE.test(pathname);
   const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
   const demoNav = demoLinks.map((l) => ({
     ...l,
@@ -117,6 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 /** Logo, page links, then the company switcher. On small screens the page links drop to their
  * own scrollable row under the logo. Always the light style, even above the dark pages. */
 function TopBar({ pathname }: { pathname: string }) {
+  const profile = useSelectedProfile();
   return (
     <>
       <Suspense fallback={null}>
@@ -146,7 +152,7 @@ function TopBar({ pathname }: { pathname: string }) {
             className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto border-t px-2 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:border-t-0 md:px-0"
           >
             <ul className="flex h-11 gap-1 md:h-full">
-              {primaryLinks.map(({ href, label, on }) => {
+              {primaryLinks(profile).map(({ href, label, on }) => {
                 const active = on(pathname);
                 return (
                   <li key={href} className="flex shrink-0">

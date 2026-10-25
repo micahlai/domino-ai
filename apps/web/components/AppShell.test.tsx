@@ -29,7 +29,7 @@ describe("AppShell navigation", () => {
       "/field",
       "/field/map",
       "/field/connect",
-      "/c/kestrel",
+      "/c/kestrel/timeline",
       "/simulations",
       "/judge",
     ].map((h) => html.indexOf(`href="${h}"`));
@@ -60,6 +60,13 @@ describe("AppShell navigation", () => {
     expect(current(render("/c/kestrel/simulations"))).toEqual(["Simulations"]);
     expect(current(render("/judge"))).toEqual(["Try it"]);
     expect(current(render("/case"))).toEqual([]);
+  });
+
+  it("opens Timeline's own pages without the old demo sub-navigation", () => {
+    const html = render("/c/kestrel-crunch/timeline");
+    expect(current(html)).toEqual(["Timeline"]);
+    expect(html).not.toContain("/c/kestrel-crunch/learning");
+    expect(current(render("/c/kestrel-crunch/timeline/analysis"))).toEqual(["Timeline"]);
   });
 
   it("keeps the Timeline sub-navigation inside the company routes", () => {

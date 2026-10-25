@@ -1,3 +1,4 @@
+import { TimelineBridge } from "@/components/field/TimelineBridge";
 import { WorkspaceLive } from "@/components/timeline/workspace/WorkspaceLive";
 import type { Metadata } from "next";
 
@@ -15,6 +16,7 @@ export default async function Page({ params }: { params: Promise<{ companyId: st
           scenarios. Saved scenarios never change.
         </p>
       </div>
+      <TimelineBridge companyId={companyId} />
       <WorkspaceLive key={companyId} companyId={companyId} />
     </div>
   );

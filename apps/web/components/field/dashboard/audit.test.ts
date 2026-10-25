@@ -6,7 +6,6 @@ import { clampLabel, lowestProjectedIndex, stepWeek } from "./charts";
 import { pickRisks } from "./data";
 import { type CashPoint, type DashboardView, deriveDashboard } from "./derive";
 import { type AnalystLatest, analystRisks, illustrativeRisks } from "./risks";
-import { TIMELINE_PENDING_TEXT, timelineHref } from "./timeline";
 
 const MODEL = { version: 1, customerDelayDays: {}, recurringSpend: [], rules: [] };
 
@@ -65,13 +64,6 @@ describe("chart annotations and keys", () => {
     expect(stepWeek(5, "Home", 14)).toBe(0);
     expect(stepWeek(5, "End", 14)).toBe(13);
     expect(stepWeek(5, "Enter", 14)).toBeNull();
-  });
-});
-
-describe("timeline links", () => {
-  it("are disabled for every simulated company until the Timeline merge", () => {
-    for (const c of FIELD_COMPANIES) expect(timelineHref(c.id)).toBeNull();
-    expect(TIMELINE_PENDING_TEXT).toBe("Timeline opens after the Timeline merge");
   });
 });
 

@@ -4,15 +4,25 @@ import { type CompanyModel, CompanyModelSchema } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { auditSnapshot } from "@domino/engine";
 import { type ProfileId, createProfileCompany } from "@domino/sim";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import { type ReactNode, createContext, createElement, useContext } from "react";
+import {
+  type ReactNode,
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { DEFAULT_FIELD_COMPANY, fieldCompany } from "../../../convex/lib/fieldCompanies";
+import { listAnalysesRef, outputRef, readAnalyses } from "../../timeline/analysis/api";
+import { type FinancialOutput, parseFinancialOutputJson } from "../../timeline/analysis/output";
 import { useSelectedCompany, useSelectedProfile } from "../company";
 import { type DashboardResult, deriveDashboard } from "./derive";
 import { type AnalystLatest, type RiskFeed, analystRisks, illustrativeRisks } from "./risks";
+import { type TimelineLink, type TimelineRead, pickAnalysis } from "./timeline";
 
 // The one switch between the fieldDashboard.summary Convex query and labelled demo data (only
 // when no backend is configured).
@@ -42,8 +52,11 @@ export type DashboardData = {
   header?: DashboardHeader;
   /** Undefined while loading; null when the live feed has no ingested snapshot yet. */
   result?: DashboardResult | null;
-  /** Risk cards: the analyst's latest run when it has finished scenarios, else illustrative. */
+  /** Field triage cards: the analyst's latest run when it has finished scenarios, else
+   * illustrative. Timeline's saved risk scenarios (below) take precedence on the dashboard. */
   risks?: RiskFeed;
+  /** The selected company's latest saved Timeline run (TL6 output + TL7 analysis). */
+  timeline?: TimelineRead;
 };
 
 /** Analyst cards when the live run has finished scenarios; the labelled sample otherwise. */
@@ -152,6 +165,7 @@ function LiveData({ children }: { children: ReactNode }) {
     api.fieldAnalyst.latest,
     r?.companyId ? { companyId: r.companyId as Id<"companies"> } : "skip",
   );
+  const timeline = useTimelineRun(r?.companyId as Id<"companies"> | undefined);
   const value: DashboardData =
     r === undefined
       ? LOADING
@@ -163,8 +177,53 @@ function LiveData({ children }: { children: ReactNode }) {
             header: liveHeader(r),
             result: r.result,
             risks: pickRisks(r.result, latest),
+            timeline,
           };
   return createElement(DashboardContext.Provider, { value }, children);
+}
+
+/**
+ * The selected company's newest Timeline link (fieldTimeline.latest), its TL6 financial output
+ * (timeline/output:get, an action, re-read when the analysis changes since TL7 saves new child
+ * scenarios) and its TL7 analysis receipts (timeline/analysis:list). All read-only.
+ */
+export function useTimelineRun(companyId: Id<"companies"> | undefined): TimelineRead {
+  const raw = useQuery(api.fieldTimeline.latest, companyId ? { companyId } : "skip");
+  const link = (raw ?? undefined) as TimelineLink | undefined;
+  const key = link ? { companyId: link.timelineCompanyId, runId: link.runId } : null;
+  const analyses = useQuery(listAnalysesRef, key ?? "skip");
+  const read = key ? readAnalyses(analyses, key) : null;
+  const analysis =
+    read?.state === "ready" && link ? pickAnalysis(read.value, link.analysisId) : null;
+  const getOutput = useAction(outputRef);
+  const [output, setOutput] = useState<{ key: string; value: FinancialOutput | null }>();
+  const outputKey = key ? `${key.companyId}|${key.runId}|${analysis?.status ?? ""}` : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: key is rebuilt each render; outputKey carries its identity
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    getOutput(key).then(
+      (text) => {
+        const parsed = parseFinancialOutputJson(text);
+        const ok = parsed.success && parsed.data.runId === key.runId;
+        if (live) setOutput({ key: outputKey, value: ok ? parsed.data : null });
+      },
+      () => live && setOutput({ key: outputKey, value: null }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [outputKey, getOutput]);
+  if (!companyId || raw === undefined) return { state: "loading" };
+  if (!link) return { state: "none" };
+  // Keep showing the last output while a refreshed one loads after the analysis changes.
+  if (!output) return { state: "loading", link };
+  return {
+    state: "ready",
+    link,
+    output: output.value,
+    analysis: read?.state === "ready" ? analysis : null,
+  };
 }
 
 function DemoData({ note, children }: { note: string; children: ReactNode }) {

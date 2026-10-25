@@ -11,9 +11,15 @@ import { Button } from "../../ui/button";
 import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { useIsReplayCompany, useSelectedCompanyName, useSelectedProfile } from "../company";
+import { useIsReplayCompany, useSelectedCompanyName } from "../company";
 import { EmptyRow, Panel } from "../panel";
 import { RewindDashboard } from "../rewind/RewindDashboard";
+import {
+  TimelineActions,
+  TimelineCashLineSection,
+  TimelineHealthBanner,
+  TimelineRisks,
+} from "./TimelinePanels";
 import { CashFlowBars, CashLine, FLOW_SECTIONS } from "./charts";
 import {
   type DashboardData,
@@ -24,7 +30,7 @@ import {
 import type { DashboardView, Health } from "./derive";
 import { formatCents } from "./money";
 import { OUTCOME_WORDS, type RiskFeed } from "./risks";
-import { TIMELINE_PENDING_TEXT, timelineHref } from "./timeline";
+import type { TimelineRead } from "./timeline";
 
 // Home dashboard: are we OK on cash for the next 13 weeks? If not, when does it break, why,
 // and what do I do? Order: verdict and key numbers, usable-cash chart, main drivers, the
@@ -62,7 +68,12 @@ function DashboardBody() {
           wrong number. {result.message}
         </Notice>
       ) : (
-        <Sections view={result.view} header={data.header} risks={data.risks} />
+        <Sections
+          view={result.view}
+          header={data.header}
+          risks={data.risks}
+          timeline={data.timeline}
+        />
       )}
     </div>
   );
@@ -72,18 +83,39 @@ function Sections({
   view,
   header,
   risks,
-}: { view: DashboardView; header?: DashboardHeader; risks?: RiskFeed }) {
+  timeline,
+}: {
+  view: DashboardView;
+  header?: DashboardHeader;
+  risks?: RiskFeed;
+  timeline?: TimelineRead;
+}) {
+  // TL7 integration: a saved Timeline run is the source of truth for health, the 13-week chart
+  // and risk scenarios. Field's derivation is the labelled fallback until one exists.
+  const run = timeline?.state === "ready" && timeline.output ? timeline : null;
   return (
     <>
       <div className="space-y-4">
-        <HealthBanner view={view} />
+        {run?.output ? (
+          <TimelineHealthBanner output={run.output} timeline={run} />
+        ) : (
+          <HealthBanner view={view} timeline={timeline} />
+        )}
         <Tiles view={view} />
       </div>
-      <CashLineSection view={view} />
+      {run?.output ? (
+        <TimelineCashLineSection output={run.output} asOf={view.asOf} markers={view.markers} />
+      ) : (
+        <CashLineSection view={view} />
+      )}
       <Drivers view={view} />
       <CashFlowSection view={view} />
       <ComingUp view={view} />
-      {risks ? <Risks feed={risks} /> : null}
+      {run ? <TimelineRisks timeline={run} /> : null}
+      {/* Field triage stays for research and the brain map; sample cards only before Timeline. */}
+      {risks && (risks.source === "analyst" || !run) ? (
+        <Risks feed={risks} secondary={Boolean(run)} />
+      ) : null}
       <Attention header={header} />
     </>
   );
@@ -107,28 +139,6 @@ function Illustrative({ children }: { children: ReactNode }) {
     <p className="text-[13px] leading-5 text-muted-foreground">
       <span className="font-medium text-foreground">Illustrative.</span> {children}
     </p>
-  );
-}
-
-/**
- * The timeline button for the selected company. The Timeline cannot open the simulated
- * companies yet, so this is a disabled button saying so rather than a link to another company.
- */
-function TimelineAction({ variant }: { variant: "default" | "outline" }) {
-  const href = timelineHref(useSelectedProfile());
-  if (!href)
-    return (
-      <Button variant="outline" disabled className="h-11 shrink-0 sm:h-[var(--control-h)]">
-        {TIMELINE_PENDING_TEXT}
-      </Button>
-    );
-  return (
-    <Button asChild variant={variant} className="h-11 shrink-0 sm:h-[var(--control-h)]">
-      <Link href={href}>
-        Try fixes on the timeline
-        <ArrowRight aria-hidden="true" />
-      </Link>
-    </Button>
   );
 }
 
@@ -319,7 +329,7 @@ export function healthWords(view: DashboardView): { sentence: string; action: st
   };
 }
 
-function HealthBanner({ view }: { view: DashboardView }) {
+function HealthBanner({ view, timeline }: { view: DashboardView; timeline?: TimelineRead }) {
   const meta = HEALTH[view.health.rating];
   const Icon = meta.icon;
   const words = healthWords(view);
@@ -334,9 +344,14 @@ function HealthBanner({ view }: { view: DashboardView }) {
       <div className="flex min-w-0 items-start gap-3">
         <Icon className={cn("mt-0.5 size-5 shrink-0", meta.tone)} aria-hidden="true" />
         <div className="min-w-0">
-          <Badge variant={meta.badge} className="font-semibold">
-            {meta.label}
-          </Badge>
+          <span className="flex flex-wrap items-center gap-2">
+            <Badge variant={meta.badge} className="font-semibold">
+              {meta.label}
+            </Badge>
+            <Badge variant="secondary" className="font-normal">
+              Field estimate
+            </Badge>
+          </span>
           <p className="mt-2 max-w-3xl text-[15px] font-medium leading-6 text-foreground">
             {words.sentence}
           </p>
@@ -346,13 +361,17 @@ function HealthBanner({ view }: { view: DashboardView }) {
             </p>
           ) : null}
           <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            Rated from the lowest projected cash against{" "}
-            {view.lenderMinimum ? "the lender's minimum" : "zero"}.
+            {timeline?.state === "loading"
+              ? "Reading the saved Timeline run... "
+              : "No Timeline run yet: Field's own estimate from the lowest projected cash against "}
+            {timeline?.state === "loading"
+              ? null
+              : `${view.lenderMinimum ? "the lender's minimum" : "zero"}. Open in Timeline for the rated forecast and risk scenarios.`}
           </p>
         </div>
       </div>
       <div className="self-start md:self-center">
-        <TimelineAction variant="default" />
+        <TimelineActions timeline={timeline} />
       </div>
     </section>
   );
@@ -705,12 +724,16 @@ function ComingUp({ view }: { view: DashboardView }) {
 
 // ---------- 8. Risks ----------
 
-function Risks({ feed }: { feed: RiskFeed }) {
+function Risks({ feed, secondary = false }: { feed: RiskFeed; secondary?: boolean }) {
   const analyst = feed.source === "analyst";
   return (
     <Section
-      title={analyst ? "Risks the analyst found" : "Risks to watch"}
-      description="What happens to the lowest projected cash if each event comes true, and a fix to try."
+      title={analyst ? "Field triage scenarios" : "Sample risks"}
+      description={
+        secondary
+          ? "Field's analyst, for triage and research. Timeline's saved risk scenarios above are the forecast of record."
+          : "What happens to the lowest projected cash if each event comes true, and a fix to try."
+      }
       card={false}
     >
       {analyst ? (

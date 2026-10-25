@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "../ui/input";
 import { PageHeader } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
+import { OpenInTimeline } from "./OpenInTimeline";
 import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import {
@@ -142,6 +143,7 @@ export function WorkerPage() {
               <FileOutput aria-hidden="true" />
               Export seed
             </Button>
+            <OpenInTimeline variant="outline" />
           </>
         }
       />

@@ -189,10 +189,14 @@ function Picker({
   };
   const selected = twoU ? undefined : items.find((i) => i.profile === current);
   const name = twoU ? "2U, Inc." : (selected?.name ?? "Choose a company");
+  // On Timeline's pages (/c/<company>/timeline...) the timeline follows the picked company:
+  // its saved runs are per company, so a run id never carries over. 2U has no timeline.
+  const onTimeline = /^\/c\/[^/]+\/timeline(\/|$)/.test(pathname);
   const pick = (choice: typeof REPLAY_COMPANY | ProfileId) => {
     selectCompany(choice);
     setOpen(false);
-    if (onCase) router.push("/");
+    if (onCase || (onTimeline && choice === REPLAY_COMPANY)) router.push("/");
+    else if (onTimeline) router.push(`/c/${choice}/timeline`);
     else button.current?.focus();
   };
   return (

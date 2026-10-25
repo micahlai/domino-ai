@@ -1,3 +1,4 @@
+import { TimelineBridge } from "@/components/field/TimelineBridge";
 import { AnalysisLive } from "@/components/timeline/analysis/AnalysisLive";
 import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Timeline risk analysis" };
@@ -11,6 +12,7 @@ export default async function Page({ params }: { params: Promise<{ companyId: st
           Review possible cash risks, response costs and saved evidence.
         </p>
       </div>
+      <TimelineBridge companyId={companyId} />
       <AnalysisLive key={companyId} companyId={companyId} />
     </div>
   );

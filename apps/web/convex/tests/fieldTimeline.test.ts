@@ -26,7 +26,8 @@ async function crunchCompany() {
   return { t, companyId };
 }
 
-describe("fieldTimeline", () => {
+// Full-company engine runs take a few seconds when the whole suite runs in parallel.
+describe("fieldTimeline", { timeout: 30_000 }, () => {
   it("imports Osprey's latest books into Timeline and links the saved run back", async () => {
     const { t, companyId } = await crunchCompany();
     expect(await t.query(api.fieldTimeline.latest, { companyId })).toBeNull();
