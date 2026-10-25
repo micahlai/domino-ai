@@ -10,6 +10,7 @@ import type {
   Snapshot,
 } from "@domino/contracts";
 import { engine, rankFixes, scheduledItems } from "@domino/engine";
+import { cashSchedule } from "@domino/engine/src/forecast";
 
 /**
  * Field analyst scenarios (pure, deterministic). The analyst picks 6 to 10 stress scenarios
@@ -100,19 +101,29 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
   };
   const top = topCustomers(s, 3);
   const lead = top[0];
-  if (lead)
+  if (lead) {
+    const churn: Change = { kind: "churn", customerId: lead.id, fromDate: addDays(s.asOf, 1) };
+    const before = cashSchedule(s, model, []);
+    const after = cashSchedule(s, model, [churn]);
+    const remaining = new Set(
+      after.items.filter((item) => item.kind === "invoice").map((item) => item.id),
+    );
+    // Churn already removes future receipts. Only separately lose overdue invoices it leaves.
+    // Omitting redundant changes preserves the engine result and keeps every Timeline step real.
+    const changes: Change[] = [
+      ...(after.items.length < before.items.length ? [churn] : []),
+      ...lead.open
+        .slice(0, MAX_CHANGES)
+        .filter((invoice) => remaining.has(invoice.id))
+        .map((invoice) => ({ kind: "lose_invoice" as const, invoiceId: invoice.id })),
+    ];
     add({
       id: "top_customer_leaves",
       title: `${lead.name} leaves`,
-      changes: [
-        { kind: "churn", customerId: lead.id, fromDate: s.asOf },
-        ...lead.open.slice(0, MAX_CHANGES).map((i) => ({
-          kind: "lose_invoice" as const,
-          invoiceId: i.id,
-        })),
-      ],
+      changes,
       basis: `Largest open receivables customer stops billing and paying (${lead.open.length} open invoices, ${usd(sumIn(lead.open))})`,
     });
+  }
   for (const days of [30, 60]) {
     const late = top.flatMap((c) => c.open).slice(0, MAX_CHANGES);
     if (late.length === 0) break;
@@ -136,7 +147,7 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
         kind: "remove_cash",
         date: addDays(s.asOf, d),
         amount: extra,
-        label: "Vendor cost spike",
+        label: `Vendor cost spike ${addDays(s.asOf, d)}`,
       })),
       basis: `${recentBills.length} bills in the last 90 days average ${usd(monthlyBills)} a month`,
     });
@@ -159,7 +170,7 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
         kind: "remove_cash",
         date,
         amount: perRun,
-        label: "Planned hires",
+        label: `Planned hires ${date}`,
       })),
       basis: `Average of the last ${recent.length} payroll runs is ${usd(avgRun)}`,
     });
@@ -202,7 +213,7 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
         kind: "remove_cash",
         date: addDays(s.asOf, d),
         amount: weekly,
-        label: "Card spend spike",
+        label: `Card spend spike ${addDays(s.asOf, d)}`,
       })),
       basis: `${cards.length} card charges in the last 28 days total ${usd(cardSpend)}`,
     });
@@ -311,7 +322,11 @@ export function fixCandidates(inputs: Inputs, sc: Scenario, work: ForecastWork):
       targetRiskIds: target,
     });
   }
-  const hires = sc.changes.filter((c) => c.kind === "remove_cash" && c.label === "Planned hires");
+  const hires = sc.changes.filter(
+    (c) =>
+      c.kind === "remove_cash" &&
+      (c.label === "Planned hires" || c.label.startsWith("Planned hires ")),
+  );
   const perRun = hires[0]?.kind === "remove_cash" ? hires[0].amount : 0;
   if (perRun > 0)
     fixes.push({

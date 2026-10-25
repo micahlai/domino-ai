@@ -155,6 +155,8 @@ export const fieldTables = {
     traceInputs: v.optional(v.string()),
     /** Run-local candidates survive the mutable open-suggestion upserts. */
     traceCandidates: v.optional(v.string()),
+    /** Completed round lookup also works when decided suggestions retain legacy origins. */
+    advisorScenarioId: v.optional(v.string()),
     /** Validated FieldTrace JSON, written once when this run becomes terminal. */
     traceReceipt: v.optional(v.string()),
     // Claude's summary of the engine results (fieldAnalyst.summarize). Absent on older rows.
@@ -194,6 +196,7 @@ export const fieldTables = {
   })
     .index("by_companyId", ["companyId"])
     .index("by_company_and_runId", ["companyId", "runId"])
+    .index("by_company_snapshot_advisor", ["companyId", "snapshotVersion", "advisorScenarioId"])
     .index("by_runId", ["runId"]),
   // Model-call budget (fieldAi.ts): one row per Claude call or CREAO run. Per company at most one
   // of each kind per snapshot version, and at most AI_CALLS_PER_HOUR rows per hour in total.

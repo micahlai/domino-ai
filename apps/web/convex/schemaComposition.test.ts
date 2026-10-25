@@ -94,6 +94,7 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
   analystRuns: [
     ["by_companyId", ["companyId"]],
     ["by_company_and_runId", ["companyId", "runId"]],
+    ["by_company_snapshot_advisor", ["companyId", "snapshotVersion", "advisorScenarioId"]],
     ["by_runId", ["runId"]],
   ],
   analystScenarios: [["by_runId_and_index", ["runId", "index"]]],
