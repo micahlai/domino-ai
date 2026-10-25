@@ -7,6 +7,6 @@
 - **Notes:** root combined e85c57f includes originalUI+R1+d8b18a8 phone fix. Existing WorkspaceLive.confirmProposal always calls simulate, which rejects empty changes and breaks pure constraint prompts. Route rule-only full set/note through existing reviseRules mutation path without navigating; then exact link/recovery identical. Keep data flow/UI plain, no backend/shared/dashboard/styles/env/services/provider calls. User authorizes Codex parallel throughTL5. No delegation/push/main. Root handles actual browser confirmation test.
 
 ## Result
-- Done:
-- What changed:
-- Watch out:
+- Done: rule-only and combined confirmation routing complete. `pnpm check` passes five typechecks, 1,718 tests (web fresh 575; other packages cached), and lint over 338 files. Focused proposal/workspace coverage is 57 tests. Log: `/tmp/TL3U-rule-proposals-check.log`.
+- What changed: actual `WorkspaceLive.confirmProposal` uses the new validated helper. Rules alone call `reviseConstraints`; events and optional rules call one `simulate`; both link the exact saved result. Same payload retains its request id after an uncertain result; failed linking keeps the saved run available for link-only recovery. Empty, cross-context, malformed, unsafe-cent and incomplete-rule suggestions are refused before writes. Question receipts now show all current uppercase failure codes in plain wording and the stored operation title under “How this was read.”
+- Watch out: lead must cherry-pick this repair after original UI/phone fix and exercise pure-rule and combined proposals against the integrated backend in the browser. No dashboard, backend, shared contracts, environment or runtime changes. No new browser acceptance claimed by this worker.
