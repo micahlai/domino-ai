@@ -71,6 +71,47 @@ export {
   valueFor,
 } from "./source-reconciliation";
 
+/** L3 Candidate C, a retrospective experimental quarterly method; engine-local. */
+export {
+  type CandidateIneligible,
+  type CandidateIneligibleReason,
+  type DerivedQuarterFlow,
+  type ExactBand,
+  type LastQuarterFlow,
+  QUARTER_CANDIDATE_METHOD,
+  type QuarterCandidate,
+  type QuarterCandidateInput,
+  quarterCandidate,
+} from "./period-candidate";
+/** L3 scoped learned rules; engine-local, not part of the Engine contract. */
+export {
+  type FeedbackDecision,
+  type MethodRef,
+  type MethodSelection,
+  QUARTER_METHOD_SLOT,
+  QUARTER_METHODS,
+  RULE_VALIDATOR,
+  type Revocation,
+  type RuleApplication,
+  type RuleChange,
+  type RuleChangeReceipt,
+  type RuleResolution,
+  type RuleUse,
+  type RuleVersionRef,
+  type RuledForecast,
+  type RuledReconcileArgs,
+  type RuledReconciliation,
+  type SlotResolution,
+  decideFeedback,
+  quarterForecastWithRules,
+  reconcileWithRules,
+  resolveRules,
+  revokeRuleVersion,
+  rollbackRule,
+  ruleSlot,
+  selectQuarterMethod,
+} from "./learned-rules";
+
 export const engine: Engine = {
   forecast,
   dominoes,
