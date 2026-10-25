@@ -15,7 +15,7 @@ export type ClaudeTool = {
   description: string;
   input_schema: Anthropic.Beta.BetaTool.InputSchema;
   /** Runs locally; the returned JSON goes back to Claude as the tool result. */
-  run: (input: unknown) => unknown;
+  run: (input: unknown) => unknown | Promise<unknown>;
 };
 
 export class AssistantUnavailable extends Error {}
@@ -42,6 +42,10 @@ export async function runStructured(opts: {
   maxSteps?: number;
   /** Returns a correction for an unusable final reply, or null. One correction is sent back. */
   check?: (value: unknown) => string | null;
+  /** Whole-loop deadline; background jobs outside the question lease may allow longer. */
+  totalTimeoutMs?: number;
+  /** Called after each model step with the tool names it used, for progress display. */
+  onStep?: (step: number, toolNames: string[]) => Promise<void> | void;
 }): Promise<unknown> {
   const config = assistantConfig();
   if (!config) throw new AssistantUnavailable("ANTHROPIC_API_KEY is not set");
@@ -53,7 +57,7 @@ export async function runStructured(opts: {
     timer = setTimeout(() => {
       abort.abort();
       reject(new Error("PROVIDER_TIMEOUT"));
-    }, ASSISTANT_TOTAL_TIMEOUT_MS);
+    }, opts.totalTimeoutMs ?? ASSISTANT_TOTAL_TIMEOUT_MS);
   });
   let repairs = opts.check ? 1 : 0;
   // The repair turn gets its own step so a tool-heavy reply can still be corrected.
@@ -98,7 +102,7 @@ export async function runStructured(opts: {
           let isError = false;
           try {
             if (!tool) throw new Error(`Unknown tool ${block.name}`);
-            content = JSON.stringify(tool.run(block.input));
+            content = JSON.stringify(await tool.run(block.input));
           } catch (error) {
             isError = true;
             content = error instanceof Error ? error.message : "Tool failed";
@@ -111,6 +115,10 @@ export async function runStructured(opts: {
           });
         }
         messages.push({ role: "user", content: results });
+        await opts.onStep?.(
+          step,
+          response.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])),
+        );
         continue;
       }
       if (response.stop_reason !== "end_turn") throw new Error("PROVIDER_MALFORMED");

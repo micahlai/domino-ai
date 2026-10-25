@@ -3,7 +3,7 @@
 import { ChevronRight, GitBranch } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { friendlyLabel } from "../../../convex/timeline/recordNames";
 import { formatCents } from "../../../lib/format";
 import { timelineCalculationHref } from "../../../lib/trace-links";
@@ -58,7 +58,17 @@ type RowContext = {
   /** The hovered scenario and the ones it builds on. */
   highlighted: Set<string>;
   onHover?: (runId: string | null) => void;
+  rowExtra?: ScenarioRowExtra;
+  /** Draw a run (with the runs it builds on) on the chart. */
+  show: (runId: string) => void;
 };
+
+/** Extra controls under a saved scenario's name, such as predicting its knock-on effects. */
+export type ScenarioRowExtra = (row: {
+  runId: string;
+  name: string;
+  show: (runId: string) => void;
+}) => ReactNode;
 
 /**
  * Left rail: every saved scenario of these books as a branch tree. Ticking a box draws that
@@ -76,6 +86,7 @@ export function ScenarioNav({
   wide = false,
   highlighted,
   onHover,
+  rowExtra,
 }: {
   run: WorkspaceRun;
   graph: Read<CatalogEntry[]>;
@@ -87,6 +98,7 @@ export function ScenarioNav({
   wide?: boolean;
   highlighted?: string[] | null;
   onHover?: (runId: string | null) => void;
+  rowExtra?: ScenarioRowExtra;
 }) {
   const entries = familyEntries(run, graph);
   const root = treeOf(entries, baseRunId);
@@ -105,6 +117,12 @@ export function ScenarioNav({
     hrefFor,
     highlighted: new Set(highlighted ?? []),
     onHover,
+    rowExtra,
+    show: (id) => {
+      if (comparisons.ids.includes(id)) return;
+      const next = showWithAncestors(comparisons.ids, id, entries, baseRunId ?? "");
+      if (next) comparisons.onChange(next);
+    },
   };
   return (
     <nav
@@ -142,6 +160,7 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
   const [open, setOpen] = useState(true);
   const { entry, children } = node;
   const { run, comparisons, byId, canShow, toggle, buildOn, hrefFor, highlighted, onHover } = ctx;
+  const { rowExtra, show } = ctx;
   const blocked = !comparisons.ids.includes(entry.runId) && depth > 0 && !canShow(entry.runId);
   const isBase = depth === 0;
   const shown = isBase || comparisons.ids.includes(entry.runId);
@@ -264,6 +283,9 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
                 Open
               </Link>
             )}
+            {rowExtra && !isBase && entry.kind === "scenario"
+              ? rowExtra({ runId: entry.runId, name, show })
+              : null}
           </div>
           <details className="group/details mt-1 text-xs">
             <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1 text-muted-foreground [&::-webkit-details-marker]:hidden">

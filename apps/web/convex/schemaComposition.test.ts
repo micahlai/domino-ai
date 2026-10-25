@@ -27,6 +27,7 @@ const LANES = {
     "timelineAnalyses",
     "timelineChats",
     "timelineChatRequests",
+    "timelinePredictions",
   ],
   field: [
     "companies",
@@ -168,6 +169,11 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
     ["by_company_and_runId", ["companyId", "runId"]],
   ],
   timelineChatRequests: [["by_company_and_requestId", ["companyId", "requestId"]]],
+  timelinePredictions: [
+    ["by_company_and_predictionId", ["companyId", "predictionId"]],
+    ["by_company_and_requestId", ["companyId", "requestId"]],
+    ["by_company_and_runId", ["companyId", "runId"]],
+  ],
   timelineRunRequests: [["by_company_and_requestId", ["companyId", "requestId"]]],
   investigationRequests: [["by_requestId", ["requestId"]]],
   investigationConversations: [
@@ -194,7 +200,7 @@ describe("schema composition", () => {
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
     const all = [...LANES.timeline, ...LANES.field];
-    expect(new Set(all).size).toBe(48);
+    expect(new Set(all).size).toBe(49);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });
 

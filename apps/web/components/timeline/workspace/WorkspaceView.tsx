@@ -25,7 +25,7 @@ import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
 import { ChangesPanel, ComparisonPanel, ImpactPanel, ReceiptsPanel, WeekDetail } from "./RunPanels";
 import { ScenarioComposer } from "./ScenarioComposer";
-import { ScenarioNav } from "./ScenarioNav";
+import { ScenarioNav, type ScenarioRowExtra } from "./ScenarioNav";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
 import { BranchContext, type BranchPreview } from "./branchPreview";
@@ -70,6 +70,8 @@ export type WorkspaceViewProps = {
   initialAssistant?: AssistantTab;
   /** Saved risk scenarios for these books; defaults to this run's analysis page. */
   risksHref?: string;
+  /** Extra controls under each saved scenario in the left rail. */
+  scenarioRowExtra?: ScenarioRowExtra;
   /** A short page-level notice under the header, e.g. newer books exist. */
   notice?: ReactNode;
   forecastNotice?: string;
@@ -115,6 +117,7 @@ export function WorkspaceView({
   initialContext,
   initialAssistant,
   notice,
+  scenarioRowExtra,
   forecastNotice,
   baseRunId: baseRunIdProp,
 }: WorkspaceViewProps) {
@@ -378,6 +381,7 @@ export function WorkspaceView({
               wide={scenariosWide}
               highlighted={hoveredLineage}
               onHover={setHoveredRunId}
+              rowExtra={scenarioRowExtra}
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">

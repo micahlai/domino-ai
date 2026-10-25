@@ -16,6 +16,7 @@ import { analysisHref } from "../analysis/links";
 import { baselineHref } from "../baseline/api";
 import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
+import { PredictionControl } from "./PredictionControl";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
   LinkResultSchema,
@@ -478,6 +479,9 @@ function RunReady({
         },
       }}
       baseRunId={baseRunId}
+      scenarioRowExtra={({ runId, name, show }) => (
+        <PredictionControl companyId={companyId} runId={runId} name={name} show={show} />
+      )}
       forecastNotice={
         omittedAncestors > 0 || (entrySelection?.omittedAncestors ?? 0) > 0
           ? "Showing the new forecast and its 5 nearest parent scenarios. Earlier parents stay saved; the chart shows up to 6 scenario lines."

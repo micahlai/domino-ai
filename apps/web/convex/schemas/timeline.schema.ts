@@ -12,6 +12,7 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { timelineAnalysesTable } from "../timeline/analysis/table";
 import { timelineChatRequestsTable, timelineChatsTable } from "../timeline/chat/table";
+import { timelinePredictionsTable } from "../timeline/predict/table";
 import { companyId } from "./legacy.schema";
 
 export const timelineTables = {
@@ -172,4 +173,5 @@ export const timelineTables = {
   timelineAnalyses: timelineAnalysesTable,
   timelineChats: timelineChatsTable,
   timelineChatRequests: timelineChatRequestsTable,
+  timelinePredictions: timelinePredictionsTable,
 } as const;

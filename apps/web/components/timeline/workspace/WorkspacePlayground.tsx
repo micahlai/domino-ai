@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { CatalogList } from "./CatalogPanel";
+import { PredictionView } from "./PredictionControl";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import type { WorkspaceRun } from "./api";
 import { fixtureGraph, fixtureQuestions, fixtureRuns } from "./fixtures";
+import { donePrediction, runningPrediction } from "./predictionFixtures";
 import { comparisonIds } from "./scenarioComparisons";
 
 const NOTHING_SAVED = "Playground fixture: nothing is saved or calculated here.";
@@ -96,6 +98,13 @@ function FixtureWorkspace({ run, actions }: { run: WorkspaceRun; actions: Worksp
       }}
       resultRef={{ state: "missing" }}
       actions={actions}
+      // Fixture prediction states: the first scenario is still running, the rest are done.
+      scenarioRowExtra={({ runId, name }) => (
+        <PredictionView
+          name={name}
+          prediction={runId === fixtureGraph[1]?.runId ? runningPrediction : donePrediction}
+        />
+      )}
     />
   );
 }
