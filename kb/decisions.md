@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-25 Micah explicitly authorized merging claude-timeline-chat and codex/worker-timeline-context into main. This supersedes their earlier isolation/main-freeze instructions for these branches; preserve existing main features and verify the combined result before publishing.
+
 - 2026-10-25 Micah: combine Ask Domino and sidebar controls into one named open/collapse toggle, with no redundant header or inner close icons. Keep the mounted draft and keyboard focus behavior.
 
 - 2026-10-25 Micah: accepted forecasts appear in the mounted Timeline rather than navigating to the saved child. Validated data triggers one reveal; Build on stays explicit. Chat sends use an optimistic user bubble and exact retry identity. Crowded labels retain full receipts in a disclosure. See features/timeline/TL12-in-place-reveal.md.
