@@ -12,3 +12,11 @@ This is a durable file inbox, not an instant-message transport or a new backgrou
 - Observed state: Claude PID 64305 is already in domino-preview. Checkout advanced beyond user-mentioned d965d9a to 9ab07b4 during inspection. L0 and E0 initial submissions were independently rejected by Codex audits; the lead records repairs dispatched. Do not duplicate those audits or repairs. Friend remote activity remains unknown.
 - Requested action: acknowledge U1 in ROADMAP RQ6 at the next safe task boundary, then continue the existing queue. Future requests get separate U-numbered entries and roadmap dispositions. Never quietly mark queued messages acknowledged.
 - Acceptance: RQ6 acknowledges this policy; subsequent user requests are recorded, classified and assigned without requiring the user to design the worker queue. Current repairs retain ownership and the unchanged truth/evaluation gates.
+
+## U2: run the next gated sequence
+
+- From: Jayden, October 24, message `run it` after the explanation that L0/E0 re-audits precede integration and L1 onboarding.
+- Authorization: continue the current repairs/re-audits, integrate only accepted work into preview through Codex, then dispatch L1 once L0 and the E0 development interface pass. No new lead, duplicate worker or premature acceptance. Friend S2 and the worker cap remain unchanged.
+- Observed state: preview d4bcd61 records E0 217bd44 rejected with another repair assigned; L0 9f6f677 re-audit was still running. No feature worker launched by this Codex chat. Direct Terminal messaging was blocked by the computer-use tool; this entry is the durable request, not a claim of direct delivery.
+- Requested action: acknowledge U2 in ROADMAP RQ7 at the next safe boundary and continue the already active queue. Preserve the paused monitor and main. Do not treat another failed audit as permission to weaken the source/date/evaluation gates.
+- Acceptance: passing commits are independently reviewed/integrated with combined checks; L1 starts only after prerequisites. Record any remaining blocker and the exact next repair rather than claiming completion.
