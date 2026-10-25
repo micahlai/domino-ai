@@ -15,6 +15,7 @@ import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecas
 import { compareIds } from "./funding";
 import { decimalRatio } from "./money";
 import { evaluateOnSchedule } from "./rules";
+import { isOpenInvoice } from "./schedule";
 
 const MAX_RISKS = 5;
 const LATE_DAYS = 14;
@@ -105,7 +106,7 @@ const daysLate = (i: Invoice) => daysBetween(i.due, i.paid ?? i.due);
  */
 function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
   return snapshot.invoices
-    .filter((i) => !i.paid)
+    .filter((i) => isOpenInvoice(i))
     .flatMap((inv) => {
       const delay = model.customerDelayDays[inv.customerId];
       if (!delay) return [];
@@ -160,7 +161,7 @@ function nonRenewals(snapshot: Snapshot): Candidate[] {
     if (deal.kind !== "renewal" || typeof deal.invoiceId !== "string" || deal.stage === "lost")
       return [];
     const inv = snapshot.invoices.find((i) => i.id === deal.invoiceId);
-    if (!inv || inv.paid) return [];
+    if (!inv || !isOpenInvoice(inv)) return [];
     const unsigned = deal.stage === "won" && !deal.signed;
     const probability = unsigned ? UNSIGNED_RENEWAL_CHANCE : RENEWAL_CHANCE;
     const why = unsigned

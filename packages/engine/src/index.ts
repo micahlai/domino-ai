@@ -157,3 +157,5 @@ export const engine: Engine = {
 /** Field weekly audit and 13-week scheduled items; engine-local, not part of Engine. */
 export { type AuditInput, auditSnapshot } from "./audit";
 export { scheduledItems } from "./scheduled-items";
+/** Open invoice = not paid and not written off; the forecast projects only these. */
+export { isOpenInvoice } from "./schedule";

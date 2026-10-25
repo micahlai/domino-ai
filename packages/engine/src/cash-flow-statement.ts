@@ -256,6 +256,8 @@ export function classifyCashItem(
       return { line: "customer_collections", rule: `forecast ${item.kind}`, classified: true };
     case "plan":
       return { line: "customer_collections", rule: "forecast billing plan", classified: true };
+    case "payout":
+      return { line: "customer_collections", rule: "pending processor payout", classified: true };
     case "payroll":
       return { line: "payroll", rule: "forecast payroll", classified: true };
     case "recurring":

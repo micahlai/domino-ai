@@ -121,6 +121,84 @@ describe("cash in", () => {
     };
     expect(outflows(paidBill)).toEqual(at(0, 0));
   });
+  it("a written-off invoice is never projected; a short-paid invoice projects no remainder", () => {
+    // Unpaid, due Tue 2026-11-10 (week 1), but written off on 2026-10-15: no inflow at all.
+    const writtenOff: Snapshot = {
+      ...tiny,
+      invoices: [
+        { id: "i1", customerId: "c1", amount: 1000, issued: "2026-10-01", due: "2026-11-10" },
+        {
+          id: "i2",
+          customerId: "c1",
+          amount: 700,
+          issued: "2026-10-01",
+          due: "2026-11-10",
+          writtenOff: "2026-10-15",
+        },
+      ],
+    };
+    // Only i1's 1,000 lands in week 1; i2's 700 is gone.
+    expect(inflows(writtenOff)).toEqual(at(1, 1000));
+    // Paid 600 of 1,000 on 2026-10-20: paidAmount is terminal, so the 400 is not projected.
+    const shortPaid: Snapshot = {
+      ...tiny,
+      invoices: [
+        {
+          id: "i1",
+          customerId: "c1",
+          amount: 1000,
+          issued: "2026-10-01",
+          due: "2026-11-10",
+          paid: "2026-10-20",
+          paidAmount: 600,
+        },
+      ],
+    };
+    expect(inflows(shortPaid)).toEqual(at(0, 0));
+  });
+  it("pending payouts land on their expected arrival, net of fees, once", () => {
+    // 2,500 arriving Wed 2026-11-04 (week 0) and 1,200 arriving Mon 2026-11-16 (week 2). The
+    // 1,200 payout's invoice is paid, so only the payout carries that cash.
+    const s: Snapshot = {
+      ...tiny,
+      invoices: [
+        {
+          id: "i0",
+          customerId: "c1",
+          amount: 2600,
+          issued: "2026-10-01",
+          due: "2026-10-28",
+          paid: "2026-10-28",
+        },
+        {
+          id: "i1",
+          customerId: "c1",
+          amount: 1250,
+          issued: "2026-10-01",
+          due: "2026-10-28",
+          paid: "2026-10-29",
+        },
+      ],
+      pendingPayouts: [
+        { id: "po1", amount: 2500, expectedArrival: "2026-11-04", invoiceIds: ["i0"] },
+        { id: "po2", amount: 1200, expectedArrival: "2026-11-16", invoiceIds: ["i1"] },
+      ],
+    };
+    expect(SnapshotSchema.safeParse(s).success).toBe(true);
+    const expected = at(0, 2500);
+    expected[2] = 1200;
+    expect(inflows(s)).toEqual(expected);
+    // Closing cash: 1,000,000 + 2,500 = 1,002,500 from week 0, then 1,003,700 from week 2.
+    const closing = forecast(s, noModel, []).weeks.map((w) => w.closing);
+    expect(closing.slice(0, 3)).toEqual([1_002_500, 1_002_500, 1_003_700]);
+    expect(closing[12]).toBe(1_003_700);
+    // An estimate already past (arrival before asOf) still has to arrive: week 0.
+    const late = {
+      ...s,
+      pendingPayouts: [{ ...s.pendingPayouts![0]!, expectedArrival: "2026-10-29" }],
+    };
+    expect(inflows(late)).toEqual(at(0, 2500));
+  });
   it("the unsigned Northwind deal adds no cash", () => {
     const without = {
       ...kestrel,
