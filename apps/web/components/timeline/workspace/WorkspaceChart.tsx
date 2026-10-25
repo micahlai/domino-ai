@@ -4,7 +4,6 @@ import type { Forecast, HistoryWeek, ScheduledItem } from "@domino/contracts";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
-import { Segmented } from "../../ui/segmented";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
 
@@ -42,7 +41,7 @@ export type ChartProps = {
 };
 
 const DEFAULT_W = 880;
-type CashRange = "fit" | "zero";
+
 /** Phones open on the last two months of history so the forecast gets most of the width. */
 const RECENT_WEEKS = 8;
 /** The narrowest window the range bar allows, in weeks. */
@@ -80,7 +79,7 @@ export function WorkspaceChart(p: ChartProps) {
   const PAD = { right: compact ? 12 : 20, top: 30, bottom: 52 };
   const [hover, setHover] = useState<number | null>(null);
   const [chosenView, setView] = useState<[number, number] | null>(null);
-  const [cashRange, setCashRange] = useState<CashRange>("fit");
+  const [cashView, setCashView] = useState<[number, number] | null>(null);
   const history = p.history;
   const weeks = p.forecast.weeks;
   const comparisons = (p.comparisons ?? []).slice(0, 6);
@@ -103,14 +102,30 @@ export function WorkspaceChart(p: ChartProps) {
     ...(!p.comparisons ? forecastIn(p.parent?.weeks ?? []) : []),
     ...comparisons.flatMap((entry) => forecastIn(entry.forecast.weeks)),
     ...p.limits.map((l) => l.cents),
-    // "From $0" keeps the true size of a change visible; "Fit" zooms into the lines shown.
-    ...(cashRange === "zero" ? [0] : []),
   ];
+  // Everything the cash scroller can reach: every saved week of every line, the limits and $0.
+  const reach = [
+    0,
+    ...history.map((h) => h.usable),
+    ...weeks.map((w) => w.usable),
+    ...(p.parent?.weeks.map((w) => w.usable) ?? []),
+    ...comparisons.flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)),
+    ...p.limits.map((l) => l.cents),
+  ].filter(Number.isSafeInteger);
+  const reachLo = Math.min(...reach);
+  const reachHi = Math.max(...reach);
+  const reachPad = Math.max(1, Math.round((reachHi - reachLo) * 0.05));
+  const cashExtent: [number, number] = [
+    reachLo < 0 ? reachLo - reachPad : reachLo,
+    reachHi + reachPad,
+  ];
+  // Without a chosen range the cash axis fits the lines in view.
   const { scale: y, ticks: cashTicks } = cashScale(
-    values,
+    cashView ?? values,
     [H - PAD.bottom, PAD.top],
     compact ? 4 : 6,
   );
+  const [domainLo, domainHi] = y.domain() as [number, number];
   // Room for the rotated "Usable cash" title plus the widest tick label.
   const left =
     18 + Math.max(44, ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 14));
@@ -187,406 +202,405 @@ export function WorkspaceChart(p: ChartProps) {
 
   return (
     <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="chart-scale">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Cash</span>
-          <Segmented
-            label="Cash range"
-            name={`${titleId}-cash`}
-            value={cashRange}
-            onChange={(v) => setCashRange(v)}
-            options={[
-              { value: "fit", label: "Fit to lines" },
-              { value: "zero", label: "From $0" },
-            ]}
-            className="[&>label>span]:h-7 [&>label>span]:px-2 [&>label>span]:text-xs"
-          />
-        </div>
-      </div>
-      <div ref={wrapRef} className="relative min-w-0 max-w-full">
-        <svg
-          id={`${clipId}-chart`}
-          viewBox={`0 0 ${W} ${H}`}
-          className="block h-auto w-full touch-pan-y select-none"
-          role="img"
-          aria-labelledby={titleId}
-          onPointerLeave={() => setHover(null)}
-        >
-          <title
-            id={titleId}
-          >{`Usable cash: ${history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatExactCents(low.usable)}.`}</title>
-          {/* Lines are drawn for every week and clipped to the plot, so panning stays smooth. */}
-          <defs>
-            <clipPath id={clipId}>
-              <rect
-                x={plotLeft - 6}
-                y={PAD.top - 10}
-                width={plotRight - plotLeft + 12}
-                height={H - PAD.bottom - PAD.top + 16}
-              />
-            </clipPath>
-          </defs>
-          <rect
-            x={todayX}
-            y={PAD.top - 6}
-            width={Math.max(0, W - PAD.right - todayX)}
-            height={H - PAD.bottom - PAD.top + 6}
-            className="fill-muted/60"
-            pointerEvents="none"
-          />
-          <g data-testid="cash-axis" pointerEvents="none">
-            {cashTicks.map((cents) => (
-              <g key={cents} data-cents={cents}>
-                <line
-                  x1={left}
-                  x2={W - PAD.right}
-                  y1={y(cents)}
-                  y2={y(cents)}
-                  className="stroke-border"
+      <div className="flex min-w-0 items-start gap-2" data-testid="chart-scale">
+        <div ref={wrapRef} className="relative min-w-0 max-w-full flex-1">
+          <svg
+            id={`${clipId}-chart`}
+            viewBox={`0 0 ${W} ${H}`}
+            className="block h-auto w-full touch-pan-y select-none"
+            role="img"
+            aria-labelledby={titleId}
+            onPointerLeave={() => setHover(null)}
+          >
+            <title
+              id={titleId}
+            >{`Usable cash: ${history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatExactCents(low.usable)}.`}</title>
+            {/* Lines are drawn for every week and clipped to the plot, so panning stays smooth. */}
+            <defs>
+              <clipPath id={clipId}>
+                <rect
+                  x={plotLeft - 6}
+                  y={PAD.top - 10}
+                  width={plotRight - plotLeft + 12}
+                  height={H - PAD.bottom - PAD.top + 16}
                 />
-                <text
-                  x={left - 8}
-                  y={y(cents)}
-                  dy="0.35em"
-                  textAnchor="end"
-                  className="fill-muted-foreground text-[11px] tabular-nums"
-                >
-                  <title>{formatExactCents(cents)}</title>
-                  {formatAxisCash(cents)}
-                </text>
-              </g>
-            ))}
-          </g>
-          <g data-testid="date-axis" pointerEvents="none">
-            {timeTicks.map(({ index, date }) => (
-              <line
-                key={`grid-${date}`}
-                x1={x(index)}
-                x2={x(index)}
-                y1={PAD.top}
-                y2={H - PAD.bottom}
-                className="stroke-border"
-                strokeDasharray="2 4"
-                data-testid="time-grid"
-              />
-            ))}
-            <line
-              x1={left}
-              x2={W - PAD.right}
-              y1={H - PAD.bottom}
-              y2={H - PAD.bottom}
-              className="stroke-muted-foreground/40"
+              </clipPath>
+            </defs>
+            <rect
+              x={todayX}
+              y={PAD.top - 6}
+              width={Math.max(0, W - PAD.right - todayX)}
+              height={H - PAD.bottom - PAD.top + 6}
+              className="fill-muted/60"
+              pointerEvents="none"
             />
-            <text
-              x={(left + W - PAD.right) / 2}
-              y={H - 8}
-              textAnchor="middle"
-              className="fill-muted-foreground text-[11px] font-medium"
-              data-testid="time-axis-title"
-            >
-              Week starting
-            </text>
-            <text
-              transform={`translate(12 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`}
-              textAnchor="middle"
-              className="fill-muted-foreground text-[11px] font-medium"
-              data-testid="cash-axis-title"
-            >
-              Usable cash
-            </text>
-            {timeTicks.map(({ index, date }, i) => (
-              <text
-                key={date}
-                data-week={date}
-                x={x(index)}
-                y={H - PAD.bottom + 20}
-                textAnchor={i === 0 ? "start" : i === timeTicks.length - 1 ? "end" : "middle"}
-                className="fill-muted-foreground text-[11px]"
-              >
-                {formatFullDate(date)}
-              </text>
-            ))}
-          </g>
-          <g pointerEvents="none" className="text-[11px]">
-            {off > 0 && todayX - plotLeft > 64 ? (
-              <text
-                x={todayX - 8}
-                y={PAD.top - 12}
-                textAnchor="end"
-                className="fill-muted-foreground"
-              >
-                Recorded
-              </text>
-            ) : null}
-            {plotRight - todayX > 96 ? (
-              <text x={todayX + 8} y={PAD.top - 12} className="fill-foreground font-medium">
-                Next {weeks.length} weeks
-              </text>
-            ) : null}
-            {todayInView ? (
-              <line
-                x1={todayX}
-                x2={todayX}
-                y1={PAD.top - 22}
-                y2={H - PAD.bottom}
-                className="stroke-muted-foreground/60"
-                strokeDasharray="3 3"
-              />
-            ) : null}
-          </g>
-          {p.limits.map((l) => (
-            <g key={l.id} data-testid={`limit-${l.id}`} pointerEvents="none">
+            <g data-testid="cash-axis" pointerEvents="none">
+              {cashTicks.map((cents) => (
+                <g key={cents} data-cents={cents}>
+                  <line
+                    x1={left}
+                    x2={W - PAD.right}
+                    y1={y(cents)}
+                    y2={y(cents)}
+                    className="stroke-border"
+                  />
+                  <text
+                    x={left - 8}
+                    y={y(cents)}
+                    dy="0.35em"
+                    textAnchor="end"
+                    className="fill-muted-foreground text-[11px] tabular-nums"
+                  >
+                    <title>{formatExactCents(cents)}</title>
+                    {formatAxisCash(cents)}
+                  </text>
+                </g>
+              ))}
+            </g>
+            <g data-testid="date-axis" pointerEvents="none">
+              {timeTicks.map(({ index, date }) => (
+                <line
+                  key={`grid-${date}`}
+                  x1={x(index)}
+                  x2={x(index)}
+                  y1={PAD.top}
+                  y2={H - PAD.bottom}
+                  className="stroke-border"
+                  strokeDasharray="2 4"
+                  data-testid="time-grid"
+                />
+              ))}
               <line
                 x1={left}
                 x2={W - PAD.right}
-                y1={y(l.cents)}
-                y2={y(l.cents)}
-                className="stroke-destructive"
-                strokeWidth={1.25}
-                strokeDasharray="6 4"
-              />
-              <text
-                x={left + 6}
-                y={y(l.cents) - 6}
-                className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
-              >
-                {l.label} {formatExactCents(l.cents)}
-              </text>
-            </g>
-          ))}
-          <g clipPath={`url(#${clipId})`}>
-            {past.length > 1 ? (
-              <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
-            ) : null}
-            {parentLine.length > 1 && !p.comparisons ? (
-              <path
-                d={draw(lastPast ? [lastPast, ...parentLine] : parentLine) ?? ""}
-                fill="none"
-                className="stroke-muted-foreground"
-                strokeWidth={1.5}
-                strokeDasharray={DASHES[0]}
-                data-testid="parent-line"
-              />
-            ) : null}
-            {comparisons.map((entry, index) => {
-              const points = comparisonPoints(entry);
-              if (points.length < 2) return null;
-              const fork =
-                entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
-              return (
-                <g
-                  key={entry.runId}
-                  pointerEvents="none"
-                  data-testid={entry.parent ? "parent-line" : "comparison-line"}
-                  data-run-id={entry.runId}
-                >
-                  <path
-                    d={draw(points) ?? ""}
-                    fill="none"
-                    className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
-                    stroke={entry.color}
-                    strokeWidth={entry.color ? 2.25 : 1.5}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
-                  />
-                  {fork ? (
-                    <circle
-                      cx={fork.x}
-                      cy={fork.y}
-                      r={4}
-                      fill={entry.color}
-                      className="stroke-card"
-                      strokeWidth={2}
-                      data-testid="fork-point"
-                    />
-                  ) : null}
-                </g>
-              );
-            })}
-            <path
-              d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
-              fill="none"
-              className="stroke-primary"
-              data-testid="forecast-line"
-              strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
-            />
-            {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
-            <g pointerEvents="none">
-              {weeks.map((w, i) =>
-                itemsByWeek.get(w.weekStart) ? (
-                  <circle
-                    key={w.weekStart}
-                    cx={(future[i] as Point).x}
-                    cy={H - PAD.bottom}
-                    r={2.5}
-                    className="fill-muted-foreground/70"
-                    data-testid={`item-mark-${w.weekStart}`}
-                  />
-                ) : null,
-              )}
-            </g>
-            {selectedIndex >= 0 ? (
-              <line
-                x1={x(off + selectedIndex)}
-                x2={x(off + selectedIndex)}
-                y1={PAD.top}
-                y2={H - PAD.bottom}
-                className="stroke-foreground/50"
-                strokeDasharray="2 3"
-                pointerEvents="none"
-              />
-            ) : null}
-            {hover !== null && hover !== off + selectedIndex ? (
-              <line
-                x1={x(hover)}
-                x2={x(hover)}
-                y1={PAD.top}
+                y1={H - PAD.bottom}
                 y2={H - PAD.bottom}
                 className="stroke-muted-foreground/40"
-                pointerEvents="none"
               />
-            ) : null}
-            {weeks.map((w, i) => {
-              const pt = future[i] as Point;
-              const selected = i === selectedIndex;
-              const breached = breachedWeeks.has(w.weekStart);
-              return (
-                <circle
-                  key={w.weekStart}
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={selected ? 5.5 : breached || i === lowIndex ? 4.5 : 2.5}
-                  className={`${breached ? "fill-destructive" : "fill-primary"}${selected || breached ? " stroke-card" : ""}`}
-                  strokeWidth={selected || breached ? 2 : undefined}
-                  data-testid={`forecast-point-${w.weekStart}`}
-                  data-breached={breached}
+              <text
+                x={(left + W - PAD.right) / 2}
+                y={H - 8}
+                textAnchor="middle"
+                className="fill-muted-foreground text-[11px] font-medium"
+                data-testid="time-axis-title"
+              >
+                Week starting
+              </text>
+              <text
+                transform={`translate(12 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`}
+                textAnchor="middle"
+                className="fill-muted-foreground text-[11px] font-medium"
+                data-testid="cash-axis-title"
+              >
+                Usable cash
+              </text>
+              {timeTicks.map(({ index, date }, i) => (
+                <text
+                  key={date}
+                  data-week={date}
+                  x={x(index)}
+                  y={H - PAD.bottom + 20}
+                  textAnchor={i === 0 ? "start" : i === timeTicks.length - 1 ? "end" : "middle"}
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {formatFullDate(date)}
+                </text>
+              ))}
+            </g>
+            <g pointerEvents="none" className="text-[11px]">
+              {off > 0 && todayX - plotLeft > 64 ? (
+                <text
+                  x={todayX - 8}
+                  y={PAD.top - 12}
+                  textAnchor="end"
+                  className="fill-muted-foreground"
+                >
+                  Recorded
+                </text>
+              ) : null}
+              {plotRight - todayX > 96 ? (
+                <text x={todayX + 8} y={PAD.top - 12} className="fill-foreground font-medium">
+                  Next {weeks.length} weeks
+                </text>
+              ) : null}
+              {todayInView ? (
+                <line
+                  x1={todayX}
+                  x2={todayX}
+                  y1={PAD.top - 22}
+                  y2={H - PAD.bottom}
+                  className="stroke-muted-foreground/60"
+                  strokeDasharray="3 3"
+                />
+              ) : null}
+            </g>
+            {p.limits
+              .filter((l) => l.cents >= domainLo && l.cents <= domainHi)
+              .map((l) => (
+                <g key={l.id} data-testid={`limit-${l.id}`} pointerEvents="none">
+                  <line
+                    x1={left}
+                    x2={W - PAD.right}
+                    y1={y(l.cents)}
+                    y2={y(l.cents)}
+                    className="stroke-destructive"
+                    strokeWidth={1.25}
+                    strokeDasharray="6 4"
+                  />
+                  <text
+                    x={left + 6}
+                    y={y(l.cents) - 6}
+                    className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
+                  >
+                    {l.label} {formatExactCents(l.cents)}
+                  </text>
+                </g>
+              ))}
+            <g clipPath={`url(#${clipId})`}>
+              {past.length > 1 ? (
+                <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
+              ) : null}
+              {parentLine.length > 1 && !p.comparisons ? (
+                <path
+                  d={draw(lastPast ? [lastPast, ...parentLine] : parentLine) ?? ""}
+                  fill="none"
+                  className="stroke-muted-foreground"
+                  strokeWidth={1.5}
+                  strokeDasharray={DASHES[0]}
+                  data-testid="parent-line"
+                />
+              ) : null}
+              {comparisons.map((entry, index) => {
+                const points = comparisonPoints(entry);
+                if (points.length < 2) return null;
+                const fork =
+                  entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
+                return (
+                  <g
+                    key={entry.runId}
+                    pointerEvents="none"
+                    data-testid={entry.parent ? "parent-line" : "comparison-line"}
+                    data-run-id={entry.runId}
+                  >
+                    <path
+                      d={draw(points) ?? ""}
+                      fill="none"
+                      className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
+                      stroke={entry.color}
+                      strokeWidth={entry.color ? 2.25 : 1.5}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
+                    />
+                    {fork ? (
+                      <circle
+                        cx={fork.x}
+                        cy={fork.y}
+                        r={4}
+                        fill={entry.color}
+                        className="stroke-card"
+                        strokeWidth={2}
+                        data-testid="fork-point"
+                      />
+                    ) : null}
+                  </g>
+                );
+              })}
+              <path
+                d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
+                fill="none"
+                className="stroke-primary"
+                data-testid="forecast-line"
+                strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
+              />
+              {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
+              <g pointerEvents="none">
+                {weeks.map((w, i) =>
+                  itemsByWeek.get(w.weekStart) ? (
+                    <circle
+                      key={w.weekStart}
+                      cx={(future[i] as Point).x}
+                      cy={H - PAD.bottom}
+                      r={2.5}
+                      className="fill-muted-foreground/70"
+                      data-testid={`item-mark-${w.weekStart}`}
+                    />
+                  ) : null,
+                )}
+              </g>
+              {selectedIndex >= 0 ? (
+                <line
+                  x1={x(off + selectedIndex)}
+                  x2={x(off + selectedIndex)}
+                  y1={PAD.top}
+                  y2={H - PAD.bottom}
+                  className="stroke-foreground/50"
+                  strokeDasharray="2 3"
                   pointerEvents="none"
+                />
+              ) : null}
+              {hover !== null && hover !== off + selectedIndex ? (
+                <line
+                  x1={x(hover)}
+                  x2={x(hover)}
+                  y1={PAD.top}
+                  y2={H - PAD.bottom}
+                  className="stroke-muted-foreground/40"
+                  pointerEvents="none"
+                />
+              ) : null}
+              {weeks.map((w, i) => {
+                const pt = future[i] as Point;
+                const selected = i === selectedIndex;
+                const breached = breachedWeeks.has(w.weekStart);
+                return (
+                  <circle
+                    key={w.weekStart}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={selected ? 5.5 : breached || i === lowIndex ? 4.5 : 2.5}
+                    className={`${breached ? "fill-destructive" : "fill-primary"}${selected || breached ? " stroke-card" : ""}`}
+                    strokeWidth={selected || breached ? 2 : undefined}
+                    data-testid={`forecast-point-${w.weekStart}`}
+                    data-breached={breached}
+                    pointerEvents="none"
+                  />
+                );
+              })}
+              {notes.map((n) => {
+                const flip = n.pt.x > W * 0.62;
+                return (
+                  <g
+                    key={`${n.weekStart}-${n.text}-${n.pt.y}`}
+                    pointerEvents="none"
+                    data-testid="breach-note"
+                  >
+                    {"dot" in n ? (
+                      <circle
+                        cx={n.pt.x}
+                        cy={n.pt.y}
+                        r={4.5}
+                        className="fill-destructive stroke-card"
+                        strokeWidth={2}
+                        data-breached="true"
+                      />
+                    ) : null}
+                    <line
+                      x1={n.pt.x}
+                      x2={n.pt.x}
+                      y1={n.pt.y + 7}
+                      y2={Math.min(H - PAD.bottom - 4, n.pt.y + 22)}
+                      className="stroke-destructive"
+                    />
+                    <text
+                      x={n.pt.x + (flip ? -6 : 6)}
+                      y={Math.min(H - PAD.bottom - 6, n.pt.y + 22)}
+                      textAnchor={flip ? "end" : "start"}
+                      className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
+                    >
+                      {compact && n.short ? n.short : n.text}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+            {/* Wide hit areas: recorded weeks show details on hover; forecast weeks can be chosen.
+              Keyboard users pick weeks with the range control below the chart. */}
+            {dates.map((date, slot) => {
+              const forecastIndex = slot - off;
+              if (!visible(slot)) return null;
+              return (
+                // biome-ignore lint/a11y/useKeyWithClickEvents: the week range control is the keyboard path
+                <rect
+                  key={date}
+                  x={x(slot) - step / 2}
+                  y={PAD.top}
+                  width={step}
+                  height={H - PAD.top - PAD.bottom}
+                  fill="transparent"
+                  className={forecastIndex >= 0 ? "cursor-pointer" : undefined}
+                  onPointerEnter={(e) => {
+                    if (e.pointerType === "mouse") setHover(slot);
+                  }}
+                  onClick={
+                    forecastIndex >= 0
+                      ? () => {
+                          const w = weeks[forecastIndex];
+                          if (w) p.onSelectWeek(w.weekStart);
+                        }
+                      : undefined
+                  }
+                  data-testid={forecastIndex >= 0 ? `chart-week-${date}` : undefined}
                 />
               );
             })}
-            {notes.map((n) => {
-              const flip = n.pt.x > W * 0.62;
-              return (
-                <g
-                  key={`${n.weekStart}-${n.text}-${n.pt.y}`}
-                  pointerEvents="none"
-                  data-testid="breach-note"
-                >
-                  {"dot" in n ? (
-                    <circle
-                      cx={n.pt.x}
-                      cy={n.pt.y}
-                      r={4.5}
-                      className="fill-destructive stroke-card"
-                      strokeWidth={2}
-                      data-breached="true"
-                    />
-                  ) : null}
-                  <line
-                    x1={n.pt.x}
-                    x2={n.pt.x}
-                    y1={n.pt.y + 7}
-                    y2={Math.min(H - PAD.bottom - 4, n.pt.y + 22)}
-                    className="stroke-destructive"
-                  />
-                  <text
-                    x={n.pt.x + (flip ? -6 : 6)}
-                    y={Math.min(H - PAD.bottom - 6, n.pt.y + 22)}
-                    textAnchor={flip ? "end" : "start"}
-                    className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
-                  >
-                    {compact && n.short ? n.short : n.text}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-          {/* Wide hit areas: recorded weeks show details on hover; forecast weeks can be chosen.
-              Keyboard users pick weeks with the range control below the chart. */}
-          {dates.map((date, slot) => {
-            const forecastIndex = slot - off;
-            if (!visible(slot)) return null;
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: the week range control is the keyboard path
-              <rect
-                key={date}
-                x={x(slot) - step / 2}
-                y={PAD.top}
-                width={step}
-                height={H - PAD.top - PAD.bottom}
-                fill="transparent"
-                className={forecastIndex >= 0 ? "cursor-pointer" : undefined}
-                onPointerEnter={(e) => {
-                  if (e.pointerType === "mouse") setHover(slot);
-                }}
-                onClick={
-                  forecastIndex >= 0
-                    ? () => {
-                        const w = weeks[forecastIndex];
-                        if (w) p.onSelectWeek(w.weekStart);
-                      }
-                    : undefined
-                }
-                data-testid={forecastIndex >= 0 ? `chart-week-${date}` : undefined}
-              />
-            );
-          })}
-        </svg>
-        {hovered && hover !== null ? (
-          <div
-            className="pointer-events-none absolute top-8 z-10 w-64 max-w-[80%] rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-md"
-            style={
-              x(hover) > W / 2
-                ? { right: `${Math.max(0, W - x(hover) + 12)}px` }
-                : { left: `${x(hover) + 12}px` }
-            }
-            data-testid="chart-tooltip"
-          >
-            <p className="font-medium">
-              Week of {formatFullDate(hovered.weekStart)}{" "}
-              <span className="font-normal text-muted-foreground">· {hovered.kind}</span>
-            </p>
-            <p className="mt-1 flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                {hovered.kind === "Forecast" ? mainLabel : "Usable cash"}
-              </span>
-              <span className="tabular-nums">{formatExactCents(hovered.usable)}</span>
-            </p>
-            {hovered.kind === "Forecast"
-              ? comparisons.map((entry) => {
-                  const v = entry.forecast.weeks[hover - off]?.usable;
-                  return v === undefined ? null : (
-                    <p key={entry.runId} className="flex justify-between gap-3">
-                      <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                        {entry.color ? (
-                          <span
-                            aria-hidden="true"
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ background: entry.color }}
-                          />
-                        ) : null}
-                        <span className="truncate">{entry.label}</span>
-                      </span>
-                      <span className="shrink-0 tabular-nums">{formatExactCents(v)}</span>
-                    </p>
-                  );
-                })
-              : null}
-            {hovered.kind === "Forecast" && breachedWeeks.has(hovered.weekStart) ? (
-              <p className="mt-1 text-destructive">Below a cash minimum this week</p>
-            ) : null}
-            {itemsByWeek.get(hovered.weekStart) ? (
-              <p className="mt-1 text-muted-foreground">
-                {itemsByWeek.get(hovered.weekStart)} scheduled{" "}
-                {itemsByWeek.get(hovered.weekStart) === 1 ? "item" : "items"}
+          </svg>
+          {hovered && hover !== null ? (
+            <div
+              className="pointer-events-none absolute top-8 z-10 w-64 max-w-[80%] rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-md"
+              style={
+                x(hover) > W / 2
+                  ? { right: `${Math.max(0, W - x(hover) + 12)}px` }
+                  : { left: `${x(hover) + 12}px` }
+              }
+              data-testid="chart-tooltip"
+            >
+              <p className="font-medium">
+                Week of {formatFullDate(hovered.weekStart)}{" "}
+                <span className="font-normal text-muted-foreground">· {hovered.kind}</span>
               </p>
-            ) : null}
-            {hovered.kind === "Forecast" ? (
-              <p className="mt-1 text-muted-foreground">Click to see this week</p>
-            ) : null}
-          </div>
-        ) : null}
+              <p className="mt-1 flex justify-between gap-3">
+                <span className="text-muted-foreground">
+                  {hovered.kind === "Forecast" ? mainLabel : "Usable cash"}
+                </span>
+                <span className="tabular-nums">{formatExactCents(hovered.usable)}</span>
+              </p>
+              {hovered.kind === "Forecast"
+                ? comparisons.map((entry) => {
+                    const v = entry.forecast.weeks[hover - off]?.usable;
+                    return v === undefined ? null : (
+                      <p key={entry.runId} className="flex justify-between gap-3">
+                        <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                          {entry.color ? (
+                            <span
+                              aria-hidden="true"
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ background: entry.color }}
+                            />
+                          ) : null}
+                          <span className="truncate">{entry.label}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums">{formatExactCents(v)}</span>
+                      </p>
+                    );
+                  })
+                : null}
+              {hovered.kind === "Forecast" && breachedWeeks.has(hovered.weekStart) ? (
+                <p className="mt-1 text-destructive">Below a cash minimum this week</p>
+              ) : null}
+              {itemsByWeek.get(hovered.weekStart) ? (
+                <p className="mt-1 text-muted-foreground">
+                  {itemsByWeek.get(hovered.weekStart)} scheduled{" "}
+                  {itemsByWeek.get(hovered.weekStart) === 1 ? "item" : "items"}
+                </p>
+              ) : null}
+              {hovered.kind === "Forecast" ? (
+                <p className="mt-1 text-muted-foreground">Click to see this week</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <CashBar
+          controls={`${clipId}-chart`}
+          extent={cashExtent}
+          lo={Math.max(cashExtent[0], domainLo)}
+          hi={Math.min(cashExtent[1], domainHi)}
+          top={PAD.top}
+          height={H - PAD.top - PAD.bottom}
+          zoomed={cashView !== null}
+          onChange={setCashView}
+          onReset={() => setCashView(null)}
+        />
       </div>
       <RangeBar
         controls={`${clipId}-chart`}
@@ -890,6 +904,139 @@ function RangeBar({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+type CashDrag = { mode: "top" | "bottom" | "move"; y0: number; lo0: number; hi0: number };
+
+/**
+ * Two-handle cash scroller beside the chart: drag the top handle to set the highest amount
+ * shown, the bottom handle for the lowest, and the window between them to pan. Double-click
+ * fits the lines again. Up and down arrows move a handle; Shift moves further.
+ */
+function CashBar({
+  controls,
+  extent,
+  lo,
+  hi,
+  top,
+  height,
+  zoomed,
+  onChange,
+  onReset,
+}: {
+  controls: string;
+  /** Lowest and highest cents the scroller can reach. */
+  extent: [number, number];
+  lo: number;
+  hi: number;
+  /** Plot offset and height in chart pixels, so the track lines up with the plot. */
+  top: number;
+  height: number;
+  zoomed: boolean;
+  onChange: (range: [number, number]) => void;
+  onReset: () => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<CashDrag | null>(null);
+  const [min, max] = extent;
+  const span = Math.max(1, max - min);
+  const minSpan = Math.max(1, Math.round(span * 0.03));
+  const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+  const apply = (mode: CashDrag["mode"], lo0: number, hi0: number, delta: number) => {
+    const d = Math.round(delta);
+    if (mode === "top") onChange([lo0, clamp(hi0 + d, lo0 + minSpan, max)]);
+    else if (mode === "bottom") onChange([clamp(lo0 + d, min, hi0 - minSpan), hi0]);
+    else {
+      const next = clamp(lo0 + d, min, max - (hi0 - lo0));
+      onChange([next, next + (hi0 - lo0)]);
+    }
+  };
+  const begin = (mode: CashDrag["mode"]) => (e: PointerEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { mode, y0: e.clientY, lo0: lo, hi0: hi };
+  };
+  const move = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    const px = track.current?.clientHeight ?? 0;
+    if (!d || px <= 0) return;
+    // Dragging up raises the amounts shown.
+    apply(d.mode, d.lo0, d.hi0, (-(e.clientY - d.y0) / px) * span);
+  };
+  const stop = () => {
+    drag.current = null;
+  };
+  const keys = (mode: CashDrag["mode"]) => (e: KeyboardEvent<HTMLElement>) => {
+    const step = span * (e.shiftKey ? 0.08 : 0.02);
+    const delta = e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0;
+    if (!delta) return;
+    e.preventDefault();
+    apply(mode, lo, hi, delta);
+  };
+  const pctTop = ((max - hi) / span) * 100;
+  const pctHeight = ((hi - lo) / span) * 100;
+  return (
+    <div className="flex w-6 shrink-0 flex-col items-center" style={{ paddingTop: top }}>
+      <div
+        ref={track}
+        className="relative w-4 touch-none select-none rounded-md border bg-muted/40"
+        style={{ height }}
+        onPointerMove={move}
+        onPointerUp={stop}
+        onPointerCancel={stop}
+        onDoubleClick={onReset}
+        data-testid="cash-range"
+      >
+        <div
+          role="scrollbar"
+          aria-controls={controls}
+          aria-label="Pan the cash range"
+          aria-orientation="vertical"
+          aria-valuemin={min}
+          aria-valuemax={Math.max(min, max - (hi - lo))}
+          aria-valuenow={lo}
+          aria-valuetext={`${formatExactCents(lo)} to ${formatExactCents(hi)}`}
+          tabIndex={0}
+          className="absolute inset-x-0 cursor-grab rounded-md border-2 border-primary/70 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          style={{ top: `${pctTop}%`, height: `${pctHeight}%` }}
+          onPointerDown={begin("move")}
+          onKeyDown={keys("move")}
+          data-testid="cash-range-window"
+        >
+          {(["top", "bottom"] as const).map((mode) => (
+            <span
+              key={mode}
+              role="slider"
+              tabIndex={0}
+              aria-orientation="vertical"
+              aria-label={mode === "top" ? "Highest cash shown" : "Lowest cash shown"}
+              aria-valuemin={min}
+              aria-valuemax={max}
+              aria-valuenow={mode === "top" ? hi : lo}
+              aria-valuetext={formatExactCents(mode === "top" ? hi : lo)}
+              className={`absolute inset-x-0 flex h-3 cursor-ns-resize items-center justify-center bg-primary/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${mode === "top" ? "-top-1.5 rounded-t-md" : "-bottom-1.5 rounded-b-md"}`}
+              onPointerDown={begin(mode)}
+              onKeyDown={keys(mode)}
+              data-testid={`cash-range-${mode}`}
+            >
+              <span aria-hidden="true" className="h-px w-2 bg-primary-foreground/80" />
+            </span>
+          ))}
+        </div>
+      </div>
+      {zoomed ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-1 text-[10px] leading-3 text-primary underline-offset-2 hover:underline"
+          title="Fit the cash axis to the lines in view"
+        >
+          Fit
+        </button>
+      ) : null}
     </div>
   );
 }

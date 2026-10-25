@@ -211,7 +211,7 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain('data-testid="forecast-line"');
   });
 
-  it("offers a two-handle time scroller, cash zoom, axis titles and gridlines", () => {
+  it("offers two-handle time and cash scrollers, axis titles and gridlines", () => {
     const html = renderToStaticMarkup(
       <WorkspaceChart
         history={fixtureRoot.baseline.history}
@@ -222,8 +222,11 @@ describe("saved scenario comparisons", () => {
         onSelectWeek={() => undefined}
       />,
     );
-    for (const label of ["Fit to lines", "From $0", "Drag the handles to zoom"])
-      expect(html).toContain(label);
+    expect(html).toContain("Drag the handles to zoom");
+    // A matching vertical scroller zooms and pans the cash axis.
+    expect(html).toContain('data-testid="cash-range-top"');
+    expect(html).toContain('data-testid="cash-range-bottom"');
+    expect(html).toContain('aria-orientation="vertical"');
     // A two-handle range bar scrolls and zooms time; it opens on every week on wide screens.
     expect(html).toContain('data-testid="time-range-start"');
     expect(html).toContain('data-testid="time-range-end"');
