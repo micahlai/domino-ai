@@ -1,10 +1,5 @@
 /** Selected filing-backed operating feeds. Each selection has one durable mock world. */
-import {
-  OPERATING_COMPANY_IDS,
-  OPERATING_SCENARIO_IDS,
-  type OperatingSelection,
-  operatingProvenance,
-} from "@domino/sim";
+import { OPERATING_COMPANY_IDS, OPERATING_SCENARIO_IDS, operatingProvenance } from "@domino/sim";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { createFeedCompany } from "./field";
@@ -23,7 +18,7 @@ const scenarioArg = v.union(
 
 export const ensure = mutation({
   args: { company: companyArg, scenario: scenarioArg },
-  handler: async (ctx, selection: OperatingSelection) => {
+  handler: async (ctx, selection) => {
     const existing = await ctx.db
       .query("companies")
       .withIndex("by_operating_demo", (q) =>
