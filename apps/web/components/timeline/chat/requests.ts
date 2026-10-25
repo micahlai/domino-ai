@@ -38,7 +38,7 @@ export async function requestChat(
     );
     if (
       checked.state !== "ready" ||
-      checked.value.status === "saved" ||
+      (checked.value.status === "saved" && command.kind !== "send") ||
       (command.kind === "confirm" && checked.value.status !== "ready")
     )
       return {
@@ -91,7 +91,6 @@ export async function requestChat(
           p.value.selectedItemId !== command.receipt.selectedItemId)) ||
       (command.kind === "reset" &&
         (p.value.status !== "collecting" || p.value.proposal !== null)) ||
-      (command.kind === "send" && p.value.status === "saved") ||
       (command.kind === "confirm" &&
         (p.value.status !== "saved" ||
           canonicalJson(p.value.proposal) !== canonicalJson(command.receipt.proposal)))

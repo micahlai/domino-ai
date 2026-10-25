@@ -281,9 +281,8 @@ export function ChatView({
 
   const intro = (
     <p className="text-sm text-muted-foreground">
-      Ask about the forecast, a week, a bill or the rules, or describe a what-if in plain words: a
-      payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for
-      anything missing.
+      Ask about your company, invoices, Brain findings or timeline, or talk through a what-if.
+      Domino uses this conversation and saved evidence, and asks when something needs clarifying.
     </p>
   );
   const start =
@@ -401,7 +400,7 @@ export function ChatView({
       />
     ) : null;
   // The composer is always offered: the first message starts the conversation.
-  const canCompose = receipt ? receipt.status !== "saved" : !selected;
+  const canCompose = receipt !== null || !selected;
   const composer = canCompose ? (
     <form
       className="space-y-2"
@@ -411,11 +410,13 @@ export function ChatView({
       }}
     >
       <label htmlFor="chat-reply" className="block text-sm font-medium">
-        {receipt?.pendingField
-          ? `Your reply · ${receipt.pendingField}`
-          : receipt?.status === "ready"
-            ? "Correct your draft or ask a question"
-            : "Ask or describe a what-if"}
+        {receipt?.status === "saved"
+          ? "Ask about the saved result"
+          : receipt?.pendingField
+            ? `Your reply · ${receipt.pendingField}`
+            : receipt?.status === "ready"
+              ? "Correct your draft or ask a question"
+              : "Ask or describe a what-if"}
       </label>
       <textarea
         id="chat-reply"

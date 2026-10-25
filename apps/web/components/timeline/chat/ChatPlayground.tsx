@@ -7,7 +7,13 @@ import { WorkspaceView } from "../workspace/WorkspaceView";
 import { workspaceHref } from "../workspace/api";
 import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "../workspace/fixtures";
 import { ChatView } from "./ChatView";
-import { fixtureChat, fixtureChatRun, fixtureReady, fixtureSaved } from "./fixtures";
+import {
+  fixtureChat,
+  fixtureChatRun,
+  fixtureDiscussion,
+  fixtureReady,
+  fixtureSaved,
+} from "./fixtures";
 /** Deliberately repeated layout-only notes; every plotted point uses an existing saved fixture. */
 function CrowdedLabelsFixture() {
   const [week, setWeek] = useState<string | null>(null);
@@ -65,9 +71,18 @@ function CrowdedLabelsFixture() {
   );
 }
 export function ChatPlayground() {
-  const [mode, setMode] = useState<"new" | "clarify" | "ready" | "saved" | "error">("clarify");
+  const [mode, setMode] = useState<"new" | "clarify" | "discussion" | "ready" | "saved" | "error">(
+    "clarify",
+  );
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
-  const receipt = mode === "ready" ? fixtureReady : mode === "saved" ? fixtureSaved : fixtureChat;
+  const receipt =
+    mode === "discussion"
+      ? fixtureDiscussion
+      : mode === "ready"
+        ? fixtureReady
+        : mode === "saved"
+          ? fixtureSaved
+          : fixtureChat;
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -76,7 +91,7 @@ export function ChatPlayground() {
       </p>
       <CrowdedLabelsFixture />
       <div className="flex flex-wrap gap-2">
-        {(["new", "clarify", "ready", "saved", "error"] as const).map((value) => (
+        {(["new", "clarify", "discussion", "ready", "saved", "error"] as const).map((value) => (
           <Button
             key={value}
             variant={mode === value ? "default" : "outline"}

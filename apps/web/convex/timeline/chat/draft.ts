@@ -49,7 +49,8 @@ export type Result = {
 };
 const intro =
   "Ask about the forecast, a week, a bill or the rules, or describe a what-if: a one-time payment or receipt, a late invoice, or a rule for minimum usable cash, runway, or a bill deadline. I will ask for missing details. Nothing runs until you review and save.";
-export const GREETING = intro;
+export const GREETING =
+  "Ask about your company, invoices, Brain findings or timeline, or talk through a what-if. I use this conversation and saved evidence, and ask for missing details. Nothing runs until you review and save.";
 const fieldWords: Record<Field, string> = {
   amountText: "amount",
   dateText: "date",

@@ -63,3 +63,24 @@ export const fixtureSaved: ChatReceipt = {
   status: "saved",
   linkedRunId: "timeline:workspace/saved-chat-fixture",
 };
+
+/** Illustrative conversation; no model or calculation runs in this fixture. */
+export const fixtureDiscussion: ChatReceipt = {
+  ...fixtureChat,
+  pendingField: null,
+  turns: [
+    fixtureChat.turns[0]!,
+    {
+      id: "lawsuit-question",
+      role: "user",
+      text: "what if $40M lawsuit dec 7 2026",
+      createdAt: at,
+    },
+    {
+      id: "lawsuit-clarification",
+      role: "assistant",
+      text: "Do you mean a $40M cash payment on December 7, 2026, a settlement assumption, or a possible liability? A lawsuit does not automatically mean cash leaves on that date. We can talk through the assumption before preparing a simulation.",
+      createdAt: at,
+    },
+  ],
+};

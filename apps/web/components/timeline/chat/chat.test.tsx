@@ -314,10 +314,10 @@ describe("chat review rendering", () => {
     for (const rule of rules) expect(markup).toContain(rule.label.replaceAll("'", "&#x27;"));
     expect(markup).toContain("$3,150,000");
   });
-  it("links saved result and removes the composer", () => {
+  it("links saved result and retains the conversation composer", () => {
     const markup = html(fixtureSaved);
     expect(markup).toContain("Open saved timeline");
-    expect(markup).not.toContain("Send reply");
+    expect(markup).toContain("Send reply");
     expect(chatHref("a/b", "source?x", "chat#x")).toContain(
       "/c/a%2Fb/timeline?runId=source%3Fx&amp;".replace("&amp;", "&"),
     );

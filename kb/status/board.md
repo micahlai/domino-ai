@@ -1,5 +1,9 @@
 # Status board
 
+| Work | Status | Checkout / evidence |
+| --- | --- | --- |
+| TL14 conversational Ask Domino | doing | codex/ask-domino-conversation from origin/main fe1fbad; Claude implementation session75308, Codex audit. Every message uses LLM; full transcript and verified Brain map/company/invoice/timeline context. Isolated fixture preview3147/session5623; main/shared runtimes unchanged. |
+
 ## Field lane takeover, Oct 25
 
 | Work | Status | Checkout / evidence |

@@ -1,16 +1,20 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
-import { WeeklySeedV1Schema, canonicalJson } from "@domino/contracts";
+import { WeeklySeedV1Schema, canonicalJson, contentHashPreimage } from "@domino/contracts";
 import { weeklyBoundaryFixtures } from "@domino/contracts/fixtures";
 import { convexTest } from "convex-test";
 import { makeFunctionReference } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fixtureWorkerContext } from "../../../components/timeline/chat/workerFixture";
+import { FieldTraceSchema } from "../../../lib/field-trace-contract";
 import schema from "../../schema";
 import { ASSISTANT_TOTAL_TIMEOUT_MS, runStructured } from "../assistant/claude";
+import type { Intent } from "../questions/intent";
 import type { QuestionReceipt } from "../questions/receipt";
 import { baselineRefs } from "../refs";
 import { sha256Hex } from "../workspaceInput";
 import { workspaceRefs } from "../workspaceRefs";
+import { statement } from "./draft";
 import type { ChatReceipt } from "./receipt";
 import { chatRefs } from "./refs";
 
@@ -53,8 +57,10 @@ const ask = makeFunctionReference<
   QuestionReceipt
 >("timeline/questions:ask");
 
-async function source(t: T) {
-  const seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+async function source(
+  t: T,
+  seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed),
+) {
   const saved = await t.mutation(baselineRefs.save, {
     requestId: rid(),
     seedJson: JSON.stringify(seed),
@@ -149,9 +155,12 @@ const failTurn = makeFunctionReference<
   ReturnType<typeof turn> & { attempt: number },
   ChatReceipt | null
 >("timeline/chat:failAssistantTurn");
-const done = () => final({ done: true });
+const done = () => final({ reply: "Let’s review the request together." });
 const classify = (intents: unknown[]) =>
-  scriptClaude([toolUse("update_draft", { intents }), done()]);
+  scriptClaude([
+    toolUse("update_draft", { request: (intents as Intent[]).map(statement).join("; "), intents }),
+    done(),
+  ]);
 const noNetwork = () => {
   const spy = vi.fn(async () => {
     throw new Error("Provider must not run");
@@ -161,7 +170,7 @@ const noNetwork = () => {
 };
 
 describe("Claude Timeline chat safety", () => {
-  it("saves only checked user spans and deterministic replies", async () => {
+  it("saves checked user spans and the actual model reply", async () => {
     const t = setup();
     const src = await source(t);
     const { bodies } = classify([atlas]);
@@ -169,25 +178,27 @@ describe("Claude Timeline chat safety", () => {
     const saved = await t.action(assistantSend, turn(r));
     expect(saved.status).toBe("ready");
     expect(saved.turns.at(-2)?.text).toBe(exactText);
-    expect(saved.turns.at(-1)?.text).toMatch(/complete proposal/);
-    expect(String(bodies[0]?.system)).toMatch(/openInvoices/);
+    expect(saved.turns.at(-1)?.text).toBe("Let’s review the request together.");
+    expect(JSON.stringify(bodies[0]?.messages)).toMatch(/openInvoices/);
     const g = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     const grammar = await t.mutation(chatRefs.send, turn(g));
     expect(saved.proposal).toEqual(grammar.proposal);
   });
 
-  it("fills pending fields and corrects one field without a provider or model replacement", async () => {
+  it("uses the provider for pending fields and corrections while keeping grounded values", async () => {
     const t = setup();
     classify([{ ...atlas, dateText: null }]);
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
     const pending = await t.action(assistantSend, turn(r, "pay $50,000 to Atlas Legal"));
     expect(pending.pendingField).toBe("date");
-    const spy = noNetwork();
+    const first = classify([atlas]);
     const ready = await t.action(assistantSend, turn(pending, "2026-11-17"));
+    expect(first.spy).toHaveBeenCalledTimes(2);
+    const second = classify([{ ...atlas, amountText: "$80,000" }]);
     expect(ready.status).toBe("ready");
     const corrected = await t.action(assistantSend, turn(ready, "change amount to $80,000"));
     expect(corrected.proposal?.changes[0]).toMatchObject({ amount: 8_000_000 });
-    expect(spy).not.toHaveBeenCalled();
+    expect(second.spy).toHaveBeenCalledTimes(2);
   });
 
   it("replays an accepted turn without a provider even after later turns or configuration changes", async () => {
@@ -342,7 +353,10 @@ describe("Claude Timeline chat safety", () => {
       expectedRevision: ready.revision,
       reviewed: true,
     });
-    await expect(t.action(assistantSend, turn(saved))).rejects.toThrow(/already saved/);
+    scriptClaude([final({ reply: "We can discuss the saved result." })]);
+    const discussed = await t.action(assistantSend, turn(saved, "Explain the saved result"));
+    expect(discussed.status).toBe("saved");
+    expect(discussed.linkedRunId).toBe(saved.linkedRunId);
     let full = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     for (let i = 0; i < 20; i++) full = await t.mutation(chatRefs.send, turn(full, "hello"));
     await expect(t.action(assistantSend, turn(full))).rejects.toThrow(/20 user turns/);
@@ -395,12 +409,13 @@ describe("Claude Timeline chat safety", () => {
     }
   });
 
-  it("uses fixed parsing without a key", async () => {
+  it("fails retryably without a key instead of bypassing the model", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const t = setup();
     const spy = noNetwork();
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
-    expect((await t.action(assistantSend, turn(r))).status).toBe("ready");
+    await expect(t.action(assistantSend, turn(r))).rejects.toThrow(/unavailable or not configured/);
+    expect(await t.query(chatRefs.get, key(r))).toEqual(r);
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -409,48 +424,38 @@ describe("Claude Timeline chat safety", () => {
     "pay $50,000 to Atlas Legal on 2026-11-17 if Acme pays",
     "keep usable cash above $50,000 daily",
     "keep usable cash at most $50,000",
-  ])("rejects qualifiers from original wording without a provider: %s", async (text) => {
-    const t = setup();
-    const spy = noNetwork();
-    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
-    const after = await t.action(assistantSend, turn(r, text));
-    expect(after.proposal).toBeNull();
-    expect(spy).not.toHaveBeenCalled();
-  });
+  ])(
+    "discusses qualified requests through the provider without creating a proposal: %s",
+    async (text) => {
+      const t = setup();
+      const { spy } = scriptClaude([
+        final({ reply: "Let’s clarify that assumption before making a change." }),
+      ]);
+      const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+      const after = await t.action(assistantSend, turn(r, text));
+      expect(after.proposal).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+    },
+  );
 
-  it.each([
-    ["configured", "test-key"],
-    ["no key", ""],
-  ])("enforces cash qualifiers at save even on the %s fallback", async (_mode, apiKey) => {
-    vi.stubEnv("ANTHROPIC_API_KEY", apiKey);
+  it("checks qualified draft tool calls against the person's actual words", async () => {
     const t = setup();
     const src = await source(t);
-    const spy = noNetwork();
     for (const text of [
       "pay $50,000 to Atlas Legal on 2026-11-17 daily",
       "pay at most $50,000 to Atlas Legal on 2026-11-17",
       "pay at   most $50,000 to Atlas Legal on 2026-11-17",
     ]) {
       const initial = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
-      const ready = await t.mutation(chatRefs.send, turn(initial));
-      for (const r of [initial, ready]) {
-        // Use a fresh chat for the initially empty path; the ready path proves the old
-        // proposal cannot survive the rejection through unchangedReady.
-        const target =
-          r === initial ? await t.mutation(chatRefs.begin, { ...src, requestId: rid() }) : r;
-        const after = await t.action(assistantSend, turn(target, text));
-        expect(after.status).toBe("collecting");
-        expect(after.proposal).toBeNull();
-        expect(after.turns.at(-1)?.text).toMatch(/need clarification/);
-      }
-      const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
-      expect(question.status).toBe("clarification");
-      expect(question.proposal).toBeNull();
+      const { spy } = classify([atlas]);
+      const after = await t.action(assistantSend, turn(initial, text));
+      expect(after.proposal).toBeNull();
+      expect(after.status).toBe("collecting");
+      expect(spy).toHaveBeenCalledTimes(2);
     }
-    expect(spy).not.toHaveBeenCalled();
   });
 
-  it("does not let fixed fallback parsing drop malformed explicit years or signs", async () => {
+  it("keeps internal grammar integrity for malformed explicit years or signs", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const t = setup();
     const src = await source(t);
@@ -458,7 +463,7 @@ describe("Claude Timeline chat safety", () => {
     for (const date of ["Nov 17,2027", "Nov 17, 27", "-2026-11-17"]) {
       const text = `pay $50,000 to Atlas Legal on ${date}`;
       const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
-      expect((await t.action(assistantSend, turn(r, text))).proposal).toBeNull();
+      expect((await t.mutation(chatRefs.send, turn(r, text))).proposal).toBeNull();
       const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
       expect(question.status).toBe("clarification");
       expect(question.proposal).toBeNull();
@@ -475,7 +480,7 @@ describe("Claude Timeline chat safety", () => {
     const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     const chat = await t.action(assistantSend, turn(r, text));
     expect(chat.proposal).toBeNull();
-    expect(chat.turns.at(-1)?.text).toMatch(/verify every suggested value/);
+    expect(chat.turns.at(-1)?.text).toBe("Let’s review the request together.");
     scriptClaude([
       toolUse("check_request", { intents: [shortened] }),
       final({ answer: "Checked" }),
@@ -496,7 +501,7 @@ describe("Claude Timeline chat safety", () => {
     );
     expect(after.proposal).toBeNull();
     expect(after.pendingField).toBeNull();
-    expect(after.turns.at(-1)?.text).toMatch(/verify every suggested value|complete date/);
+    expect(after.turns.at(-1)?.text).toBe("Let’s review the request together.");
   });
 
   it("does not borrow a whole date from another cash clause to drop an explicit year", async () => {
@@ -534,12 +539,12 @@ describe("Claude Timeline chat safety", () => {
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
     const after = await t.action(assistantSend, turn(r));
     expect(after.proposal).toBeNull();
-    expect(after.turns.at(-1)?.text).toMatch(/verify every suggested value/);
+    expect(after.turns.at(-1)?.text).toBe("Let’s review the request together.");
   });
 });
 
 describe("one chat for questions and what-ifs", () => {
-  it("answers a plain question with its sources and leaves the draft alone, without a key", async () => {
+  it("keeps the internal deterministic resolver independently testable", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const t = setup();
     let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
@@ -558,10 +563,8 @@ describe("one chat for questions and what-ifs", () => {
     const t = setup();
     const src = await source(t);
     scriptClaude([
-      toolUse("update_draft", {
-        intents: [{ kind: "question", topic: "low_point", weekText: null, itemText: null }],
-      }),
-      final({ done: true }),
+      toolUse("lookup_forecast", { topic: "low_point", weekText: null, itemText: null }),
+      final({ reply: "The saved low point is shown in your forecast; its sources are attached." }),
     ]);
     let r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     r = await t.action(assistantSend, turn(r, "When is the low point?"));
@@ -569,8 +572,310 @@ describe("one chat for questions and what-ifs", () => {
     let g = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     g = await t.mutation(chatRefs.send, { ...turn(g, "When is the low point?") });
     expect(r.proposal).toBeNull();
-    expect(r.turns.at(-1)?.text).toBe(g.turns.at(-1)?.text);
+    expect(r.turns.at(-1)?.text).toBe(
+      "The saved low point is shown in your forecast; its sources are attached.",
+    );
+    expect(r.turns.at(-1)?.citations).toEqual(g.turns.at(-1)?.citations);
     expect(r.turns.at(-1)?.citations?.length).toBeGreaterThan(0);
+  });
+});
+
+describe("conversational context and required LLM", () => {
+  it("discusses the exact lawsuit message and resolves its meaning across turns", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const question =
+      "Do you mean a $40M cash payment on Dec 7, 2026, or a possible liability? A lawsuit does not automatically mean cash leaves then.";
+    const first = scriptClaude([final({ reply: question })]);
+    r = await t.action(assistantSend, turn(r, "what if $40M lawsuit dec 7 2026"));
+    expect(r.turns.at(-1)?.text).toBe(question);
+    expect(r.proposal).toBeNull();
+    expect(first.spy).toHaveBeenCalledTimes(1);
+    const second = classify([
+      { ...atlas, amountText: "$40M", dateText: "dec 7 2026", counterpartyText: "lawsuit" },
+    ]);
+    r = await t.action(assistantSend, turn(r, "Treat it as a cash payment"));
+    expect(r.proposal?.changes[0]).toMatchObject({
+      kind: "remove_cash",
+      amount: 4_000_000_000,
+      date: "2026-12-07",
+    });
+    const messages = second.bodies[0]?.messages as { role: string; content: string }[];
+    expect(messages).toContainEqual({ role: "user", content: "what if $40M lawsuit dec 7 2026" });
+    expect(messages).toContainEqual({ role: "assistant", content: question });
+    expect(messages.at(-1)?.content).toBe("Treat it as a cash payment");
+    expect(r.linkedRunId).toBeNull();
+  });
+
+  it("keeps a pending draft during a separate question and sends all transcript turns", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    classify([{ ...atlas, dateText: null }]);
+    r = await t.action(assistantSend, turn(r, "pay $50,000 to Atlas Legal"));
+    const { bodies } = scriptClaude([
+      toolUse("lookup_forecast", { topic: "rules", weekText: null, itemText: null }),
+      final({ reply: "We can inspect the saved rules before choosing a date." }),
+    ]);
+    const prior = r;
+    r = await t.action(assistantSend, turn(r, "Why do you need a date?"));
+    expect(r.pendingField).toBe("date");
+    const messages = bodies[0]?.messages as { role: string; content: string }[];
+    expect(messages.slice(1, -1)).toEqual(
+      prior.turns.map((x) => ({ role: x.role, content: x.text })),
+    );
+    classify([atlas]);
+    r = await t.action(assistantSend, turn(r, "2026-11-17"));
+    expect(r.proposal?.changes[0]).toMatchObject({ amount: 5_000_000 });
+  });
+
+  it("will not ignore a newly supplied amount in favor of an older draft", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    classify([atlas]);
+    r = await t.action(assistantSend, turn(r));
+    classify([atlas]);
+    r = await t.action(assistantSend, turn(r, "Make that $80,000"));
+    expect(r.proposal).toBeNull();
+  });
+
+  it("keeps old turns for discussion after reset but cannot reuse their draft values", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    classify([atlas]);
+    r = await t.action(assistantSend, turn(r));
+    r = await t.mutation(chatRefs.reset, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+    });
+    const { bodies } = classify([atlas]);
+    r = await t.action(assistantSend, turn(r, "Use the old one"));
+    expect(r.proposal).toBeNull();
+    expect(JSON.stringify(bodies[0]?.messages)).toContain(exactText);
+    const context = JSON.parse((bodies[0]?.messages as { content: string }[])[0]!.content);
+    expect(context.activeUserMessages).toEqual([
+      { turn: r.turns.length - 2, text: "Use the old one" },
+    ]);
+  });
+
+  it.each(["hello", "2026-11-17", "do not pay", "How could a recurring payment work?"])(
+    "never falls back without a model: %s",
+    async (text) => {
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
+      const t = setup();
+      const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+      const input = turn(r, text);
+      await expect(t.action(assistantSend, input)).rejects.toThrow(/unavailable or not configured/);
+      expect(await t.query(chatRefs.get, key(r))).toEqual(r);
+      vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+      scriptClaude([final({ reply: "We can talk through the assumptions together." })]);
+      const retried = await t.action(assistantSend, input);
+      expect(retried.revision).toBe(1);
+    },
+  );
+
+  it("rejects fabricated money narration and leaves the turn retryable", async () => {
+    const t = setup();
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    scriptClaude([final({ reply: "The cash forecast is $999M." })]);
+    await expect(t.action(assistantSend, turn(r, "How are we doing?"))).rejects.toThrow(
+      /could not finish/,
+    );
+    expect(await t.query(chatRefs.get, key(r))).toEqual(r);
+  });
+
+  async function withBrain(t: T) {
+    const seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+    const at = "2026-10-25T15:00:00.000Z";
+    const ids = await t.run(async (ctx) => {
+      const companyId = await ctx.db.insert("companies", {
+        name: "Kestrel actual Brain",
+        profile: "kestrel",
+        currentWeek: 0,
+        today: seed.snapshot.asOf,
+        status: "ready",
+      });
+      const snapshotId = await ctx.db.insert("snapshots", {
+        companyId,
+        asOf: seed.snapshot.asOf,
+        data: seed.snapshot,
+      });
+      await ctx.db.insert("models", {
+        companyId,
+        version: 1,
+        data: fixtureWorkerContext.inputs.model.data,
+      });
+      await ctx.db.insert("feeds", {
+        companyId,
+        auto: false,
+        autoGeneration: 0,
+        autoTicksLeft: 0,
+        week: 0,
+        snapshotVersion: 2,
+        lastSnapshotId: snapshotId,
+        lastSnapshotHash: null,
+        lastSnapshotAt: at,
+        lastIngestAt: at,
+        lastIngestStatus: "ok",
+        lastError: null,
+        recordCounts: { invoices: seed.snapshot.invoices.length },
+      });
+      await ctx.db.insert("findings", {
+        companyId,
+        findingId: "brain-flag",
+        snapshotId,
+        version: 2,
+        kind: "unusual_timing",
+        severity: "high",
+        summary: "Brain found Acme payment timing changed",
+        refs: [seed.snapshot.invoices[0]!.id],
+        detectedAt: at,
+        escalated: true,
+        status: "open",
+      });
+      const trace = FieldTraceSchema.parse({
+        schemaVersion: 1,
+        readOnly: true,
+        run: {
+          companyId,
+          runId: "brain-run",
+          snapshotId,
+          snapshotVersion: 2,
+          asOf: seed.snapshot.asOf,
+          trigger: "manual",
+          status: "done",
+          startedAt: at,
+          finishedAt: at,
+          summary: "Brain saved cash-risk results",
+        },
+        selection: { scenarioId: null, fixKind: null },
+        evidence: "frozen",
+        frozenAt: at,
+        inputs: {
+          ...fixtureWorkerContext.inputs,
+          company: { ...fixtureWorkerContext.inputs.company, id: companyId },
+          snapshot: {
+            ...fixtureWorkerContext.inputs.snapshot,
+            id: snapshotId,
+            companyId: seed.company.id,
+            version: 2,
+          },
+        },
+        scenarios: [fixtureWorkerContext.scenario],
+        candidates: [fixtureWorkerContext.candidate],
+        operations: [],
+        providers: [],
+        aiSummary: null,
+        coordinator: null,
+        limitations: [],
+        truncation: { operations: false, providers: false, scenarios: false, candidates: false },
+      });
+      await ctx.db.insert("analystRuns", {
+        companyId,
+        runId: "brain-run",
+        snapshotId,
+        snapshotVersion: 2,
+        asOf: seed.snapshot.asOf,
+        trigger: "manual",
+        status: "done",
+        paceMs: 0,
+        children: 0,
+        reported: 0,
+        startedAt: at,
+        finishedAt: at,
+        traceReceipt: JSON.stringify(trace),
+        aiSummary: {
+          status: "done",
+          recommendation: "Brain recommends checking collection timing",
+          rationale: "Based on saved scenario evidence",
+          at,
+        },
+        coordinator: { status: "done", summary: "Coordinator prioritizes the late customer", at },
+        research: [
+          {
+            name: "Counterparty risk",
+            input: "Acme",
+            items: ["Research found a payment review signal"],
+            provider: "creao",
+            remoteRunId: "NEVER-SEND-RAW-PROVIDER-ID",
+          },
+        ],
+      });
+      return { companyId, snapshotId };
+    });
+    seed.id = `field:weekly_seed/${ids.companyId}-v1`;
+    seed.contentHash = await sha256Hex(contentHashPreimage(seed));
+    const src = await source(t, seed);
+    const run = await t.query(workspaceRefs.get, src);
+    if (!run) throw new Error("Missing test run");
+    await t.run((ctx) =>
+      ctx.db.insert("timelineLinks", {
+        companyId: ids.companyId,
+        timelineCompanyId: src.companyId,
+        seedId: seed.id,
+        seedHash: seed.contentHash,
+        asOf: seed.asOf,
+        snapshotVersion: 1,
+        baselineRunId: run.baselineRunId,
+        runId: src.runId,
+        resultRef: "unused",
+        analysisId: null,
+        analysisError: null,
+        savedAt: at,
+      }),
+    );
+    return { src, ids, seed };
+  }
+
+  it("sends real linked Brain outputs, research, company books and invoice detail in an ordinary chat", async () => {
+    const t = setup();
+    const { src, seed } = await withBrain(t);
+    const r = await t.mutation(chatRefs.begin, {
+      ...src,
+      requestId: rid(),
+      selectedItemId: seed.snapshot.invoices[0]!.id,
+    });
+    const { bodies } = scriptClaude([
+      final({
+        reply: "The Brain found a timing concern; its evidence is newer than this saved timeline.",
+      }),
+    ]);
+    await t.action(assistantSend, turn(r, "Explain what the Brain found about this invoice"));
+    const payload = JSON.stringify(bodies[0]?.messages);
+    expect(payload).toContain("Brain found Acme payment timing changed");
+    expect(payload).toContain("Brain recommends checking collection timing");
+    expect(payload).toContain("Coordinator prioritizes the late customer");
+    expect(payload).toContain("Research found a payment review signal");
+    expect(payload).toContain(fixtureWorkerContext.candidate.fix.label);
+    expect(payload).toContain(seed.snapshot.invoices[0]!.id);
+    expect(payload).toContain("newer than this Timeline");
+    expect(payload).toContain("learnedModel");
+    expect(payload).not.toContain("NEVER-SEND-RAW-PROVIDER-ID");
+    expect(payload).not.toContain("unavailable");
+  });
+
+  it("does not attach Brain output from an unverified or mismatched company link", async () => {
+    const t = setup();
+    const { src } = await withBrain(t);
+    await t.run(async (ctx) => {
+      const links = await ctx.db.query("timelineLinks").collect();
+      for (const link of links) await ctx.db.patch(link._id, { seedHash: "0".repeat(64) });
+      await ctx.db.insert("companies", {
+        name: "Kestrel actual Brain",
+        profile: "kestrel",
+        currentWeek: 0,
+        today: "2026-10-30",
+        status: "ready",
+      });
+    });
+    const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+    const { bodies } = scriptClaude([
+      final({ reply: "There is no verified Brain output linked to these books." }),
+    ]);
+    await t.action(assistantSend, turn(r, "What did the Brain find?"));
+    const payload = JSON.stringify(bodies[0]?.messages);
+    expect(payload).toContain("No verified Field link matches");
+    expect(payload).not.toContain("Brain found Acme payment timing changed");
   });
 });
 

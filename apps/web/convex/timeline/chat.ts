@@ -12,6 +12,14 @@ import {
   query,
 } from "../_generated/server";
 import { groundingIssue } from "./assistant/grounding";
+import { resolveFieldSource } from "./chat/brain";
+import {
+  TurnPlanSchema,
+  activeUserTurns,
+  checkDraft,
+  citationsFor,
+  segmentStartOf,
+} from "./chat/conversation";
 import {
   type Result as DraftResult,
   DraftSchema,
@@ -41,7 +49,14 @@ const WriteSchema = KeySchema.extend({
   requestId: z.string(),
   expectedRevision: z.number().int().nonnegative().safe(),
 }).strict();
-const RowSchema = z.object({ receipt: z.unknown(), draft: DraftSchema }).strict();
+const RowSchema = z
+  .object({
+    receipt: z.unknown(),
+    draft: DraftSchema,
+    // Turn index of the latest Start over. Earlier turns are background, never draft values.
+    segmentStart: z.number().int().nonnegative().safe().optional(),
+  })
+  .strict();
 type Row = Doc<"timelineChats">;
 type Ctx = MutationCtx | QueryCtx;
 function parse<S extends z.ZodTypeAny>(schema: S, raw: unknown): z.output<S> {
@@ -74,7 +89,10 @@ async function read(ctx: Ctx, row: Row) {
   if (receipt.proposal) validateProposal(run, receipt.proposal);
   if (data.draft.pending && !data.draft.intents[data.draft.pending.index])
     reject("CHAT_INTEGRITY", "The saved pending draft is invalid.");
-  return { receipt, draft: data.draft, run };
+  const segmentStart = segmentStartOf(receipt.turns, data.segmentStart);
+  if (segmentStart >= receipt.turns.length)
+    reject("CHAT_INTEGRITY", "The saved conversation boundary is invalid.");
+  return { receipt, draft: data.draft, run, segmentStart };
 }
 async function request(
   ctx: MutationCtx,
@@ -143,7 +161,7 @@ function append(
     ],
   };
 }
-async function current(ctx: MutationCtx, args: z.infer<typeof WriteSchema>) {
+async function current(ctx: MutationCtx, args: z.infer<typeof WriteSchema>, allowSaved = false) {
   const row = await rowOf(ctx, args.companyId, args.conversationId);
   if (!row) reject("CHAT_NOT_FOUND", "This chat was not found for this company.");
   const data = await read(ctx, row);
@@ -152,7 +170,7 @@ async function current(ctx: MutationCtx, args: z.infer<typeof WriteSchema>) {
       "STALE_REVISION",
       "This chat has changed. Reload its latest messages before trying again.",
     );
-  if (data.receipt.status === "saved")
+  if (data.receipt.status === "saved" && !allowSaved)
     reject("CHAT_SAVED", "This chat already saved a result. Start a new chat for another change.");
   return { ...data, row };
 }
@@ -209,7 +227,7 @@ export const begin = mutation({
       companyId: args.companyId,
       conversationId,
       runId: args.runId,
-      data: { receipt, draft: emptyDraft() },
+      data: { receipt, draft: emptyDraft(), segmentStart: 0 },
     };
     checkRowSize(row);
     await ctx.db.insert("timelineChats", row);
@@ -303,14 +321,18 @@ export const beginWorker = internalMutation({
       companyId: args.companyId,
       conversationId,
       runId: args.runId,
-      data: { receipt: exactReceipt(receipt), draft: emptyDraft() },
+      data: { receipt: exactReceipt(receipt), draft: emptyDraft(), segmentStart: 0 },
     };
     checkRowSize(row);
     await ctx.db.insert("timelineChats", row);
     return accept(ctx, args, prior.hash, receipt);
   },
 });
-export const send = mutation({
+/**
+ * Internal fixed-grammar turn kept for tests of proposal integrity. Ask Domino never uses it:
+ * every user message goes through timeline/chatAssistant:send and the language model.
+ */
+export const send = internalMutation({
   args: { ...writeArgs, text: v.string() },
   handler: async (ctx, raw): Promise<ChatReceipt> => {
     const args = parse(
@@ -325,7 +347,7 @@ export const send = mutation({
     );
     const prior = await request(ctx, "send", args);
     if (prior.receipt) return prior.receipt;
-    const { row, receipt, draft, run } = await current(ctx, args);
+    const { row, receipt, draft, run, segmentStart } = await current(ctx, args);
     if (
       receipt.turns.filter((t) => t.role === "user").length >= 20 ||
       receipt.turns.length + 2 > 42
@@ -366,7 +388,9 @@ export const send = mutation({
       next.citations,
     );
     checkRowSize({ receipt: updated, draft: next.draft });
-    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
+    await ctx.db.patch(row._id, {
+      data: { receipt: exactReceipt(updated), draft: next.draft, segmentStart },
+    });
     return accept(ctx, args, prior.hash, updated);
   },
 });
@@ -377,6 +401,7 @@ export const reset = mutation({
     const prior = await request(ctx, "reset", args);
     if (prior.receipt) return prior.receipt;
     const { row, receipt } = await current(ctx, args);
+    const segmentStart = receipt.turns.length;
     const now = new Date().toISOString();
     const updated = append(
       {
@@ -391,7 +416,9 @@ export const reset = mutation({
       `Started over. The earlier messages remain saved; the previous draft is cleared. ${GREETING}`,
       now,
     );
-    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: emptyDraft() } });
+    await ctx.db.patch(row._id, {
+      data: { receipt: exactReceipt(updated), draft: emptyDraft(), segmentStart },
+    });
     return accept(ctx, args, prior.hash, updated);
   },
 });
@@ -401,7 +428,7 @@ export const confirm = mutation({
     const args = parse(WriteSchema.extend({ reviewed: z.literal(true) }).strict(), raw);
     const prior = await request(ctx, "confirm", args);
     if (prior.receipt) return prior.receipt;
-    const { row, receipt, draft, run } = await current(ctx, args);
+    const { row, receipt, draft, run, segmentStart } = await current(ctx, args);
     const proposal = receipt.proposal;
     if (receipt.status !== "ready" || !proposal)
       reject("CHAT_NOT_READY", "Answer the missing details before reviewing and saving.");
@@ -447,7 +474,7 @@ export const confirm = mutation({
       "Saved and calculated this reviewed proposal as a new timeline. Open the saved result to inspect its cash forecast and rule checks.",
       now,
     );
-    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft } });
+    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft, segmentStart } });
     return accept(ctx, args, prior.hash, updated);
   },
 });
@@ -521,7 +548,7 @@ export const claimAssistantTurn = internalMutation({
       // The original revision deliberately fails the client's accepted-turn check. It keeps
       // the request unconfirmed, without pretending a turn was saved or making another call.
       return { kind: "running" as const, receipt: exactReceipt(prior.prior.data) };
-    const { receipt, draft, run } = await current(ctx, args);
+    const { receipt, draft, run, segmentStart } = await current(ctx, args, true);
     if (
       receipt.turns.filter((t) => t.role === "user").length >= 20 ||
       receipt.turns.length + 2 > 42
@@ -530,6 +557,7 @@ export const claimAssistantTurn = internalMutation({
         "CHAT_LIMIT",
         "This chat has reached 20 user turns or 42 messages. Start a new chat to continue.",
       );
+    const field = await resolveFieldSource(ctx, run, receipt.workerContext);
     const attempt = (prior.prior?.assistant?.attempt ?? 0) + 1;
     const claim = {
       companyId: args.companyId,
@@ -542,7 +570,20 @@ export const claimAssistantTurn = internalMutation({
     if (prior.prior) await ctx.db.patch(prior.prior._id, claim);
     else await ctx.db.insert("timelineChatRequests", claim);
     const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
-    return { kind: "claimed" as const, receipt, draft, run, attempt, floor };
+    const savedResult = receipt.linkedRunId
+      ? await source(ctx, receipt.companyId, receipt.linkedRunId)
+      : null;
+    return {
+      kind: "claimed" as const,
+      receipt,
+      draft,
+      run,
+      attempt,
+      floor,
+      segmentStart,
+      field,
+      savedResult,
+    };
   },
 });
 
@@ -562,8 +603,13 @@ export const failAssistantTurn = internalMutation({
 
 /** Save only a deterministic checked reply and proposal against the claimed source revision. */
 export const saveAssistantTurn = internalMutation({
-  args: { ...assistantArgs, attempt: v.number(), intentsJson: v.union(v.string(), v.null()) },
-  handler: async (ctx, { attempt, intentsJson, ...raw }): Promise<ChatReceipt> => {
+  args: {
+    ...assistantArgs,
+    attempt: v.number(),
+    intentsJson: v.union(v.string(), v.null()),
+    planJson: v.optional(v.string()),
+  },
+  handler: async (ctx, { attempt, intentsJson, planJson, ...raw }): Promise<ChatReceipt> => {
     const args = parse(AssistantInputSchema, raw);
     const prior = await assistantRequest(ctx, args);
     if (prior.receipt) return prior.receipt;
@@ -579,7 +625,58 @@ export const saveAssistantTurn = internalMutation({
         "ASSISTANT_EXPIRED",
         "This reply expired. Retry the same message or reopen the saved conversation.",
       );
-    const { row, receipt, draft, run } = await current(ctx, args);
+    const { row, receipt, draft, run, segmentStart } = await current(ctx, args, true);
+    if (planJson !== undefined) {
+      const plan = TurnPlanSchema.parse(JSON.parse(planJson));
+      const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+      const checked =
+        plan.draft === null || receipt.status === "saved"
+          ? null
+          : checkDraft(run, plan.draft, {
+              draft,
+              userTurns: activeUserTurns(receipt, segmentStart, args.text),
+              selectedItemId: receipt.selectedItemId,
+              conversationId: receipt.conversationId,
+              floor,
+            }).result;
+      const nextDraft = checked?.draft ?? draft;
+      const proposal = checked ? checked.proposal : receipt.proposal;
+      const now = new Date().toISOString();
+      let updated: ChatReceipt = {
+        ...receipt,
+        revision: receipt.revision + 1,
+        status: receipt.status === "saved" ? "saved" : proposal ? "ready" : "collecting",
+        proposal,
+        pendingField: proposal ? null : checked ? checked.pendingField : receipt.pendingField,
+        updatedAt: now,
+      };
+      const answerRun = receipt.linkedRunId
+        ? await source(ctx, receipt.companyId, receipt.linkedRunId)
+        : run;
+      updated = append(
+        append(updated, "user", args.text, now),
+        "assistant",
+        plan.reply,
+        now,
+        undefined,
+        citationsFor(answerRun, plan, receipt),
+      );
+      const nextSegment =
+        receipt.status !== "saved" && plan.draft?.intents.length === 0
+          ? receipt.turns.length + 1
+          : segmentStart;
+      checkRowSize({ receipt: updated, draft: nextDraft, segmentStart: nextSegment });
+      await ctx.db.patch(row._id, {
+        data: { receipt: exactReceipt(updated), draft: nextDraft, segmentStart: nextSegment },
+      });
+      await ctx.db.patch(prior.prior._id, {
+        data: exactReceipt(updated),
+        assistant: { ...claim, status: "accepted" },
+      });
+      return updated;
+    }
+    // Compatibility for existing internal proposal-integrity fixtures. The public action
+    // always supplies a model-authored plan, never this deterministic test path.
     const intents =
       intentsJson === null ? null : z.array(IntentSchema).max(4).parse(JSON.parse(intentsJson));
     // Existing supplied slots are changed only by the deterministic pending-field/correction
@@ -626,7 +723,9 @@ export const saveAssistantTurn = internalMutation({
       next.citations,
     );
     checkRowSize({ receipt: updated, draft: next.draft });
-    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
+    await ctx.db.patch(row._id, {
+      data: { receipt: exactReceipt(updated), draft: next.draft, segmentStart },
+    });
     await ctx.db.patch(prior.prior._id, {
       data: exactReceipt(updated),
       assistant: { ...claim, status: "accepted" },
