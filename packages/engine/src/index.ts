@@ -185,3 +185,19 @@ export {
 export { scheduledItems } from "./scheduled-items";
 /** Open invoice = not paid and not written off; the forecast projects only these. */
 export { isOpenInvoice } from "./schedule";
+/** Backtest suggestions and simulated counterfactuals on the quarterly bridge; engine-local. */
+export {
+  type BacktestEffect,
+  type BacktestFact,
+  type BacktestResponse,
+  type BacktestSuggestion,
+  type CounterfactualPoint,
+  type FlowLine,
+  QUARTER_BACKTEST_METHOD,
+  type QuarterCounterfactual,
+  type QuarterSuggestionsArgs,
+  creditDrawOverlap,
+  quarterCounterfactual,
+  quarterFlowMiss,
+  quarterSuggestions,
+} from "./period-backtest";

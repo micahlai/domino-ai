@@ -13,7 +13,7 @@ import {
 } from "./types.ts";
 
 export * from "./types.ts";
-export { operatingDemoCatalog, operatingScenarioCatalog } from "./anchors.ts";
+export { companyModeCatalog, operatingDemoCatalog, operatingScenarioCatalog } from "./anchors.ts";
 
 function validate(selection: OperatingSelection, seed: number) {
   if (

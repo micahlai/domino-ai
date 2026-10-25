@@ -35,6 +35,8 @@ export interface OperatingCompanyCatalogEntry {
   reportedAt: ISODate;
   simulationAsOf: ISODate;
   filedAt?: ISODate;
+  /** One line for the company selector that says which real company and data this is. */
+  selectorDescription?: string;
 }
 
 export interface ReportedAnchor {
