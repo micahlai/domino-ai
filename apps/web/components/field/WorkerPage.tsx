@@ -48,6 +48,7 @@ import type {
   SimulateSuggestion,
   SuggestionsState,
 } from "./worker/SuggestionsSection";
+import { SummaryStrip } from "./worker/SummaryStrip";
 import { WorkerSections } from "./worker/WorkerSections";
 import { introLine } from "./worker/format";
 import { type WatchedRisk, watchedRisks } from "./worker/risks";
@@ -202,6 +203,21 @@ function WorkerBody({
   const context = useMemo(() => effectContext(dashboard, risks), [dashboard, risks]);
   const risksLoading = dashboard.result === undefined;
   const disabled = data.source === "loading" || data.needsSetup || runner.busy !== null;
+  const counts = {
+    fixes:
+      suggestions.kind === "ready"
+        ? suggestions.list.filter((s) => s.status === "open").length
+        : suggestions.kind === "loading"
+          ? null
+          : 0,
+    risks: risksLoading ? null : risks.filter((r) => r.status !== "holds").length,
+    flags: data.findings ? data.findings.filter((f) => f.status === "open").length : null,
+  };
+  const view = viewOf(dashboard);
+  const lowest = view?.lowest
+    ? { cents: view.lowest.usable, weekStart: view.lowest.weekStart }
+    : null;
+  const minimum = view?.lenderMinimum?.cents;
 
   return (
     <div className="mx-auto max-w-[1040px] space-y-8">
@@ -209,16 +225,7 @@ function WorkerBody({
         <PageHeader
           eyebrow={<DataLabel />}
           title={company}
-          description={introLine({
-            suggestions:
-              suggestions.kind === "ready"
-                ? suggestions.list.filter((s) => s.status === "open").length
-                : suggestions.kind === "loading"
-                  ? null
-                  : 0,
-            risks: risksLoading ? null : risks.filter((r) => r.status !== "holds").length,
-            flags: data.findings ? data.findings.filter((f) => f.status === "open").length : null,
-          })}
+          description={introLine({ ...counts, suggestions: counts.fixes })}
           actions={
             <>
               <Button
@@ -257,6 +264,14 @@ function WorkerBody({
               </Button>
             </>
           }
+        />
+        <SummaryStrip
+          companyId={companyId}
+          counts={{
+            ...counts,
+            lowest,
+            belowMinimum: lowest !== null && minimum !== undefined ? lowest.cents < minimum : false,
+          }}
         />
         <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_300px]">
           <StatusLine now={now} runner={runner} />

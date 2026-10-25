@@ -7,7 +7,6 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
-  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useMemo, useState } from "react";
@@ -19,7 +18,6 @@ import { timelineCalculationHref } from "../../../lib/trace-links";
 import { DominoEffects } from "../../field/DominoEffects";
 import { Button } from "../../ui/button";
 import { StatTile } from "../../ui/page";
-import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { Assistant, type AssistantTab, useIsDesktop } from "./Assistant";
 import { AncestryPanel } from "./CatalogPanel";
@@ -115,7 +113,6 @@ export function WorkspaceView({
   chat,
   initialContext,
   initialAssistant,
-  risksHref,
   notice,
   forecastNotice,
   baseRunId: baseRunIdProp,
@@ -295,17 +292,6 @@ export function WorkspaceView({
                 See how
               </Link>
             </Button>
-            {run.kind !== "scenario" || risksHref ? (
-              <Button size="sm" variant="ghost" asChild>
-                <Link
-                  href={risksHref ?? analysisHref(run.companyId, run.runId)}
-                  data-testid="action-risks"
-                >
-                  <ShieldAlert aria-hidden="true" />
-                  <span className="max-sm:sr-only">Saved risks</span>
-                </Link>
-              </Button>
-            ) : null}
             <Button
               size="sm"
               variant="ghost"

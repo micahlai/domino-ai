@@ -127,6 +127,30 @@ export const replay = mutation({
   },
 });
 
+/**
+ * Reset demo: a NEW started copy of the company's prepared baseline (no planted scenario, no
+ * decisions or learned rules, fresh clock), listed as a replay of the baseline original. Nothing
+ * existing is deleted or changed; the caller switches to the returned company.
+ */
+export const resetDemo = mutation({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, { companyId }) => {
+    const company = await ctx.db.get("companies", companyId);
+    const selection = company?.operatingDemo;
+    if (!company || !selection)
+      throw new ConvexError({ code: "NOT_FOUND", message: "No such operating company" });
+    const pick = { company: selection.company, scenario: "baseline" as const };
+    const original =
+      (await originalOf(ctx, pick))?._id ??
+      (await createFeedCompany(ctx, 1, undefined, undefined, pick, { idle: true }));
+    const created = await createFeedCompany(ctx, 1, undefined, undefined, pick);
+    const base = (await ctx.db.get("companies", original))?.name ?? company.name;
+    const name = `${base} · Fresh demo`;
+    await ctx.db.patch("companies", created, { replayOf: original, name });
+    return { companyId: created, name, replayOf: original, scenario: pick.scenario };
+  },
+});
+
 export const context = query({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
