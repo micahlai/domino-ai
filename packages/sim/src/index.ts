@@ -14,3 +14,4 @@ export const simulator: Simulator = {
 };
 
 export * from "./drivers/index.ts";
+export * from "./operating/index.ts";

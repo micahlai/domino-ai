@@ -1,0 +1,1182 @@
+{
+  "asana-inspired": [
+    {
+      "id": "revenue",
+      "label": "Revenues",
+      "sourceValue": "166,503",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "cost_of_revenues",
+      "label": "Cost of revenues",
+      "sourceValue": "16,053",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "research_and_development",
+      "label": "Research and development",
+      "sourceValue": "81,028",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "sales_and_marketing",
+      "label": "Sales and marketing",
+      "sourceValue": "98,349",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "general_and_administrative",
+      "label": "General and administrative",
+      "sourceValue": "34,494",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "total_operating_expenses",
+      "label": "Total operating expenses",
+      "sourceValue": "213,871",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "operating_loss",
+      "label": "Loss from operations",
+      "sourceValue": "(63,421)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "net_loss",
+      "label": "Net loss",
+      "sourceValue": "(61,750)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "cash_and_equivalents_close",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "268,314",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm"
+    },
+    {
+      "id": "cash_and_equivalents_fiscal_open",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "526,563",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm"
+    },
+    {
+      "id": "cash_and_equivalents_prior_quarter_close",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "413,697",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000042/asan-20230731.htm"
+    },
+    {
+      "id": "marketable_securities_close",
+      "label": "Marketable securities",
+      "sourceValue": "261,726",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm"
+    },
+    {
+      "id": "stock_based_compensation",
+      "label": "Total stock-based compensation expense",
+      "sourceValue": "52,866",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "operating_cash_flow_quarter",
+      "label": "Net cash used in operating activities",
+      "sourceValue": "(8,233)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "investing_cash_flow_quarter",
+      "label": "Net cash provided by (used in) investing activities",
+      "sourceValue": "(140,738)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "financing_cash_flow_quarter",
+      "label": "Net cash provided by financing activities",
+      "sourceValue": "6,669",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "property_and_equipment_cash_quarter",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(1,255)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "capitalized_software_cash_quarter",
+      "label": "Capitalized internal-use software costs",
+      "sourceValue": "(1,977)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "operating_cash_flow_ytd",
+      "label": "Net cash used in operating activities",
+      "sourceValue": "(2,594)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "investing_cash_flow_ytd",
+      "label": "Net cash provided by (used in) investing activities",
+      "sourceValue": "(270,205)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "financing_cash_flow_ytd",
+      "label": "Net cash provided by financing activities",
+      "sourceValue": "16,418",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "property_and_equipment_cash_ytd",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(7,221)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "capitalized_software_cash_ytd",
+      "label": "Capitalized internal-use software costs",
+      "sourceValue": "(4,325)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "periodStart": "2023-02-01"
+    }
+  ],
+  "gitlab-inspired": [
+    {
+      "id": "cashOpeningQuarter",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "273,225",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm"
+    },
+    {
+      "id": "cashClosingQuarter",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "285,309",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm"
+    },
+    {
+      "id": "cashComparativeFiscalOpening",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "295,402",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm"
+    },
+    {
+      "id": "shortTermInvestmentsClosing",
+      "label": "Short-term investments",
+      "sourceValue": "704,325",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm"
+    },
+    {
+      "id": "quarterIncome.subscriptionRevenue",
+      "label": "subscriptionRevenue",
+      "sourceValue": "130,993",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.licenseRevenue",
+      "label": "licenseRevenue",
+      "sourceValue": "18,675",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.totalRevenue",
+      "label": "totalRevenue",
+      "sourceValue": "149,668",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.subscriptionCostOfRevenue",
+      "label": "subscriptionCostOfRevenue",
+      "sourceValue": "11,559",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.licenseCostOfRevenue",
+      "label": "licenseCostOfRevenue",
+      "sourceValue": "3,525",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.totalCostOfRevenue",
+      "label": "totalCostOfRevenue",
+      "sourceValue": "15,084",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.salesAndMarketing",
+      "label": "salesAndMarketing",
+      "sourceValue": "86,978",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.researchAndDevelopment",
+      "label": "researchAndDevelopment",
+      "sourceValue": "49,058",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.generalAndAdministrative",
+      "label": "generalAndAdministrative",
+      "sourceValue": "38,815",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.totalOperatingExpenses",
+      "label": "totalOperatingExpenses",
+      "sourceValue": "174,851",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.operatingLoss",
+      "label": "operatingLoss",
+      "sourceValue": "(40,267)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.incomeTaxProvision",
+      "label": "incomeTaxProvision",
+      "sourceValue": "256,788",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterIncome.netLoss",
+      "label": "netLoss",
+      "sourceValue": "(286,355)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "quarterStockBasedCompensation",
+      "label": "Total stock-based compensation expense",
+      "sourceValue": "41,334",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-08-01"
+    },
+    {
+      "id": "cashFlowNineMonths.operating",
+      "label": "operating",
+      "sourceValue": "10,187",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.investing",
+      "label": "investing",
+      "sourceValue": "(50,466)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.financing",
+      "label": "financing",
+      "sourceValue": "30,243",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.foreignExchangeEffect",
+      "label": "foreignExchangeEffect",
+      "sourceValue": "(2,557)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.netCashChange",
+      "label": "netCashChange",
+      "sourceValue": "(12,593)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.purchasesOfShortTermInvestments",
+      "label": "purchasesOfShortTermInvestments",
+      "sourceValue": "(573,676)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.maturitiesOfShortTermInvestments",
+      "label": "maturitiesOfShortTermInvestments",
+      "sourceValue": "526,979",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.propertyAndEquipmentPurchases",
+      "label": "propertyAndEquipmentPurchases",
+      "sourceValue": "(1,269)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowNineMonths.cashTaxesPaid",
+      "label": "cashTaxesPaid",
+      "sourceValue": "6,015",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-10-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.operating",
+      "label": "operating",
+      "sourceValue": "16,148",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.investing",
+      "label": "investing",
+      "sourceValue": "(65,045)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.financing",
+      "label": "financing",
+      "sourceValue": "25,528",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.foreignExchangeEffect",
+      "label": "foreignExchangeEffect",
+      "sourceValue": "(1,308)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.netCashChange",
+      "label": "netCashChange",
+      "sourceValue": "(24,677)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.purchasesOfShortTermInvestments",
+      "label": "purchasesOfShortTermInvestments",
+      "sourceValue": "(334,996)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.maturitiesOfShortTermInvestments",
+      "label": "maturitiesOfShortTermInvestments",
+      "sourceValue": "272,984",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.propertyAndEquipmentPurchases",
+      "label": "propertyAndEquipmentPurchases",
+      "sourceValue": "(533)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.cashTaxesPaid",
+      "label": "cashTaxesPaid",
+      "sourceValue": "4,187",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "periodStart": "2023-02-01"
+    }
+  ],
+  "2u": [
+    {
+      "id": "F01",
+      "label": "cash and cash equivalents",
+      "sourceValue": "41141",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F02",
+      "label": "restricted cash",
+      "sourceValue": "12710",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F03",
+      "label": "cash cash equivalents and restricted cash end of period",
+      "sourceValue": "53851",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F04",
+      "label": "cash cash equivalents and restricted cash beginning of period",
+      "sourceValue": "182578",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F05",
+      "label": "net cash used in operating activities",
+      "sourceValue": "-17520",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "periodStart": "2023-01-01",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F06",
+      "label": "net cash used in investing activities",
+      "sourceValue": "-36576",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "periodStart": "2023-01-01",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F07",
+      "label": "net cash used in financing activities",
+      "sourceValue": "-73513",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "periodStart": "2023-01-01",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F08",
+      "label": "effect of exchange rate on cash",
+      "sourceValue": "-1118",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "periodStart": "2023-01-01",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F09",
+      "label": "net decrease in cash and restricted cash",
+      "sourceValue": "-128727",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "periodStart": "2023-01-01",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F10",
+      "label": "accounts receivable net",
+      "sourceValue": "113202",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F11",
+      "label": "long term debt noncurrent carrying value",
+      "sourceValue": "878124",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F12",
+      "label": "purchases of property and equipment",
+      "sourceValue": "4335",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "F13",
+      "label": "additions of amortizable intangible assets",
+      "sourceValue": "32442",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "F14",
+      "label": "restructuring charge q3",
+      "sourceValue": "14085",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "F15",
+      "label": "restructuring accrued liability",
+      "sourceValue": "11451",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F17",
+      "label": "expected annualized cost savings",
+      "sourceValue": "55000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "note": "Reported management expectation, not observed cash or revenue; not used to calibrate future outcomes."
+    },
+    {
+      "id": "F18",
+      "label": "revolver commitment",
+      "sourceValue": "40000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F19",
+      "label": "revolver drawn",
+      "sourceValue": "20000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F20",
+      "label": "convertible notes 2025 principal",
+      "sourceValue": "380000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F21",
+      "label": "convertible notes 2030 principal",
+      "sourceValue": "147000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F24",
+      "label": "portfolio management cash expectation",
+      "sourceValue": "145000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "note": "Reported management expectation, not observed cash or revenue; not used to calibrate future outcomes."
+    },
+    {
+      "id": "F25",
+      "label": "portfolio management revenue q4 expected",
+      "sourceValue": "80000",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "basis": "reported",
+      "periodStart": "2023-10-01",
+      "note": "Reported management expectation, not observed cash or revenue; not used to calibrate future outcomes."
+    },
+    {
+      "id": "F27",
+      "label": "current portion of long term debt",
+      "sourceValue": "4966",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F28",
+      "label": "total debt carrying value",
+      "sourceValue": "883090",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "F29",
+      "label": "scheduled principal maturities total",
+      "sourceValue": "907650",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "C01",
+      "label": "term loan balance at 2025 01 30 from schedule",
+      "sourceValue": "372400",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "derived-from-reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "C02",
+      "label": "scheduled principal through 2024",
+      "sourceValue": "4750",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "derived-from-reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "C03",
+      "label": "debt principal components total",
+      "sourceValue": "929768",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "basis": "derived-from-reported",
+      "note": "Cutoff fact bundle; debt note values are reader-extracted and were not checked against raw SEC bytes."
+    },
+    {
+      "id": "q3.revenue",
+      "label": "revenue",
+      "sourceValue": "229699",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.curriculum-and-teaching",
+      "label": "curriculum and teaching",
+      "sourceValue": "32143",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.servicing-and-support",
+      "label": "servicing and support",
+      "sourceValue": "31484",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.technology-and-content-development",
+      "label": "technology and content development",
+      "sourceValue": "45877",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.marketing-and-sales",
+      "label": "marketing and sales",
+      "sourceValue": "96256",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.general-and-administrative",
+      "label": "general and administrative",
+      "sourceValue": "36801",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.restructuring",
+      "label": "restructuring",
+      "sourceValue": "14085",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.impairment",
+      "label": "impairment",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.total-costs-and-expenses",
+      "label": "total costs and expenses",
+      "sourceValue": "256646",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.operating-loss",
+      "label": "operating loss",
+      "sourceValue": "-26947",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.net-loss",
+      "label": "net loss",
+      "sourceValue": "-47443",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-07-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.revenue",
+      "label": "revenue",
+      "sourceValue": "690292",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.curriculum-and-teaching",
+      "label": "curriculum and teaching",
+      "sourceValue": "99085",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.servicing-and-support",
+      "label": "servicing and support",
+      "sourceValue": "101178",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.technology-and-content-development",
+      "label": "technology and content development",
+      "sourceValue": "135611",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.marketing-and-sales",
+      "label": "marketing and sales",
+      "sourceValue": "292313",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.general-and-administrative",
+      "label": "general and administrative",
+      "sourceValue": "108708",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.restructuring",
+      "label": "restructuring",
+      "sourceValue": "22582",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.impairment",
+      "label": "impairment",
+      "sourceValue": "134117",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.total-costs-and-expenses",
+      "label": "total costs and expenses",
+      "sourceValue": "893594",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.operating-loss",
+      "label": "operating loss",
+      "sourceValue": "-203302",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "ytd.net-loss",
+      "label": "net loss",
+      "sourceValue": "-275159",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.noncash-interest",
+      "label": "noncash interest",
+      "sourceValue": "10488",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.depreciation-and-amortization",
+      "label": "depreciation and amortization",
+      "sourceValue": "86846",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.stock-compensation",
+      "label": "stock compensation",
+      "sourceValue": "35986",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.noncash-lease",
+      "label": "noncash lease",
+      "sourceValue": "13164",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.noncash-restructuring",
+      "label": "noncash restructuring",
+      "sourceValue": "838",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.impairment",
+      "label": "impairment",
+      "sourceValue": "134117",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.credit-loss-provision",
+      "label": "credit loss provision",
+      "sourceValue": "6558",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.debt-extinguishment-loss",
+      "label": "debt extinguishment loss",
+      "sourceValue": "12123",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "noncash.other-adjustments",
+      "label": "other adjustments",
+      "sourceValue": "794",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.accounts-receivable-change",
+      "label": "accounts receivable change",
+      "sourceValue": "-54612",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.other-receivables-change",
+      "label": "other receivables change",
+      "sourceValue": "-2207",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.prepaid-expenses-change",
+      "label": "prepaid expenses change",
+      "sourceValue": "-1095",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.accounts-payable-change",
+      "label": "accounts payable change",
+      "sourceValue": "19888",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.deferred-revenue-change",
+      "label": "deferred revenue change",
+      "sourceValue": "26348",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "working-capital.other-liabilities-change",
+      "label": "other liabilities change",
+      "sourceValue": "-31597",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "opening-ar",
+      "label": "Opening accounts receivable, net",
+      "sourceValue": "62826",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "opening-deferred",
+      "label": "Opening deferred revenue",
+      "sourceValue": "90161",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "closing-deferred",
+      "label": "Closing deferred revenue",
+      "sourceValue": "116276",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "opening-restricted",
+      "label": "Opening restricted cash",
+      "sourceValue": "15060",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    }
+  ]
+}
