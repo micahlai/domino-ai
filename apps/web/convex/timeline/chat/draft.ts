@@ -19,6 +19,7 @@ import { resolve } from "../questions/resolve";
 import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
 import { explainQuestion, normalizeQuestion } from "./explain";
+import { planRequest } from "./planChanges";
 
 const FieldSchema = z.enum([
   "amountText",
@@ -325,6 +326,35 @@ export function plainPhrasing(text: string): string {
   return out;
 }
 
+/**
+ * Spend cuts, hires and price changes, computed from the saved schedule into ordinary cash
+ * events, then held to the same branch-start and validation checks as any proposal.
+ */
+export function plannedChange(
+  run: WorkspaceRun,
+  draft: Draft,
+  text: string,
+  floor: string | null,
+): Result | null {
+  const reply = planRequest(run, text, floor);
+  if (!reply) return null;
+  if (!reply.proposal) return { draft, answer: reply.answer, proposal: null, pendingField: null };
+  const proposal = distinctCashLabels(run, reply.proposal);
+  try {
+    if (startsBefore(proposal.changes, run.baseline.seed.snapshot, floor).length) throw new Error();
+    validateProposal(run, proposal);
+  } catch {
+    return {
+      draft,
+      answer:
+        "I could not turn that into supported cash events for this saved run. Nothing was calculated.",
+      proposal: null,
+      pendingField: null,
+    };
+  }
+  return { draft, answer: reply.answer, proposal, pendingField: null };
+}
+
 /** One or two plain sentences with one example that works. Nothing changed. */
 export const CANT_MODEL =
   'I can model one change at a time on a specific date, so I could not run that one as written. For example, "Northwind pays its invoice 14 days late" or "Pay $250,000 for a roof repair on Nov 17" works.';
@@ -397,6 +427,10 @@ export function advance(
   // Questions are answered as questions, from the saved run, never parsed as a what-if.
   if (!draft.pending && !draft.intents.length && isQuestion(text))
     return answerQuestion(run, draft, text, conversationId, selectedItemId);
+  if (!draft.pending && !draft.intents.length) {
+    const plan = plannedChange(run, draft, rawText, floor);
+    if (plan) return plan;
+  }
   // The fixed grammar only models unconditional events on one exact date. Keep
   // conditions and relative timing visible instead of discarding their meaning.
   if (

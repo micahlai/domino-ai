@@ -570,14 +570,14 @@ function CompanyHome({ companyId }: { companyId: string }) {
   const route =
     latest.state === "ready"
       ? latest.route
-      : latest.state === "none" && newest
+      : latest.state === "none" && !latest.replay && newest
         ? workspaceHref(companyId, { runId: newest.runId })
         : null;
   useEffect(() => {
     if (route) router.replace(route);
   }, [route, router]);
   if (latest.state === "not_field") return <CatalogPage companyId={companyId} />;
-  if (latest.state !== "none" || route || saved.state === "loading")
+  if (latest.state !== "none" || route || (saved.state === "loading" && !latest.replay))
     return (
       <div className={`space-y-3 ${PAGE_GUTTER}`} aria-busy="true">
         <output className="block text-sm text-muted-foreground">
@@ -608,7 +608,7 @@ function CompanyHome({ companyId }: { companyId: string }) {
         <OpenInTimeline label="Bring in latest books" />
         <p className="text-xs text-muted-foreground">{OPEN_IN_TIMELINE_NOTE}</p>
       </section>
-      <CatalogLive companyId={companyId} hideEmpty />
+      {latest.replay ? null : <CatalogLive companyId={companyId} hideEmpty />}
     </div>
   );
 }

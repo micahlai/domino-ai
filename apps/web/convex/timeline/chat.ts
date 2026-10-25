@@ -20,6 +20,7 @@ import {
   emptyDraft,
   evaluateIntents,
   isQuestion,
+  plannedChange,
   validateProposal,
 } from "./chat/draft";
 import {
@@ -596,22 +597,25 @@ export const saveAssistantTurn = internalMutation({
     // Enforce the original wording even when no model ran or returned no usable intents.
     // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
     // A question is answered as a question; qualifier words in it are not a modeling request.
-    const sourceIssue = isQuestion(args.text) ? null : groundingIssue(args.text, []);
     const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    const plan = draft.intents.length ? null : plannedChange(run, draft, args.text, floor);
+    const sourceIssue = isQuestion(args.text) || plan ? null : groundingIssue(args.text, []);
     // Questions are always answered by the deterministic resolver, never by model wording.
     const asksOnly = intents?.length && intents.every((i) => i.kind === "question");
-    const next: DraftResult = sourceIssue
-      ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
-      : draft.intents.length || intents === null || asksOnly
-        ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId, floor)
-        : evaluateIntents(
-            run,
-            intents,
-            receipt.conversationId,
-            args.text,
-            receipt.selectedItemId,
-            floor,
-          );
+    const next: DraftResult = plan
+      ? plan
+      : sourceIssue
+        ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
+        : draft.intents.length || intents === null || asksOnly
+          ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId, floor)
+          : evaluateIntents(
+              run,
+              intents,
+              receipt.conversationId,
+              args.text,
+              receipt.selectedItemId,
+              floor,
+            );
     const unchangedReady =
       !sourceIssue &&
       receipt.status === "ready" &&
