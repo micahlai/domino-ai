@@ -6,8 +6,11 @@
 - **Done when:** existing rows/validators/indexes/API names preserved, table names disjoint, composed schema typechecks and existing backend tests pass; S2 index is reviewed/in shared base; no database mutation/reset/deploy.
 - **Notes:** ../spec/independent-feature-lanes.md. Resolve missing generated Convex guide first. Inspect module-layout support; record exact paths. Do not implement L5/S4 or duplicate S2. Freeze root composition after audit.
 ## Result
-- Prepared, not assigned or implemented.
-- Changed files/checks/limits:
+- Implemented on branch P0-S-schema-ownership (base 840970c). Pure refactor, no behavior change.
+- Changed files: apps/web/convex/schema.ts (frozen composition `defineSchema({ ...legacyTables, ...timelineTables, ...fieldTables })`, default options), new apps/web/convex/schemas/{legacy,timeline,field}.schema.ts (`as const` objects of defineTable, headers name the lane, frozen composition rule and the two seams), new apps/web/convex/schemaComposition.test.ts (lane sets disjoint and complete, 22 tables, every index name and field order, schemaValidation true).
+- Equivalence: `schema.export()` JSON before (HEAD) and after is byte-identical, including table order (15658 chars); sorted per-table dump also identical. Captured with node type stripping, not via Convex CLI.
+- Checks: tsc web OK; tsc -p convex OK; web vitest 30 files / 443 tests pass; biome check apps/web/convex clean; git diff --check clean; _generated/api.d.ts unchanged.
+- Limits: no convex dev/codegen/deploy run, so bundler skipping of `*.schema.ts` is from the scout's source reading, not executed. The test uses Convex's experimental public `" indexes"()` accessor because `export()` is internal in the types.
 ## Lead decisions (Oct 24, from read-only scout kb/reviews/P0S-prep-scout.md)
 - Order: friend S2 (adds by_case_createdAt) is audited and integrated FIRST; P0-S branches from that base. P0-S must not add that index itself.
 - Convex guide: read in place at ../domino-ai/apps/web/convex/_generated/ai/guidelines.md (convex 1.48.0). Do NOT run `npx convex ai-files install` (network, rewrites tracked AGENTS.md).
