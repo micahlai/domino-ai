@@ -249,7 +249,6 @@ export function historicalLedger(spec: OperatingSpec, seed: number): Ledger {
       payroll: [],
       deals: [],
       billingPlans: [],
-      pendingPayouts: [],
     },
     postings: [],
     recognition: recognition(spec),

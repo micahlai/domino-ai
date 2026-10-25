@@ -89,16 +89,31 @@ export function companySpec(company: OperatingCompanyId) {
     if (!anchor) throw new Error(`missing anchor ${id}`);
     return anchor.cents;
   };
-  const derived = (id: string, label: string, amount: number, note: string) => {
+  const derived = (
+    id: string,
+    label: string,
+    amount: number,
+    note: string,
+    sourceIds: string[],
+  ) => {
+    const urls = [
+      ...new Set(
+        sourceIds.map((sourceId) => {
+          const anchor = reported.find((entry) => entry.id === sourceId);
+          if (!anchor) throw new Error(`missing source anchor ${sourceId}`);
+          return anchor.sourceUrl;
+        }),
+      ),
+    ];
     reported.push({
       id,
       label,
       cents: amount,
       periodStart: catalog.periodStart,
       periodEnd: catalog.periodEnd,
-      sourceUrl: reported[0]!.sourceUrl,
+      sourceUrl: urls[0]!,
       basis: "derived-from-reported",
-      note,
+      note: `${note} Derivation sources: ${urls.join("; ")}`,
     });
     return amount;
   };
@@ -142,6 +157,7 @@ export function companySpec(company: OperatingCompanyId) {
       `Quarter ${line} cash flow`,
       value(`cashFlowNineMonths.${line}`) - value(`cashFlowSixMonths.${line}`),
       "Nine months less six months; same USD thousands cash-flow basis.",
+      [`cashFlowNineMonths.${line}`, `cashFlowSixMonths.${line}`],
     );
   const ocf = asana ? value("operating_cash_flow_quarter") : quarter("operating");
   const icf = asana ? value("investing_cash_flow_quarter") : quarter("investing");
@@ -152,6 +168,13 @@ export function companySpec(company: OperatingCompanyId) {
         "Quarter foreign exchange and cash reconciliation residual",
         endingCash - openingCash - ocf - icf - fcf,
         "Derived residual from the cash endpoints and three reported cash-flow categories; not separately verified FX.",
+        [
+          "cash_and_equivalents_close",
+          "cash_and_equivalents_prior_quarter_close",
+          "operating_cash_flow_quarter",
+          "investing_cash_flow_quarter",
+          "financing_cash_flow_quarter",
+        ],
       )
     : quarter("foreignExchangeEffect");
   return {

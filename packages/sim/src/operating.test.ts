@@ -73,6 +73,7 @@ describe("filing-backed operating demos", () => {
         expect(advanceOperatingDays(advanceOperatingDays(world, 20), 71)).toEqual(next);
         for (const state of [world, next]) {
           const s = state.snapshot;
+          expect("pendingPayouts" in s).toBe(false);
           expect(s.bankTxns.every((t) => t.date <= s.asOf)).toBe(true);
           expect(
             s.invoices.every(
@@ -191,6 +192,19 @@ describe("filing-backed operating demos", () => {
     expect(thousandsToCents("(286,355)")).toBe(-28_635_500_000);
     expect(() => thousandsToCents("1.25")).toThrow();
     expect(() => thousandsToCents("9007199254740991")).toThrow();
+  });
+
+  it("cites both filings used to derive GitLab quarter cash flows", () => {
+    const p = operatingProvenance({ company: "gitlab-inspired", scenario: "baseline" });
+    for (const line of ["operating", "investing", "financing", "foreignExchangeEffect"]) {
+      const quarter = p.reported.find((r) => r.id === `derived-quarter.${line}`)!;
+      const nine = p.reported.find((r) => r.id === `cashFlowNineMonths.${line}`)!;
+      const six = p.reported.find((r) => r.id === `cashFlowSixMonths.${line}`)!;
+      expect(quarter.cents).toBe(nine.cents - six.cents);
+      expect(quarter.sourceUrl).toBe(nine.sourceUrl);
+      expect(quarter.note).toContain(nine.sourceUrl);
+      expect(quarter.note).toContain(six.sourceUrl);
+    }
   });
 
   it("rejects invalid seeds, non-operating worlds and unbounded advances without mutating inputs", () => {
