@@ -1,7 +1,9 @@
 "use client";
 
 import { BrainMap } from "./BrainMap";
+import { ConnectView } from "./ConnectPage";
 import { WorkerPage } from "./WorkerPage";
+import { DemoConnectData } from "./connect-data";
 import { DemoFieldData } from "./data";
 
 /**
@@ -19,6 +21,14 @@ export function FieldPlayground() {
         <section id="BrainMap" className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground">Brain map (/field/map)</h2>
           <BrainMap />
+        </section>
+        <section id="ConnectPage" className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Connected tools (/field/connect)
+          </h2>
+          <DemoConnectData note="Playground fixture">
+            <ConnectView />
+          </DemoConnectData>
         </section>
       </div>
     </DemoFieldData>

@@ -1,3 +1,4 @@
+import type { PullAllResult } from "./pullAll";
 import type { ListName, ToolId } from "./types";
 
 /**
@@ -88,3 +89,35 @@ export const CHECK_TOOLS: Record<string, ToolId[]> = {
   "Ramp bill payment = QuickBooks bill payment": ["ramp", "qbo"],
   "Books cash = bank cash": ["qbo", "plaid"],
 };
+
+export interface ToolSummary {
+  tool: ToolId;
+  error: string | null;
+  cursor: string | null;
+  counts: Record<string, number>;
+  recordsIn: number;
+  recordsOut: number;
+  skipped: number;
+  checksOk: number;
+  checksTotal: number;
+}
+
+/** One row per tool read, with the tie-outs that tool takes part in. */
+export function toolSummaries(r: PullAllResult): ToolSummary[] {
+  return r.log.map((l) => {
+    const mine = r.checks.filter((c) => CHECK_TOOLS[c.name]?.includes(l.tool));
+    return {
+      tool: l.tool,
+      error: l.error,
+      cursor: r.cursor[l.tool] ?? null,
+      counts: Object.fromEntries(
+        Object.entries(l.counts).filter((e): e is [string, number] => e[1] !== undefined),
+      ),
+      recordsIn: l.recordsIn,
+      recordsOut: l.recordsOut,
+      skipped: l.skipped.length,
+      checksOk: mine.filter((c) => c.ok).length,
+      checksTotal: mine.length,
+    };
+  });
+}

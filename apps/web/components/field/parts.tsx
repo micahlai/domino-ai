@@ -101,6 +101,7 @@ export function DataLabel({ className }: { className?: string }) {
 const TABS = [
   { href: "/field", label: "Review and actions" },
   { href: "/field/map", label: "Brain map" },
+  { href: "/field/connect", label: "Connected tools" },
 ];
 
 export function FieldTabs() {

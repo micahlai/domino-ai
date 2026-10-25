@@ -26,7 +26,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { CHECK_TOOLS, TOOLS, toolInfo } from "./connectors/catalog";
+import { TOOLS, toolInfo, toolSummaries } from "./connectors/catalog";
 import { inProcessFetcher } from "./connectors/inProcess";
 import { pullAll } from "./connectors/pullAll";
 import { TOOL_IDS, type ToolId } from "./connectors/types";
@@ -228,22 +228,7 @@ export const sync = internalAction({
       // An errored tool is retried on every sync.
       connections: live.map((c) => ({ tool: c.tool, status: "connected" as const })),
     });
-    const results = r.log.map((l) => {
-      const mine = r.checks.filter((c) => CHECK_TOOLS[c.name]?.includes(l.tool));
-      return {
-        tool: l.tool,
-        error: l.error,
-        cursor: r.cursor[l.tool] ?? null,
-        counts: Object.fromEntries(
-          Object.entries(l.counts).filter((e): e is [string, number] => e[1] !== undefined),
-        ),
-        recordsIn: l.recordsIn,
-        recordsOut: l.recordsOut,
-        skipped: l.skipped.length,
-        checksOk: mine.filter((c) => c.ok).length,
-        checksTotal: mine.length,
-      };
-    });
+    const results = toolSummaries(r);
     const ok = r.checks.filter((c) => c.ok).length;
     const total = (k: "recordsIn" | "recordsOut" | "skipped") =>
       results.reduce((t, x) => t + x[k], 0);
