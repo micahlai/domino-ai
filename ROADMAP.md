@@ -35,12 +35,12 @@ Paused checkpoint: L0/E0 implementation workers have finished their final repair
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| C2 credential/input setup evidence | Claude lead assigns verifier; no live call yet | Existing dedicated evidence app and user-reported setup | Verify `prompt` remote input versus adapter `inputs.prompt`, authorized app binding and secret presence without exposing values; full isolation remains a separate gate |
 
 ## Blocked
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
+| C2 credential/input setup | Jayden: set env + browser check | Verified Oct 24 by read-only worker, lead spot-checked | Adapter sends `inputs.prompt` (packages/agents/src/creao.ts:299), app-scoped route only. Backend 3214 (anonymous-agent) has NO env vars set: needs CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID/_API_KEY and DOMINO_CREAO_VERIFIED_PROFILES via `npx convex env set` (user enters values). Remote `prompt` field and isolation unverified |
 | E0 data custody | Jayden decision | Third audit REJECT on 1eb1052 | [Final audit](kb/reviews/E0-1eb1052-codex-final.md): (High) biome.json lacks custody ignores so `biome check .` can print sealed JSON; (Medium) generated manifest/labels JSON fail Biome format. Chronology/custody repairs verified. No repair round without Jayden |
 | L1 normalization | Lead-assigned engine worker | Accepted L0 + E0 development package | [Card](kb/tasks/L1-source-normalization.md): unseen supported mapping package -> snapshot/engine, exact provenance, no company-specific patch |
 | L2 reconciliation | Lead-assigned engine worker | Accepted L1 | [Card](kb/tasks/L2-source-reconciliation.md): true conflicts block affected roles; duplicates/timing/definitions and totals handled honestly |
