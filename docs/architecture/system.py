@@ -2,27 +2,41 @@
 """Domino system architecture, one slide (16:9), drawn with mingrammer/diagrams.
 
 Run:  python system.py            -> domino-system.png + domino-system.svg next to this file
-Needs Graphviz `dot` on PATH and `pip install -r requirements.txt`. Reads no credentials or data.
-Icons are the committed tiles in icons/ (rebuild with make_icons.py). Convex has no official mark
-in the icon sets used, so its parts use generic glyphs.
+Needs Graphviz on PATH and `pip install -r requirements.txt`. Reads no credentials or data.
+Icons are the committed tiles in icons/ (rebuild with make_icons.py; sources listed there).
 
-Facts were checked against the code on field/main (2026-10-25):
+Layout: containers, nodes and edges are diagrams objects, but nothing is auto-placed. Every
+container (BOXES), icon (ICON_AT) and edge route (routes(), right-angle paths with rounded
+corners) is set by hand on a 2000 x 1125 pt grid and rendered with `neato -n2`, so spacing stays
+even and lines do not cut through boxes. A first pass measures each node's label size so the
+icons, not the label blocks, sit exactly on the grid.
+
+Facts were checked against the code on field/main 7d6787e (2026-10-25):
   - pages: apps/web/components/AppShell.tsx nav (Dashboard, Worker, Brain map, Connected tools,
     Timeline, Try it); 2U backtest at /case/2u
-  - webhooks: apps/web/convex/http.ts (signed POST /webhooks/<vendor>/<company>)
-  - clock: convex/fieldClock.ts (scheduled ticks advance the simulator, deliver webhooks, ingest)
-  - agents: fieldAudit.ts, fieldAnalyst.ts, fieldAdvisor.ts, fieldCoordinator.ts, fieldAi.ts
-    (CREAO first, Claude fallback), fieldApify.ts + fieldTools.ts, timeline/assistant/claude.ts
+  - triggers: convex/fieldClock.ts (scheduled ticks advance the simulated world, post signed
+    webhooks, ingest), convex/http.ts (signed POST /webhooks/<vendor>/<company>)
+  - agents: fieldAudit.ts (7 engine checkers + identity and fraud check, fieldCrs.ts and
+    connectors/crs.ts), fieldAnalyst.ts (forecasters + research), fieldAdvisor.ts,
+    fieldCoordinator.ts, fieldAi.ts (CREAO first, Claude fallback), fieldApify.ts
   - vendors: apps/mocks (synthetic Stripe/HubSpot/Ramp/QuickBooks/Gusto shapes), served
     in-process (convex/connectors/inProcess.ts); bank via Capital One Nessie sandbox
   - schema: convex/schemas/{field,timeline,legacy}.schema.ts
+  - learning: field.decide stores the person's confirm / dismiss in `approvals`. The forecast
+    reads the company model's per-customer payment delays (engine recurring-revenue.ts,
+    schedule.ts). Scoped, versioned, revocable learned rules (engine learned-rules.ts) are built
+    and tested in the engine, but no Convex function turns decisions into rules or applies them
+    yet, so "becomes a rule" and "applied on the next run" are drawn dashed.
 """
+
+from __future__ import annotations
 
 import argparse
 import base64
+import json
 import re
-import shutil
 import subprocess
+import tempfile
 from html import escape
 from pathlib import Path
 
@@ -31,200 +45,395 @@ from diagrams import Cluster, Diagram, Edge, Node
 HERE = Path(__file__).resolve().parent
 ICONS = HERE / "icons"
 
+W, H = 2000, 1125     # canvas in points, 16:9
+DPI = 138             # 2000 pt at 138 dpi = 3833 px wide; downscales cleanly to 1920 x 1080
+
 INK = "#0F172A"
 MUTED = "#475569"
 DATA_IN = "#2563EB"   # data coming in
 AI = "#7C3AED"        # model and agent calls
 RESULT = "#16A34A"    # results flowing to the UI
-CONTROL = "#64748B"   # people and timers starting work
+CONTROL = "#64748B"   # people and triggers starting work
+LEARN = "#D97706"     # the learning loop
 FONT = "Helvetica Neue"
-ICON_PT = 90          # icon tile size in points
+TITLE_PT, NOTE_PT, EDGE_PT, BOX_PT, SUB_PT = 21, 15.5, 16, 22, 15.5
+ICON_PT = 58          # icon tile size
+ROW_ICON_PT = 40      # icon size in compact row nodes (icon left, text right)
+HALF = ICON_PT / 2 + 2
+
+# Containers, top-down (x1, y1, x2, y2).
+BOXES = {
+    "sources": (30, 160, 380, 735),
+    "real": (50, 525, 360, 720),
+    "engine": (640, 160, 1060, 350),
+    "ai": (1090, 160, 1510, 350),
+    "convex": (415, 372, 1510, 1095),
+    "triggers": (435, 427, 645, 580),
+    "agents": (670, 427, 1200, 855),
+    "storage": (1225, 427, 1490, 855),
+    "learning": (670, 875, 1490, 1075),
+    "frontend": (1530, 160, 1790, 1095),
+    "users": (1815, 505, 1975, 720),
+}
+# Icon centers (column nodes) or node centers (row and panel nodes), top-down.
+ICON_AT = {
+    "header": (1000, 78), "vendors": (205, 330), "stack": (205, 925),
+    "nessie": (205, 600), "crs": (205, 670),
+    "risk": (752, 245), "cash": (935, 245),
+    "apify": (1170, 245), "creao": (1300, 245), "claude": (1430, 245),
+    "http": (540, 487), "clock": (540, 543),
+    "ingest": (752, 505), "analyst": (935, 505), "advisors": (1115, 505), "audit": (935, 755),
+    "mutations": (1357, 505), "tables": (1357, 640), "queries": (1357, 775),
+    "delays": (1185, 918), "rules": (935, 985), "decisions": (1357, 985),
+    "brain": (1660, 270), "tryit": (1660, 440), "timeline": (1660, 610),
+    "dashboard": (1660, 775), "worker": (1660, 985),
+    "user": (1895, 610),
+}
+ROW_NODES = {"nessie", "crs", "http", "clock", "delays", "header", "vendors", "stack"}
 
 
-def icon(name: str, title: str, note: str = "", gap: int = 0) -> Node:
-    """An icon tile with a bold title and an optional muted note under it (HTML label)."""
-    img = ICONS / f"{name}.png"
-    text = f'<FONT POINT-SIZE="31" FACE="{FONT} Medium" COLOR="{INK}">{escape(title)}</FONT>'
+# ---------- labels ----------
+
+def img(name: str, size: float) -> str:
+    return (f'<TD FIXEDSIZE="TRUE" WIDTH="{size}" HEIGHT="{size}">'
+            f'<IMG SRC="{ICONS / (name + ".png")}" SCALE="TRUE"/></TD>')
+
+
+def text(title: str, note: str = "", size: float = TITLE_PT) -> str:
+    out = f'<FONT POINT-SIZE="{size}" FACE="{FONT} Medium" COLOR="{INK}">{escape(title)}</FONT>'
     if note:
         lines = "<BR/>".join(escape(line) for line in note.split("\n"))
-        text += f'<BR/><FONT POINT-SIZE="25" FACE="{FONT}" COLOR="{MUTED}">{lines}</FONT>'
-    label = (f'<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="1">'
-             f'<TR><TD FIXEDSIZE="TRUE" WIDTH="{ICON_PT}" HEIGHT="{ICON_PT}">'
-             f'<IMG SRC="{img}" SCALE="TRUE"/></TD></TR><TR><TD>{text}</TD></TR>'
-             + (f'<TR><TD HEIGHT="{gap}"></TD></TR>' if gap else "") + '</TABLE>>')
-    return Node(label, shape="plain", fixedsize="false", style="")
+        out += f'<BR/><FONT POINT-SIZE="{NOTE_PT}" FACE="{FONT}" COLOR="{MUTED}">{lines}</FONT>'
+    return out
 
 
-def vendor_grid() -> Node:
-    """One node: the five mock vendor APIs as a logo grid, so they take one slot, not five."""
-    names = [("stripe", "Stripe"), ("ramp", "Ramp"), ("quickbooks", "QuickBooks"),
-             ("gusto", "Gusto"), ("hubspot", "HubSpot")]
-    size = 64
-
-    def cell(name: str, title: str) -> str:
-        return (f'<TD><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="2"><TR>'
-                f'<TD FIXEDSIZE="TRUE" WIDTH="{size}" HEIGHT="{size}">'
-                f'<IMG SRC="{ICONS / (name + ".png")}" SCALE="TRUE"/></TD></TR><TR><TD>'
-                f'<FONT POINT-SIZE="21" FACE="{FONT} Medium" COLOR="{INK}">{title}</FONT>'
-                f'</TD></TR></TABLE></TD>')
-
-    row1 = "".join(cell(*n) for n in names[:3])
-    row2 = "".join(cell(*n) for n in names[3:])
-    label = (f'<<TABLE BORDER="2" COLOR="#93C5FD" BGCOLOR="#EFF6FF" STYLE="ROUNDED" '
-             f'CELLBORDER="0" CELLSPACING="10" CELLPADDING="4">'
-             f'<TR><TD COLSPAN="3"><FONT POINT-SIZE="27" FACE="{FONT} Medium" COLOR="{INK}">'
-             f'Mock vendor APIs</FONT><BR/><FONT POINT-SIZE="21" FACE="{FONT}" COLOR="{MUTED}">'
-             f'shaped like the real ones · simulator-generated books</FONT></TD></TR>'
-             f'<TR>{row1}</TR><TR>{row2}<TD></TD></TR></TABLE>>')
-    return Node(label, shape="plain", fixedsize="false", style="")
+def column_label(tile: str, title: str, note: str) -> str:
+    return (f'<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="1">'
+            f'<TR>{img(tile, ICON_PT)}</TR><TR><TD>{text(title, note)}</TD></TR></TABLE>')
 
 
-def box(title: str, subtitle: str, fill: str, line: str) -> dict:
-    """Cluster style with a bold title and a muted subtitle line."""
-    label = f'<<FONT POINT-SIZE="32" FACE="{FONT} Bold" COLOR="{INK}">{escape(title)}</FONT>'
+def row_label(tile: str, title: str, note: str) -> str:
+    return (f'<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="4" CELLPADDING="0"><TR>'
+            f'{img(tile, ROW_ICON_PT)}<TD ALIGN="LEFT" BALIGN="LEFT">'
+            f'{text(title, note, TITLE_PT - 2)}</TD></TR></TABLE>')
+
+
+def grid_label(logos: list[tuple[str, str]], cols: int, size: float, title: str, note: str,
+               border: str, fill: str) -> str:
+    def cell(tile: str, caption: str) -> str:
+        return (f'<TD><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="1"><TR>{img(tile, size)}'
+                f'</TR><TR><TD><FONT POINT-SIZE="{NOTE_PT}" FACE="{FONT} Medium" COLOR="{INK}">'
+                f'{escape(caption)}</FONT></TD></TR></TABLE></TD>')
+
+    rows = [logos[i:i + cols] for i in range(0, len(logos), cols)]
+    body = "".join("<TR>" + "".join(cell(*n) for n in row)
+                   + "<TD></TD>" * (cols - len(row)) + "</TR>" for row in rows)
+    head = (f'<TR><TD COLSPAN="{cols}" ALIGN="LEFT" BALIGN="LEFT">'
+            f'{text(title, note, BOX_PT - 2)}</TD></TR>')
+    return (f'<TABLE BORDER="2" COLOR="{border}" BGCOLOR="{fill}" STYLE="ROUNDED" '
+            f'CELLBORDER="0" CELLSPACING="9" CELLPADDING="3">{head}{body}</TABLE>')
+
+
+def header_label() -> str:
+    item = '<FONT POINT-SIZE="17" FACE="{f} Bold" COLOR="{c}">{line} {t}</FONT>'
+    gap = '<FONT POINT-SIZE="17">      </FONT>'
+    items = gap.join(item.format(f=FONT, c=c, t=t, line=line) for c, t, line in [
+        (DATA_IN, "data in", "━━"), (AI, "AI calls", "━━"), (RESULT, "results to the UI", "━━"),
+        (CONTROL, "people and triggers", "━━"), (LEARN, "learning loop", "━━"),
+        (MUTED, "dashed: built in the engine, not wired into the live app yet", "╍╍")])
+    return (f'<TABLE BORDER="0" CELLSPACING="4"><TR><TD><FONT POINT-SIZE="40" FACE="{FONT} Bold" '
+            f'COLOR="{INK}">Domino system architecture</FONT></TD></TR><TR><TD>'
+            f'<FONT POINT-SIZE="19" FACE="{FONT}" COLOR="{MUTED}">From simulated books to a live '
+            f'13-week cash forecast. Domino reads only; it never moves money.</FONT></TD></TR>'
+            f'<TR><TD>{items}</TD></TR></TABLE>')
+
+
+def box(key: str, title: str, subtitle: str, fill: str, line: str,
+        logos: tuple[str, ...] = (), title_x: float | None = None) -> dict:
+    """Container pinned to BOXES[key]: brand logos, bold title and muted subtitle on one line.
+    title_x centers a short title there instead (to keep it clear of lines entering the box)."""
+    x1, y1, x2, y2 = BOXES[key]
+    inner = x2 - x1 - 28 if title_x is None else 90
+    marks = "".join(img(name, BOX_PT + 6) for name in logos)
+    words = f'<FONT POINT-SIZE="{BOX_PT}" FACE="{FONT} Bold" COLOR="{INK}">{escape(title)}</FONT>'
     if subtitle:
-        label += (f'<BR ALIGN="LEFT"/><FONT POINT-SIZE="22" FACE="{FONT}" COLOR="{MUTED}">'
-                  f'{escape(subtitle)}</FONT>')
-    label += '<BR ALIGN="LEFT"/>>'
-    return {"label": label, "bgcolor": fill, "pencolor": line, "penwidth": "2.5",
-            "style": "rounded", "labeljust": "l", "margin": "22"}
+        words += (f'<FONT POINT-SIZE="{SUB_PT}" FACE="{FONT}" COLOR="{MUTED}">'
+                  f'   {escape(subtitle)}</FONT>')
+    label = (f'<<TABLE BORDER="0" CELLSPACING="4" CELLPADDING="0" FIXEDSIZE="TRUE" '
+             f'WIDTH="{inner}" HEIGHT="32"><TR>{marks}'
+             f'<TD ALIGN="LEFT" WIDTH="{inner}">{words}</TD></TR></TABLE>>')
+    return {"label": label, "bb": f"{x1},{H - y2},{x2},{H - y1}",
+            "lp": f"{title_x or (x1 + x2) / 2},{H - y1 - 24}", "pencolor": line, "penwidth": "2",
+            "style": "rounded,filled", "fillcolor": fill, "bgcolor": fill}
 
 
-def flow(label: str, color: str, **kw) -> Edge:
-    # Per-edge font attrs: diagrams' Edge sets its own defaults, which beat edge_attr.
-    return Edge(label=f" {label} ", color=color, fontcolor=color, fontsize="27",
-                fontname=f"{FONT} Medium", **kw)
+# ---------- geometry ----------
+
+class Layout:
+    """Node centers from ICON_AT plus measured label sizes; anchors on each icon's sides."""
+
+    def __init__(self, sizes: dict[str, tuple[float, float]]):
+        self.sizes = sizes
+
+    def size(self, name: str) -> tuple[float, float]:
+        return self.sizes.get(name, (0.0, 0.0))
+
+    def center(self, name: str) -> tuple[float, float]:
+        x, y = ICON_AT[name]
+        if name in ROW_NODES:
+            return x, y
+        return x, y - HALF + self.size(name)[1] / 2   # icon cell sits at the top of the node
+
+    def pos(self, name: str) -> str:
+        x, y = self.center(name)
+        return f"{x:.1f},{H - y:.1f}"
+
+    # Anchors, top-down coordinates.
+    def left(self, name: str, dy: float = 0) -> tuple[float, float]:
+        x, y = ICON_AT[name]
+        half = self.size(name)[0] / 2 + 2 if name in ROW_NODES else HALF
+        return x - half, y + dy
+
+    def right(self, name: str, dy: float = 0) -> tuple[float, float]:
+        x, y = ICON_AT[name]
+        half = self.size(name)[0] / 2 + 2 if name in ROW_NODES else HALF
+        return x + half, y + dy
+
+    def top(self, name: str, dx: float = 0) -> tuple[float, float]:
+        x, y = ICON_AT[name]
+        if name in ROW_NODES:
+            return x + dx, y - self.size(name)[1] / 2 - 2
+        return x + dx, y - HALF
+
+    def bottom(self, name: str, dx: float = 0) -> tuple[float, float]:
+        cx, cy = self.center(name)
+        return cx + dx, cy + self.size(name)[1] / 2 + 2
 
 
-def legend() -> str:
-    item = '<FONT POINT-SIZE="28" FACE="{f} Bold" COLOR="{c}">━━ {t}</FONT>'
-    gap = '<FONT POINT-SIZE="28">        </FONT>'
-    items = gap.join(item.format(f=FONT, c=c, t=t) for c, t in [
-        (DATA_IN, "data in"), (AI, "AI calls"), (RESULT, "results to the UI"),
-        (CONTROL, "people and timers")])
-    return (f'<<FONT POINT-SIZE="56" FACE="{FONT} Bold" COLOR="{INK}">Domino system architecture'
-            f'</FONT><BR/><FONT POINT-SIZE="28" FACE="{FONT}" COLOR="{MUTED}">From simulated books '
-            f'to a live 13-week cash forecast. Domino reads only; it never moves money.</FONT>'
-            f'<BR/><BR/>{items}<BR/>>')
+def _toward(a: list[float], b: list[float], d: float) -> list[float]:
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    n = max((dx * dx + dy * dy) ** 0.5, 1e-9)
+    return [a[0] + dx / n * d, a[1] + dy / n * d]
 
 
-def build(out: Path, formats: list[str]) -> None:
-    graph_attr = {
-        "label": legend(), "labelloc": "t", "labeljust": "c",
-        "bgcolor": "#FFFFFF", "pad": "0.6", "nodesep": "0.35", "ranksep": "0.9",
-        "splines": "spline", "compound": "true", "newrank": "true", "dpi": "90",
-    }
-    edge_attr = {"fontname": f"{FONT} Medium", "fontsize": "31", "penwidth": "3.2",
-                 "arrowsize": "1.1"}
-    hide = {"style": "invis"}
-
-    with Diagram("", filename=str(out), show=False, outformat=formats, direction="LR",
-                 graph_attr=graph_attr, edge_attr=edge_attr):
-
-        with Cluster("sources", graph_attr=box("Data sources", "", "#F8FAFC", "#CBD5E1")):
-            vendors = vendor_grid()
-            nessie = icon("capitalone", "Capital One", "Nessie sandbox (real)")
-
-        with Cluster("ai", graph_attr=box("AI and tool APIs", "real services",
-                                          "#FAF5FF", "#C4B5FD")):
-            creao = icon("creao", "CREAO", "agent runs")
-            claude = icon("claude", "Anthropic Claude", "fallback + Ask Domino")
-            apify = icon("apify", "Apify", "public web search")
-
-        with Cluster("convex", graph_attr=box("Convex backend", "", "#FFF7ED", "#FDBA74")):
-            clock = icon("scheduler", "Scheduled functions", "sim clock ticks")
-            http = icon("http", "HTTP actions", "signed vendor webhooks")
-            with Cluster("agents", graph_attr=box("Agents", "run inside Convex actions",
-                                                  "#F0FDFA", "#5EEAD4")):
-                ingest = icon("ingest", "Ingestion agent", "maps every tool's records")
-                audit = icon("audit", "Audit swarm", "7 parallel checkers")
-                analyst = icon("forecast", "Forecasting swarm", "stress scenarios + advisors")
-                creao_steps = icon("coordinator", "CREAO steps", "coordinator · flag explainer")
-                toolbox = icon("toolbox", "Apify toolbox", "counterparty research")
-                tl_analysis = icon("analysis", "Timeline analysis", "Ask Domino answers")
-            mutations = icon("mutations", "Mutations")
-            db = icon("database", "Convex DB", "schema: Field · Timeline · Legacy")
-            queries = icon("queries", "Reactive queries", "useQuery subscriptions")
-
-        with Cluster("engine", graph_attr=box("Engine", "pure TypeScript: same input, same output",
-                                              "#EEF2FF", "#A5B4FC")):
-            forecast = icon("engine", "Cash engine",
-                            "13-week forecast\ncash flow statement\nrecurring revenue")
-            dominoes = icon("engine", "Risk engine",
-                            "dominoes · stress tests\nscore-fix · quarterly backtest")
-
-        with Cluster("users", graph_attr=box("Users", "", "#F8FAFC", "#CBD5E1")):
-            user = icon("user", "Finance lead / Judge", "reviews · approves · asks")
-
-        with Cluster("frontend", graph_attr=box("Frontend", "Next.js + React · Tailwind",
-                                                "#F8FAFC", "#94A3B8")):
-            dashboard = icon("dashboard", "Dashboard")
-            worker = icon("worker", "Worker", "suggestions · risks · flags")
-            brain = icon("brainmap", "Brain map", "+ Connected tools")
-            timeline = icon("timeline", "Timeline", "+ Ask Domino")
-            tryit = icon("tryit", "Try it", "+ 2U backtest")
+def _line(a: list[float], b: list[float]) -> list[list[float]]:
+    """Cubic Bezier control points (without the start) for a straight segment."""
+    return [[a[0] + (b[0] - a[0]) / 3, a[1] + (b[1] - a[1]) / 3],
+            [a[0] + 2 * (b[0] - a[0]) / 3, a[1] + 2 * (b[1] - a[1]) / 3], b]
 
 
-        # Data in. Edges written right-to-left use << so the layout still reads left to right.
-        vendors << flow("advance one day", CONTROL) << clock
-        vendors >> flow("new entries (webhooks)", DATA_IN) >> http
-        vendors >> flow("books snapshot", DATA_IN) >> ingest
-        nessie >> flow("bank transactions", DATA_IN, headport="w") >> ingest
-        http >> flow("starts ingest", DATA_IN) >> ingest
-        clock >> flow("tick", CONTROL) >> ingest
-        ingest >> flow("new snapshot", DATA_IN) >> audit
-        ingest >> flow("snapshot", DATA_IN) >> analyst
+def spline(points: list[tuple[float, float]], both: bool = False, radius: float = 14) -> str:
+    """Graphviz edge pos for a right-angle path with rounded corners (top-down input)."""
+    arrow = 9.0
+    pts = [list(p) for p in points]
+    tip, tail = list(pts[-1]), list(pts[0])
+    pts[-1] = _toward(pts[-1], pts[-2], arrow)
+    if both:
+        pts[0] = _toward(pts[0], pts[1], arrow)
+    out, cur = [pts[0]], pts[0]
+    for a, b, c in zip(pts, pts[1:], pts[2:]):
+        r = min(radius, abs(b[0] - a[0]) + abs(b[1] - a[1]), abs(c[0] - b[0]) + abs(c[1] - b[1]))
+        p_in, p_out = _toward(b, a, r), _toward(b, c, r)
+        out += _line(cur, p_in) + [_toward(p_in, b, r * 0.55), _toward(p_out, b, r * 0.55), p_out]
+        cur = p_out
+    out += _line(cur, pts[-1])
+    head = f"e,{tip[0]:.1f},{H - tip[1]:.1f} "
+    if both:
+        head = f"s,{tail[0]:.1f},{H - tail[1]:.1f} " + head
+    return head + " ".join(f"{x:.1f},{H - y:.1f}" for x, y in out)
 
-        # Deterministic money math.
-        analyst >> flow("scenarios", DATA_IN) >> forecast
-        analyst << flow("cash forecast", RESULT) << forecast
-        # xlabel: placed after layout at the edge's midpoint, clear of the crowded agent column.
-        audit >> Edge(xlabel=" pure checks ", color=DATA_IN, fontcolor=DATA_IN, fontsize="27",
-                      fontname=f"{FONT} Medium") >> dominoes
 
-        # AI.
-        audit >> flow("explain flags", AI) >> creao_steps
-        analyst >> flow("plan · pick a fix", AI) >> creao_steps
-        analyst >> flow("research", AI) >> toolbox
-        creao_steps >> flow("agent runs", AI) >> creao
-        creao_steps >> flow("fallback", AI, style="dashed") >> claude
-        toolbox >> flow("news search", AI) >> apify
-        tl_analysis >> flow("answers", AI) >> claude
+def route(points, label: str, at: tuple[float, float] | None, color: str,
+          dashed: bool = False, both: bool = False) -> Edge:
+    attrs = {"pos": spline(points, both), "color": color, "fontcolor": color,
+             "fontsize": str(EDGE_PT), "fontname": f"{FONT} Medium", "penwidth": "2.6",
+             "arrowsize": "0.9"}
+    if both:
+        attrs["dir"] = "both"
+    if label:
+        attrs["label"] = label
+        attrs["lp"] = f"{at[0]:.1f},{H - at[1]:.1f}"
+    return Edge(style="dashed" if dashed else "", **attrs)
 
+
+def routes(g: Layout) -> list[tuple[str, str, Edge]]:
+    """Every edge as (from, to, Edge). Paths turn only at right angles and avoid nodes."""
+    L, R, T, B = g.left, g.right, g.top, g.bottom
+    vx = R("vendors")[0]
+    ai_bottom = BOXES["ai"][3] + 1
+    return [
+        # Data in.
+        ("vendors", "http", route([(vx, 400), (398, 400), (398, 487), L("http")],
+                                  "", None, DATA_IN)),
+        ("vendors", "ingest", route([(vx, 361), (752, 361), T("ingest")],
+                                    "books snapshot", (525, 347), DATA_IN)),
+        ("http", "ingest", route([R("http"), L("ingest", -18)], "", None, CONTROL)),
+        ("clock", "ingest", route([R("clock"), (700, 543), (700, 523), L("ingest", 18)],
+                                  "tick", (668, 529), CONTROL)),
+        ("nessie", "ingest", route([R("nessie"), (728, 600), B("ingest", -24)],
+                                   "bank transactions", (540, 586), DATA_IN)),
+        ("crs", "audit", route([R("crs"), (745, 670), (745, 778), L("audit", 23)],
+                               "identity + fraud result", (540, 656), DATA_IN)),
+        ("ingest", "analyst", route([R("ingest"), L("analyst")], "snapshot", (843, 491), DATA_IN)),
+        ("ingest", "audit", route([B("ingest", 18), (770, 742), L("audit", -13)], "snapshot",
+                                  (838, 728), DATA_IN)),
+        ("analyst", "advisors", route([R("analyst"), L("advisors")],
+                                      "cash below limit", (1025, 491), DATA_IN)),
+        # Money math is engine code; AI only explains, plans and searches.
+        ("analyst", "cash", route([T("analyst"), B("cash")], "scenarios ⇄ forecasts",
+                                  (1012, 398), DATA_IN, both=True)),
+        ("advisors", "creao", route([T("advisors"), (1115, ai_bottom)],
+                                    "explain flags · plan\npick a fix · research",
+                                    (1210, 399), AI)),
+        ("creao", "claude", route([R("creao"), L("claude")], "fallback", (1365, 230), AI,
+                                  dashed=True)),
         # Results to the UI.
-        creao_steps >> flow("explanations", RESULT) >> mutations
-        analyst >> flow("forecasts · suggestions", RESULT) >> mutations
-        audit >> flow("flags", RESULT) >> mutations
-        # Mutations, DB and queries share one column: same-rank edges do not add ranks.
-        mutations >> flow("write", RESULT, constraint="false") >> db
-        db >> flow("changes", RESULT, constraint="false") >> queries
-        for node in (db, queries):
-            creao_steps >> Edge(**hide) >> node
-        queries >> flow("live updates", RESULT, lhead="cluster_frontend") >> brain
-        for page in (dashboard, worker, timeline, tryit):
-            queries >> Edge(**hide) >> page
-        dominoes >> flow("2U backtest", RESULT) >> tryit
+        ("advisors", "mutations", route([R("advisors"), L("mutations")],
+                                        "forecasts · suggestions", (1236, 491), RESULT)),
+        ("audit", "mutations", route([R("audit", -8), (1255, 747), (1255, 521),
+                                      L("mutations", 16)], "flags", (1100, 733), RESULT)),
+        ("mutations", "tables", route([B("mutations"), T("tables")], "", None, RESULT)),
+        ("tables", "queries", route([B("tables"), T("queries")], "", None, RESULT)),
+        ("queries", "dashboard", route([R("queries"), L("dashboard")], "live updates",
+                                       (1508, 761), RESULT)),
+        ("user", "timeline", route([L("user"), R("timeline")], "review · ask", (1777, 596),
+                                   CONTROL)),
+        # Learning loop.
+        ("worker", "decisions", route([L("worker"), R("decisions")], "confirm · dismiss",
+                                      (1508, 971), LEARN)),
+        ("decisions", "rules", route([L("decisions"), R("rules")], "becomes a rule",
+                                     (1150, 971), LEARN, dashed=True)),
+        ("rules", "audit", route([T("rules"), B("audit")], "applied on the next run",
+                                 (1030, 860), LEARN, dashed=True)),
+        ("delays", "analyst", route([T("delays"), (1185, 610), (958, 610), B("analyst", 23)],
+                                    "payment delays", (1075, 596), LEARN)),
+    ]
 
-        # People.
-        # The person sits in the Frontend column (same rank as the pages), right above them,
-        # so the Users box needs no arrow into the pages.
-        queries >> Edge(**hide) >> user
-        mutations << flow("start agents · accept", CONTROL) << worker
-        tl_analysis << flow("Ask Domino question", CONTROL) << timeline
+
+# ---------- graph ----------
+
+def build(out: Path, formats: list[str], sizes: dict[str, tuple[float, float]] | None) -> str:
+    """Builds and renders the diagram. sizes=None is the measuring pass: nodes only, returns
+    the Graphviz source instead of rendering."""
+    g = Layout(sizes or {})
+    graph_attr = {"bgcolor": "#FFFFFF", "splines": "true", "dpi": str(DPI), "pad": "0",
+                  "outputorder": "edgesfirst", "label": ""}
+    nodes: dict[str, Node] = {}
+    source: dict[str, str] = {}
+
+    def put(name: str, label: str) -> None:
+        nodes[name] = Node(f"<{label}>", nodeid=name, shape="plain", fixedsize="false",
+                           style="", pos=g.pos(name))
+
+    def col(name: str, tile: str, title: str, note: str = "") -> None:
+        put(name, column_label(tile, title, note))
+
+    def row(name: str, tile: str, title: str, note: str) -> None:
+        put(name, row_label(tile, title, note))
+
+    with Diagram("", filename=str(out), show=False, outformat=formats,
+                 graph_attr=graph_attr) as diagram:
+        put("header", header_label())
+        put("stack", grid_label([
+            ("nextjs", "Next.js 16"), ("react", "React 19"), ("tailwind", "Tailwind"),
+            ("convex", "Convex"), ("typescript", "TypeScript"), ("pnpm", "pnpm"),
+            ("turborepo", "Turborepo"), ("vitest", "Vitest"), ("biome", "Biome"),
+            ("vercel", "Vercel"), ("anthropic", "Claude"), ("creao", "CREAO"),
+            ("apify", "Apify"), ("capitalone", "Nessie"), ("crs", "CRS"),
+        ], cols=5, size=36, title="Tech stack",
+            note="pnpm monorepo · apps/web · apps/mocks · packages/*",
+            border="#E2E8F0", fill="#FFFFFF"))
+
+        with Cluster("sources", graph_attr=box("sources", "Data sources", "", "#F8FAFC", "#CBD5E1")):
+            put("vendors", grid_label([
+                ("stripe", "Stripe"), ("ramp", "Ramp"), ("quickbooks", "QuickBooks"),
+                ("gusto", "Gusto"), ("hubspot", "HubSpot")], cols=3, size=46,
+                title="Mock vendor APIs", note="simulator-generated books",
+                border="#93C5FD", fill="#EFF6FF"))
+            with Cluster("real", graph_attr=box("real", "Real APIs", "sandboxes", "#FFFFFF",
+                                                "#CBD5E1")):
+                row("nessie", "capitalone", "Capital One Nessie", "bank transactions")
+                row("crs", "crs", "CRS", "identity + fraud check")
+
+        with Cluster("engine", graph_attr=box("engine", "Engine", "pure TypeScript, no AI",
+                                              "#EEF2FF", "#A5B4FC", logos=("typescript",))):
+            col("risk", "engine", "Risk engine", "audit checks · dominoes\nstress tests · score-fix")
+            col("cash", "engine", "Cash engine", "13-week forecast\ncash flow · recurring revenue")
+
+        with Cluster("ai", graph_attr=box("ai", "AI providers", "real services", "#FAF5FF",
+                                          "#C4B5FD")):
+            col("apify", "apify", "Apify", "search tool")
+            col("creao", "creao", "CREAO", "primary")
+            col("claude", "claude", "Claude", "fallback\nAsk Domino")
+
+        with Cluster("convex", graph_attr=box("convex", "Convex backend", "", "#FFF7ED", "#FDBA74",
+                                              logos=("convex",))):
+            with Cluster("triggers", graph_attr=box("triggers", "Triggers", "", "#FFFFFF",
+                                                    "#FDBA74")):
+                row("http", "http", "HTTP webhooks", "signed vendor events")
+                row("clock", "scheduler", "Scheduled", "sim clock ticks")
+            with Cluster("agents", graph_attr=box("agents", "Agents", "", "#F0FDFA", "#5EEAD4",
+                                                  title_x=822)):
+                col("ingest", "ingest", "Ingestion")
+                col("analyst", "forecast", "Forecasting", "swarm: stress scenarios")
+                col("advisors", "advisor", "Advisors", "compare fixes")
+                col("audit", "audit", "Audit swarm", "7 engine checks + CRS")
+            with Cluster("storage", graph_attr=box("storage", "Storage + realtime", "", "#FFFFFF",
+                                                   "#FDBA74")):
+                col("mutations", "mutations", "Mutations")
+                col("tables", "tables", "Tables", "Field · Timeline · Legacy")
+                col("queries", "queries", "Reactive queries", "useQuery")
+            with Cluster("learning", graph_attr=box("learning", "Learning loop",
+                                                    "decisions teach the agents",
+                                                    "#FFFBEB", "#FCD34D")):
+                row("delays", "delays", "Payment delays", "per customer · used by the forecast")
+                col("rules", "rules", "Learned rules", "scoped · versioned · revocable")
+                col("decisions", "decisions", "Decisions", "confirm · dismiss")
+
+        with Cluster("frontend", graph_attr=box("frontend", "Frontend", "", "#F8FAFC", "#94A3B8",
+                                                logos=("nextjs", "react", "tailwind"))):
+            col("brain", "brainmap", "Brain map", "+ Connected tools")
+            col("tryit", "tryit", "Try it", "+ 2U backtest")
+            col("timeline", "timeline", "Timeline", "+ Ask Domino")
+            col("dashboard", "dashboard", "Dashboard")
+            col("worker", "worker", "Worker", "suggestions · risks · flags")
+
+        with Cluster("users", graph_attr=box("users", "Users", "", "#F8FAFC", "#CBD5E1")):
+            col("user", "user", "Finance lead", "or Judge, in a browser")
+
+        # Invisible corner points fix the canvas to exactly W x H.
+        Node("", nodeid="corner_lo", shape="point", style="invis", width="0", height="0",
+             pos="0,0")
+        Node("", nodeid="corner_hi", shape="point", style="invis", width="0", height="0",
+             pos=f"{W},{H}")
+
+        if sizes is not None:
+            for a, b, edge in routes(g):
+                nodes[a] >> edge >> nodes[b]
+
+        # Render with every position pinned (neato -n2) instead of dot's automatic layout.
+        diagram.dot.engine = "neato"
+
+        def capture() -> None:
+            source["text"] = diagram.dot.source
+            Path(diagram.filename).write_text("")   # diagrams deletes this file on exit
+
+        def render() -> None:
+            for fmt in formats:
+                diagram.dot.render(format=fmt, quiet=True, neato_no_op=2)
+
+        diagram.render = capture if sizes is None else render
+    return source.get("text", "")
 
 
-def pad_to_16_9(png: Path) -> None:
-    """Center the drawing on a white 16:9 canvas (needs ImageMagick; skipped without it)."""
-    magick = shutil.which("magick")
-    if not magick:
-        print("ImageMagick not found: PNG left at its natural aspect ratio")
-        return
-    size = subprocess.run([magick, "identify", "-format", "%w %h", str(png)],
-                          check=True, capture_output=True, text=True).stdout.split()
-    w, h = int(size[0]), int(size[1])
-    w, h = max(w, round(h * 16 / 9)), max(h, round(w * 9 / 16))
-    subprocess.run([magick, str(png), "-background", "white", "-gravity", "center",
-                    "-extent", f"{w}x{h}", str(png)], check=True)
+def measure() -> dict[str, tuple[float, float]]:
+    """Label size in points of every node, from a nodes-only Graphviz pass."""
+    with tempfile.TemporaryDirectory() as tmp:
+        src = build(Path(tmp) / "measure", ["png"], None)
+    laid = json.loads(subprocess.run(["neato", "-n2", "-Tjson"], input=src, text=True,
+                                     capture_output=True, check=True).stdout)
+    return {o["name"]: (float(o["width"]) * 72, float(o["height"]) * 72)
+            for o in laid.get("objects", []) if "width" in o}
 
 
 def inline_svg_images(svg: Path) -> None:
@@ -244,12 +453,10 @@ def main() -> None:
     parser.add_argument("--formats", default="png,svg")
     args = parser.parse_args()
     formats = args.formats.split(",")
-    build(args.out, formats)
-    if "png" in formats:
-        pad_to_16_9(args.out.with_suffix(".png"))
+    build(args.out, formats, measure())
     if "svg" in formats:
         inline_svg_images(args.out.with_suffix(".svg"))
-    for fmt in args.formats.split(","):
+    for fmt in formats:
         print(args.out.with_suffix(f".{fmt}"))
 
 

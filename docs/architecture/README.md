@@ -25,10 +25,12 @@ The script produces current and planned PNG/PDF files under `generated/`. It use
 
 ## System architecture slide (field/main)
 
-`system.py` draws one 16:9 slide of the Domino field app: data sources, Convex backend with the agents, the pure engine, real AI/tool APIs, frontend pages and users. Edge colors: blue data in, purple AI calls, green results to the UI, gray people and timers. Facts it shows are listed with their source files in the script's docstring.
+`system.py` draws one 16:9 slide of the Domino field app: data sources (mock vendor APIs, Capital One Nessie, CRS), the Convex backend (triggers, agents, learning loop, storage + realtime), the pure TypeScript engine, AI providers (CREAO, Claude fallback, Apify), frontend pages, users and a tech stack panel. Edge colors: blue data in, purple AI calls, green results to the UI, gray people and triggers, amber learning loop. Dashed links are built in the engine (learned rules) but not yet called by the live app. Facts and their source files are listed in the script's docstring.
+
+The graph is built with diagrams, but every container, icon and edge route is set by hand on a grid and rendered with `neato -n2` (Graphviz), so spacing stays even and lines run at right angles around boxes. Move things by editing `BOXES`, `ICON_AT` and `routes()`.
 
 ```sh
 /tmp/domino-diagrams-venv/bin/python docs/architecture/system.py
 ```
 
-Output: [domino-system.png](domino-system.png) (padded to 16:9 when ImageMagick is installed) and [domino-system.svg](domino-system.svg) (icons embedded). Icon tiles live in `icons/`; `make_icons.py` rebuilds them from simple-icons, lucide-static and the app's own logos in `apps/web/public`.
+Output: [domino-system.png](domino-system.png) (3843 x 2158, 16:9) and [domino-system.svg](domino-system.svg) (icons embedded). Icon tiles live in `icons/`; `make_icons.py` rebuilds them offline from the committed sources in `icons/src` (simple-icons, lucide-static, the CRS site icon) and the app's own logos in `apps/web/public`.

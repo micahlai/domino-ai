@@ -2,14 +2,18 @@
 """Build the rounded icon tiles used by system.py (output: docs/architecture/icons/*.png).
 
 Run once when icons change; the PNGs are committed so system.py renders offline.
-Needs `rsvg-convert` and `magick` (Homebrew librsvg / imagemagick).
+Needs `rsvg-convert` and `magick` (Homebrew librsvg / imagemagick). Reads only files in the repo.
 
-Sources (same marks the app uses, see apps/web/components/icons/README.md):
-  --simple-icons DIR  SVGs from the simple-icons npm package 16.35.0 (CC0):
-                      stripe, hubspot, quickbooks, gusto, claude
-  --lucide DIR        SVGs from the lucide-static npm package 1.61.0 (ISC) for generic glyphs
-  apps/web/public     Domino mark, Ramp, Capital One, Apify and CREAO logos (already in the repo)
-There is no official Convex mark in either package, so Convex parts use generic glyphs.
+Sources, all committed under icons/src (downloaded 2026-10-25):
+  icons/src/simple-icons  official brand marks from the simple-icons npm package 16.35.0 (CC0),
+                          https://cdn.jsdelivr.net/npm/simple-icons@16.35.0/icons/<slug>.svg
+                          (each mark's own brand source is listed in simple-icons' data file)
+  icons/src/lucide        generic glyphs from lucide-static 1.61.0 (ISC),
+                          https://cdn.jsdelivr.net/npm/lucide-static@1.61.0/icons/<name>.svg
+  icons/src/sites/crs.svg CRS site icon, https://crscreditapi.com/favicon.svg
+  apps/web/public         Domino mark, Ramp, Capital One, Apify and CREAO logos already used by
+                          the app (sources in apps/web/components/icons/README.md)
+Brand marks belong to their owners and only identify the product.
 """
 
 import argparse
@@ -18,34 +22,41 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+SRC = HERE / "icons" / "src"
 PUBLIC = HERE.parents[1] / "apps" / "web" / "public"
 SIZE = 256
 
+UI, CONVEX, AGENT, ENGINE, LEARN, SIM = "#111827", "#C2410C", "#0F766E", "#4338CA", "#B45309", "#2563EB"
 # (tile name, lucide glyph, tile color)
 GENERIC = [
     ("user", "user-round", "#334155"),
-    ("dashboard", "layout-dashboard", "#111827"),
-    ("worker", "bot-message-square", "#111827"),
-    ("brainmap", "brain-circuit", "#111827"),
-    ("tools", "plug", "#111827"),
-    ("timeline", "messages-square", "#111827"),
-    ("tryit", "flask-conical", "#111827"),
-    ("backtest", "history", "#111827"),
-    ("queries", "radio", "#C2410C"),
-    ("mutations", "square-pen", "#C2410C"),
-    ("actions", "zap", "#C2410C"),
-    ("http", "webhook", "#C2410C"),
-    ("scheduler", "alarm-clock", "#C2410C"),
-    ("database", "database", "#C2410C"),
-    ("ingest", "file-input", "#0F766E"),
-    ("audit", "shield-check", "#0F766E"),
-    ("forecast", "trending-up", "#0F766E"),
-    ("advisor", "lightbulb", "#0F766E"),
-    ("coordinator", "workflow", "#0F766E"),
-    ("toolbox", "search", "#0F766E"),
-    ("analysis", "sparkles", "#0F766E"),
-    ("engine", "calculator", "#4338CA"),
-    ("simulator", "dices", "#2563EB"),
+    ("dashboard", "layout-dashboard", UI),
+    ("worker", "bot-message-square", UI),
+    ("brainmap", "brain-circuit", UI),
+    ("tools", "plug", UI),
+    ("timeline", "messages-square", UI),
+    ("tryit", "flask-conical", UI),
+    ("backtest", "history", UI),
+    ("queries", "radio", CONVEX),
+    ("mutations", "square-pen", CONVEX),
+    ("actions", "zap", CONVEX),
+    ("http", "webhook", CONVEX),
+    ("scheduler", "alarm-clock", CONVEX),
+    ("database", "database", CONVEX),
+    ("tables", "table-2", CONVEX),
+    ("ingest", "file-input", AGENT),
+    ("audit", "shield-check", AGENT),
+    ("forecast", "trending-up", AGENT),
+    ("advisor", "lightbulb", AGENT),
+    ("coordinator", "workflow", AGENT),
+    ("toolbox", "search", AGENT),
+    ("analysis", "sparkles", AGENT),
+    ("engine", "calculator", ENGINE),
+    ("simulator", "dices", SIM),
+    ("decisions", "check-check", LEARN),
+    ("rules", "list-checks", LEARN),
+    ("delays", "hourglass", LEARN),
+    ("learning", "graduation-cap", LEARN),
 ]
 # (tile name, simple-icons slug, tile color, glyph color)
 BRANDS = [
@@ -54,13 +65,26 @@ BRANDS = [
     ("quickbooks", "quickbooks", "#2CA01C", "#FFFFFF"),
     ("gusto", "gusto", "#F45D48", "#FFFFFF"),
     ("claude", "claude", "#FFFFFF", "#D97757"),
+    ("anthropic", "anthropic", "#F0EEE6", "#191919"),
+    ("convex", "convex", "#FFFFFF", "#EE342F"),
+    ("nextjs", "nextdotjs", "#000000", "#FFFFFF"),
+    ("react", "react", "#20232A", "#61DAFB"),
+    ("tailwind", "tailwindcss", "#FFFFFF", "#06B6D4"),
+    ("typescript", "typescript", "#FFFFFF", "#3178C6"),
+    ("pnpm", "pnpm", "#FFFFFF", "#F69220"),
+    ("turborepo", "turborepo", "#FFFFFF", "#FF1E56"),
+    ("vitest", "vitest", "#1A1A1A", "#00FF74"),
+    ("biome", "biome", "#FFFFFF", "#60A5FA"),
+    ("vercel", "vercel", "#000000", "#FFFFFF"),
+    ("zod", "zod", "#FFFFFF", "#408AFF"),
 ]
-# (tile name, file in apps/web/public, tile color)
+# (tile name, file, tile color)
 LOGOS = [
-    ("ramp", "logos/ramp.png", "#E7F127"),
-    ("capitalone", "logos/capitalone.svg", "#FFFFFF"),
-    ("apify", "logos/apify.svg", "#FFFFFF"),
-    ("creao", "logos/creao.png", "#FFFFFF"),
+    ("ramp", PUBLIC / "logos/ramp.png", "#E7F127"),
+    ("capitalone", PUBLIC / "logos/capitalone.svg", "#FFFFFF"),
+    ("apify", PUBLIC / "logos/apify.svg", "#FFFFFF"),
+    ("creao", PUBLIC / "logos/creao.png", "#FFFFFF"),
+    ("crs", SRC / "sites/crs.svg", "#FFFFFF"),
 ]
 
 
@@ -71,11 +95,11 @@ def tile(body: str, color: str) -> str:
             f'<rect x="6" y="6" width="244" height="244" rx="56" fill="{color}"{border}/>{body}</svg>')
 
 
-def inner(svg_text: str) -> str:
-    """Contents and viewBox of a downloaded icon, as a nested <svg> filling the tile's middle."""
+def inner(svg_text: str, attrs: str = "") -> str:
+    """Contents and viewBox of an icon, as a nested <svg> filling the tile's middle."""
     view = re.search(r'viewBox="([^"]+)"', svg_text).group(1)
     body = re.sub(r"(?s)^.*?<svg[^>]*>|</svg>\s*$|<title>.*?</title>|<!--.*?-->", "", svg_text)
-    return f'<svg x="60" y="60" width="136" height="136" viewBox="{view}"{{attrs}}>{body}</svg>'
+    return f'<svg x="60" y="60" width="136" height="136" viewBox="{view}"{attrs}>{body}</svg>'
 
 
 def render(svg: str, out: Path) -> None:
@@ -85,33 +109,27 @@ def render(svg: str, out: Path) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("--simple-icons", type=Path, required=True)
-    p.add_argument("--lucide", type=Path, required=True)
     p.add_argument("--out", type=Path, default=HERE / "icons")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
 
+    stroke = ' fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
     for name, glyph, color in GENERIC:
-        body = inner((a.lucide / f"{glyph}.svg").read_text())
-        attrs = ' fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
-        render(tile(body.replace("{attrs}", attrs), color), a.out / f"{name}.png")
+        body = inner((SRC / "lucide" / f"{glyph}.svg").read_text(), stroke)
+        render(tile(body, color), a.out / f"{name}.png")
     for name, slug, color, ink in BRANDS:
-        body = inner((a.simple_icons / f"{slug}.svg").read_text())
-        render(tile(body.replace("{attrs}", f' fill="{ink}"'), color), a.out / f"{name}.png")
-    domino = inner((PUBLIC / "domino-logo.svg").read_text()).replace("{attrs}", "")
-    render(tile(domino, "#E6F4EE"), a.out / "domino.png")
-    for name, rel, color in LOGOS:
-        src = PUBLIC / rel
+        body = inner((SRC / "simple-icons" / f"{slug}.svg").read_text(), f' fill="{ink}"')
+        render(tile(body, color), a.out / f"{name}.png")
+    render(tile(inner((PUBLIC / "domino-logo.svg").read_text()), "#E6F4EE"), a.out / "domino.png")
+    for name, src, color in LOGOS:
+        out = a.out / f"{name}.png"
         if src.suffix == ".svg":
-            body = inner(src.read_text()).replace("{attrs}", "")
-            render(tile(body, color), a.out / f"{name}.png")
+            render(tile(inner(src.read_text()), color), out)
         else:  # raster logo: shrink onto the tile
-            base = a.out / f"{name}.png"
-            render(tile("", color), base)
-            subprocess.run(["magick", str(base), "(", str(src), "-resize", "176x176", ")",
-                            "-gravity", "center", "-composite", str(base)], check=True)
-    for path in sorted(a.out.glob("*.png")):
-        print(path)
+            render(tile("", color), out)
+            subprocess.run(["magick", str(out), "(", str(src), "-resize", "176x176", ")",
+                            "-gravity", "center", "-composite", str(out)], check=True)
+    print(f"{len(list(a.out.glob('*.png')))} tiles in {a.out}")
 
 
 if __name__ == "__main__":
