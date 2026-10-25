@@ -24,8 +24,7 @@ import {
   rollbackRule,
   selectQuarterMethod,
 } from "./learned-rules";
-import type { QuarterCandidateInput } from "./period-candidate";
-import type { KeyOutcome } from "./source-reconciliation";
+import { type QuarterCandidateInput, quarterCandidate } from "./period-candidate";
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; errors: string[] }): T {
   if (!r.ok) throw new Error(r.errors.join("\n"));
@@ -49,6 +48,7 @@ const SIG = "sec_companyfacts_v1";
 const A = "0000000001";
 const B = "0000000002"; // unrelated SYNTHETIC company with the same tags and filing layout
 const OCF = "NetCashProvidedByUsedInOperatingActivities";
+const ICF = "NetCashProvidedByUsedInInvestingActivities";
 const YTD_9M = { kind: "duration", start: "2022-01-01", end: "2022-09-30" } as const;
 
 /** Original 10-Q says OCF 9M -786,000; its 10-Q/A says -800,000. A genuine conflict. */
@@ -127,24 +127,27 @@ const fb = (id: string, action: RuleAction, cik = A, at = FEEDBACK_AT): Feedback
   proposedAction: action,
   recordedAt: at,
 });
+/** A decision plus the backend ingestion stamp it was recorded at (SYNTHETIC instant). */
 const decision = (
   ruleId: string,
   at: string,
   d: Partial<FeedbackDecision> = {},
-): FeedbackDecision => ({
-  status: "accepted",
-  ruleId,
-  scope: { kind: "company", sourceSignature: SIG },
-  rationale: `SYNTHETIC rationale for ${ruleId}`,
-  evidenceRefs: ["review/synthetic-1"],
+): { decision: FeedbackDecision; recordedAt: string } => ({
+  decision: {
+    status: "accepted",
+    ruleId,
+    scope: { kind: "company", sourceSignature: SIG },
+    rationale: `SYNTHETIC rationale for ${ruleId}`,
+    evidenceRefs: ["review/synthetic-1"],
+    ...d,
+  },
   recordedAt: at,
-  ...d,
 });
 const accept = (
   history: readonly LearnedRuleVersion[],
   feedback: FeedbackRecord,
-  d: FeedbackDecision,
-) => unwrap(decideFeedback({ history, feedback, decision: d }));
+  d: ReturnType<typeof decision>,
+) => unwrap(decideFeedback({ history, feedback, ...d }));
 
 const reconcile = (cik: string, cutoff: string, history: readonly LearnedRuleVersion[]) =>
   unwrap(
@@ -283,8 +286,8 @@ describe("accepted scoped rules change later work only", () => {
         revocation: {
           rationale: "SYNTHETIC: wrong preference",
           evidenceRefs: ["review/synthetic-2"],
-          recordedAt: V2_AT,
         },
+        recordedAt: V2_AT,
       }),
     );
     expect(rev.record).toMatchObject({
@@ -306,7 +309,8 @@ describe("accepted scoped rules change later work only", () => {
     const again = revokeRuleVersion({
       history: rev.history,
       targetId: "ocf-authority/v1",
-      revocation: { rationale: "x", evidenceRefs: ["r"], recordedAt: NOW2 },
+      revocation: { rationale: "x", evidenceRefs: ["r"] },
+      recordedAt: NOW2,
     });
     expect(again).toMatchObject({ ok: false });
   });
@@ -320,8 +324,8 @@ describe("accepted scoped rules change later work only", () => {
         revocation: {
           rationale: "SYNTHETIC: amendment preference was premature",
           evidenceRefs: ["review/synthetic-3"],
-          recordedAt: ROLLBACK_AT,
         },
+        recordedAt: ROLLBACK_AT,
       }),
     );
     expect(roll.record).toMatchObject({ id: "ocf-authority/v3", revokes: "ocf-authority/v2" });
@@ -408,22 +412,60 @@ describe("scope, conflicts and time", () => {
     const back = decideFeedback({
       history: [],
       feedback: fb("fb9", ORIGINAL),
-      decision: decision("r9", V1_AT, { effectiveFrom: "2022-01-01T00:00:00Z" }),
+      ...decision("r9", V1_AT, { effectiveFrom: "2022-01-01T00:00:00Z" }),
     });
-    expect(back).toMatchObject({ ok: false, errors: [expect.stringContaining("backdating")] });
+    expect(back).toMatchObject({
+      ok: false,
+      errors: [expect.stringContaining("before its recorded time")],
+    });
     // A decision before its feedback, or dated before the log's latest decision, is refused.
     const early = decideFeedback({
       history: [],
       feedback: fb("fb9", ORIGINAL),
-      decision: decision("r9", "2026-10-24T09:00:00Z"),
+      ...decision("r9", "2026-10-24T09:00:00Z"),
     });
     expect(early).toMatchObject({ ok: false });
     const stale = decideFeedback({
       history,
       feedback: fb("fb9", AMENDMENT, A, "2022-01-01T00:00:00Z"),
-      decision: decision("r9", "2023-01-01T00:00:00Z"),
+      ...decision("r9", "2023-01-01T00:00:00Z"),
     });
     expect(stale).toMatchObject({ ok: false, errors: [expect.stringContaining("never backdate")] });
+    // The stamp is the backend's: a decision cannot carry its own recordedAt.
+    const own = decideFeedback({
+      history: [],
+      feedback: fb("fb9", ORIGINAL),
+      ...decision("r9", V1_AT, { recordedAt: "2022-11-03T20:00:00Z" } as never),
+    });
+    expect(own).toMatchObject({ ok: false, errors: [expect.stringContaining("backend stamp")] });
+    // Auditor repro: a decision dated 2022 but recorded (stamped) today is refused, and
+    // the same decision with no claimed date only takes effect at its stamp.
+    const claimed = decideFeedback({
+      history: [],
+      feedback: fb("fb9", CANDIDATE),
+      ...decision("m9", V1_AT, { effectiveFrom: "2022-11-03T20:00:00Z" }),
+    });
+    expect(claimed).toMatchObject({
+      ok: false,
+      errors: [expect.stringContaining("before its recorded time")],
+    });
+    const stampedToday = accept([], fb("fb9", CANDIDATE), decision("m9", V1_AT));
+    const historical = { ...task("2022-11-03T20:08:14Z"), cik: A };
+    expect(unwrap(selectQuarterMethod(stampedToday.history, historical))).toMatchObject({
+      source: "default",
+    });
+    expect(unwrap(selectQuarterMethod(stampedToday.history, task(NOW1)))).toMatchObject({
+      source: "rule",
+    });
+    // A revocation is stamped the same way.
+    expect(
+      revokeRuleVersion({
+        history: stampedToday.history,
+        targetId: "m9/v1",
+        revocation: { rationale: "x", evidenceRefs: ["r"], effectiveFrom: "2022-01-01T00:00:00Z" },
+        recordedAt: NOW1,
+      }),
+    ).toMatchObject({ ok: false, errors: [expect.stringContaining("before its recorded time")] });
     // A future effectiveFrom applies only from then.
     const later = accept([], fb("fb5", ORIGINAL), decision("r5", V1_AT, { effectiveFrom: NOW2 }));
     expect(unwrap(resolveRules(later.history, task(NOW1))).slots).toEqual([]);
@@ -451,13 +493,13 @@ describe("scope, conflicts and time", () => {
     // Free text alone is never a rule.
     const { proposedAction: _, ...noAction } = fb("fb6", ORIGINAL);
     expect(
-      decideFeedback({ history: [], feedback: noAction, decision: decision("r6", V1_AT) }),
+      decideFeedback({ history: [], feedback: noAction, ...decision("r6", V1_AT) }),
     ).toMatchObject({
       ok: false,
     });
     // One decision per feedback.
     expect(
-      decideFeedback({ history, feedback: fb("fb1", ORIGINAL), decision: decision("r7", NOW1) }),
+      decideFeedback({ history, feedback: fb("fb1", ORIGINAL), ...decision("r7", NOW1) }),
     ).toMatchObject({ ok: false, errors: [expect.stringContaining("already decided")] });
     // An unregistered method cannot be accepted.
     expect(
@@ -468,7 +510,7 @@ describe("scope, conflicts and time", () => {
           methodId: "secret_sauce",
           version: "1.0.0",
         }),
-        decision: decision("m", V1_AT),
+        ...decision("m", V1_AT),
       }),
     ).toMatchObject({ ok: false });
     // A rule keeps one behavior and one scope.
@@ -476,7 +518,7 @@ describe("scope, conflicts and time", () => {
       decideFeedback({
         history,
         feedback: fb("fb10", CANDIDATE),
-        decision: decision("ocf-authority", NOW1),
+        ...decision("ocf-authority", NOW1),
       }),
     ).toMatchObject({ ok: false });
     // Caller-owned getters are read once.
@@ -484,8 +526,8 @@ describe("scope, conflicts and time", () => {
     const args = {
       history,
       feedback: fb("fb11", AMENDMENT),
-      decision: decision("ocf-authority", NOW1),
-    };
+      ...decision("ocf-authority", NOW1),
+    } as Parameters<typeof decideFeedback>[0];
     const d = args.decision;
     Object.defineProperty(args, "decision", {
       enumerable: true,
@@ -520,28 +562,66 @@ const task = (cutoff: string, cik = A): RuleTask => ({
 
 // ---------- Method selection: SYNTHETIC quarter cases ----------
 
-/** SYNTHETIC Q3 case in a given year: same hand math as period-candidate.test.ts. */
-function quarterInput(year: number): QuarterCandidateInput {
+/**
+ * SYNTHETIC Q3 case in a given year, same hand math as period-candidate.test.ts, with a
+ * SYNTHETIC package whose rows the case's YTD facts are (L1 fact shape).
+ */
+function quarterInput(year: number, cik = A): QuarterCandidateInput {
+  const yy = String(year).slice(2);
+  const cur = `${cik}-${yy}-000002`;
+  const pri = `${cik}-${yy}-000001`;
   const at = `${year}-11-05T21:00:00Z`;
-  const atH1 = `${year}-08-05T21:00:00Z`;
   const origin = `${year}-09-30`;
-  const ytd = { kind: "duration" as const, start: `${year}-01-01`, end: origin };
-  const report = (
-    id: string,
-    metric: "operating_cash_flow" | "investing_cash_flow",
-    c: number,
-  ) => ({
-    id,
-    kind: "reported" as const,
-    metric,
-    period: ytd,
-    currency: "USD",
-    cents: c,
-    availableAt: at,
-    sourceId: "src",
-    locator: `SYNTHETIC ${id}`,
-    reportedScale: "ones" as const,
+  const rows = [
+    { tag: OCF, acc: cur, raw: "-90000", end: origin },
+    { tag: ICF, acc: cur, raw: "-30000", end: origin },
+    { tag: OCF, acc: pri, raw: "-40000", end: `${year}-06-30` },
+    { tag: ICF, acc: pri, raw: "-10000", end: `${year}-06-30` },
+  ];
+  const records = rows.map((r, i) => ({
+    id: `us-gaap:${r.tag}:USD:${i >> 1}`,
+    accession: r.acc,
+    taxonomy: "us-gaap",
+    tag: r.tag,
+    unit: "USD",
+    pointer: `/facts/us-gaap/${r.tag}/units/USD/${i >> 1}`,
+    rawValue: r.raw,
+    period: { kind: "duration", start: `${year}-01-01`, end: r.end },
+  }));
+  const pkgQ = SourcePackageSchema.parse({
+    schemaVersion: 1,
+    id: `synthetic-q-${cik}`,
+    format: "sec_companyfacts_v1",
+    provenance: "synthetic_fixture",
+    company: { cik, name: `SYNTHETIC Co ${cik}` },
+    originalUrl: `https://example.test/q-${cik}.json`,
+    retrievedAt: "2040-01-01T00:00:00Z",
+    rawContentHash: "c".repeat(64),
+    submissionsContentHash: "d".repeat(64),
+    accessions: [
+      {
+        accession: cur,
+        form: "10-Q",
+        acceptedAt: at,
+        reportPeriod: { kind: "instant", date: origin },
+      },
+      {
+        accession: pri,
+        form: "10-Q",
+        acceptedAt: `${year}-08-05T21:00:00Z`,
+        reportPeriod: { kind: "instant", date: `${year}-06-30` },
+      },
+    ],
+    records,
   });
+  const source = `source/${cur}`;
+  const base = {
+    currency: "USD",
+    availableAt: at,
+    sourceId: source,
+    reportedScale: "ones" as const,
+  };
+  const ytd = { kind: "duration" as const, start: `${year}-01-01`, end: origin };
   const zero = (id: string) => ({
     id,
     label: "synthetic" as const,
@@ -560,7 +640,7 @@ function quarterInput(year: number): QuarterCandidateInput {
     currency: "USD",
     sources: [
       {
-        id: "src",
+        id: source,
         title: "SYNTHETIC 10-Q",
         url: "https://example.test/q.json",
         publishedAt: at,
@@ -571,58 +651,46 @@ function quarterInput(year: number): QuarterCandidateInput {
     ],
     facts: [
       {
+        ...base,
         id: "usable",
         kind: "reported",
         metric: "cash_and_equivalents",
         period: { kind: "instant", date: origin },
-        currency: "USD",
         cents: 95_000_000,
-        availableAt: at,
-        sourceId: "src",
         locator: "SYNTHETIC usable",
-        reportedScale: "ones",
       },
       {
+        ...base,
         id: "total",
         kind: "reported",
         metric: "cash_including_restricted",
         period: { kind: "instant", date: origin },
-        currency: "USD",
         cents: 100_000_000,
-        availableAt: at,
-        sourceId: "src",
         locator: "SYNTHETIC total",
-        reportedScale: "ones",
       },
-      report("ocf", "operating_cash_flow", -9_000_000),
-      report("icf", "investing_cash_flow", -3_000_000),
+      {
+        ...base,
+        id: "ocf",
+        kind: "reported",
+        metric: "operating_cash_flow",
+        period: ytd,
+        cents: -9_000_000,
+        locator: records[0]?.pointer as string,
+      },
+      {
+        ...base,
+        id: "icf",
+        kind: "reported",
+        metric: "investing_cash_flow",
+        period: ytd,
+        cents: -3_000_000,
+        locator: records[1]?.pointer as string,
+      },
     ],
     assumptions: [zero("fin"), zero("fx")],
   };
-  const v = (
-    metric: "operating_cash_flow" | "investing_cash_flow",
-    end: string,
-    cents: number,
-    when: string,
-  ): KeyOutcome => ({
-    status: "selected",
-    value: {
-      key: ObservationKeySchema.parse({
-        cik: A,
-        scope: "consolidated",
-        metric,
-        definition: `us-gaap:${metric}@1`,
-        currency: "USD",
-        period: { kind: "duration", start: `${year}-01-01`, end },
-      }),
-      cents,
-      availableAt: when,
-      eligibleAt: when,
-      receiptIds: [`rec/${metric}/${end}`],
-      observationIds: [`obs/${metric}/${end}`],
-    },
-  });
   return {
+    cik,
     case: c,
     knowledgeCutoff: `${year}-11-10T12:00:00Z`,
     originBalanceDate: origin,
@@ -632,15 +700,11 @@ function quarterInput(year: number): QuarterCandidateInput {
     investingYtdFactId: "icf",
     financingAssumptionId: "fin",
     fxAssumptionId: "fx",
-    lastQuarter: {
-      operating: {
-        ytd: v("operating_cash_flow", origin, -9_000_000, at),
-        prior: v("operating_cash_flow", `${year}-06-30`, -4_000_000, atH1),
-      },
-      investing: {
-        ytd: v("investing_cash_flow", origin, -3_000_000, at),
-        prior: v("investing_cash_flow", `${year}-06-30`, -1_000_000, atH1),
-      },
+    sources: {
+      packages: [pkgQ],
+      sourceSignature: SIG,
+      reconciliationId: "rec",
+      computedAt: "2026-10-24T12:00:00Z",
     },
   };
 }
@@ -654,6 +718,40 @@ const totalOf = (r: RuledForecast | ReturnType<typeof quarterForecastWithRules>)
         : [];
   return f.find((p) => p.id === "target_total")?.cents;
 };
+
+describe("caller throws never escape", () => {
+  it("maps a revoked proxy thrown from caller code to an error at every entry point", () => {
+    const r = Proxy.revocable({}, {});
+    r.revoke();
+    const evil = () =>
+      Object.defineProperty({}, "x", {
+        enumerable: true,
+        get: () => {
+          throw r.proxy;
+        },
+      });
+    const calls: [string, () => { ok: boolean }][] = [
+      ["decideFeedback", () => decideFeedback(evil() as never)],
+      ["resolveRules", () => resolveRules(evil() as never, task(NOW1))],
+      ["selectQuarterMethod", () => selectQuarterMethod([], evil() as never)],
+      ["revokeRuleVersion", () => revokeRuleVersion(evil() as never)],
+      ["rollbackRule", () => rollbackRule(evil() as never)],
+      ["reconcileWithRules", () => reconcileWithRules(evil() as never)],
+      ["quarterForecastWithRules", () => quarterForecastWithRules(evil() as never)],
+      ["quarterCandidate", () => quarterCandidate(evil() as never)],
+    ];
+    for (const [name, call] of calls) {
+      let out: { ok: boolean } | undefined;
+      expect(() => {
+        out = call();
+      }, name).not.toThrow();
+      expect(out?.ok, name).toBe(false);
+    }
+    // A revoked proxy as the argument itself is also an error, not a throw.
+    expect(resolveRules(r.proxy as never, task(NOW1)).ok).toBe(false);
+    expect(quarterCandidate(r.proxy as never).ok).toBe(false);
+  });
+});
 
 describe("method selection", () => {
   const methodRule = () =>
@@ -673,8 +771,6 @@ describe("method selection", () => {
     // A SYNTHETIC present-day quarter (cutoff 2026-11-10, after the rule) uses C.
     const now = unwrap(
       quarterForecastWithRules({
-        cik: A,
-        sourceSignature: SIG,
         history,
         input: quarterInput(2026),
       }),
@@ -699,8 +795,6 @@ describe("method selection", () => {
     const { history } = methodRule();
     const old = unwrap(
       quarterForecastWithRules({
-        cik: A,
-        sourceSignature: SIG,
         history,
         input: quarterInput(2022),
       }),
@@ -715,6 +809,19 @@ describe("method selection", () => {
     });
   });
 
+  it("company A's method rule never reaches company B's forecast (SYNTHETIC)", () => {
+    const { history } = methodRule();
+    const forB = unwrap(quarterForecastWithRules({ history, input: quarterInput(2026, B) }));
+    expect(forB.selection).toMatchObject({ source: "default" });
+    expect(forB.resolution.considered[0]?.use).toBe("out_of_scope");
+    // A's input carrying B's packages is refused, and a separate company argument is too.
+    const mixed = { ...quarterInput(2026), sources: quarterInput(2026, B).sources };
+    expect(quarterForecastWithRules({ history, input: mixed })).toMatchObject({ ok: false });
+    expect(
+      quarterForecastWithRules({ history, input: quarterInput(2026, B), cik: A } as never),
+    ).toMatchObject({ ok: false });
+  });
+
   it("competing method rules block the forecast; nothing falls back", () => {
     const one = methodRule();
     const two = accept(
@@ -724,8 +831,6 @@ describe("method selection", () => {
     );
     const r = unwrap(
       quarterForecastWithRules({
-        cik: A,
-        sourceSignature: SIG,
         history: two.history,
         input: quarterInput(2026),
       }),
@@ -746,8 +851,8 @@ describe("method selection", () => {
         revocation: {
           rationale: "SYNTHETIC: back to B",
           evidenceRefs: ["r"],
-          recordedAt: "2026-11-11T00:00:00Z",
         },
+        recordedAt: "2026-11-11T00:00:00Z",
       }),
     );
     expect(roll.receipt.next).toBeNull();
@@ -755,8 +860,6 @@ describe("method selection", () => {
     expect(
       totalOf(
         quarterForecastWithRules({
-          cik: A,
-          sourceSignature: SIG,
           history: roll.history,
           input: later,
         }),
@@ -766,8 +869,6 @@ describe("method selection", () => {
     expect(
       totalOf(
         quarterForecastWithRules({
-          cik: A,
-          sourceSignature: SIG,
           history: roll.history,
           input: quarterInput(2026),
         }),

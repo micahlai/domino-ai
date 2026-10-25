@@ -1,11 +1,15 @@
 import {
+  CikSchema,
   type HistoricalAssumption,
   HistoricalCaseSchema,
   type HistoricalFact,
   type HistoricalPrediction,
+  type LearnedRuleVersion,
   type ObservationKey,
   ObservationKeySchema,
+  type SourcePackage,
   TimestampSchema,
+  observationKeyId,
 } from "@domino/contracts";
 import { addDays, daysBetween } from "./dates";
 import { type Ratio, addRatio, ratio, roundCents } from "./money";
@@ -16,13 +20,27 @@ import {
   type RunInputs,
   quarterBridge,
 } from "./period";
-import type { Result } from "./source-normalization";
-import { type KeyOutcome, type ReconciledValue, quarterFlow } from "./source-reconciliation";
+import { type QuarterRole, type Result, SEC_CASH_DICTIONARY } from "./source-normalization";
+import {
+  type ConflictResolution,
+  type KeyOutcome,
+  type ReconciledValue,
+  type Reconciliation,
+  quarterFlow,
+  reconcileSources,
+  valueFor,
+} from "./source-reconciliation";
 
 /**
  * Candidate C of forecast-evaluation-protocol-v1, a retrospective experimental method.
  * Pure and synchronous: no network, clock, AI or randomness. Caller input is copied once
  * at entry as plain JSON data; only that private copy is read afterwards.
+ *
+ * C accepts no flow values from the caller. It reconciles the forecast company's packages
+ * itself (L2 reconcileSources at the knowledge cutoff), reads both YTD flows under the
+ * frozen L1 dictionary definitions for that company, and requires B's own YTD facts to be
+ * exactly those reconciled source rows (same accession, pointer, period and cents). Packages
+ * must come from L1's authenticated intake (readSecSource), the same trust root as L2.
  *
  * Identical to baseline B (quarterly_cash_bridge 0.1.0) in cash definitions, origin,
  * target, financing/FX assumptions, held-flat restricted cash and the origin-to-cutoff
@@ -52,14 +70,18 @@ const ms = (t: string): number => Date.parse(t);
 const big = (n: number): bigint => BigInt(n);
 const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sortedUnique = (xs: Iterable<string>): string[] => [...new Set(xs)].sort(byText);
-const nonBlank = (s: unknown): s is string => typeof s === "string" && s.trim().length > 0;
 const isTimestamp = (t: unknown): t is string =>
   typeof t === "string" && TimestampSchema.safeParse(t).success;
 
 // ---------- One plain copy of caller input (mirrors L2's boundary) ----------
 
-class NotPlainData extends Error {}
-type CopyState = { ancestors: Set<object>; done: Map<object, unknown> };
+/** Our own rejection: the message lives in CopyState, the thrown value is never read. */
+const NOT_PLAIN: unique symbol = Symbol("not plain data");
+type CopyState = { ancestors: Set<object>; done: Map<object, unknown>; problem?: string };
+function reject(st: CopyState, message: string): never {
+  st.problem = message;
+  throw NOT_PLAIN;
+}
 
 /**
  * Recursive copy that is also the plain-JSON check: null, booleans, finite numbers, strings,
@@ -71,65 +93,92 @@ type CopyState = { ancestors: Set<object>; done: Map<object, unknown> };
 function plainCopy(v: unknown, path: string, st: CopyState): unknown {
   if (v === null || typeof v === "boolean" || typeof v === "string") return v;
   if (typeof v === "number") {
-    if (!Number.isFinite(v)) throw new NotPlainData(`${path} is a non-finite number`);
+    if (!Number.isFinite(v)) reject(st, `${path} is a non-finite number`);
     return v;
   }
-  if (typeof v !== "object") throw new NotPlainData(`${path} is a ${typeof v}, not JSON data`);
-  if (st.ancestors.has(v)) throw new NotPlainData(`${path} is a cycle`);
-  if (st.done.has(v)) return st.done.get(v);
-  const proto = Object.getPrototypeOf(v);
-  const isArray = Array.isArray(v);
+  if (typeof v !== "object") reject(st, `${path} is a ${typeof v}, not JSON data`);
+  const o = v as object;
+  if (st.ancestors.has(o)) reject(st, `${path} is a cycle`);
+  if (st.done.has(o)) return st.done.get(o);
+  const proto = Object.getPrototypeOf(o);
+  const isArray = Array.isArray(o);
   if (isArray ? proto !== Array.prototype : proto !== Object.prototype && proto !== null)
-    throw new NotPlainData(`${path} is not a plain object or array`);
-  if (Object.getOwnPropertySymbols(v).length > 0) throw new NotPlainData(`${path} has symbol keys`);
-  const keys = Object.keys(v);
-  if (Object.getOwnPropertyNames(v).length !== keys.length + (isArray ? 1 : 0))
-    throw new NotPlainData(`${path} has non-enumerable properties`);
-  st.ancestors.add(v);
+    reject(st, `${path} is not a plain object or array`);
+  if (Object.getOwnPropertySymbols(o).length > 0) reject(st, `${path} has symbol keys`);
+  const keys = Object.keys(o);
+  if (Object.getOwnPropertyNames(o).length !== keys.length + (isArray ? 1 : 0))
+    reject(st, `${path} has non-enumerable properties`);
+  st.ancestors.add(o);
   try {
     if (isArray) {
-      const items = v as unknown[];
+      const items = o as unknown[];
       const n = items.length;
-      if (keys.length !== n) throw new NotPlainData(`${path} has holes or extra keys`);
+      if (keys.length !== n) reject(st, `${path} has holes or extra keys`);
       const out: unknown[] = [];
       for (let i = 0; i < n; i++) out.push(plainCopy(items[i], `${path}[${i}]`, st));
-      st.done.set(v, out);
+      st.done.set(o, out);
       return out;
     }
     const out: Record<string, unknown> = {};
     for (const k of keys) {
-      if (k === "__proto__") throw new NotPlainData(`${path} has a __proto__ key`);
-      const x = (v as Record<string, unknown>)[k];
+      if (k === "__proto__") reject(st, `${path} has a __proto__ key`);
+      const x = (o as Record<string, unknown>)[k];
       if (x !== undefined) out[k] = plainCopy(x, `${path}.${k}`, st);
     }
-    st.done.set(v, out);
+    st.done.set(o, out);
     return out;
   } finally {
-    st.ancestors.delete(v);
+    st.ancestors.delete(o);
   }
 }
 
 /**
  * One private plain-JSON copy of caller input, taken before any validation. Pass every
  * argument of an entry point in one call so references shared between them are read once.
+ * Whatever caller code throws (a getter, a proxy trap, even a revoked proxy) is mapped to a
+ * fixed error: the caught value is never inspected, compared by type or stringified.
  */
 export function plainSnapshot<T>(input: T, name: string): Result<T> {
+  const st: CopyState = { ancestors: new Set(), done: new Map() };
   try {
-    return ok(plainCopy(input, name, { ancestors: new Set(), done: new Map() }) as T);
-  } catch (e) {
-    if (e instanceof NotPlainData) return err(`input is not plain JSON data: ${e.message}`);
-    // A throwing getter or proxy trap is bad input too: report it, never rethrow.
-    return err(`input could not be read: ${e instanceof Error ? e.message : String(e)}`);
+    return ok(plainCopy(input, name, st) as T);
+  } catch {
+    return st.problem !== undefined
+      ? err(`input is not plain JSON data: ${st.problem}`)
+      : err(`${name} could not be read: caller code threw while it was copied`);
+  }
+}
+
+/**
+ * Run engine code on a private plain copy. Engine failures are Errors we created; the
+ * message is read defensively and anything unexpected becomes a fixed text.
+ */
+export function engineFailure(e: unknown): string {
+  try {
+    return e instanceof Error && typeof e.message === "string" ? e.message : "engine failure";
+  } catch {
+    return "engine failure";
   }
 }
 
 // ---------- Types ----------
 
-/** L2 outcomes for one flow: the YTD B uses and, after a first quarter, its predecessor. */
-export type LastQuarterFlow = { ytd: KeyOutcome; prior?: KeyOutcome };
+/** Where C reads its flow histories. Never values: L2 runs on these packages here. */
+export type CandidateSources = {
+  /** The forecast company's packages from L1's authenticated intake (readSecSource). */
+  packages: readonly SourcePackage[];
+  sourceSignature: string;
+  /** L2 run id prefix and computation instant (supplied: there is no clock). */
+  reconciliationId: string;
+  computedAt: string;
+  /** Dated user conflict decisions; L2 applies only those eligible at the cutoff. */
+  resolutions?: readonly ConflictResolution[];
+};
 
 export type QuarterCandidateInput = QuarterBridgeInput & {
-  lastQuarter: { operating: LastQuarterFlow; investing: LastQuarterFlow };
+  /** The forecast company. Every package must be this company. */
+  cik: string;
+  sources: CandidateSources;
 };
 
 export type CandidateIneligibleReason =
@@ -182,6 +231,8 @@ export type QuarterCandidate = {
   nowcast: HistoricalPrediction[];
   forecast: HistoricalPrediction[];
   lastQuarter: { operating: DerivedQuarterFlow; investing: DerivedQuarterFlow };
+  /** The L2 run C performed; every receipt id below belongs to it. */
+  reconciliationId: string;
   exact: { baselineQuarter: ExactBand; candidateQuarter: ExactBand; targetTotal: ExactBand };
   resolutionIds: string[];
   observationIds: string[];
@@ -222,67 +273,55 @@ const exactBand = (b: Band): ExactBand => ({
   high: fraction(b.high),
 });
 
-// ---------- Input readers (private copy only) ----------
-
-const BLOCK_REASONS = new Set([
-  "missing_input",
-  "needs_input",
-  "unresolved_conflict",
-  "after_cutoff",
-  "unsafe_value",
-]);
+// ---------- Flow histories, derived here ----------
 
 type Read<T> =
   | { kind: "value"; value: T }
   | { kind: "ineligible"; reason: CandidateIneligibleReason; detail: string }
   | { kind: "error"; errors: string[] };
+const ineligibleRead = (reason: CandidateIneligibleReason, detail: string): Read<never> => ({
+  kind: "ineligible",
+  reason,
+  detail,
+});
 
-/** Validates one L2 value from the private copy and rebuilds it field by field. */
-function readValue(v: unknown, name: string): Read<ReconciledValue> {
-  const x = v as Partial<ReconciledValue> | undefined;
-  const bad = (m: string): Read<ReconciledValue> => ({ kind: "error", errors: [`${name}: ${m}`] });
-  const key = ObservationKeySchema.safeParse(x?.key);
-  if (!key.success) return bad("key is not a valid ObservationKey");
-  if (!Number.isSafeInteger(x?.cents)) return bad("cents must be safe integer cents");
-  if (!isTimestamp(x?.availableAt) || !isTimestamp(x?.eligibleAt))
-    return bad("availableAt and eligibleAt must be timestamps");
-  if (ms(x.eligibleAt) < ms(x.availableAt))
-    return bad("eligibleAt is before availableAt; eligibility cannot precede the source");
-  const ids = (a: unknown): a is string[] =>
-    Array.isArray(a) && a.length > 0 && a.every((s) => nonBlank(s));
-  if (!ids(x?.receiptIds) || !ids(x?.observationIds))
-    return bad("receipt and observation lineage is required");
-  return {
-    kind: "value",
-    value: {
-      key: key.data,
-      cents: x.cents as number,
-      availableAt: x.availableAt,
-      eligibleAt: x.eligibleAt,
-      receiptIds: [...x.receiptIds],
-      observationIds: [...x.observationIds],
-    },
-  };
+/** The frozen L1 dictionary definition for a role: never chosen by the caller. */
+function definitionOf(role: QuarterRole): string | undefined {
+  const tags = [...SEC_CASH_DICTIONARY].filter(([, e]) => e.use === "direct" && e.role === role);
+  const [only] = tags;
+  return tags.length === 1 && only ? `us-gaap:${only[0]}@1` : undefined;
 }
 
-/** A selected outcome is read as a value; a blocked one makes the pair ineligible. */
-function readOutcome(
-  o: unknown,
+/** L2's outcome for one key; a blocked key makes the pair ineligible, never zero. */
+function outcomeOf(
+  rec: Reconciliation,
+  key: ObservationKey,
   name: string,
   missing: CandidateIneligibleReason,
 ): Read<ReconciledValue> {
-  const x = o as { status?: unknown; value?: unknown; reason?: unknown; detail?: unknown };
-  if (x?.status === "selected") return readValue(x.value, name);
-  if (x?.status === "blocked" && typeof x.reason === "string" && BLOCK_REASONS.has(x.reason)) {
-    const reason = x.reason === "missing_input" ? missing : (x.reason as CandidateIneligibleReason);
-    const detail = typeof x.detail === "string" ? x.detail : "";
-    return { kind: "ineligible", reason, detail: `${name} is blocked: ${detail}` };
-  }
-  return { kind: "error", errors: [`${name} must be an L2 selected or blocked outcome`] };
+  const o: KeyOutcome = valueFor(rec, key);
+  if (o.status === "selected") return { kind: "value", value: o.value };
+  const reason = o.reason === "missing_input" ? missing : o.reason;
+  return ineligibleRead(reason, `${name} is blocked (${o.reason}): ${o.detail}`);
 }
 
-const samePeriod = (a: ObservationKey["period"], b: HistoricalFact["period"]): boolean =>
-  a.kind === "duration" && b.kind === "duration" && a.start === b.start && a.end === b.end;
+/**
+ * B's YTD fact must be a reported fact for exactly a selected source row of the reconciled
+ * key: L1's fact shape names the row by sourceId "source/<accession>" and locator = pointer.
+ */
+function boundToSource(rec: Reconciliation, key: ObservationKey, f: HistoricalFact): boolean {
+  if (f.kind !== "reported" || f.currency !== key.currency) return false;
+  const k = rec.keys.find((x) => x.keyId === observationKeyId(key));
+  const outcome = k?.receipt?.outcome;
+  if (!k?.value || outcome?.kind !== "selected" || f.cents !== k.value.cents) return false;
+  return k.candidates.some(
+    (c) =>
+      outcome.selectedIds.includes(c.observationId) &&
+      f.sourceId === `source/${c.accession}` &&
+      f.locator === c.pointer &&
+      c.cents === f.cents,
+  );
+}
 
 const MONTHS = ["three", "six", "nine", "twelve"] as const;
 /** First day of the calendar quarter whose last day is the origin (a month end). */
@@ -290,47 +329,50 @@ const quarterStart = (origin: string): string => {
   const m = Number(origin.slice(0, 4)) * 12 + Number(origin.slice(5, 7)) - 1 - 2;
   return `${Math.floor(m / 12)}-${String((m % 12) + 1).padStart(2, "0")}-01`;
 };
+const dayBefore = (date: string): string => addDays(date, -1);
 
-/** The single quarter ending at the origin for one flow, or why the pair is ineligible. */
+/** The single quarter ending at the origin for one flow, derived from the reconciliation. */
 function lastQuarterOf(
+  rec: Reconciliation,
+  cik: string,
   name: "operating" | "investing",
-  flow: unknown,
   ytdFact: HistoricalFact,
   quarters: number,
   origin: string,
   cutoff: string,
 ): Read<DerivedQuarterFlow> {
-  const f = flow as { ytd?: unknown; prior?: unknown } | undefined;
-  if (typeof f !== "object" || f === null || f.ytd === undefined)
-    return { kind: "error", errors: [`lastQuarter.${name}.ytd is required`] };
-  const ytd = readOutcome(f.ytd, `${name} YTD`, "missing_input");
+  const metric = name === "operating" ? "operating_cash_flow" : "investing_cash_flow";
+  const definition = definitionOf(name === "operating" ? "operating_ytd" : "investing_ytd");
+  if (!definition) return { kind: "error", errors: [`no frozen dictionary tag for ${name}`] };
+  if (ytdFact.period.kind !== "duration")
+    return { kind: "error", errors: [`baseline ${name} YTD fact is not a duration`] };
+  const { start } = ytdFact.period;
+  const keyFor = (end: string) =>
+    ObservationKeySchema.safeParse({
+      cik,
+      scope: "consolidated",
+      metric,
+      definition,
+      currency: "USD",
+      period: { kind: "duration", start, end },
+    });
+  const ytdKey = keyFor(origin);
+  if (!ytdKey.success) return { kind: "error", errors: [`${name} YTD key is invalid`] };
+  const ytd = outcomeOf(rec, ytdKey.data, `${name} YTD`, "missing_input");
   if (ytd.kind !== "value") return ytd;
   const y = ytd.value;
-  const ineligible = (reason: CandidateIneligibleReason, detail: string): Read<never> => ({
-    kind: "ineligible",
-    reason,
-    detail,
-  });
-  // The L2 value must be the very YTD fact B uses: same metric, currency, span and cents.
-  if (
-    y.key.metric !== ytdFact.metric ||
-    y.key.currency !== ytdFact.currency ||
-    !samePeriod(y.key.period, ytdFact.period) ||
-    y.cents !== ytdFact.cents
-  )
-    return ineligible(
+  if (ytdFact.metric !== metric || !boundToSource(rec, ytdKey.data, ytdFact))
+    return ineligibleRead(
       "definition_conflict",
-      `${name} YTD value ${y.cents} for ${y.key.metric} differs from baseline fact ${ytdFact.id} (${ytdFact.cents})`,
+      `baseline fact ${ytdFact.id} is not a selected ${definition} row of company ${cik} for ${start}..${origin}`,
     );
   if (ms(y.eligibleAt) > ms(cutoff))
-    return ineligible("after_cutoff", `${name} YTD is eligible ${y.eligibleAt}, after the cutoff`);
+    return ineligibleRead(
+      "after_cutoff",
+      `${name} YTD is eligible ${y.eligibleAt}, after the cutoff`,
+    );
   const span = MONTHS[quarters - 1] ?? `${quarters * 3}`;
-  if (quarters === 1) {
-    if (f.prior !== undefined)
-      return ineligible(
-        "definition_conflict",
-        `${name}: a three-month YTD is itself the quarter; a predecessor does not apply`,
-      );
+  if (quarters === 1)
     return {
       kind: "value",
       value: {
@@ -344,32 +386,27 @@ function lastQuarterOf(
         eligibleAt: y.eligibleAt,
       },
     };
-  }
-  if (f.prior === undefined)
-    return ineligible(
-      "missing_predecessor",
-      `${name}: no preceding YTD for the ${span}-month YTD; never assumed zero`,
-    );
-  const prior = readOutcome(f.prior, `${name} preceding YTD`, "missing_predecessor");
+  const priorKey = keyFor(dayBefore(quarterStart(origin)));
+  if (!priorKey.success) return { kind: "error", errors: [`${name} predecessor key is invalid`] };
+  const prior = outcomeOf(rec, priorKey.data, `${name} preceding YTD`, "missing_predecessor");
   if (prior.kind !== "value") return prior;
   const p = prior.value;
   if (ms(p.eligibleAt) > ms(cutoff))
-    return ineligible(
+    return ineligibleRead(
       "after_cutoff",
       `${name} preceding YTD is eligible ${p.eligibleAt}, after the cutoff`,
     );
   const q = quarterFlow(y, p);
   if (!q.ok)
-    return ineligible(
+    return ineligibleRead(
       q.errors.some((e) => e.includes("outside safe")) ? "unsafe_value" : "definition_conflict",
       `${name}: ${q.errors.join("; ")}`,
     );
   const period = q.value.key.period;
-  const start = quarterStart(origin);
-  if (period.kind !== "duration" || period.start !== start || period.end !== origin)
-    return ineligible(
+  if (period.kind !== "duration" || period.start !== quarterStart(origin) || period.end !== origin)
+    return ineligibleRead(
       "definition_conflict",
-      `${name}: YTD minus predecessor covers ${period.kind === "duration" ? `${period.start}..${period.end}` : "an instant"}, not the single quarter ${start}..${origin}`,
+      `${name}: derived period is not the origin quarter`,
     );
   return {
     kind: "value",
@@ -409,15 +446,19 @@ function prediction(
 
 /**
  * Candidate C for one planned pair. Errors only for malformed input; a pair that fails
- * eligibility (B failing, a missing or blocked predecessor, a definition mismatch, a value
- * eligible after the cutoff) is an ineligible outcome with no prediction.
+ * eligibility (B failing, a missing or blocked predecessor, B's facts not being the
+ * company's reconciled rows, a value eligible after the cutoff) is ineligible, with no
+ * prediction. authorityRules are L3's resolved authority rule versions for this cutoff;
+ * L2 still checks each one's scope and time, and blocks when more than one applies.
  */
 export function quarterCandidate(
   input: QuarterCandidateInput,
+  authorityRules: readonly LearnedRuleVersion[] = [],
 ): Result<QuarterCandidate | CandidateIneligible> {
-  const snap = plainSnapshot(input, "input");
+  const snap = plainSnapshot([input, authorityRules] as const, "input");
   if (!snap.ok) return snap;
-  const own = (snap.value ?? {}) as Partial<QuarterCandidateInput>;
+  const own = (snap.value[0] ?? {}) as Partial<QuarterCandidateInput> & Record<string, unknown>;
+  const rules = snap.value[1];
   const ineligible = (reason: CandidateIneligibleReason, detail: string) =>
     ok<CandidateIneligible>({
       status: "ineligible",
@@ -425,19 +466,30 @@ export function quarterCandidate(
       reason,
       detail,
     });
+  if (typeof own !== "object" || own === null || Array.isArray(own))
+    return err("input must be an object");
+  if (own.lastQuarter !== undefined)
+    return err("flow values are not accepted; C derives them from the company's packages");
   if (!isTimestamp(own.knowledgeCutoff))
     return err("knowledgeCutoff must be a timestamp with an explicit offset");
-  const lq = own.lastQuarter as unknown;
-  if (typeof lq !== "object" || lq === null)
-    return err("lastQuarter with operating and investing outcomes is required");
+  const cik = own.cik;
+  if (!CikSchema.safeParse(cik).success) return err("cik must be a ten-digit CIK");
+  const src = (own.sources ?? {}) as Partial<CandidateSources> & Record<string, unknown>;
+  if (typeof src !== "object" || src === null) return err("sources are required");
+  if (src.rules !== undefined) return err("authority rules come from L3 resolution, not sources");
+  if (!Array.isArray(src.packages) || src.packages.length === 0)
+    return err("sources.packages must list the company's packages");
+  const companies = src.packages.map((p) => (p as { company?: { cik?: unknown } })?.company?.cik);
+  if (!companies.every((x) => x === cik))
+    return err(`every package must be company ${cik}; never mix companies`);
+  if (!Array.isArray(rules)) return err("authorityRules must be an array");
 
   let baseline: QuarterBridge;
   try {
     baseline = quarterBridge(own as QuarterBridgeInput);
   } catch (e) {
-    return ineligible("baseline_unavailable", e instanceof Error ? e.message : String(e));
+    return ineligible("baseline_unavailable", engineFailure(e));
   }
-  // B parsed the same private copy successfully, so these lookups exist and are valid.
   const parsed = HistoricalCaseSchema.safeParse(own.case);
   if (!parsed.success)
     return ineligible("baseline_unavailable", "case is not a valid HistoricalCase");
@@ -448,24 +500,30 @@ export function quarterCandidate(
   const origin = own.originBalanceDate as string;
   const cutoff = own.knowledgeCutoff as string;
   const n = baseline.elapsedQuarters;
+  if (c.currency !== "USD") return ineligible("definition_conflict", "case currency is not USD");
 
-  const flows = lq as Record<string, unknown>;
+  const rec = reconcileSources({
+    id: src.reconciliationId as string,
+    cutoff,
+    computedAt: src.computedAt as string,
+    sourceSignature: src.sourceSignature as string,
+    packages: src.packages as SourcePackage[],
+    ...(src.resolutions !== undefined ? { resolutions: src.resolutions } : {}),
+    rules: [...rules],
+  });
+  if (!rec.ok) return rec;
+
   const derived: Partial<Record<"operating" | "investing", DerivedQuarterFlow>> = {};
   for (const [name, factId] of [
     ["operating", own.operatingYtdFactId],
     ["investing", own.investingYtdFactId],
   ] as const) {
-    const r = lastQuarterOf(name, flows[name], fact(factId), n, origin, cutoff);
+    const r = lastQuarterOf(rec.value, cik as string, name, fact(factId), n, origin, cutoff);
     if (r.kind === "error") return err(...r.errors);
     if (r.kind === "ineligible") return ineligible(r.reason, r.detail);
     derived[name] = r.value;
   }
   const { operating, investing } = derived as Record<"operating" | "investing", DerivedQuarterFlow>;
-  if (operating.key.cik !== investing.key.cik)
-    return ineligible(
-      "definition_conflict",
-      "operating and investing flows are different companies",
-    );
 
   // Exact: total(x) = T0 + Bq(x)*e/D + Cq(x)*(D-e)/D for x in low/mid/high; round once.
   const D = baseline.quarterDays;
@@ -525,6 +583,7 @@ export function quarterCandidate(
       prediction("target_usable", "cash_and_equivalents", targetDate, cur, usableBand),
     ],
     lastQuarter: { operating, investing },
+    reconciliationId: rec.value.id,
     exact: {
       baselineQuarter: exactBand(bq),
       candidateQuarter: exactBand(cq),

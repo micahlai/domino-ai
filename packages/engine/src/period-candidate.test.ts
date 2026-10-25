@@ -1,17 +1,15 @@
-import { type HistoricalCase, type ObservationKey, ObservationKeySchema } from "@domino/contracts";
+import { type HistoricalCase, type SourcePackage, SourcePackageSchema } from "@domino/contracts";
 import { describe, expect, it } from "vitest";
 import * as engineIndex from "./index";
-import { type QuarterBridgeInput, quarterBridge } from "./period";
+import { quarterBridge } from "./period";
 import {
   type CandidateIneligible,
-  type LastQuarterFlow,
   QUARTER_CANDIDATE_METHOD,
   type QuarterCandidate,
   type QuarterCandidateInput,
   quarterCandidate,
 } from "./period-candidate";
 import { BRIDGE_ROLES, companySnapshot, readSecSource } from "./source-normalization";
-import { type KeyOutcome, reconcileSources, valueFor } from "./source-reconciliation";
 
 type Fs = { readFileSync(path: URL): Uint8Array };
 const fs = (
@@ -34,65 +32,145 @@ const ineligible = (r: ReturnType<typeof quarterCandidate>): CandidateIneligible
 };
 const cents = (c: QuarterCandidate, id: string) => c.forecast.find((p) => p.id === id)?.cents;
 
-// ---------- SYNTHETIC fixtures: invented company, invented values, labelled as such ----------
+// ---------- SYNTHETIC fixtures: invented companies and filings, labelled as such ----------
 
-const CIK = "0000000001";
-const OCF_DEF = "us-gaap:NetCashProvidedByUsedInOperatingActivities@1";
-const ICF_DEF = "us-gaap:NetCashProvidedByUsedInInvestingActivities@1";
-type Flow = "operating_cash_flow" | "investing_cash_flow";
+const A = "0000000001";
+const B = "0000000002";
+const SIG = "sec_companyfacts_v1";
+const OCF = "NetCashProvidedByUsedInOperatingActivities";
+const ICF = "NetCashProvidedByUsedInInvestingActivities";
 
-/** A SYNTHETIC L2 selected value for one duration. */
-function val(
-  metric: Flow,
-  start: string,
-  end: string,
-  c: number,
-  o: { at: string; eligibleAt?: string; id: string; definition?: string; cik?: string },
-): KeyOutcome {
-  return {
-    status: "selected",
-    value: {
-      key: ObservationKeySchema.parse({
-        cik: o.cik ?? CIK,
-        scope: "consolidated",
-        metric,
-        definition: o.definition ?? (metric === "operating_cash_flow" ? OCF_DEF : ICF_DEF),
-        currency: "USD",
-        period: { kind: "duration", start, end },
-      }),
-      cents: c,
-      availableAt: o.at,
-      eligibleAt: o.eligibleAt ?? o.at,
-      receiptIds: [`rec/${o.id}`],
-      observationIds: [`obs/${o.id}`],
-    },
-  };
-}
+/** Exact dollar lexeme for integer cents, as companyfacts writes it. */
+const lexeme = (c: number): string => {
+  const a = Math.abs(c);
+  return `${c < 0 ? "-" : ""}${Math.floor(a / 100)}.${String(a % 100).padStart(2, "0")}`;
+};
 
+type Row = { tag: string; acc: string; c: number; start: string; end: string };
+type Filing = SourcePackage["accessions"][number];
 type Spec = {
+  cik?: string;
   origin: string;
   cutoff: string;
   ytdStart: string;
+  /** Acceptance of the origin filing. */
   published: string;
+  /** Acceptance of the filing with the preceding YTD. */
+  priorAt: string;
   total: number;
   usable: number;
   ocfYtd: number;
   icfYtd: number;
+  /** Absent for a first quarter. */
+  ocfPrior?: number;
+  icfPrior?: number;
   fin?: [number, number];
+  /** Extra SYNTHETIC filings and rows (conflicts, late filings, other tags). */
+  filings?: Filing[];
+  rows?: Row[];
 };
 
-/** A SYNTHETIC baseline B input: origin balances, YTD flows and explicit financing/FX. */
-function bridgeInput(s: Spec): QuarterBridgeInput {
-  const flow = (id: string, metric: Flow, c: number) => ({
+/** Last day of the quarter before the origin's quarter. */
+const priorEndOf = (origin: string): string =>
+  new Date(Date.UTC(Number(origin.slice(0, 4)), Number(origin.slice(5, 7)) - 3, 0))
+    .toISOString()
+    .slice(0, 10);
+
+const acc = (cik: string, yy: string, n: number) => `${cik}-${yy}-${String(n).padStart(6, "0")}`;
+
+/** A SYNTHETIC package and a baseline case whose YTD facts are that package's rows. */
+function synth(s: Spec): QuarterCandidateInput {
+  const cik = s.cik ?? A;
+  const yy = s.origin.slice(2, 4);
+  const cur = acc(cik, yy, 2);
+  const pri = acc(cik, yy, 1);
+  const priorEnd = priorEndOf(s.origin);
+  const filings: Filing[] = [
+    {
+      accession: cur,
+      form: s.origin.endsWith("12-31") ? "10-K" : "10-Q",
+      acceptedAt: s.published,
+      reportPeriod: { kind: "instant", date: s.origin },
+    },
+  ];
+  const rows: Row[] = [
+    { tag: OCF, acc: cur, c: s.ocfYtd, start: s.ytdStart, end: s.origin },
+    { tag: ICF, acc: cur, c: s.icfYtd, start: s.ytdStart, end: s.origin },
+  ];
+  if (s.ocfPrior !== undefined || s.icfPrior !== undefined) {
+    filings.push({
+      accession: pri,
+      form: "10-Q",
+      acceptedAt: s.priorAt,
+      reportPeriod: { kind: "instant", date: priorEnd },
+    });
+    if (s.ocfPrior !== undefined)
+      rows.push({ tag: OCF, acc: pri, c: s.ocfPrior, start: s.ytdStart, end: priorEnd });
+    if (s.icfPrior !== undefined)
+      rows.push({ tag: ICF, acc: pri, c: s.icfPrior, start: s.ytdStart, end: priorEnd });
+  }
+  filings.push(...(s.filings ?? []));
+  rows.push(...(s.rows ?? []));
+  const counts = new Map<string, number>();
+  const records = rows.map((r) => {
+    const n = counts.get(r.tag) ?? 0;
+    counts.set(r.tag, n + 1);
+    return {
+      id: `us-gaap:${r.tag}:USD:${n}`,
+      accession: r.acc,
+      taxonomy: "us-gaap",
+      tag: r.tag,
+      unit: "USD",
+      pointer: `/facts/us-gaap/${r.tag}/units/USD/${n}`,
+      rawValue: lexeme(r.c),
+      period: { kind: "duration", start: r.start, end: r.end },
+    };
+  });
+  const pkg = SourcePackageSchema.parse({
+    schemaVersion: 1,
+    id: `synthetic-${cik}`,
+    format: "sec_companyfacts_v1",
+    provenance: "synthetic_fixture",
+    company: { cik, name: `SYNTHETIC Co ${cik}` },
+    originalUrl: `https://example.test/${cik}.json`,
+    retrievedAt: "2040-01-01T00:00:00Z",
+    rawContentHash: "a".repeat(64),
+    submissionsContentHash: "b".repeat(64),
+    accessions: filings,
+    records,
+  });
+  const source = `source/${cur}`;
+  // L1's fact shape: sourceId names the accession, locator is the row pointer.
+  const flowFact = (
+    id: string,
+    metric: "operating_cash_flow" | "investing_cash_flow",
+    i: number,
+  ) => ({
     id,
     kind: "reported" as const,
     metric,
     period: { kind: "duration" as const, start: s.ytdStart, end: s.origin },
     currency: "USD",
+    cents: rows[i]?.c as number,
+    availableAt: s.published,
+    sourceId: source,
+    locator: records[i]?.pointer as string,
+    reportedScale: "ones" as const,
+  });
+  const balance = (
+    id: string,
+    metric: "cash_and_equivalents" | "cash_including_restricted",
+    c: number,
+  ) => ({
+    id,
+    kind: "reported" as const,
+    metric,
+    period: { kind: "instant" as const, date: s.origin },
+    currency: "USD",
     cents: c,
     availableAt: s.published,
-    sourceId: "src",
-    locator: `SYNTHETIC ${metric}`,
+    sourceId: source,
+    locator: `/facts/us-gaap/SYNTHETIC/${id}`,
     reportedScale: "ones" as const,
   });
   const assumption = (id: string, low: number, high: number) => ({
@@ -108,14 +186,14 @@ function bridgeInput(s: Spec): QuarterBridgeInput {
   });
   const c: HistoricalCase = {
     id: "synthetic_case",
-    companyName: "SYNTHETIC Test Co",
+    companyName: `SYNTHETIC Co ${cik}`,
     provenance: "synthetic_fixture",
     currency: "USD",
     sources: [
       {
-        id: "src",
+        id: source,
         title: "SYNTHETIC periodic filing",
-        url: "https://example.test/filing.json",
+        url: `https://example.test/${cik}.json`,
         publishedAt: s.published,
         timezone: "America/New_York",
         retrievedOn: "2026-10-24",
@@ -123,36 +201,15 @@ function bridgeInput(s: Spec): QuarterBridgeInput {
       },
     ],
     facts: [
-      {
-        id: "usable",
-        kind: "reported",
-        metric: "cash_and_equivalents",
-        period: { kind: "instant", date: s.origin },
-        currency: "USD",
-        cents: s.usable,
-        availableAt: s.published,
-        sourceId: "src",
-        locator: "SYNTHETIC usable",
-        reportedScale: "ones",
-      },
-      {
-        id: "total",
-        kind: "reported",
-        metric: "cash_including_restricted",
-        period: { kind: "instant", date: s.origin },
-        currency: "USD",
-        cents: s.total,
-        availableAt: s.published,
-        sourceId: "src",
-        locator: "SYNTHETIC total",
-        reportedScale: "ones",
-      },
-      flow("ocf_ytd", "operating_cash_flow", s.ocfYtd),
-      flow("icf_ytd", "investing_cash_flow", s.icfYtd),
+      balance("usable", "cash_and_equivalents", s.usable),
+      balance("total", "cash_including_restricted", s.total),
+      flowFact("ocf_ytd", "operating_cash_flow", 0),
+      flowFact("icf_ytd", "investing_cash_flow", 1),
     ],
     assumptions: [assumption("fin", ...(s.fin ?? [0, 0])), assumption("fx", 0, 0)],
   };
   return {
+    cik,
     case: c,
     knowledgeCutoff: s.cutoff,
     originBalanceDate: s.origin,
@@ -162,53 +219,34 @@ function bridgeInput(s: Spec): QuarterBridgeInput {
     investingYtdFactId: "icf_ytd",
     financingAssumptionId: "fin",
     fxAssumptionId: "fx",
+    sources: {
+      packages: [pkg],
+      sourceSignature: SIG,
+      reconciliationId: "rec",
+      computedAt: "2026-10-24T12:00:00Z",
+    },
   };
 }
 
 // SYNTHETIC Q3 origin. Cents: T0 = 100,000,000, usable 95,000,000 (restricted 5,000,000).
 // 9M YTD OCF -9,000,000, ICF -3,000,000; H1 YTD OCF -4,000,000, ICF -1,000,000.
-const AT_Q3 = "2030-11-05T21:00:00Z";
-const AT_H1 = "2030-08-05T21:00:00Z";
 const Q3: Spec = {
   origin: "2030-09-30",
   cutoff: "2030-11-10T12:00:00Z",
   ytdStart: "2030-01-01",
-  published: AT_Q3,
+  published: "2030-11-05T21:00:00Z",
+  priorAt: "2030-08-05T21:00:00Z",
   total: 100_000_000,
   usable: 95_000_000,
   ocfYtd: -9_000_000,
   icfYtd: -3_000_000,
+  ocfPrior: -4_000_000,
+  icfPrior: -1_000_000,
 };
-const q3Flows = (): QuarterCandidateInput["lastQuarter"] => ({
-  operating: {
-    ytd: val("operating_cash_flow", "2030-01-01", "2030-09-30", -9_000_000, {
-      at: AT_Q3,
-      id: "o9",
-    }),
-    prior: val("operating_cash_flow", "2030-01-01", "2030-06-30", -4_000_000, {
-      at: AT_H1,
-      id: "o6",
-    }),
-  },
-  investing: {
-    ytd: val("investing_cash_flow", "2030-01-01", "2030-09-30", -3_000_000, {
-      at: AT_Q3,
-      id: "i9",
-    }),
-    prior: val("investing_cash_flow", "2030-01-01", "2030-06-30", -1_000_000, {
-      at: AT_H1,
-      id: "i6",
-    }),
-  },
-});
-const q3Input = (lastQuarter = q3Flows(), spec: Spec = Q3): QuarterCandidateInput => ({
-  ...bridgeInput(spec),
-  lastQuarter,
-});
 
 describe("candidate C hand math (SYNTHETIC)", () => {
   it("Q3: nine-month minus six-month YTD replaces only the post-cutoff interval", () => {
-    const c = predicted(quarterCandidate(q3Input()));
+    const c = predicted(quarterCandidate(synth(Q3)));
     // D = 2030-09-30 -> 2030-12-31 = 92 days; e = 2030-09-30 -> 2030-11-10 = 41 days.
     expect([c.quarterDays, c.cutoffDays]).toEqual([92, 41]);
     // Bq = (-9,000,000 + -3,000,000) / 3 = -4,000,000 per quarter (B's estimate).
@@ -220,10 +258,10 @@ describe("candidate C hand math (SYNTHETIC)", () => {
       priorCents: -4_000_000,
       derivation: "nine-month YTD minus six-month YTD",
     });
-    expect(c.lastQuarter.operating.key.period).toEqual({
-      kind: "duration",
-      start: "2030-07-01",
-      end: "2030-09-30",
+    expect(c.lastQuarter.operating.key).toMatchObject({
+      cik: A,
+      definition: `us-gaap:${OCF}@1`,
+      period: { kind: "duration", start: "2030-07-01", end: "2030-09-30" },
     });
     expect(c.lastQuarter.investing.cents).toBe(-2_000_000);
     expect(c.exact.baselineQuarter.mid).toBe("-4000000/1");
@@ -241,43 +279,28 @@ describe("candidate C hand math (SYNTHETIC)", () => {
     expect(c.nowcast.find((p) => p.id === "nowcast_total")?.cents).toBe(98_217_391);
     expect(c.inputs).toEqual(c.baseline.inputs);
     expect(c.forecast.every((p) => p.range === undefined)).toBe(true);
-    expect(c.resolutionIds).toEqual(["rec/i6", "rec/i9", "rec/o6", "rec/o9"]);
-    expect(c.observationIds).toEqual(["obs/i6", "obs/i9", "obs/o6", "obs/o9"]);
+    // Four L2 receipts from C's own run: YTD and predecessor for each flow.
+    expect(c.reconciliationId).toBe("rec");
+    expect(c.resolutionIds).toHaveLength(4);
+    expect(c.resolutionIds.every((id) => id.startsWith("rec/rec/"))).toBe(true);
+    expect(c.observationIds).toHaveLength(4);
     expect(c.method).toEqual(QUARTER_CANDIDATE_METHOD);
     expect(c.method.experimental).toBe("retrospective");
   });
 
   it("Q1: the three-month YTD is the quarter, so C equals B exactly", () => {
-    const at = "2030-05-01T21:00:00Z";
-    const spec: Spec = {
-      origin: "2030-03-31",
-      cutoff: "2030-05-05T12:00:00Z",
-      ytdStart: "2030-01-01",
-      published: at,
-      total: 100_000_000,
-      usable: 95_000_000,
-      ocfYtd: -6_000_000,
-      icfYtd: -1_000_000,
-    };
     const c = predicted(
       quarterCandidate(
-        q3Input(
-          {
-            operating: {
-              ytd: val("operating_cash_flow", "2030-01-01", "2030-03-31", -6_000_000, {
-                at,
-                id: "o3",
-              }),
-            },
-            investing: {
-              ytd: val("investing_cash_flow", "2030-01-01", "2030-03-31", -1_000_000, {
-                at,
-                id: "i3",
-              }),
-            },
-          },
-          spec,
-        ),
+        synth({
+          ...Q3,
+          origin: "2030-03-31",
+          cutoff: "2030-05-05T12:00:00Z",
+          published: "2030-05-01T21:00:00Z",
+          ocfYtd: -6_000_000,
+          icfYtd: -1_000_000,
+          ocfPrior: undefined,
+          icfPrior: undefined,
+        }),
       ),
     );
     // D = 91 (Apr 30 + May 31 + Jun 30), e = 35. Bq = Cq = -7,000,000.
@@ -291,45 +314,19 @@ describe("candidate C hand math (SYNTHETIC)", () => {
   });
 
   it("Q2: six-month minus three-month YTD", () => {
-    const at = "2030-08-01T21:00:00Z";
-    const atQ1 = "2030-05-01T21:00:00Z";
-    const spec: Spec = {
-      origin: "2030-06-30",
-      cutoff: "2030-08-04T12:00:00Z",
-      ytdStart: "2030-01-01",
-      published: at,
-      total: 100_000_000,
-      usable: 95_000_000,
-      ocfYtd: -10_000_000,
-      icfYtd: -2_000_000,
-    };
     const c = predicted(
       quarterCandidate(
-        q3Input(
-          {
-            operating: {
-              ytd: val("operating_cash_flow", "2030-01-01", "2030-06-30", -10_000_000, {
-                at,
-                id: "o6",
-              }),
-              prior: val("operating_cash_flow", "2030-01-01", "2030-03-31", -3_000_000, {
-                at: atQ1,
-                id: "o3",
-              }),
-            },
-            investing: {
-              ytd: val("investing_cash_flow", "2030-01-01", "2030-06-30", -2_000_000, {
-                at,
-                id: "i6",
-              }),
-              prior: val("investing_cash_flow", "2030-01-01", "2030-03-31", -500_000, {
-                at: atQ1,
-                id: "i3",
-              }),
-            },
-          },
-          spec,
-        ),
+        synth({
+          ...Q3,
+          origin: "2030-06-30",
+          cutoff: "2030-08-04T12:00:00Z",
+          published: "2030-08-01T21:00:00Z",
+          priorAt: "2030-05-01T21:00:00Z",
+          ocfYtd: -10_000_000,
+          icfYtd: -2_000_000,
+          ocfPrior: -3_000_000,
+          icfPrior: -500_000,
+        }),
       ),
     );
     // D = 92, e = 35. Bq = -12,000,000 / 2 = -6,000,000.
@@ -344,45 +341,19 @@ describe("candidate C hand math (SYNTHETIC)", () => {
   });
 
   it("Q4: twelve-month (FY) minus nine-month YTD", () => {
-    const at = "2031-02-15T21:00:00Z";
-    const at9 = "2030-11-05T21:00:00Z";
-    const spec: Spec = {
-      origin: "2030-12-31",
-      cutoff: "2031-02-20T12:00:00Z",
-      ytdStart: "2030-01-01",
-      published: at,
-      total: 100_000_000,
-      usable: 95_000_000,
-      ocfYtd: -16_000_000,
-      icfYtd: -4_000_000,
-    };
     const c = predicted(
       quarterCandidate(
-        q3Input(
-          {
-            operating: {
-              ytd: val("operating_cash_flow", "2030-01-01", "2030-12-31", -16_000_000, {
-                at,
-                id: "o12",
-              }),
-              prior: val("operating_cash_flow", "2030-01-01", "2030-09-30", -9_000_000, {
-                at: at9,
-                id: "o9",
-              }),
-            },
-            investing: {
-              ytd: val("investing_cash_flow", "2030-01-01", "2030-12-31", -4_000_000, {
-                at,
-                id: "i12",
-              }),
-              prior: val("investing_cash_flow", "2030-01-01", "2030-09-30", -3_000_000, {
-                at: at9,
-                id: "i9",
-              }),
-            },
-          },
-          spec,
-        ),
+        synth({
+          ...Q3,
+          origin: "2030-12-31",
+          cutoff: "2031-02-20T12:00:00Z",
+          published: "2031-02-15T21:00:00Z",
+          priorAt: "2030-11-05T21:00:00Z",
+          ocfYtd: -16_000_000,
+          icfYtd: -4_000_000,
+          ocfPrior: -9_000_000,
+          icfPrior: -3_000_000,
+        }),
       ),
     );
     // D = 2030-12-31 -> 2031-03-31 = 90, e = 51. Bq = -20,000,000 / 4 = -5,000,000.
@@ -400,7 +371,7 @@ describe("candidate C hand math (SYNTHETIC)", () => {
   });
 
   it("uses B's financing/FX assumptions identically, low/mid/high each rounded once", () => {
-    const c = predicted(quarterCandidate(q3Input(q3Flows(), { ...Q3, fin: [-9_200_000, 0] })));
+    const c = predicted(quarterCandidate(synth({ ...Q3, fin: [-9_200_000, 0] })));
     // Financing f adds f*(e/D + (D-e)/D) = f. mid f = -4,600,000:
     // 2,169,750,000/23 - 4,600,000 = 2,063,950,000/23 = 89,736,956.52 -> 89,736,957
     // low f = -9,200,000 -> 85,136,957; high f = 0 -> 94,336,957.
@@ -423,31 +394,21 @@ describe("candidate C hand math (SYNTHETIC)", () => {
     // H1 OCF 6 -> Bq = 6/2 = 3; Q1 OCF 1 -> Q2 OCF 5 = Cq. T0 = 1,000, usable 900.
     // exact total = 1,000 + 3*46/92 + 5*46/92 = 1,000 + 1.5 + 2.5 = 1,004.
     // B's rounded nowcast is round(1,001.5) = 1,002; adding round(2.5) = 3 would give 1,005.
-    const at = "2030-08-01T21:00:00Z";
-    const atQ1 = "2030-05-01T21:00:00Z";
-    const spec: Spec = {
-      origin: "2030-06-30",
-      cutoff: "2030-08-15T12:00:00Z",
-      ytdStart: "2030-01-01",
-      published: at,
-      total: 1_000,
-      usable: 900,
-      ocfYtd: 6,
-      icfYtd: 0,
-    };
-    const flow = (m: Flow, ytd: number, q1: number, p: string) => ({
-      ytd: val(m, "2030-01-01", "2030-06-30", ytd, { at, id: `${p}6` }),
-      prior: val(m, "2030-01-01", "2030-03-31", q1, { at: atQ1, id: `${p}3` }),
-    });
     const c = predicted(
       quarterCandidate(
-        q3Input(
-          {
-            operating: flow("operating_cash_flow", 6, 1, "o"),
-            investing: flow("investing_cash_flow", 0, 0, "i"),
-          },
-          spec,
-        ),
+        synth({
+          ...Q3,
+          origin: "2030-06-30",
+          cutoff: "2030-08-15T12:00:00Z",
+          published: "2030-08-01T21:00:00Z",
+          priorAt: "2030-05-01T21:00:00Z",
+          total: 1_000,
+          usable: 900,
+          ocfYtd: 6,
+          icfYtd: 0,
+          ocfPrior: 1,
+          icfPrior: 0,
+        }),
       ),
     );
     expect(c.nowcast.find((p) => p.id === "nowcast_total")?.cents).toBe(1_002);
@@ -459,145 +420,151 @@ describe("candidate C hand math (SYNTHETIC)", () => {
 });
 
 describe("candidate C eligibility (SYNTHETIC): ineligible, never zero", () => {
-  const withFlow = (
-    name: "operating" | "investing",
-    f: Partial<LastQuarterFlow> & { ytd?: KeyOutcome },
-  ) => {
-    const flows = q3Flows();
-    flows[name] = { ...flows[name], ...f } as LastQuarterFlow;
-    return flows;
-  };
-
   it("a missing predecessor is ineligible", () => {
-    const flows = q3Flows();
-    flows.investing = { ytd: flows.investing.ytd };
-    const r = ineligible(quarterCandidate(q3Input(flows)));
+    const r = ineligible(quarterCandidate(synth({ ...Q3, icfPrior: undefined })));
     expect(r.reason).toBe("missing_predecessor");
     expect(r).not.toHaveProperty("forecast");
   });
 
-  it("an L2-blocked predecessor carries the block reason", () => {
-    const missing = ineligible(
+  it("a predecessor only under an unrelated tag is missing, not borrowed", () => {
+    const priorEnd = "2030-06-30";
+    const r = ineligible(
       quarterCandidate(
-        q3Input(
-          withFlow("operating", {
-            prior: { status: "blocked", reason: "missing_input", detail: "no candidate" },
-          }),
-        ),
+        synth({
+          ...Q3,
+          ocfPrior: undefined,
+          rows: [
+            {
+              tag: "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+              acc: acc(A, "30", 1),
+              c: -4_000_000,
+              start: "2030-01-01",
+              end: priorEnd,
+            },
+          ],
+        }),
       ),
     );
-    expect(missing.reason).toBe("missing_predecessor");
-    const conflict = ineligible(
-      quarterCandidate(
-        q3Input(
-          withFlow("operating", {
-            prior: { status: "blocked", reason: "unresolved_conflict", detail: "two values" },
-          }),
-        ),
-      ),
-    );
-    expect(conflict.reason).toBe("unresolved_conflict");
-    const ytd = ineligible(
-      quarterCandidate(
-        q3Input(
-          withFlow("investing", {
-            ytd: { status: "blocked", reason: "needs_input", detail: "ambiguous" },
-          }),
-        ),
-      ),
-    );
-    expect(ytd.reason).toBe("needs_input");
+    expect(r.reason).toBe("missing_predecessor");
   });
 
-  it("a definition, start or span mismatch is a definition conflict", () => {
-    const def = val("operating_cash_flow", "2030-01-01", "2030-06-30", -4_000_000, {
-      at: AT_H1,
-      id: "o6x",
-      definition: "us-gaap:NetCashProvidedByUsedInOperatingActivitiesContinuingOperations@1",
+  it("conflicting predecessors stay blocked; a resolution after the cutoff cannot rescue them", () => {
+    const amend = acc(A, "30", 3);
+    const spec: Spec = {
+      ...Q3,
+      filings: [
+        {
+          accession: amend,
+          form: "10-Q/A",
+          acceptedAt: "2030-09-01T21:00:00Z",
+          reportPeriod: { kind: "instant", date: "2030-06-30" },
+          amends: acc(A, "30", 1),
+        },
+      ],
+      rows: [{ tag: ICF, acc: amend, c: -1_100_000, start: "2030-01-01", end: "2030-06-30" }],
+    };
+    expect(ineligible(quarterCandidate(synth(spec))).reason).toBe("unresolved_conflict");
+    const input = synth(spec);
+    const key = {
+      cik: A,
+      scope: "consolidated" as const,
+      metric: "investing_cash_flow" as const,
+      definition: `us-gaap:${ICF}@1`,
+      currency: "USD",
+      period: { kind: "duration" as const, start: "2030-01-01", end: "2030-06-30" },
+    };
+    const late = {
+      ...input,
+      sources: {
+        ...input.sources,
+        resolutions: [
+          {
+            id: "res1",
+            userId: "u1",
+            status: "accepted" as const,
+            key,
+            consideredIds: [
+              "synthetic-0000000001/obs/us-gaap:NetCashProvidedByUsedInInvestingActivities:USD:1",
+              "synthetic-0000000001/obs/us-gaap:NetCashProvidedByUsedInInvestingActivities:USD:2",
+            ],
+            selectedIds: [
+              "synthetic-0000000001/obs/us-gaap:NetCashProvidedByUsedInInvestingActivities:USD:1",
+            ],
+            recordedAt: "2031-01-15T00:00:00Z",
+            effectiveFrom: "2031-01-15T00:00:00Z",
+          },
+        ],
+      },
+    };
+    expect(ineligible(quarterCandidate(late)).reason).toBe("unresolved_conflict");
+    // The same resolution recorded before the cutoff selects -1,000,000: C predicts.
+    const timely = structuredClone(late);
+    const [res] = timely.sources.resolutions ?? [];
+    if (!res) throw new Error("fixture");
+    Object.assign(res, {
+      recordedAt: "2030-11-08T00:00:00Z",
+      effectiveFrom: "2030-11-08T00:00:00Z",
     });
-    const start = val("operating_cash_flow", "2030-02-01", "2030-06-30", -4_000_000, {
-      at: AT_H1,
-      id: "o6s",
-    });
-    // A three-month predecessor leaves a six-month remainder, not the single quarter.
-    const span = val("operating_cash_flow", "2030-01-01", "2030-03-31", -1_000_000, {
-      at: AT_H1,
-      id: "o3",
-    });
-    const other = val("operating_cash_flow", "2030-01-01", "2030-06-30", -4_000_000, {
-      at: AT_H1,
-      id: "o6c",
-      cik: "0000000002",
-    });
-    for (const prior of [def, start, span, other]) {
-      const r = ineligible(quarterCandidate(q3Input(withFlow("operating", { prior }))));
-      expect(r.reason).toBe("definition_conflict");
-    }
+    const c = predicted(quarterCandidate(timely));
+    expect(c.lastQuarter.investing.cents).toBe(-2_000_000);
+    expect(c.lastQuarter.investing.eligibleAt).toBe("2030-11-08T00:00:00Z");
   });
 
-  it("an L2 YTD that is not B's YTD fact is a definition conflict", () => {
-    const ytd = val("operating_cash_flow", "2030-01-01", "2030-09-30", -9_000_001, {
-      at: AT_Q3,
-      id: "o9x",
-    });
-    const r = ineligible(quarterCandidate(q3Input(withFlow("operating", { ytd }))));
-    expect(r.reason).toBe("definition_conflict");
-    expect(r.detail).toContain("ocf_ytd");
-  });
-
-  it("a value eligible only after the cutoff is ineligible (no backdated resolution)", () => {
-    const prior = val("operating_cash_flow", "2030-01-01", "2030-06-30", -4_000_000, {
-      at: AT_H1,
-      // A user resolution recorded after the cutoff gates eligibility, not the source date.
-      eligibleAt: "2031-01-15T00:00:00Z",
-      id: "o6late",
-    });
-    const r = ineligible(quarterCandidate(q3Input(withFlow("operating", { prior }))));
+  it("a predecessor known only after the cutoff is after_cutoff", () => {
+    const r = ineligible(quarterCandidate(synth({ ...Q3, priorAt: "2030-12-01T21:00:00Z" })));
     expect(r.reason).toBe("after_cutoff");
   });
 
-  it("a predecessor supplied for a first quarter is a definition conflict", () => {
-    const at = "2030-05-01T21:00:00Z";
-    const spec: Spec = {
-      ...Q3,
-      origin: "2030-03-31",
-      cutoff: "2030-05-05T12:00:00Z",
-      published: at,
-      ocfYtd: -6_000_000,
-      icfYtd: -1_000_000,
+  it("refuses caller-supplied flow values, even with intact lineage ids", () => {
+    const forged = {
+      ...synth(Q3),
+      lastQuarter: {
+        operating: {
+          ytd: { status: "selected", value: { cents: -9_000_000, receiptIds: ["rec/x"] } },
+          prior: { status: "selected", value: { cents: 0, receiptIds: ["rec/y"] } },
+        },
+      },
     };
-    const r = ineligible(
-      quarterCandidate(
-        q3Input(
-          {
-            operating: {
-              ytd: val("operating_cash_flow", "2030-01-01", "2030-03-31", -6_000_000, {
-                at,
-                id: "o3",
-              }),
-              prior: val("operating_cash_flow", "2030-01-01", "2030-02-28", -2_000_000, {
-                at,
-                id: "o2",
-              }),
-            },
-            investing: {
-              ytd: val("investing_cash_flow", "2030-01-01", "2030-03-31", -1_000_000, {
-                at,
-                id: "i3",
-              }),
-            },
-          },
-          spec,
-        ),
-      ),
-    );
-    expect(r.reason).toBe("definition_conflict");
+    expect(quarterCandidate(forged as never)).toMatchObject({
+      ok: false,
+      errors: [expect.stringContaining("not accepted")],
+    });
+  });
+
+  it("B's YTD fact must be the company's reconciled row: tampered cents or a foreign row fail", () => {
+    const tampered = synth(Q3);
+    const f = tampered.case.facts.find((x) => x.id === "ocf_ytd");
+    if (!f) throw new Error("fixture");
+    f.cents = -9_000_100;
+    expect(ineligible(quarterCandidate(tampered)).reason).toBe("definition_conflict");
+    // Same cents, but the locator names another row: not bound.
+    const moved = synth(Q3);
+    const g = moved.case.facts.find((x) => x.id === "icf_ytd");
+    if (g?.kind !== "reported") throw new Error("fixture");
+    g.locator = "/facts/us-gaap/OtherTag/units/USD/0";
+    expect(ineligible(quarterCandidate(moved)).reason).toBe("definition_conflict");
+  });
+
+  it("never mixes companies: other-company packages, or A's case with B's packages", () => {
+    const a = synth(Q3);
+    const b = synth({ ...Q3, cik: B });
+    // Packages of another company under A.
+    expect(quarterCandidate({ ...a, sources: b.sources })).toMatchObject({ ok: false });
+    // Company B's input (identical tags, layout and values) with A's case: not bound.
+    expect(ineligible(quarterCandidate({ ...b, case: a.case })).reason).toBe("definition_conflict");
+    // A package mix is refused outright.
+    expect(
+      quarterCandidate({
+        ...a,
+        sources: { ...a.sources, packages: [...a.sources.packages, ...b.sources.packages] },
+      }),
+    ).toMatchObject({ ok: false, errors: [expect.stringContaining("never mix companies")] });
+    // B on its own is fine.
+    expect(cents(predicted(quarterCandidate(b)), "target_total")).toBe(94_336_957);
   });
 
   it("a pair B cannot forecast is ineligible for C too", () => {
-    const r = ineligible(
-      quarterCandidate(q3Input(q3Flows(), { ...Q3, cutoff: "2031-01-05T00:00:00Z" })),
-    );
+    const r = ineligible(quarterCandidate(synth({ ...Q3, cutoff: "2031-01-05T00:00:00Z" })));
     expect(r.reason).toBe("baseline_unavailable");
     expect(r.detail).toContain("cutoff must fall inside the target quarter");
   });
@@ -605,92 +572,96 @@ describe("candidate C eligibility (SYNTHETIC): ineligible, never zero", () => {
 
 describe("candidate C input boundary", () => {
   it("never throws on malformed input; returns errors", () => {
-    for (const bad of [null, undefined, 1, "x", {}, { lastQuarter: 1 }, [] as unknown]) {
-      const r = quarterCandidate(bad as QuarterCandidateInput);
-      expect(r.ok).toBe(false);
+    for (const bad of [null, undefined, 1, "x", {}, { sources: 1 }, [] as unknown]) {
+      expect(quarterCandidate(bad as QuarterCandidateInput).ok).toBe(false);
     }
-    const r = quarterCandidate({
-      ...q3Input(),
-      lastQuarter: { operating: {}, investing: {} },
-    } as never);
-    expect(r).toMatchObject({ ok: false });
     class Box {
       constructor(readonly v: number) {}
     }
-    expect(quarterCandidate({ ...q3Input(), extra: new Box(1) } as never)).toMatchObject({
+    expect(quarterCandidate({ ...synth(Q3), extra: new Box(1) } as never)).toMatchObject({
       ok: false,
       errors: [expect.stringContaining("not a plain object")],
     });
+    expect(quarterCandidate({ ...synth(Q3), knowledgeCutoff: "2030-11-10" })).toMatchObject({
+      ok: false,
+    });
   });
 
-  it("returns an error for a throwing getter or an offset-less cutoff", () => {
-    const input = q3Input();
-    Object.defineProperty(input, "lastQuarter", {
-      enumerable: true,
-      get: () => {
-        throw new Error("boom");
-      },
-    });
-    expect(quarterCandidate(input)).toMatchObject({
-      ok: false,
-      errors: [expect.stringContaining("boom")],
-    });
-    expect(quarterCandidate({ ...q3Input(), knowledgeCutoff: "2030-11-10" })).toMatchObject({
-      ok: false,
-    });
+  it("maps any caller throw, even a revoked proxy, to a fixed error", () => {
+    const r = Proxy.revocable({}, {});
+    r.revoke();
+    const throwers: unknown[] = [
+      Object.defineProperty({}, "x", {
+        enumerable: true,
+        get: () => {
+          throw r.proxy;
+        },
+      }),
+      Object.defineProperty({}, "x", {
+        enumerable: true,
+        get: () => {
+          throw new Error("boom");
+        },
+      }),
+      r.proxy,
+      new Proxy(
+        {},
+        {
+          ownKeys: () => {
+            throw r.proxy;
+          },
+        },
+      ),
+    ];
+    for (const t of throwers) {
+      const out = quarterCandidate({ ...synth(Q3), sources: t } as never);
+      expect(out).toEqual({
+        ok: false,
+        errors: ["input could not be read: caller code threw while it was copied"],
+      });
+    }
   });
 
   it("reads each caller property once and never mutates the input", () => {
-    const flows = q3Flows();
-    const real = flows.operating.prior;
+    const input = synth(Q3);
+    const fact = input.case.facts.find((f) => f.id === "ocf_ytd");
+    if (!fact) throw new Error("fixture");
     let reads = 0;
-    const operating = { ytd: flows.operating.ytd } as LastQuarterFlow;
-    Object.defineProperty(operating, "prior", {
+    Object.defineProperty(fact, "cents", {
       enumerable: true,
       get: () => {
         reads += 1;
-        // A second read would see a conflicting predecessor.
-        return reads === 1
-          ? real
-          : val("operating_cash_flow", "2030-01-01", "2030-06-30", 123, { at: AT_H1, id: "evil" });
+        return reads === 1 ? -9_000_000 : 0;
       },
     });
-    const input = q3Input({ operating, investing: flows.investing });
-    const c = predicted(quarterCandidate(input));
+    const shared = { ...input, again: fact };
+    expect(cents(predicted(quarterCandidate(shared)), "target_total")).toBe(94_336_957);
     expect(reads).toBe(1);
-    expect(cents(c, "target_total")).toBe(94_336_957);
-    const frozen = structuredClone(q3Input());
-    const before = JSON.stringify(frozen);
-    predicted(quarterCandidate(frozen));
-    expect(JSON.stringify(frozen)).toBe(before);
+    const plain = synth(Q3);
+    const before = JSON.stringify(plain);
+    predicted(quarterCandidate(plain));
+    expect(JSON.stringify(plain)).toBe(before);
   });
 
-  it("does not depend on property order or lineage order", () => {
-    const a = q3Input();
-    const flows = q3Flows();
-    const rev = (o: KeyOutcome): KeyOutcome =>
-      o.status === "selected"
-        ? {
-            status: "selected",
-            value: {
-              observationIds: [...o.value.observationIds, "obs/z"].reverse(),
-              receiptIds: [...o.value.receiptIds, "rec/z"].reverse(),
-              eligibleAt: o.value.eligibleAt,
-              availableAt: o.value.availableAt,
-              cents: o.value.cents,
-              key: o.value.key,
-            },
-          }
-        : o;
-    const b = Object.fromEntries(Object.entries(q3Input()).reverse()) as QuarterCandidateInput;
-    b.lastQuarter = {
-      investing: { prior: rev(flows.investing.prior!), ytd: rev(flows.investing.ytd) },
-      operating: { prior: rev(flows.operating.prior!), ytd: rev(flows.operating.ytd) },
+  it("does not depend on property, record or package order", () => {
+    const a = synth(Q3);
+    const b = Object.fromEntries(Object.entries(synth(Q3)).reverse()) as QuarterCandidateInput;
+    const [pkg] = b.sources.packages;
+    if (!pkg) throw new Error("fixture");
+    // A byte-identical copy at another URL is one origin; reversed package order and records.
+    const copy = {
+      ...pkg,
+      id: "synthetic-mirror",
+      originalUrl: "https://mirror.example.test/a.json",
+    };
+    b.sources = {
+      ...b.sources,
+      packages: [{ ...copy, records: [...copy.records].reverse() }, pkg],
     };
     const ca = predicted(quarterCandidate(a));
     const cb = predicted(quarterCandidate(b));
     expect(cb.forecast).toEqual(ca.forecast);
-    expect(cb.resolutionIds).toEqual([...ca.resolutionIds, "rec/z"].sort());
+    expect(cb.lastQuarter.operating.cents).toBe(ca.lastQuarter.operating.cents);
   });
 });
 
@@ -701,17 +672,8 @@ describe("development package: Amplitude 2022Q4 target (real SEC companyfacts, r
   const AMPLITUDE = "0001866692";
   // Protocol origin: acceptance of the Q3 2022 10-Q 0000950170-22-021850.
   const cutoff = "2022-11-03T20:08:14.000Z";
-  const k = (metric: Flow, tag: string, start: string, end: string): ObservationKey =>
-    ObservationKeySchema.parse({
-      cik: AMPLITUDE,
-      scope: "consolidated",
-      metric,
-      definition: `us-gaap:${tag}@1`,
-      currency: "USD",
-      period: { kind: "duration", start, end },
-    });
 
-  it("C from source rows through L1 snapshot and L2 reconciliation, hand-derived", async () => {
+  const build = async (): Promise<QuarterCandidateInput> => {
     const source = unwrap(
       await readSecSource({
         id: "amp",
@@ -726,7 +688,7 @@ describe("development package: Amplitude 2022Q4 target (real SEC companyfacts, r
       await companySnapshot(source, {
         id: "amp-2022q4",
         cik: AMPLITUDE,
-        sourceSignature: "sec_companyfacts_v1",
+        sourceSignature: SIG,
         cutoff,
         roles: BRIDGE_ROLES,
       }),
@@ -745,33 +707,23 @@ describe("development package: Amplitude 2022Q4 target (real SEC companyfacts, r
       feasibleAtCutoff: "yes" as const,
       selectedAfterReveal: false,
     });
-    const rec = unwrap(
-      reconcileSources({
-        id: "amp-rec",
-        cutoff,
-        computedAt: "2026-10-24T12:00:00Z",
-        sourceSignature: "sec_companyfacts_v1",
-        packages: [source.package],
-      }),
-    );
-    const OCF = "NetCashProvidedByUsedInOperatingActivities";
-    const ICF = "NetCashProvidedByUsedInInvestingActivities";
-    const input: QuarterCandidateInput = {
+    return {
       ...roles,
       case: { ...roles.case, assumptions: [zero("financing"), zero("fx")] },
       financingAssumptionId: "financing",
       fxAssumptionId: "fx",
-      lastQuarter: {
-        operating: {
-          ytd: valueFor(rec, k("operating_cash_flow", OCF, "2022-01-01", "2022-09-30")),
-          prior: valueFor(rec, k("operating_cash_flow", OCF, "2022-01-01", "2022-06-30")),
-        },
-        investing: {
-          ytd: valueFor(rec, k("investing_cash_flow", ICF, "2022-01-01", "2022-09-30")),
-          prior: valueFor(rec, k("investing_cash_flow", ICF, "2022-01-01", "2022-06-30")),
-        },
+      cik: AMPLITUDE,
+      sources: {
+        packages: [source.package],
+        sourceSignature: SIG,
+        reconciliationId: "amp-rec",
+        computedAt: "2026-10-24T12:00:00Z",
       },
     };
+  };
+
+  it("C from source rows through L1 snapshot and its own L2 reconciliation, hand-derived", async () => {
+    const input = await build();
     const c = predicted(quarterCandidate(input));
     // Source rows (USD dollars, accession, acceptance):
     //   total cash 2022-09-30 248,100,000 and usable 247,248,000 (22-021850, 2022-11-03T20:08:14Z)
@@ -779,6 +731,7 @@ describe("development package: Amplitude 2022Q4 target (real SEC companyfacts, r
     //   OCF H1 2,353,000; ICF H1 -3,788,000 (22-014805, 2022-08-04T20:35:56Z)
     // Q3 OCF = -786,000 - 2,353,000 = -3,139,000; Q3 ICF = -64,641,000 + 3,788,000 = -60,853,000
     expect(c.lastQuarter.operating.cents).toBe(-313_900_000);
+    expect(c.lastQuarter.operating.priorCents).toBe(235_300_000);
     expect(c.lastQuarter.investing.cents).toBe(-6_085_300_000);
     // Bq = (-786,000 - 64,641,000) / 3 = -21,809,000; Cq = -63,992,000 (dollars).
     expect(c.exact.baselineQuarter.mid).toBe("-2180900000/1");
@@ -795,10 +748,17 @@ describe("development package: Amplitude 2022Q4 target (real SEC companyfacts, r
     expect(c.baseline.forecast.find((p) => p.id === "target_total")?.cents).toBe(22_629_100_000);
     expect(c.nowcast.find((p) => p.id === "nowcast_total")?.cents).toBe(24_004_015_217);
     expect(c.lastQuarter.operating.availableAt).toBe("2022-11-03T20:08:14.000Z");
-    expect(c.resolutionIds.length).toBe(4);
+    expect(c.resolutionIds).toHaveLength(4);
     expect(c.resolutionIds.every((id) => id.startsWith("amp-rec/rec/"))).toBe(true);
-    // Same input, B alone, is the accepted bridge unchanged.
     expect(quarterBridge(input).forecast).toEqual(c.baseline.forecast);
+  });
+
+  it("a tampered baseline YTD fact (ids intact) is not bound to the real row", async () => {
+    const input = await build();
+    const f = input.case.facts.find((x) => x.id === input.operatingYtdFactId);
+    if (!f) throw new Error("fixture");
+    f.cents = 0;
+    expect(ineligible(quarterCandidate(input)).reason).toBe("definition_conflict");
   });
 });
 

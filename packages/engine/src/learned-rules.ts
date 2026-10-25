@@ -17,6 +17,7 @@ import {
   QUARTER_CANDIDATE_METHOD,
   type QuarterCandidate,
   type QuarterCandidateInput,
+  engineFailure,
   plainSnapshot,
   quarterCandidate,
 } from "./period-candidate";
@@ -42,6 +43,13 @@ import {
  * it names, so the preceding one returns: rollback). Rules are grouped by the behavior they
  * control (slot). Two or more rules live in one slot block that slot, whatever their order
  * or agreement; nothing picks a winner by iteration order, scope or recency.
+ *
+ * Time custody: every recordedAt (FeedbackRecord.recordedAt, and the recordedAt argument of
+ * decideFeedback, revokeRuleVersion and rollbackRule) MUST be the backend's own ingestion
+ * stamp (L5), never a value a caller or person typed. The engine has no clock, so its
+ * no-backdating guarantee is relative to that stamp: a record takes effect at
+ * max(recordedAt, effectiveFrom), any caller-chosen date before the stamp is rejected, and
+ * the log refuses a stamp earlier than any already recorded.
  *
  * Applied behavior: authority_preference rules drive L2 conflict selection, method_selection
  * chooses the quarterly cash method. mapping_override is resolved here but L1 has no
@@ -347,11 +355,24 @@ export type FeedbackDecision = {
   scope: { kind: "company"; sourceSignature: string } | { kind: "global"; userChoiceId: string };
   rationale: string;
   evidenceRefs: readonly string[];
-  /** Decision instant, supplied (there is no clock). Must not precede the feedback. */
-  recordedAt: string;
-  /** Defaults to recordedAt; never earlier. */
+  /** When the person wants it to start. Defaults to the stamp; a date before it is refused. */
   effectiveFrom?: string;
 };
+
+/** A date a caller chose must not precede the backend stamp. */
+function stamped(
+  recordedAt: unknown,
+  effectiveFrom: unknown,
+  what: string,
+): Result<[string, string]> {
+  const from = effectiveFrom ?? recordedAt;
+  if (!isTimestamp(recordedAt))
+    return err(`${what} recordedAt must be the backend's ingestion stamp, with an explicit offset`);
+  if (!isTimestamp(from)) return err(`${what} effectiveFrom must be a timestamp with an offset`);
+  if (ms(from) < ms(recordedAt))
+    return err(`${what} is dated ${from}, before its recorded time ${recordedAt}; never backdate`);
+  return ok([recordedAt, from]);
+}
 
 /**
  * Turn one feedback record into an accepted or rejected rule version. The action is the
@@ -362,6 +383,8 @@ export function decideFeedback(args: {
   history: readonly LearnedRuleVersion[];
   feedback: FeedbackRecord;
   decision: FeedbackDecision;
+  /** Backend ingestion stamp of this decision (L5). Never caller-chosen. */
+  recordedAt: string;
 }): Result<RuleChange> {
   const snap = plainSnapshot(args, "args");
   if (!snap.ok) return snap;
@@ -384,10 +407,11 @@ export function decideFeedback(args: {
   if (!ruleId || !IdSchema.safeParse(ruleId).success) return err("decision ruleId is required");
   if (!rationale) return err("decision rationale is required");
   if (!evidenceRefs) return err("decision evidenceRefs must be nonblank, at least one");
-  const recordedAt = d.recordedAt;
-  const effectiveFrom = d.effectiveFrom ?? recordedAt;
-  if (!isTimestamp(recordedAt) || !isTimestamp(effectiveFrom))
-    return err("decision recordedAt and effectiveFrom must be timestamps with explicit offsets");
+  if (d.recordedAt !== undefined)
+    return err("decision recordedAt is not accepted; pass the backend stamp as recordedAt");
+  const times = stamped(own.recordedAt, d.effectiveFrom, "decision");
+  if (!times.ok) return times;
+  const [recordedAt, effectiveFrom] = times.value;
   if (ms(recordedAt) < ms(feedback.recordedAt))
     return err("a decision cannot be recorded before the feedback it decides");
   const s = (d.scope ?? {}) as Record<string, unknown>;
@@ -449,25 +473,31 @@ export function decideFeedback(args: {
 export type Revocation = {
   rationale: string;
   evidenceRefs: readonly string[];
-  recordedAt: string;
+  /** When it should start. Defaults to the stamp; a date before it is refused. */
   effectiveFrom?: string;
   /** Feedback that asked for it; defaults to the revoked version's feedback. */
   feedbackId?: string;
 };
 
-function revokeIn(log: Rule[], targetId: string, r: Record<string, unknown>): Result<RuleChange> {
+function revokeIn(
+  log: Rule[],
+  targetId: string,
+  r: Record<string, unknown>,
+  stamp: unknown,
+): Result<RuleChange> {
   const target = log.find((x) => x.id === targetId);
   if (!target) return err(`rule version ${targetId} is not in the log`);
   if (target.status !== "accepted") return err(`rule version ${targetId} is not accepted`);
   if (log.some((x) => x.revokes === targetId)) return err(`${targetId} is already revoked`);
   const rationale = readText(r, "rationale");
   const evidenceRefs = readRefs(r.evidenceRefs);
-  const recordedAt = r.recordedAt;
-  const effectiveFrom = r.effectiveFrom ?? recordedAt;
   if (!rationale) return err("revocation rationale is required");
   if (!evidenceRefs) return err("revocation evidenceRefs must be nonblank, at least one");
-  if (!isTimestamp(recordedAt) || !isTimestamp(effectiveFrom))
-    return err("revocation recordedAt and effectiveFrom must be timestamps with explicit offsets");
+  if (r.recordedAt !== undefined)
+    return err("revocation recordedAt is not accepted; pass the backend stamp as recordedAt");
+  const times = stamped(stamp, r.effectiveFrom, "revocation");
+  if (!times.ok) return times;
+  const [recordedAt, effectiveFrom] = times.value;
   const feedbackId = r.feedbackId ?? target.feedbackId;
   if (!nonBlank(feedbackId)) return err("revocation feedbackId must be nonblank");
   const late = appendable(log, recordedAt);
@@ -498,6 +528,8 @@ export function revokeRuleVersion(args: {
   history: readonly LearnedRuleVersion[];
   targetId: string;
   revocation: Revocation;
+  /** Backend ingestion stamp of this revocation (L5). Never caller-chosen. */
+  recordedAt: string;
 }): Result<RuleChange> {
   const snap = plainSnapshot(args, "args");
   if (!snap.ok) return snap;
@@ -505,7 +537,8 @@ export function revokeRuleVersion(args: {
   const history = readHistory(own.history);
   if (!history.ok) return history;
   if (!nonBlank(own.targetId)) return err("targetId is required");
-  return revokeIn(history.value, own.targetId, (own.revocation ?? {}) as Record<string, unknown>);
+  const r = (own.revocation ?? {}) as Record<string, unknown>;
+  return revokeIn(history.value, own.targetId, r, own.recordedAt);
 }
 
 /**
@@ -517,6 +550,8 @@ export function rollbackRule(args: {
   history: readonly LearnedRuleVersion[];
   ruleId: string;
   revocation: Revocation;
+  /** Backend ingestion stamp of this rollback (L5). Never caller-chosen. */
+  recordedAt: string;
 }): Result<RuleChange> {
   const snap = plainSnapshot(args, "args");
   if (!snap.ok) return snap;
@@ -524,15 +559,14 @@ export function rollbackRule(args: {
   const history = readHistory(own.history);
   if (!history.ok) return history;
   const r = (own.revocation ?? {}) as Record<string, unknown>;
-  const at = r.effectiveFrom ?? r.recordedAt;
   if (!nonBlank(own.ruleId)) return err("ruleId is required");
-  if (!isTimestamp(at) || !isTimestamp(r.recordedAt))
-    return err("revocation recordedAt and effectiveFrom must be timestamps with explicit offsets");
-  const t = Math.max(ms(at), ms(r.recordedAt));
+  const times = stamped(own.recordedAt, r.effectiveFrom, "rollback");
+  if (!times.ok) return times;
+  const t = ms(times.value[1]);
   const chain = history.value.filter((x) => x.ruleId === own.ruleId);
   const live = liveAt(chain, t)[0];
   if (!live) return err(`rule ${own.ruleId} has no live version to roll back`);
-  return revokeIn(history.value, live.id, r);
+  return revokeIn(history.value, live.id, r, own.recordedAt);
 }
 
 // ---------- Resolution for one task ----------
@@ -700,7 +734,7 @@ export function reconcileWithRules(args: RuledReconcileArgs): Result<RuledReconc
     return err(...(log.ok ? [] : log.errors), ...(task.ok ? [] : task.errors));
   const resolution = resolve(log.value, task.value);
   const authority = resolution.slots.filter((s) => s.slot.startsWith("authority_preference:"));
-  const heads = authority.flatMap((s) => (s.status === "selected" ? [s.rule] : s.rules));
+  const heads = authorityHeads(resolution);
   const run = (rules: Rule[]) =>
     reconcileSources({ ...(rest as Omit<ReconcileArgs, "rules">), rules });
   const rec = run(heads);
@@ -767,16 +801,20 @@ type MethodRun =
       detail: string;
     };
 
-function runMethod(m: MethodRef, input: QuarterCandidateInput): Result<MethodRun> {
+function runMethod(
+  m: MethodRef,
+  input: QuarterCandidateInput,
+  authority: readonly Rule[],
+): Result<MethodRun> {
   if (isBaseline(m)) {
     try {
       return ok({ status: "baseline", bridge: quarterBridge(input) });
     } catch (e) {
-      const detail = e instanceof Error ? e.message : String(e);
+      const detail = engineFailure(e);
       return ok({ status: "ineligible", method: m, reason: "baseline_unavailable", detail });
     }
   }
-  const c = quarterCandidate(input);
+  const c = quarterCandidate(input, authority);
   if (!c.ok) return c;
   return ok(
     c.value.status === "predicted"
@@ -799,37 +837,53 @@ export type RuledForecast = {
   outcome: MethodRun | { status: "blocked"; reason: string };
 };
 
+/** Every live authority rule at a task: selected ones and every member of a blocked slot. */
+const authorityHeads = (r: RuleResolution): Rule[] =>
+  r.slots
+    .filter((s) => s.slot.startsWith("authority_preference:"))
+    .flatMap((s) => (s.status === "selected" ? [s.rule] : s.rules));
+
 /**
- * One quarterly forecast with the method rules that apply at the input's own knowledge
- * cutoff; the cutoff is never supplied separately, so a later rule cannot reach an older
- * forecast. A blocked slot or unregistered method gives no forecast.
+ * One quarterly forecast with the rules that apply at the input's own company, source
+ * signature and knowledge cutoff. None of these is supplied separately: the company is the
+ * input's, every package must be that company, and the cutoff is the forecast's, so another
+ * company's or a later rule cannot reach it. A blocked slot or unregistered method gives no
+ * forecast. The same authority rules reach C's own reconciliation.
  */
 export function quarterForecastWithRules(args: {
-  cik: string;
-  sourceSignature: string;
   history: readonly LearnedRuleVersion[];
   input: QuarterCandidateInput;
 }): Result<RuledForecast> {
   const snap = plainSnapshot(args, "args");
   if (!snap.ok) return snap;
   const own = (snap.value ?? {}) as Record<string, unknown>;
+  if (own.cik !== undefined || own.sourceSignature !== undefined)
+    return err("company and source signature come from the input, never separately");
   const input = (own.input ?? {}) as QuarterCandidateInput;
+  const sources = (input.sources ?? {}) as Partial<QuarterCandidateInput["sources"]>;
+  const packages: unknown[] = Array.isArray(sources.packages) ? sources.packages : [];
+  if (
+    packages.length === 0 ||
+    !packages.every((p) => (p as { company?: { cik?: unknown } })?.company?.cik === input.cik)
+  )
+    return err("input.sources.packages must all be the input company; never mix companies");
   const log = readHistory(own.history);
   const task = readTask({
-    cik: own.cik,
+    cik: input.cik,
     schemaVersion: 1,
-    sourceSignature: own.sourceSignature,
+    sourceSignature: sources.sourceSignature,
     cutoff: input.knowledgeCutoff,
   });
   if (!log.ok || !task.ok)
     return err(...(log.ok ? [] : log.errors), ...(task.ok ? [] : task.errors));
   const resolution = resolve(log.value, task.value);
+  const authority = authorityHeads(resolution);
   const selection = selectIn(resolution);
   if (selection.status === "blocked")
     return ok(
       freeze({ resolution, selection, outcome: { status: "blocked", reason: selection.reason } }),
     );
-  const outcome = runMethod(selection.method, input);
+  const outcome = runMethod(selection.method, input, authority);
   if (!outcome.ok) return outcome;
   if (selection.source === "default")
     return ok(freeze({ resolution, selection, outcome: outcome.value }));
@@ -838,7 +892,7 @@ export function quarterForecastWithRules(args: {
     prevAction?.kind === "method_selection"
       ? { methodId: prevAction.methodId, version: prevAction.version }
       : ref(QUARTER_BRIDGE_METHOD);
-  const before = runMethod(prevMethod, input);
+  const before = runMethod(prevMethod, input, authority);
   if (!before.ok) return before;
   const was = new Map(forecastOf(before.value).map((p) => [p.id, JSON.stringify(p)]));
   const changed = forecastOf(outcome.value)
