@@ -3,7 +3,6 @@
 import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
 import {
   ChevronRight,
-  MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -290,26 +289,20 @@ export function WorkspaceView({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => openAssistant(chat ? "chat" : "ask")}
-              data-testid="action-ask"
-            >
-              <MessageCircle aria-hidden="true" />
-              <span className="max-sm:sr-only">Ask Domino</span>
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={assistantOpen ? "Collapse chat" : "Expand chat"}
               aria-expanded={assistantOpen}
               aria-controls="workspace-assistant"
-              onClick={() => setAssistantOpen(!assistantOpen)}
-              data-testid="chat-toggle"
+              onClick={() => {
+                if (assistantOpen) setAssistantOpen(false);
+                else openAssistant(chat ? "chat" : "ask");
+              }}
+              data-testid="action-ask"
             >
               {assistantOpen ? (
                 <PanelRightClose aria-hidden="true" />
               ) : (
                 <PanelRightOpen aria-hidden="true" />
               )}
+              <span>Ask Domino</span>
             </Button>
           </div>
         </header>
