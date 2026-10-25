@@ -65,8 +65,23 @@ export function activeUserTurns(
 export function checkDraft(
   run: WorkspaceRun,
   update: DraftUpdate,
-  s: { selectedItemId: string | null; conversationId: string; floor: string | null },
+  s: {
+    selectedItemId: string | null;
+    conversationId: string;
+    floor: string | null;
+    /** Active user messages and reference-only text such as a Worker note. */
+    userTexts?: string[];
+    referenceText?: string | null;
+  },
 ): Result {
+  const copied = copiedFromReference(update, s.userTexts ?? [], s.referenceText ?? "");
+  if (copied)
+    return {
+      draft: emptyDraft(),
+      answer: `${copied} comes from reference data, not from your messages. Say it yourself if you want it modeled. Nothing was drafted.`,
+      proposal: null,
+      pendingField: null,
+    };
   if (!update.intents.length)
     return {
       draft: emptyDraft(),
@@ -90,6 +105,39 @@ export function checkDraft(
     s.selectedItemId,
     s.floor,
   );
+}
+
+/**
+ * Claude may normalize what the person typed ("90k" -> $90,000), but a value it can only have
+ * read in reference data (a Worker note, saved books) is never a draft value. Returns the first
+ * such value, or null.
+ */
+function copiedFromReference(
+  update: DraftUpdate,
+  userTexts: string[],
+  reference: string,
+): string | null {
+  if (!reference.trim()) return null;
+  const amounts = (texts: string[]) =>
+    new Set(texts.flatMap((t) => moneyTokens(t).map(parseMoneyText)).filter((c) => c !== null));
+  const typed = amounts(userTexts);
+  const referenced = amounts([reference]);
+  const user = userTexts.join("\n").toLowerCase();
+  const ref = reference.toLowerCase();
+  const dates = new Set(userTexts.flatMap(dateTokens));
+  for (const intent of update.intents) {
+    const i = intent as Record<string, unknown>;
+    const amount = typeof i.amountText === "string" ? parseMoneyText(i.amountText) : null;
+    if (amount !== null && !typed.has(amount) && referenced.has(amount))
+      return `The amount ${i.amountText}`;
+    const party = typeof i.counterpartyText === "string" ? i.counterpartyText.toLowerCase() : "";
+    if (party && ref.includes(party) && !user.includes(party))
+      return `The counterparty ${i.counterpartyText}`;
+    const date = typeof i.dateText === "string" ? i.dateText : "";
+    if (date && ref.includes(date) && !dates.has(date) && !user.includes(date.toLowerCase()))
+      return `The date ${date}`;
+  }
+  return null;
 }
 
 /** Checked sources for the answers and records a reply relied on. */
@@ -194,7 +242,8 @@ export function checkPlan(run: WorkspaceRun, text: string, floor: string | null)
     /\b(not|never|don['’]?t|avoid|cancel|unless|except|excluding|including|provided|conditional|contingent|if|before|after|between|through|until|only|without|either|or|daily|tax|maximum|max|at most|at least|monthly|per month)\b/i.test(
       text.replace(/\bwhat if\b/gi, " "),
     );
-  const timedNonHire = !/\bhire\b/i.test(text) && dateTokens(text).length > 0;
+  const timedNonHire =
+    !/\b(hire|lose|losing|churns?|leaves?|cancels?)\b/i.test(text) && dateTokens(text).length > 0;
   if (unsupported || timedNonHire)
     return {
       draft: emptyDraft(),
@@ -207,7 +256,7 @@ export function checkPlan(run: WorkspaceRun, text: string, floor: string | null)
     plannedChange(run, emptyDraft(), text, floor) ?? {
       draft: emptyDraft(),
       answer:
-        "That plan needs more details. State the vendor and percentage, or the number of hires, cost and start date.",
+        "That plan needs more details. State the vendor and percentage, the number of hires, cost and start date, or the customer you lose.",
       proposal: null,
       pendingField: null,
     }

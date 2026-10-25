@@ -41,6 +41,8 @@ export type SimulateArgs = {
   reviewed: boolean;
   constraintsJson?: string;
   constraintNote?: string;
+  /** Also save the scenario's domino effects as child runs. */
+  autoCascade?: boolean;
 };
 export type CatalogArgs = { companyId: string; paginationOpts: PaginationOptions };
 export type GraphArgs = { companyId: string; baselineRunId: string };

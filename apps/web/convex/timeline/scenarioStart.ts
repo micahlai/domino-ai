@@ -13,6 +13,9 @@ export function changeStart(change: Change, snapshot: Snapshot): string | null {
     case "remove_cash":
       return change.date;
     case "churn":
+    case "delay_customer":
+    case "recurring_cash":
+    case "scale_recurring":
       return change.fromDate;
     case "discount_early_pay":
       return change.payOn;

@@ -228,7 +228,14 @@ export {
   type CascadeNode,
   type CascadeResult,
   type CascadeTrigger,
+  type CascadeEstimate,
+  type ReactionCatalogEntry,
+  type ReactionChoice,
+  type ReactionRequest,
   type TriggerKind,
   cascade,
+  cascadeWith,
+  resolveReactions,
 } from "./cascade";
 export { money } from "./dominoes";
+export { type OutOfCash, outOfCash } from "./out-of-cash";

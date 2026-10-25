@@ -46,6 +46,8 @@ export const OTHER_ACTORS: Record<string, string> = {
   engine:
     "Deterministic code, not an AI agent: recomputes the forecast and risks from the saved books.",
   reviewer: "A person deciding a flag. Every decision is recorded with who made it.",
+  "ask-domino":
+    "The Timeline chat. Answers questions from saved books with Claude, and saves a scenario only after a person reviews it. The engine computes every number.",
 };
 
 export type SourceProfile = { id: string; title: string; brief: string };

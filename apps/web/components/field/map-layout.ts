@@ -9,7 +9,7 @@ import {
 } from "./graph";
 
 // Deterministic web layout for the brain map. Every node is a compact card. The coordinator
-// (Analyst) sits at the origin with a fixed oval of reserved helper slots around it. Left of it,
+// (Analyst) sits at the origin with rows of reserved helper slots above and below it. Left of it,
 // in fixed homes by role, sit the audit swarm and then the ingestion agent (feeds above it), so
 // the map always reads sources -> ingestion -> audit -> analyst -> outputs, whatever order the
 // log shows them in. Every other top-level agent is a satellite in a column right of the
@@ -80,7 +80,7 @@ export type MapLayout = {
   stacks: Stack[];
   clusters: Cluster[];
   lanes: Lane[];
-  /** Everything drawn plus reserved room: what the camera fits on first load. */
+  /** The cards and lane headings drawn now (no reserved room): what the camera fits. */
   bounds: Rect;
   memory: LayoutMemory;
 };
@@ -110,10 +110,8 @@ const GAP = 10;
 const SIDE_GAP = 8;
 const CLUSTER_GAP = 24;
 /** Room between the side lanes and the web, for the links to curve through. */
-const SIDE_MARGIN = 56;
+const SIDE_MARGIN = 44;
 const LANE_GAP = 12;
-/** Extra rings round the coordinator's first one hold this many more slots each. */
-const RING_GROWTH = 6;
 /** Satellites: helpers in rows of two under the agent; slot 1 (row 0, right) holds the stack. */
 const ROW = 2;
 const ROW_STACK = 1;
@@ -134,6 +132,8 @@ const HOMES: Record<string, { column: number; above?: boolean }> = {
   "agent:sim-clock": { column: 1, above: true },
 };
 const HOME_COLUMNS = 2;
+/** Ask Domino (the Timeline chat) agent, from convex/timeline/chat/brainLog.ts. */
+export const ASK_ID = "agent:ask-domino";
 
 /** Port height on a card: the middle of its header row. */
 export const PORT_Y = 28;
@@ -152,6 +152,12 @@ export const toolboxHeight = (items: number) =>
 
 /** Satellite columns hold clusters this far above and below the center before a new column. */
 const COLUMN_HALF = 240;
+/**
+ * Ask Domino's fixed home: first column right of the coordinator, just below where satellites
+ * search, beside the outputs and the Claude toolbox. Its room is reserved whether or not it has
+ * run, so it never pushes a satellite and nothing moves when the first chat arrives.
+ */
+const ASK_HOME_Y = COLUMN_HALF + ROOT_RESERVED_H + CLUSTER_GAP;
 
 const late = (n: BrainNode) =>
   n.agentKind === "system" || n.agentKind === "simulator" || n.agentKind === "person" ? 1 : 0;
@@ -191,84 +197,7 @@ const card = (id: string, w: number, h: number, depth: number, real = h): Local 
   depth,
 });
 
-const hit = (a: Local, b: Local, gap: number) =>
-  Math.abs(a.cx - b.cx) * 2 < a.w + b.w + gap * 2 &&
-  Math.abs(a.cy - b.cy) * 2 < a.h + b.h + gap * 2;
-
 // --- Reserved slot geometry ---------------------------------------------------------------
-
-/**
- * The coordinator's first ring: a flattened oval of 10 slots (2 above, 2 below, 3 each side).
- * Slot 0, below and right of the coordinator, holds its stack. Further rings are ovals sized
- * once for every slot, filled or not, so they never breathe as helpers come and go.
- */
-function firstRing(): Point[] {
-  const side = CENTER_W / 2 + GAP + INSTANCE_W / 2;
-  const colStep = INSTANCE_H + SIDE_GAP;
-  const colHalf = colStep + INSTANCE_H / 2;
-  const rowY = Math.max(ROOT_RESERVED_H / 2, colHalf) + GAP + INSTANCE_H / 2;
-  const inner = (INSTANCE_W + GAP) / 2;
-  return [
-    { x: inner, y: rowY },
-    { x: -inner, y: -rowY },
-    { x: inner, y: -rowY },
-    { x: -side, y: 0 },
-    { x: side, y: 0 },
-    { x: -inner, y: rowY },
-    { x: -side, y: -colStep },
-    { x: side, y: -colStep },
-    { x: -side, y: colStep },
-    { x: side, y: colStep },
-  ];
-}
-/** Fill order for the first ring: above, the sides, below, then the side corners. */
-const RING0_FILL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-const RINGS: Point[][] = [];
-function ring(r: number): Point[] {
-  while (RINGS.length <= r) {
-    const k = RINGS.length;
-    if (k === 0) {
-      RINGS.push(firstRing());
-      continue;
-    }
-    const count = (RINGS[k - 1]?.length ?? 0) + RING_GROWTH;
-    const center = card("c", CENTER_W, ROOT_RESERVED_H, 0);
-    const inner = RINGS.flat().map((p) => ({
-      ...card("h", INSTANCE_W, INSTANCE_H, 1),
-      cx: p.x,
-      cy: p.y,
-    }));
-    let rx = Math.max(...inner.map((t) => Math.abs(t.cx))) + INSTANCE_W / 2 + GAP;
-    let ry = Math.max(...inner.map((t) => Math.abs(t.cy))) + INSTANCE_H + GAP;
-    // Odd rings sit half a slot round, so they do not line up behind the ring inside them.
-    const turn = k % 2 ? 180 / count : 0;
-    const probe = () =>
-      Array.from({ length: count }, (_, i) => {
-        const a = ((-90 + turn + (i * 360) / count) * Math.PI) / 180;
-        return {
-          ...card(`s${i}`, INSTANCE_W, INSTANCE_H, 1),
-          cx: Math.round(rx * Math.cos(a)),
-          cy: Math.round(ry * Math.sin(a)),
-        };
-      });
-    let slots = probe();
-    for (let guard = 0; guard < 400; guard++) {
-      const clash = slots.some(
-        (s, i) =>
-          hit(s, center, GAP) ||
-          inner.some((t) => hit(s, t, GAP)) ||
-          slots.some((t, j) => j > i && hit(s, t, GAP)),
-      );
-      if (!clash) break;
-      rx += STEP;
-      ry += STEP;
-      slots = probe();
-    }
-    RINGS.push(slots.map((s) => ({ x: s.cx, y: s.cy })));
-  }
-  return RINGS[r] as Point[];
-}
 
 type Shape = {
   stackSlot: number;
@@ -279,25 +208,26 @@ type Shape = {
   fill: (tier: number) => number[];
 };
 
-const ringStart = (r: number) => {
-  let start = 0;
-  for (let k = 0; k < r; k++) start += ring(k).length;
-  return start;
-};
+/** Distance from a root card's center to the middle of its k-th helper row. */
+const rowY = (k: number) => ROOT_RESERVED_H / 2 + GAP + INSTANCE_H / 2 + k * (INSTANCE_H + GAP);
 
+/**
+ * The coordinator's helpers: rows of two, alternating below and above it (row 0 below, row 1
+ * above, row 2 below...), so the cluster stays as narrow as a satellite and the pipeline row
+ * reads left to right without a wide empty ring. Slot 1 (row 0, right) holds its stack.
+ */
 const CENTER_SHAPE: Shape = {
-  stackSlot: 0,
-  tierOf: (slot) => {
-    let r = 0;
-    while (slot >= ringStart(r + 1)) r++;
-    return r;
-  },
-  slotCount: (tiers) => ringStart(tiers),
+  stackSlot: ROW_STACK,
+  tierOf: (slot) => Math.floor(slot / ROW),
+  slotCount: (tiers) => tiers * ROW,
   at: (slot) => {
-    const r = CENTER_SHAPE.tierOf(slot);
-    return ring(r)[slot - ringStart(r)] as Point;
+    const row = Math.floor(slot / ROW);
+    const col = slot % ROW === 0 ? -1 : 1;
+    const y = rowY(Math.floor(row / 2));
+    return { x: (col * (INSTANCE_W + GAP)) / 2, y: row % 2 === 0 ? y : -y };
   },
-  fill: (tier) => (tier === 0 ? RING0_FILL : ring(tier).map((_, i) => ringStart(tier) + i)),
+  fill: (tier) =>
+    Array.from({ length: ROW }, (_, i) => tier * ROW + i).filter((s) => s !== ROW_STACK),
 };
 
 const SATELLITE_SHAPE: Shape = {
@@ -309,7 +239,7 @@ const SATELLITE_SHAPE: Shape = {
     const col = slot % ROW === 0 ? -1 : 1;
     return {
       x: (col * (INSTANCE_W + GAP)) / 2,
-      y: ROOT_RESERVED_H / 2 + GAP + INSTANCE_H / 2 + row * (INSTANCE_H + GAP),
+      y: rowY(row),
     };
   },
   fill: (tier) =>
@@ -514,7 +444,8 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
   // Homes first (row 0 before the agents stacked above it), so they never depend on the rest.
   const homeRank = (id: string) => {
     const home = HOMES[id];
-    return home ? (home.above ? 1 : 0) : 2;
+    // The "not used yet" card comes last, beside whatever sits right of the coordinator.
+    return home ? (home.above ? 1 : 0) : id === IDLE_CLUSTER ? 3 : 2;
   };
   const order = seen
     .map((id, i) => ({ id, i }))
@@ -533,6 +464,14 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     x1: at.x + b.x1,
     y1: at.y + b.y1,
   });
+  const askAt = { x: core.x1 + CLUSTER_GAP + ROOT_W / 2, y: ASK_HOME_Y };
+  const askRoom = {
+    x0: -ROOT_W / 2,
+    y0: -ROOT_RESERVED_H / 2,
+    x1: ROOT_W / 2,
+    y1: ROOT_RESERVED_H / 2,
+  };
+  placedRects.push(rectAt(askRoom, askAt));
   // Each home column is as wide as its widest cluster (a lone card until helpers arrive), and
   // always reserved, so the sources lane does not move when the pipeline first shows up.
   const homeWidth = Array.from({ length: HOME_COLUMNS }, (_, column) =>
@@ -549,10 +488,10 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
   for (const id of order) {
     const b = reserved(id);
     const home = HOMES[id];
-    const side = home ? -1 : id === IDLE_CLUSTER ? 0 : 1;
+    const side = home ? -1 : 1;
     memory.side.set(id, side);
     const before = home ? undefined : mem?.at.get(id);
-    let at: Point | undefined;
+    let at: Point | undefined = id === ASK_ID ? askAt : undefined;
     if (home) {
       // Row 0 lines up with the coordinator; feeds stack upward from above it. Helpers grow
       // downward, so neither ever pushes the other.
@@ -563,12 +502,6 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
       at = { x, y };
     }
     if (!at && before && !overlapsAny(rectAt(b, before))) at = before;
-    if (!at && side === 0) {
-      // Idle agents: straight below the center, as close as fits.
-      let y = Math.max(before?.y ?? 0, core.y1 + CLUSTER_GAP - b.y0);
-      while (overlapsAny(rectAt(b, { x: 0, y }))) y += STEP;
-      at = { x: 0, y };
-    }
     for (let column = 0; !at; column++) {
       const x =
         side < 0
@@ -680,9 +613,15 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     h: Math.max(1, memory.toolbox.length) * toolStep - TOOLBOX_GAP,
   };
 
+  const agentCards = [
+    ...graph.nodes.filter(isAgent).flatMap((n) => boxes.get(n.id) ?? []),
+    ...stacks.map((st) => st.box),
+  ];
+  const agentTop = agentCards.length ? Math.min(...agentCards.map((b) => b.y)) : web.y0;
   const lanes: Lane[] = [
     { id: "source", x: src.x, y: above(src.top), w: Math.max(SIDE_W, 180) },
-    { id: "agent", x: web.x0, y: above(web.y0), w: Math.max(ROOT_W, web.x1 - web.x0) },
+    // Above the agent cards on the map now, not the reserved room, so no empty band shows.
+    { id: "agent", x: web.x0, y: above(agentTop), w: Math.max(ROOT_W, web.x1 - web.x0) },
     { id: "output", x: out.x, y: above(out.top), w: Math.max(SIDE_W, 180) },
     { id: "toolbox", x: out.x, y: above(toolTop), w: Math.max(TOOLBOX_W, 180) },
   ];
@@ -707,13 +646,11 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
         routes.push(routeFor(id, from, g.id, "uses", a, b));
     }
 
+  // What the camera fits: the cards and lane headings drawn now, not reserved room, so the map
+  // fills the canvas. Growth past it eases the camera out (BrainMapCamera.ts).
   const all: Rect[] = [
     ...[...boxes.values(), ...stacks.map((s) => s.box)],
-    ...lanes.map((l) => ({ x: l.x, y: l.y, w: l.w, h: LANE_H })),
-    ...clusters.map((c) => c.bounds),
-    { x: src.x, y: src.top, w: SIDE_W, h: src.bottom - src.top },
-    { x: out.x, y: out.top, w: SIDE_W, h: out.bottom - out.top },
-    toolReserve,
+    ...lanes.map((l) => ({ x: l.x, y: l.y, w: Math.min(l.w, 180), h: LANE_H })),
   ];
   const x0 = Math.min(...all.map((b) => b.x));
   const y0 = Math.min(...all.map((b) => b.y));

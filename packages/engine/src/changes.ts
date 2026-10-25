@@ -1,5 +1,5 @@
 import type { Change, ISODate, Snapshot } from "@domino/contracts";
-import { addDays, daysInMonth } from "./dates";
+import { addDays, daysInMonth, horizonEnd } from "./dates";
 import { type Ratio, addRatio, decimalRatio, ratio, roundCents } from "./money";
 import { type CashItem, bucketOf } from "./schedule";
 
@@ -67,7 +67,68 @@ function applyOne(
       );
     case "shift_hire":
       return [...items, ...hireSavings(change, weeks, snapshot.asOf)];
+    case "delay_customer":
+      requireRecord(snapshot.customers, change.customerId, "customer");
+      return items.map((i) =>
+        isReceipt(i) && i.customerId === change.customerId && i.date >= change.fromDate
+          ? { ...i, date: addDays(i.date, change.days) }
+          : i,
+      );
+    case "recurring_cash":
+      return [...items, ...recurring(change, weeks, snapshot.asOf)];
+    case "scale_recurring":
+      return scaleRecurring(items, change, snapshot);
   }
+}
+
+const isReceipt = (i: CashItem) => i.kind === "invoice" || i.kind === "deal" || i.kind === "plan";
+
+/** One dated flow every `everyDays` from fromDate through the horizon, after asOf only. */
+function recurring(
+  change: Extract<Change, { kind: "recurring_cash" }>,
+  weeks: ISODate[],
+  asOf: ISODate,
+): CashItem[] {
+  if (change.amount < 0)
+    throw new Error(`recurring_cash ${change.label}: negative amount; use the other direction`);
+  const end = horizonEnd(weeks);
+  const amount = change.direction === "in" ? change.amount : -change.amount;
+  const out: CashItem[] = [];
+  for (let d = change.fromDate; d <= end; d = addDays(d, change.everyDays))
+    if (d > asOf && amount !== 0) out.push({ kind: "change", id: change.label, date: d, amount });
+  return out;
+}
+
+/**
+ * Each matching flow on or after fromDate becomes amount * (100 + percent) / 100, rounded
+ * once per flow. Spend matches bill vendors and recurring-spend labels; billing matches
+ * projected plan bills (issued invoices keep the price they were billed at).
+ */
+function scaleRecurring(
+  items: CashItem[],
+  change: Extract<Change, { kind: "scale_recurring" }>,
+  snapshot: Snapshot,
+): CashItem[] {
+  const names = new Set(change.names.map((n) => n.toLowerCase()));
+  const vendor = new Map(snapshot.bills.map((b) => [b.id, b.vendor.toLowerCase()]));
+  const p = decimalRatio(change.percent);
+  const matches = (i: CashItem) => {
+    if (i.date < change.fromDate) return false;
+    if (change.flows === "billing")
+      return (
+        i.kind === "plan" && (names.size === 0 || names.has((i.customerId ?? "").toLowerCase()))
+      );
+    if (i.kind === "bill") return names.has(vendor.get(i.id) ?? "");
+    return i.kind === "recurring" && names.has(i.id.toLowerCase());
+  };
+  return items.map((i) =>
+    matches(i)
+      ? {
+          ...i,
+          amount: roundCents(ratio(BigInt(i.amount) * (100n * p.den + p.num), 100n * p.den)),
+        }
+      : i,
+  );
 }
 
 /** amount * (100 - percent) / 100, exact until the final rounding. */

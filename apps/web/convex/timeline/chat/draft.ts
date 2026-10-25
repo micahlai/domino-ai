@@ -19,7 +19,7 @@ import { resolve } from "../questions/resolve";
 import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
 import { explainQuestion, normalizeQuestion } from "./explain";
-import { planRequest } from "./planChanges";
+import { planRequest, withContagion } from "./planChanges";
 
 const FieldSchema = z.enum([
   "amountText",
@@ -265,7 +265,7 @@ function finish(
       proposal: null,
       pendingField: null,
     };
-  const proposal = distinctCashLabels(run, outcome.proposal);
+  const proposal = withContagion(run, distinctCashLabels(run, outcome.proposal));
   // A branch forks from its parent's start; an earlier event would fork from the base.
   const early = startsBefore(proposal.changes, run.baseline.seed.snapshot, floor)[0];
   if (early)
@@ -286,10 +286,10 @@ function finish(
       pendingField: null,
     };
   }
+  const knock = proposal.changes.flatMap((c) => (c.kind === "delay_customer" ? [c.basis] : []));
   return {
     draft,
-    answer:
-      "Ready to model this. Check the details below, then confirm to add it to the chart. Nothing has run yet.",
+    answer: `Ready to model this.${knock.length ? ` A late payer's later invoices slip too (${knock.join("; ")}).` : ""} Check the details below, then confirm to add it to the chart. Nothing has run yet.`,
     proposal,
     pendingField: null,
   };

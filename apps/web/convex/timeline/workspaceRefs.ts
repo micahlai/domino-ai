@@ -35,6 +35,7 @@ export const workspaceRefs = {
       constraintsJson?: string;
       constraintNote?: string;
       allowEarlierStart?: boolean;
+      autoCascade?: boolean;
     },
     WorkspaceResult
   >("timeline/workspace:simulate"),

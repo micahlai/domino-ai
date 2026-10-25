@@ -128,9 +128,10 @@ describe("brain map layout", () => {
       .filter((n) => n.kind === "subagent" && n.parentId === CENTER_ID)
       .flatMap((n) => layout.boxes.get(n.id) ?? []);
     expect(helpers.length).toBeGreaterThan(4);
+    // Rows of two above and below it: as narrow as a satellite, so the pipeline row stays tight.
     for (const b of helpers) {
-      expect(Math.abs(b.x + b.w / 2 - cx)).toBeLessThan(330);
-      expect(Math.abs(b.y + b.h / 2 - cy)).toBeLessThan(190);
+      expect(Math.abs(b.x + b.w / 2 - cx)).toBeLessThan(100);
+      expect(Math.abs(b.y + b.h / 2 - cy)).toBeLessThan(330);
     }
   });
 
@@ -141,9 +142,8 @@ describe("brain map layout", () => {
     ];
     for (const [name, layout] of cases) {
       const vp = fitViewport(layout.bounds, CANVAS.w, CANVAS.h);
-      // Readable: text stays at least 75% of its size (the pipeline's two left columns, ingestion
-      // then audit, cost a little zoom).
-      expect(vp.zoom, name).toBeGreaterThanOrEqual(0.75);
+      // Readable: text stays at least 80% of its size.
+      expect(vp.zoom, name).toBeGreaterThanOrEqual(0.8);
       const rects = [...layout.boxes.values(), ...layout.stacks.map((s) => s.box)];
       for (const b of rects) {
         const x = b.x * vp.zoom + vp.x;

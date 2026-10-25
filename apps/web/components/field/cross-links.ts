@@ -59,3 +59,20 @@ export function nodeResults(node: { id: string; role?: string }): ResultLink[] {
     return [{ label: "See what Domino learned", href: "/field#learned" }];
   return [];
 }
+
+/**
+ * The saved Timeline run an Ask Domino row points at ("timeline:<company>/<run>", written by
+ * convex/timeline/chat/brainLog.ts), as its Timeline route, or null.
+ */
+export function timelineRunHref(refs: readonly string[] | undefined): string | null {
+  for (const ref of refs ?? []) {
+    const m = /^timeline:([^/]+)\/([^/]+)$/.exec(ref);
+    if (!m) continue;
+    try {
+      const company = decodeURIComponent(m[1] ?? "");
+      const run = decodeURIComponent(m[2] ?? "");
+      return `/c/${encodeURIComponent(company)}/timeline?${new URLSearchParams({ runId: run })}`;
+    } catch {}
+  }
+  return null;
+}

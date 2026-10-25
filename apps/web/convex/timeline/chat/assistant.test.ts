@@ -772,7 +772,9 @@ describe("conversational context and required LLM", () => {
     const result = await t.action(assistantSend, turn(r, "hire 3 engineers at $150K from Dec 1"));
     expect(result.status).toBe("ready");
     expect(
-      result.proposal?.changes.every((c) => c.kind === "remove_cash" && c.date >= "2026-12-01"),
+      result.proposal?.changes.every(
+        (c) => c.kind === "recurring_cash" && c.direction === "out" && c.fromDate >= "2026-12-01",
+      ),
     ).toBe(true);
     expect(result.linkedRunId).toBeNull();
     expect(spy).toHaveBeenCalledTimes(2);
@@ -814,9 +816,10 @@ describe("conversational context and required LLM", () => {
     const messages = bodies[0]?.messages as { content: string }[];
     const context = JSON.parse(messages[0]!.content);
     expect(context.referenceData.savedSimulationResult.run.runId).toBe(original.linkedRunId);
-    expect(r.turns.at(-1)?.citations?.some((c) => c.ref.includes(original.linkedRunId!))).toBe(
-      true,
-    );
+    // Citations name the week, not the run; the cited low point must be the saved run's.
+    const cited = r.turns.at(-1)?.citations?.[0]?.ref.replace("forecast:week/", "");
+    expect(cited).toBeTruthy();
+    expect(JSON.stringify(context.referenceData.savedSimulationResult)).toContain(cited);
   });
 
   async function withBrain(t: T) {

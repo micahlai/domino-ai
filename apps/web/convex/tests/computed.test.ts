@@ -10,6 +10,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { demoProposals } from "../dev/seedComputed";
 import { baseBranchId, computedPrefix, eventBranchId, matchRisk } from "../lib/computed";
+import { ENGINE_ATTEMPTS, recomputeFresh, simulateFixFresh } from "../lib/engineRun";
 import { recomputeCompany } from "../lib/publish";
 import { computedRefs, seedComputedRef } from "../lib/refs";
 import schema from "../schema";
@@ -914,6 +915,111 @@ describe("simulateFix", () => {
     await expect(
       t.mutation(computedRefs.simulateFix, { branchId: parentId, fixId: fix.id }),
     ).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+describe("split engine run (load query, engine in the action, guarded write)", () => {
+  type Runner = Parameters<typeof recomputeFresh>[0];
+  /** A runner whose loads call `between` after reading, i.e. before the engine and write run. */
+  function racingRunner(t: T, between: (load: number) => Promise<void>) {
+    type Call = (ref: unknown, args: unknown) => Promise<unknown>;
+    const query = t.query as unknown as Call;
+    const mutation = t.mutation as unknown as Call;
+    let loads = 0;
+    const runner = {
+      runQuery: async (ref: unknown, args: unknown) => {
+        const result = await query(ref, args);
+        loads += 1;
+        await between(loads);
+        return result;
+      },
+      runMutation: mutation,
+    } as unknown as Runner;
+    return { runner, loads: () => loads };
+  }
+
+  it("reruns the whole cycle when the inputs change between load and write", async () => {
+    const { t, companyId } = await seeded();
+    const before = await dump(t, companyId);
+    const { runner, loads } = racingRunner(t, async (n) => {
+      if (n === 1) await changeCash(t, companyId, -50_000_00);
+    });
+    const result = await recomputeFresh(runner, companyId, "engine.recompute");
+    expect(loads()).toBe(2);
+    expect(result.changed).toBe(true);
+    const changed = { ...snapshot, cashOnHand: snapshot.cashOnHand - 50_000_00 };
+    expect(
+      await t.query(api.branches.get, { branchId: baseBranchId(companyId, asOf) }),
+    ).toMatchObject({ forecast: engine.forecast(changed, model, []) });
+    const after = await dump(t, companyId);
+    expect(after.log.length).toBe(before.log.length + 1);
+    // Same result as one transaction on the new inputs: nothing left to change.
+    await t.mutation(computedRefs.recompute, { companyId });
+    expect(await dump(t, companyId)).toEqual(after);
+  });
+
+  it("gives up after a bounded number of tries and writes nothing", async () => {
+    const { t, companyId } = await seeded();
+    const before = await dump(t, companyId);
+    const { runner, loads } = racingRunner(t, () => changeCash(t, companyId, -1_00));
+    await expect(recomputeFresh(runner, companyId, "engine.recompute")).rejects.toThrow(
+      "INPUTS_CHANGED",
+    );
+    expect(loads()).toBe(ENGINE_ATTEMPTS);
+    expect(await dump(t, companyId)).toEqual(before);
+  });
+
+  it("matches the single-transaction run on unchanged inputs", async () => {
+    const one = await seeded();
+    const two = await seeded();
+    await changeCash(one.t, one.companyId, -50_000_00);
+    await changeCash(two.t, two.companyId, -50_000_00);
+    await one.t.mutation(computedRefs.recompute, { companyId: one.companyId });
+    await two.t.action(internal.engine.recompute, { companyId: two.companyId });
+    const strip = (d: Awaited<ReturnType<typeof dump>>) =>
+      Object.fromEntries(
+        Object.entries(d).map(([table, rows]) => [
+          table,
+          rows.map(({ _id, _creationTime, at, ...rest }: Record<string, unknown>) => rest),
+        ]),
+      );
+    expect(strip(await dump(two.t, two.companyId))).toEqual(
+      strip(await dump(one.t, one.companyId)),
+    );
+  });
+
+  it("simulateFix reruns when the parent's inputs change before the write", async () => {
+    const { t, companyId } = await seeded();
+    const parentId = eventBranchId(companyId, asOf, [ACME_LATE]);
+    const [first] = await t.query(api.fixes.forBranch, { branchId: parentId });
+    if (!first) throw new Error("expected a useful fix");
+    const fixBranchId = `${parentId}__${first.fix.id}`;
+    const stored = await t.query(api.branches.get, { branchId: fixBranchId });
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("branches")
+        .withIndex("by_branchId", (q) => q.eq("branchId", fixBranchId))
+        .unique();
+      if (row) await ctx.db.delete(row._id);
+    });
+    // The first load is overtaken by a cash change; the rerun sees a stale future and refuses.
+    const raced = racingRunner(t, async (n) => {
+      if (n === 1) await changeCash(t, companyId, -50_000_00);
+    });
+    await expect(simulateFixFresh(raced.runner, parentId, first.fix.id)).rejects.toThrow(
+      "STALE_FUTURE",
+    );
+    expect(raced.loads()).toBe(2);
+    expect(await t.query(api.branches.get, { branchId: fixBranchId })).toBeNull();
+    // Undo the change: an undisturbed run rebuilds exactly the stored branch.
+    await changeCash(t, companyId, 50_000_00);
+    const calm = racingRunner(t, async () => {});
+    expect(await simulateFixFresh(calm.runner, parentId, first.fix.id)).toEqual({
+      branchId: fixBranchId,
+      changed: true,
+    });
+    expect(calm.loads()).toBe(1);
+    expect(await t.query(api.branches.get, { branchId: fixBranchId })).toEqual(stored);
   });
 });
 
