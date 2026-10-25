@@ -31,13 +31,22 @@ import {
   PULSE_SECONDS,
   type Pulse,
   buildBrainGraph,
+  byTime,
   freshOperations,
   layoutBrain,
   neighbors,
   pulsesFor,
 } from "./graph";
-import { DataLabel, FieldTabs, OPERATION_LABEL, clock, timeAgo, useNow } from "./parts";
-import type { FieldOperation } from "./types";
+import {
+  AnomalyPicker,
+  AutoIngestToggle,
+  DataLabel,
+  OPERATION_LABEL,
+  clock,
+  timeAgo,
+  useNow,
+} from "./parts";
+import type { Anomaly, FieldOperation } from "./types";
 
 // The agent map: built-in agents, the helpers they start, tools and data sources, all derived
 // from the operation log. A dot moves only when a new operation is recorded; a node pops in
@@ -313,7 +322,7 @@ export function BrainMap() {
     sources: graph.nodes.filter((n) => n.kind === "source").length,
   };
   const latest = data.operations?.length
-    ? data.operations.reduce((a, b) => (Date.parse(b.at) >= Date.parse(a.at) ? b : a))
+    ? data.operations.reduce((a, b) => (byTime(a, b) <= 0 ? b : a))
     : undefined;
 
   return (
@@ -329,12 +338,11 @@ export function BrainMap() {
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
             {latest
-              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary}`
+              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
               : "No recorded work yet."}{" "}
             A moving dot means an operation was just recorded on that link.
           </p>
         </div>
-        <FieldTabs />
       </header>
       <MapActions />
       <div className="relative h-[calc(100dvh-320px)] min-h-[520px] overflow-hidden rounded-xl border">
@@ -406,12 +414,18 @@ function ColumnLabels() {
 }
 
 function MapActions() {
-  const { actions, source } = useFieldData();
+  const { actions, source, needsSetup } = useFieldData();
   const [busy, setBusy] = useState(false);
+  const [anomaly, setAnomaly] = useState<Anomaly | "">("");
+  const [error, setError] = useState<string | null>(null);
+  const off = busy || source === "loading" || needsSetup;
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
+    setError(null);
     try {
       await task();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That did not work");
     } finally {
       setBusy(false);
     }
@@ -420,24 +434,25 @@ function MapActions() {
     <div className="flex flex-wrap items-center gap-2">
       <Button
         size="sm"
-        disabled={busy || source === "loading"}
-        onClick={() => run(actions.advanceFeed)}
+        disabled={off}
+        onClick={() => run(() => actions.advanceFeed(anomaly || undefined))}
       >
         <Download aria-hidden="true" className="mr-1.5 size-3.5" />
         New entries arrive
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={busy || source === "loading"}
-        onClick={() => run(actions.ingestNow)}
-      >
+      <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={off} />
+      <Button size="sm" variant="outline" disabled={off} onClick={() => run(actions.ingestNow)}>
         <RefreshCw aria-hidden="true" className="mr-1.5 size-3.5" />
         Ingest now
       </Button>
-      <span className="text-xs text-muted-foreground">
-        Hover a node for a summary; click it for details.
-      </span>
+      <AutoIngestToggle />
+      {error ? (
+        <span className="text-xs text-[hsl(var(--danger-text))]">{error}</span>
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          Hover a node for a summary; click it for details.
+        </span>
+      )}
     </div>
   );
 }
@@ -508,7 +523,7 @@ function DetailPanel({
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{node.brief}</p>
 
       {node.instructions ? (
-        <Section title="Instructions">
+        <Section title="Built-in instructions">
           <p>{node.instructions}</p>
         </Section>
       ) : null}

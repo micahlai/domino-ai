@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
+import { Switch } from "../ui/switch";
 import { useFieldData } from "./data";
-import type { FieldFinding, OperationKind } from "./types";
+import { ANOMALY_OPTIONS, type Anomaly, type FieldFinding, type OperationKind } from "./types";
 
 export const FINDING_LABEL: Record<FieldFinding["kind"], string> = {
   duplicate: "Possible duplicate",
@@ -29,6 +28,9 @@ export const SEVERITY_TONE: Record<FieldFinding["severity"], string> = {
 };
 
 export const OPERATION_LABEL: Record<OperationKind, string> = {
+  feed: "New entries",
+  run: "Ran",
+  forecast: "Forecast",
   pull: "Read",
   map: "Matched",
   snapshot: "Saved",
@@ -98,31 +100,67 @@ export function DataLabel({ className }: { className?: string }) {
   );
 }
 
-const TABS = [
-  { href: "/field", label: "Review and actions" },
-  { href: "/field/map", label: "Brain map" },
-];
-
-export function FieldTabs() {
-  const pathname = usePathname();
+/** "Plant an anomaly" choice for the next "New entries arrive". Empty means plain new entries. */
+export function AnomalyPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Anomaly | "";
+  onChange: (value: Anomaly | "") => void;
+  disabled?: boolean;
+}) {
+  const id = useId();
   return (
-    <nav aria-label="Agent workspace" className="flex gap-1 rounded-lg border bg-muted/40 p-1">
-      {TABS.map((tab) => {
-        const active = pathname === tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "inline-flex min-h-9 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-              active && "bg-background font-medium text-foreground shadow-sm",
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <span className="inline-flex items-center gap-2 text-sm">
+      <label htmlFor={id} className="text-muted-foreground">
+        With
+      </label>
+      <select
+        id={id}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value as Anomaly | "")}
+        className="min-h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+      >
+        <option value="">no planted anomaly</option>
+        {ANOMALY_OPTIONS.map((a) => (
+          <option key={a.value} value={a.value}>
+            {a.label}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
+/** Auto-ingest on/off (field.setAutoIngest). Reflects the backend value, not a local guess. */
+export function AutoIngestToggle() {
+  const { status, actions, source, needsSetup } = useFieldData();
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const on = status?.ingest.enabled ?? false;
+  return (
+    <span className="inline-flex items-center gap-2 text-sm">
+      <Switch
+        id={id}
+        checked={on}
+        disabled={busy || source === "loading" || needsSetup || !status}
+        onCheckedChange={async (enabled) => {
+          setBusy(true);
+          setError(null);
+          try {
+            await actions.setAutoIngest(enabled);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+      <label htmlFor={id}>Auto ingest {on ? "on" : "off"}</label>
+      {error ? <span className="text-[hsl(var(--danger-text))]">{error}</span> : null}
+    </span>
   );
 }

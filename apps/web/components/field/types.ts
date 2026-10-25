@@ -1,15 +1,41 @@
 import type { Finding } from "@domino/contracts";
 
-// Field UI view of the field.* Convex API (being built on field/ingest). Presentation types only:
-// the adapter in data.ts maps backend records into these, so a shape change is a one-file fix.
+// Field UI view of the field.* Convex API (convex/field.ts). Presentation types only: live.ts
+// maps backend records into these, so a backend shape change is a one-file fix.
 
 export type FieldStatus = {
   feed: { enabled: boolean; lastAdvanceAt: string | null };
+  /** `enabled` is auto-ingest (field.setAutoIngest); manual "Ingest now" always works. */
   ingest: { enabled: boolean; lastRunAt: string | null; lastStatus: string | null };
   counts: { sources: number; snapshots: number; openFindings: number };
+  /** Live only: the mock world's date and week, the last ingest error, high-severity flags. */
+  asOf?: string | null;
+  week?: number;
+  lastError?: string | null;
+  openEscalations?: number;
 };
 
-export type OperationKind = "pull" | "map" | "snapshot" | "audit" | "decision" | "export" | "spawn";
+/** Synthetic anomalies the mock feed can plant (field.advanceFeed `anomaly`). */
+export const ANOMALY_OPTIONS = [
+  { value: "duplicate", label: "Duplicate bill" },
+  { value: "unusual_amount", label: "Card spike" },
+  { value: "unusual_timing", label: "Late bank entry" },
+  { value: "conflict", label: "Invoice amount changed" },
+  { value: "missing_expected", label: "Missing payroll run" },
+] as const;
+export type Anomaly = (typeof ANOMALY_OPTIONS)[number]["value"];
+
+export type OperationKind =
+  | "feed"
+  | "run"
+  | "pull"
+  | "map"
+  | "snapshot"
+  | "audit"
+  | "forecast"
+  | "decision"
+  | "export"
+  | "spawn";
 
 /** Plain JSON values only: the panel prints them, it never interprets them. */
 export type OperationValues = Record<string, unknown>;
@@ -18,6 +44,8 @@ export type FieldOperation = {
   id: string;
   /** ISO timestamp the operation was recorded. */
   at: string;
+  /** Write order, to break ties: rows from one backend transaction share the same `at`. */
+  seq?: number;
   agent: string;
   tool?: string;
   source?: string;
@@ -33,7 +61,7 @@ export type FieldOperation = {
 };
 
 export type FindingStatus = "open" | "approved" | "rejected";
-export type FieldFinding = Finding & { status: FindingStatus; note?: string };
+export type FieldFinding = Finding & { status: FindingStatus; note?: string; escalated?: boolean };
 
 export type Decision = "approved" | "rejected";
 
@@ -43,7 +71,11 @@ export type FieldSource = "live" | "demo" | "loading";
 export type FieldActions = {
   decide: (args: { findingId: string; decision: Decision; note: string }) => Promise<void>;
   ingestNow: () => Promise<void>;
-  advanceFeed: () => Promise<void>;
+  /** Advance the mock world one week; optionally plant one synthetic anomaly. */
+  advanceFeed: (anomaly?: Anomaly) => Promise<void>;
+  setAutoIngest: (enabled: boolean) => Promise<void>;
+  /** Live only, when no feed exists yet: connect a new synthetic company (field.setup). */
+  setup: () => Promise<void>;
   /** WeeklySeedV1 as JSON text, exactly as it crosses the seam. */
   exportSeed: () => Promise<string>;
 };
@@ -53,6 +85,8 @@ export type FieldData = {
   /** Plain-words reason shown next to the data label, for example why demo data is shown. */
   sourceNote: string;
   status?: FieldStatus;
+  /** Live backend reachable but field.setup has never run. */
+  needsSetup?: boolean;
   /** Oldest first. */
   operations?: FieldOperation[];
   findings?: FieldFinding[];
