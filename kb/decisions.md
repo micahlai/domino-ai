@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-25 Micah: explicitly opening a saved scenario from Worker, a chat result or a risk/response action should draw its new branch. Validate the actual parent before the incoming curve mounts, then consume the URL entry intent without reloading. Keep ordinary history/toggle behavior static.
+
 - 2026-10-25 Micah explicitly authorized merging claude-timeline-chat and codex/worker-timeline-context into main. This supersedes their earlier isolation/main-freeze instructions for these branches; preserve existing main features and verify the combined result before publishing.
 
 - 2026-10-25 Micah: combine Ask Domino and sidebar controls into one named open/collapse toggle, with no redundant header or inner close icons. Keep the mounted draft and keyboard focus behavior.
