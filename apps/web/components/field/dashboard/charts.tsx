@@ -52,6 +52,14 @@ function useWidth(initial = 720) {
 
 const shortMoney = (c: number) => formatCents(Math.round(c));
 
+/** A date can appear as both the present and a forecast point, so include its role in list keys. */
+export function chartDateKey(
+  role: "today" | "week" | "actual" | "projected",
+  date: string,
+): string {
+  return `${role}:${date}`;
+}
+
 // ---------- Pure helpers (tested) ----------
 
 /**
@@ -399,7 +407,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
                 ];
               });
               return (
-                <g key={b.weekStart}>
+                <g key={chartDateKey(b.kind, b.weekStart)}>
                   {segs.map((s) => (
                     <rect
                       key={s.key}
@@ -467,7 +475,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
           </TableHeader>
           <TableBody>
             {bars.map((b) => (
-              <TableRow key={b.weekStart}>
+              <TableRow key={chartDateKey(b.kind, b.weekStart)}>
                 <TableCell className="h-9 whitespace-nowrap py-1">
                   {formatDate(b.weekStart)}
                 </TableCell>
@@ -724,7 +732,7 @@ export function CashLine({
               const big = i === low || i === 0;
               return (
                 <circle
-                  key={p.weekStart}
+                  key={chartDateKey(p.label, p.weekStart)}
                   cx={x(i)}
                   cy={y(p.usable)}
                   r={i === shown ? 5.5 : big ? 4 : 2.5}
@@ -779,7 +787,7 @@ export function CashLine({
             {points.map((p, i) =>
               i === 0 || i % labelEvery === 0 ? (
                 <text
-                  key={p.weekStart}
+                  key={chartDateKey(p.label, p.weekStart)}
                   x={x(i)}
                   y={height - 8}
                   textAnchor={i === 0 ? "start" : "middle"}
@@ -833,7 +841,7 @@ export function CashLine({
           </TableHeader>
           <TableBody>
             {points.map((p, i) => (
-              <TableRow key={p.weekStart}>
+              <TableRow key={chartDateKey(p.label, p.weekStart)}>
                 <TableCell className="h-9 whitespace-nowrap py-1">
                   {p.label === "today" ? "Today" : formatDate(p.weekStart)}
                   {i === low ? (
