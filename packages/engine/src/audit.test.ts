@@ -123,28 +123,22 @@ describe("auditSnapshot", () => {
     ]);
   });
 
-  it("flags a missing payroll run and an overdue recurring invoice", () => {
+  it("flags a missing payroll run and a signed deal with no invoice", () => {
     const s = base();
     s.payroll = ["2026-09-11", "2026-09-25", "2026-10-09", "2026-11-06"].map((date, i) => ({
       id: `pay_${i}`,
       date,
       amount: 60_000_000,
     }));
-    s.billingPlans = [
-      {
-        id: "plan_cobalt",
-        customerId: "cus_cobalt",
-        amount: 800_000,
-        anchorDate: "2026-09-01",
-        nextInvoiceDate: "2026-10-01",
-        everyMonths: 1,
-        paymentTermsDays: 30,
-      },
-    ];
     expect(run(s).map((f) => [f.kind, f.severity, f.refs[0]])).toEqual([
       ["missing_expected", "high", "pay_2"],
-      ["missing_expected", "medium", "cus_cobalt"],
     ]);
+    s.deals.push({ ...(s.deals[1] as Snapshot["deals"][number]), id: "deal_signed", signed: true });
+    expect(run(s).at(-1)).toMatchObject({
+      kind: "missing_expected",
+      severity: "low",
+      refs: ["deal_signed"],
+    });
   });
 
   it("is deterministic and gives repeated detections the same ids", () => {

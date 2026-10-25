@@ -42,8 +42,6 @@ const UNUSUAL_RATIO = 3;
 const VERY_UNUSUAL_RATIO = 10;
 /** A newly arrived posted record dated this many days before the last ingest is late. */
 const BACKDATE_DAYS = 14;
-/** A recurring invoice this many days past its expected issue date is missing. */
-const PLAN_GRACE_DAYS = 7;
 
 function rows(s: Snapshot): Row[] {
   return [
@@ -192,16 +190,6 @@ function unusualTiming(s: Snapshot, current: Row[], prev: Snapshot | null, fresh
 
 function missingExpected(s: Snapshot): Draft[] {
   const out: Draft[] = [];
-  for (const plan of s.billingPlans ?? []) {
-    const ended = plan.endDate !== undefined && plan.endDate < plan.nextInvoiceDate;
-    if (ended || addDays(plan.nextInvoiceDate, PLAN_GRACE_DAYS) >= s.asOf) continue;
-    out.push({
-      kind: "missing_expected",
-      severity: "medium",
-      summary: `Recurring invoice for ${plan.customerId} was expected on ${plan.nextInvoiceDate} but has not been issued.`,
-      refs: [plan.customerId],
-    });
-  }
   // Payroll cadence: a gap well beyond the usual interval means a run is missing.
   const runs = [...s.payroll].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const gaps = runs.slice(1).map((r, i) => daysBetween((runs[i] as typeof r).date, r.date));
