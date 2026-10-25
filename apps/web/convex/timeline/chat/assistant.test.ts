@@ -169,7 +169,7 @@ describe("Claude Timeline chat safety", () => {
     const saved = await t.action(assistantSend, turn(r));
     expect(saved.status).toBe("ready");
     expect(saved.turns.at(-2)?.text).toBe(exactText);
-    expect(saved.turns.at(-1)?.text).toMatch(/complete proposal/);
+    expect(saved.turns.at(-1)?.text).toMatch(/Ready to model this/);
     expect(String(bodies[0]?.system)).toMatch(/openInvoices/);
     const g = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     const grammar = await t.mutation(chatRefs.send, turn(g));

@@ -22,7 +22,9 @@ export function groundingIssue(prompt: string, intents: Intent[], selected: stri
 }
 
 /** One or two plain sentences, naming what could not be modeled, with one example that works. */
-function unsupportedReply(prompt: string): string {
+export function unsupportedReply(prompt: string): string {
+  if (/%|\bpercent\b/i.test(prompt))
+    return 'I need the dollar amount and date for a percentage change. For example, "Receive $40,000 from Marketing savings on 2026-11-17" works.';
   if (/\b(daily|intraday|every day|each day)\b/i.test(prompt))
     return 'Cash is checked at each weekly close, so I cannot hold a daily limit. For example, "Keep at least $3,000,000 in cash" works.';
   if (/\b(maximum|max|at most|less than|below|under)\b/i.test(prompt))

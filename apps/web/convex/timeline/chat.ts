@@ -33,6 +33,7 @@ import {
 import { checkPinned, checkSelection, source } from "./chat/source";
 import { IntentSchema } from "./questions/intent";
 import type { Citation } from "./questions/resolve";
+import { compactMoney, shortDate } from "./recordNames";
 import { branchFloor } from "./workspace";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
@@ -435,6 +436,11 @@ export const confirm = mutation({
           note: proposal.constraintNote ?? "Rules reviewed in Timeline chat",
           reviewed: true,
         });
+    const result = (await ctx.runQuery(workspaceRefs.get, {
+      companyId: receipt.companyId,
+      runId: saved.runId,
+    })) as { forecast?: { lowPoint?: { usable: number; weekStart: string } } } | null;
+    const low = result?.forecast?.lowPoint;
     const now = new Date().toISOString();
     const updated = append(
       {
@@ -445,7 +451,9 @@ export const confirm = mutation({
         updatedAt: now,
       },
       "assistant",
-      "Saved and calculated this reviewed proposal as a new timeline. Open the saved result to inspect its cash forecast and rule checks.",
+      low
+        ? `Saved as a new scenario. With this change, lowest cash is ${compactMoney(low.usable)} in the week of ${shortDate(low.weekStart)}.`
+        : "Saved as a new scenario.",
       now,
     );
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft } });

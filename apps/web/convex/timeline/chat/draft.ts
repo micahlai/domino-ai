@@ -1,6 +1,6 @@
 import { BOUNDARY_INTEGER_MAX, canonicalJson } from "@domino/contracts";
 import { z } from "zod";
-import { groundingIssue } from "../assistant/grounding";
+import { groundingIssue, unsupportedReply } from "../assistant/grounding";
 import { type WorkspaceRun, matchRecords, recordsOf } from "../questions/context";
 import { IN, OUT, SCENARIO, clauses, readWithGrammar } from "../questions/grammar";
 import { type Intent, IntentSchema } from "../questions/intent";
@@ -8,8 +8,6 @@ import { meaningIssue } from "../questions/meaning";
 import {
   addDays,
   findDateText,
-  formatCents,
-  formatDate,
   parseDateText,
   parseDaysText,
   parseMoneyText,
@@ -18,9 +16,9 @@ import {
 import type { QuestionProposal } from "../questions/receipt";
 import type { Citation } from "../questions/resolve";
 import { resolve } from "../questions/resolve";
-import { friendlyLabel } from "../recordNames";
-import { scenarioStart, startsBefore } from "../scenarioStart";
+import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
+import { explainQuestion, normalizeQuestion } from "./explain";
 
 const FieldSchema = z.enum([
   "amountText",
@@ -289,7 +287,7 @@ function finish(
   return {
     draft,
     answer:
-      "Here is the complete proposal. Review the event details and full rule set, then confirm to save and calculate. Nothing has run yet.",
+      "Ready to model this. Check the details below, then confirm to add it to the chart. Nothing has run yet.",
     proposal,
     pendingField: null,
   };
@@ -333,7 +331,7 @@ export const CANT_MODEL =
 
 /** "why ...", "how does ...", "what is ...?" but not "what if ..." or "could you ...". */
 export function isQuestion(text: string): boolean {
-  const t = text.trim();
+  const t = normalizeQuestion(text).trim();
   if (/^what if\b/i.test(t) || /^(suppose|assume|imagine)\b/i.test(t)) return false;
   return (
     /^(why|how|what|when|where|which|who|explain|is|are|does|do|did)\b/i.test(t) &&
@@ -354,6 +352,12 @@ export function answerQuestion(
   conversationId: string,
   selectedItemId: string | null,
 ): Result {
+  // Low point, runway, cash now and customer-loss questions get a direct computed answer,
+  // keeping the fixed reader's sources when it also understood the question.
+  const direct =
+    /\b(lowest|low point|runway|run out|how much cash|biggest customer|largest customer|lose|lost)\b/i.test(
+      normalizeQuestion(text),
+    );
   const parsed = readWithGrammar(text, recordsOf(run), {
     week: false,
     item: selectedItemId !== null,
@@ -365,28 +369,17 @@ export function answerQuestion(
       selectedWeek: null,
       selectedItemId,
     });
-    return {
-      draft,
-      answer: outcome.answer,
-      ...(outcome.citations.length ? { citations: outcome.citations } : {}),
-      proposal: null,
-      pendingField: null,
-    };
+    // A question the fixed reader cannot pin down gets a plain answer, not a format demand.
+    if (outcome.status === "answered")
+      return {
+        draft,
+        answer: direct ? explainQuestion(run, text) : outcome.answer,
+        ...(outcome.citations.length ? { citations: outcome.citations } : {}),
+        proposal: null,
+        pendingField: null,
+      };
   }
-  return { draft, answer: explain(run, text), proposal: null, pendingField: null };
-}
-
-function explain(run: WorkspaceRun, text: string): string {
-  const snapshot = run.baseline.seed.snapshot;
-  const name = run.parentRunId === null ? "The base forecast" : friendlyLabel(run.label, snapshot);
-  const start = scenarioStart(run.ownChanges, snapshot);
-  const low = run.forecast.lowPoint;
-  const lowText = `lowest cash is ${formatCents(low.usable)} in the week of ${formatDate(low.weekStart)}`;
-  if (/\b(start|starts|starting|begin|before|earlier|branch|fork|diverge)/i.test(text))
-    return `Each scenario's line starts the week its own change first moves cash, and a scenario added on top of another should not start before the one under it. ${start ? `${name} starts ${formatDate(start)}.` : `${name} changes no events, so it follows the line it was added to.`} Fixes from the risk analysis are now dated on or after the risk they answer; rerun the analysis to refresh older saved fixes.`;
-  if (/\b(converge|catch|snap|rejoin|merge|back to|same as|join)/i.test(text))
-    return "A late payment only moves timing: once the invoice is paid, cash catches up and the line rejoins the one it left. Discounts, fees, lost customers and cost changes stay offset in every later week, so those lines do not rejoin.";
-  return `${name}: ${lowText}.${start ? ` Its own change starts ${formatDate(start)}.` : ""} Ask about a week, an invoice, a bill or the cash rules for the detail behind it.`;
+  return { draft, answer: explainQuestion(run, text), proposal: null, pendingField: null };
 }
 
 export function advance(
@@ -411,7 +404,7 @@ export function advance(
   )
     return {
       draft,
-      answer: CANT_MODEL,
+      answer: unsupportedReply(rawText),
       proposal: null,
       pendingField: draft.pending ? fieldWords[draft.pending.field] : null,
     };
@@ -466,7 +459,7 @@ export function advance(
   if (!parsed || parsed.some((i) => i.kind === "question" || i.kind === "unclear"))
     return {
       draft,
-      answer: CANT_MODEL,
+      answer: unsupportedReply(rawText),
       proposal: null,
       pendingField: null,
     };

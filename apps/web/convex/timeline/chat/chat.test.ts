@@ -70,6 +70,12 @@ describe("durable Timeline clarification chat", () => {
     expect(r.proposal).toBeNull();
     r = await send(t, r, "why does the late invoice line snap back to the base?");
     expect(r.turns.at(-1)?.text).toMatch(/only moves timing/);
+    r = await send(t, r, "wht is teh lowest cash and wen");
+    expect(r.turns.at(-1)?.text).toMatch(/^Cash is lowest in the week of/);
+    r = await send(t, r, "what's our runway");
+    expect(r.turns.at(-1)?.text).toMatch(/runway|months/);
+    r = await send(t, r, "what happens if we lose our biggest customer");
+    expect(r.turns.at(-1)?.text).toMatch(/largest customer by open invoices/);
     r = await send(t, r, "pay $50,000 to Atlas Legal on 2026-11-17 unless it rains");
     expect(r.turns.at(-1)?.text).toMatch(/For example/);
     expect((await runs(t)).length).toBe(before);
