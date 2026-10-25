@@ -11,11 +11,13 @@ import {
   type HistoricalScenarioResult,
   HistoricalScenarioResultSchema,
 } from "@domino/contracts";
+import { addDays } from "./dates";
 import { ratio, roundCents } from "./money";
 import {
   QUARTER_BRIDGE_METHOD,
   type QuarterBridge,
   type QuarterBridgeInput,
+  type RunInputs,
   quarterAlternative,
   quarterBridge,
 } from "./period";
@@ -95,6 +97,44 @@ const named = (ps: HistoricalPrediction[], prefix: string): HistoricalPrediction
 const idOf = (ps: HistoricalPrediction[], metric: HistoricalMetric): string =>
   ps.find((p) => p.metric === metric)?.id ?? fail(`no ${metric} prediction`);
 
+/**
+ * The bridge holds restricted cash flat by method but does not take that assumption as an input,
+ * so a saved manifest may record it (2U: AS-RESTRICTED). Accept it only if it states exactly that
+ * method: the origin restricted balance, from the start of the quarter, resting only on reported
+ * origin restricted-cash facts the bridge already used. A decision, hindsight or tuned value is not.
+ */
+function isRestrictedFlat(args: QuarterScenarioArgs, bridge: QuarterBridge, id: string): boolean {
+  const { case: c, totalCashFactId, usableCashFactId, originBalanceDate } = args.bridge;
+  const a = c.assumptions.find((x) => x.id === id);
+  const fact = (f: string) => c.facts.find((x) => x.id === f);
+  const total = fact(totalCashFactId);
+  const usable = fact(usableCashFactId);
+  if (!a || !total || !usable) return false;
+  const restricted = BigInt(total.cents) - BigInt(usable.cents);
+  const basis = a.basisFactIds.map(fact);
+  return (
+    a.label === "synthetic" &&
+    !a.selectedAfterReveal &&
+    a.oneTimeCost === undefined &&
+    a.benefitLagDays === undefined &&
+    a.dependsOn.length === 0 &&
+    a.effectiveFrom <= addDays(originBalanceDate, 1) &&
+    a.value.unit === "cents" &&
+    BigInt(a.value.low) === restricted &&
+    BigInt(a.value.high) === restricted &&
+    basis.length > 0 &&
+    basis.every(
+      (f) =>
+        f?.kind === "reported" &&
+        f.metric === "restricted_cash" &&
+        f.period.kind === "instant" &&
+        f.period.date === originBalanceDate &&
+        BigInt(f.cents) === restricted &&
+        bridge.inputs.factIds.includes(f.id),
+    )
+  );
+}
+
 /** The saved baseline must be exactly what the frozen bridge inputs produce; a label is not enough. */
 function checkBaseline(
   args: QuarterScenarioArgs,
@@ -112,7 +152,20 @@ function checkBaseline(
     fail("baseline origin differs from the bridge");
   if (canon(run.method) !== canon(QUARTER_BRIDGE_METHOD))
     fail("baseline method differs from the quarterly bridge");
-  if (canon(run.inputs) !== canon(bridge.inputs))
+  const ids = run.inputs.assumptionIds;
+  if (new Set(ids).size !== ids.length) fail("baseline lists an assumption twice");
+  for (const id of ids)
+    if (!bridge.inputs.assumptionIds.includes(id) && !isRestrictedFlat(args, bridge, id))
+      fail(`baseline input ${id} is not a bridge input or its restricted-cash method`);
+  // Order is not provenance: the backend saves ids in case order, the bridge in closure order.
+  const manifest = (i: RunInputs) => canon({ ...i, assumptionIds: [...i.assumptionIds].sort() });
+  if (
+    manifest(run.inputs) !==
+    manifest({
+      ...bridge.inputs,
+      assumptionIds: [...new Set([...bridge.inputs.assumptionIds, ...ids])],
+    })
+  )
     fail("baseline inputs differ from the frozen bridge");
   if (canon(sorted(run.predictions)) !== canon(sorted([...bridge.nowcast, ...bridge.forecast])))
     fail("baseline predictions differ from the frozen bridge");
@@ -147,7 +200,7 @@ function responseFor(
   selected: boolean,
   eventBranch: HistoricalPrediction[],
 ): Response {
-  if (bridge.inputs.assumptionIds.includes(id))
+  if (args.baseline.inputs.assumptionIds.includes(id))
     fail(`assumption ${id} is already a baseline input`);
   // Reuses A1's cost, lag, closure checks and post-hoc status; nothing is recomputed here.
   const alt = quarterAlternative(args.bridge, id);

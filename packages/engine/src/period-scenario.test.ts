@@ -1,13 +1,17 @@
 import {
   type HistoricalCase,
+  HistoricalCaseSchema,
   type HistoricalPrediction,
   type HistoricalRun,
+  HistoricalRunContextSchema,
   type HistoricalScenarioInput,
   HistoricalScenarioResultSchema,
 } from "@domino/contracts";
 import { historicalFixtures as fx } from "@domino/contracts/fixtures";
 import { describe, expect, it } from "vitest";
-import { quarterBridge } from "./period";
+import caseJson from "../../../data/historical/2u/case.json";
+import protocol from "../../../data/historical/2u/protocol.json";
+import { QUARTER_BRIDGE_METHOD, type QuarterBridgeInput, quarterBridge } from "./period";
 import { type QuarterScenarioArgs, quarterScenario } from "./period-scenario";
 
 /**
@@ -572,5 +576,182 @@ describe("quarterScenario impact graph", () => {
       "prediction",
       "prediction",
     ]);
+  });
+});
+
+/**
+ * REAL CASE: 2U, Inc., cutoff 2023-11-10. The baseline is shaped like the backend's
+ * saveBaselineIn: bridge inputs plus AS-RESTRICTED in case order. The $5M outflow is invented.
+ * Hand math (cents): baseline 12/31 total 3_581_900_000, usable 2_310_900_000, restricted
+ * 1_271_000_000. Event: total 3_081_900_000, usable 1_810_900_000. A1 effect -715_000_000 ..
+ * -137_500_000, point -426_250_000: total 2_655_650_000 (2_366_900_000..2_944_400_000).
+ */
+describe("quarterScenario on the real 2U saved baseline", () => {
+  const real = (mutate: (c: HistoricalCase) => void = () => {}) => {
+    const c = HistoricalCaseSchema.parse(clone(caseJson));
+    mutate(c);
+    return c;
+  };
+  const bridge2u = (c: HistoricalCase): QuarterBridgeInput => ({
+    case: c,
+    knowledgeCutoff: protocol.knowledgeCutoff,
+    originBalanceDate: protocol.originBalanceDate,
+    usableCashFactId: "F01",
+    totalCashFactId: "F03",
+    operatingYtdFactId: "F05",
+    investingYtdFactId: "F06",
+    financingAssumptionId: "AS-FIN0",
+    fxAssumptionId: "AS-FX0",
+  });
+  /** saveBaselineIn's run: engine inputs + method assumptions, in case order. */
+  const saved = (c: HistoricalCase, extra = ["AS-RESTRICTED"]): HistoricalRun => {
+    const b = quarterBridge(bridge2u(c));
+    const ids = [...b.inputs.assumptionIds, ...extra];
+    return {
+      id: "run-2u-baseline",
+      caseId: c.id,
+      createdAt: "2026-10-24T12:00:00Z",
+      knowledgeCutoff: protocol.knowledgeCutoff,
+      originBalanceDate: protocol.originBalanceDate,
+      inputHash: "a".repeat(64),
+      method: { ...QUARTER_BRIDGE_METHOD },
+      riskRules: [],
+      inputs: {
+        ...b.inputs,
+        assumptionIds: c.assumptions.map((a) => a.id).filter((id) => ids.includes(id)),
+      },
+      predictions: [...b.nowcast, ...b.forecast],
+      branch: { kind: "baseline" },
+    };
+  };
+  const scenario2u = (over: Partial<HistoricalScenarioInput> = {}): HistoricalScenarioInput => ({
+    baselineRunId: "run-2u-baseline",
+    knowledgeCutoff: protocol.knowledgeCutoff,
+    targetDate: "2023-12-31",
+    currency: "USD",
+    event: {
+      id: "evt_2u_hyp",
+      description: "Hypothetical extra operating outflow (invented, not a 2U event)",
+      additionalOutflowCents: outflow(500_000_000, 500_000_000),
+      effectiveFrom: "2023-11-20",
+      effectiveThrough: "2023-12-15",
+      uncertainty: "Invented amount and timing; no such event is claimed.",
+    },
+    ...over,
+  });
+  const run2u = (over: Partial<HistoricalScenarioInput> = {}, c = real(), baseline = saved(c)) =>
+    quarterScenario({ bridge: bridge2u(c), baseline, scenario: scenario2u(over) });
+
+  it("accepts the backend-shaped baseline, which really lists AS-RESTRICTED", () => {
+    const c = real();
+    const baseline = saved(c);
+    expect(baseline.inputs.assumptionIds).toEqual(["AS-FIN0", "AS-FX0", "AS-RESTRICTED"]);
+    expect(HistoricalRunContextSchema.parse({ case: c, run: baseline })).toBeTruthy();
+    const before = JSON.stringify(baseline);
+    const r = run2u({}, c, baseline);
+    expect(JSON.stringify(baseline)).toBe(before);
+    expect(r.nowcast).toEqual(baseline.predictions.filter((p) => p.kind === "nowcast"));
+    expect(r.baselinePredictions).toEqual(
+      baseline.predictions.filter((p) => p.kind === "forecast"),
+    );
+  });
+
+  it("runs the event-only scenario with exact cents and restricted cash unchanged", () => {
+    const r = run2u();
+    const [t, u] = cashOf(r.event.predictions, "event_target");
+    expect([t!.cents, u!.cents]).toEqual([3_081_900_000, 1_810_900_000]);
+    expect(t!.range).toBeUndefined();
+    expect(t!.cents - u!.cents).toBe(1_271_000_000);
+    expect(r.response).toBeUndefined();
+    expect(r.postHoc).toBe(false);
+  });
+
+  it("runs the A1 response as cost only, with exact cents and ranges", () => {
+    const r = run2u({ responseAssumptionId: "A1" });
+    expect(r.response!.effectCents).toEqual({
+      low: -715_000_000,
+      point: -426_250_000,
+      high: -137_500_000,
+    });
+    expect(r.response!.benefitDays).toBe(0);
+    const [t, u] = cashOf(r.response!.predictions, "response_target");
+    expect(t!.cents).toBe(2_655_650_000);
+    expect(t!.range).toEqual({ low: 2_366_900_000, high: 2_944_400_000 });
+    expect(u!.cents).toBe(1_384_650_000);
+    expect(u!.range).toEqual({ low: 1_095_900_000, high: 1_673_400_000 });
+    // The protocol's post-hoc taint arrives through selectedAfterReveal (S4 freezes it).
+    expect(run2u({ responseAssumptionId: "A1", selectedAfterReveal: true }).postHoc).toBe(true);
+  });
+
+  it("still rejects wrong predictions, methods, provenance and extra inputs", () => {
+    const withBase = (m: (b: HistoricalRun) => void, c = real()) => {
+      const b = saved(c);
+      m(b);
+      return () => run2u({}, c, b);
+    };
+    expect(
+      withBase((b) => {
+        b.predictions.find((p) => p.id === "target_usable")!.cents += 1;
+      }),
+    ).toThrow(/predictions differ/);
+    expect(
+      withBase((b) => {
+        b.method = { ...b.method, id: "other_method" };
+      }),
+    ).toThrow(/method differs/);
+    // Missing provenance: the restricted-cash fact AS-RESTRICTED rests on is dropped.
+    expect(
+      withBase((b) => {
+        b.inputs.factIds = b.inputs.factIds.filter((f) => f !== "F02");
+      }),
+    ).toThrow(/basis must be run input facts/);
+    expect(
+      withBase((b) => {
+        b.inputs.sourceIds = [];
+      }),
+    ).toThrow();
+    // Unsupported extras: a decision, an unknown id, a duplicate.
+    expect(() => run2u({}, real(), saved(real(), ["AS-RESTRICTED", "A1"]))).toThrow(
+      /baseline input A1 is not/,
+    );
+    expect(
+      withBase((b) => {
+        b.inputs.assumptionIds.push("AS-UNKNOWN");
+      }),
+    ).toThrow();
+    expect(
+      withBase((b) => {
+        b.inputs.assumptionIds.push("AS-RESTRICTED");
+      }),
+    ).toThrow(/twice/);
+    // Wrong method assumption: tuned, chosen after the reveal, or resting on other facts.
+    const restrictedEdit = (f: (a: HistoricalCase["assumptions"][number]) => void) =>
+      real((c) => f(c.assumptions.find((a) => a.id === "AS-RESTRICTED")!));
+    for (const c of [
+      restrictedEdit((a) => {
+        a.value = { unit: "cents", low: 1_271_000_000, high: 1_271_000_001 };
+      }),
+      restrictedEdit((a) => {
+        a.basisFactIds = ["F01"];
+      }),
+      restrictedEdit((a) => {
+        a.basisFactIds = [];
+      }),
+    ])
+      expect(() => run2u({}, c, saved(c))).toThrow(/AS-RESTRICTED is not/);
+    // Hindsight or post-reveal choice is refused by the contract before the engine looks at it.
+    for (const c of [
+      restrictedEdit((a) => {
+        a.label = "hindsight";
+      }),
+      restrictedEdit((a) => {
+        a.selectedAfterReveal = true;
+      }),
+    ])
+      expect(() => run2u({}, c, saved(c))).toThrow(/hindsight/);
+    // Cutoff still binds: an event starting before the cutoff fails.
+    expect(() =>
+      run2u({ event: { ...scenario2u().event, effectiveFrom: "2023-11-01" } }),
+    ).toThrow();
   });
 });
