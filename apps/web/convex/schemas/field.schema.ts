@@ -104,7 +104,10 @@ export const fieldTables = {
     toolLabel: v.optional(v.string()),
     step: v.optional(v.number()),
     steps: v.optional(v.number()),
-  }).index("by_company", ["companyId"]),
+  })
+    .index("by_company", ["companyId"])
+    // Bounded lookups of one action (the engine's saved proposal order) without a log scan.
+    .index("by_company_and_action", ["companyId", "action"]),
   // Field analyst (fieldAnalyst.ts): one row per orchestrated run and per forecaster scenario.
   analystRuns: defineTable({
     companyId,
@@ -227,6 +230,34 @@ export const fieldTables = {
     lastError: v.union(v.string(), v.null()),
     /** Records per snapshot list in the latest version, so status never loads a snapshot. */
     recordCounts: v.union(v.record(v.string(), v.number()), v.null()),
+  }).index("by_companyId", ["companyId"]),
+  // Simulated clock per company (fieldClock.ts): plays the mock world day by day. Only the
+  // clock moves simulated time; one tick at a time per company (tickStartedAt is the lease).
+  simClocks: defineTable({
+    companyId,
+    status: v.union(v.literal("playing"), v.literal("paused")),
+    speed: v.number(),
+    /** Bumped on play, pause and speed changes so a stale scheduled tick stops itself. */
+    generation: v.number(),
+    /** World date when the clock was created: simulated day 0. */
+    originDate: v.string(),
+    day: v.number(),
+    date: v.string(),
+    /** Day and wall time the current play session started (bounds: 13 weeks, 60 min). */
+    sessionStartDay: v.number(),
+    playStartedAt: v.union(v.number(), v.null()),
+    tickStartedAt: v.union(v.number(), v.null()),
+    ticks: v.number(),
+    lastTickAt: v.union(v.string(), v.null()),
+    pausedReason: v.union(v.string(), v.null()),
+    lastSummary: v.union(v.string(), v.null()),
+    /** Dashboard rating after the last ingest a tick ran, to spot a verdict change. */
+    lastRating: v.union(v.string(), v.null()),
+    /** Snapshot versions ("v7") a routine tick wrote: no model call is made for them. */
+    quietScopes: v.array(v.string()),
+    /** A meaningful tick wants an analyst run while one is still going. */
+    analystPending: v.boolean(),
+    analystRequestedAt: v.union(v.number(), v.null()),
   }).index("by_companyId", ["companyId"]),
   // The private mock world behind the feed (sim WorldState plus planted entries). Only the
   // in-process mock source handler reads it; ingest sees source responses only.

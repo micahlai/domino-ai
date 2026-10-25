@@ -15,6 +15,7 @@ import {
 } from "@domino/sim";
 import { fieldCompany } from "./lib/fieldCompanies";
 import { type JudgeOverlay, applyJudgeOverlay } from "./lib/judgeOverlay";
+import { type StoryState, applyStory } from "./lib/storylines";
 
 /**
  * Field mock feed (pure, no Convex functions). The feed is a private sim WorldState plus an
@@ -29,6 +30,8 @@ export interface Overlay extends JudgeOverlay {
   invoiceAmounts: { id: string; amount: number }[];
   /** Payroll runs the payroll source stops reporting (a planted missing item). */
   hiddenPayroll: string[];
+  /** Storyline beats the simulated clock fired (lib/storylines.ts); absent on older rows. */
+  story?: StoryState;
 }
 
 export const ANOMALIES = [
@@ -70,7 +73,8 @@ export const profileName = (profile?: ProfileId) =>
 
 /** The observable snapshot the mock sources serve: world snapshot with the overlay applied. */
 export function servedSnapshot(world: WorldState, overlay: Overlay): Snapshot {
-  const s = world.snapshot;
+  // Storyline effects first: they rewrite the world's own records coherently (bank included).
+  const s = applyStory(world.snapshot, overlay.story);
   const amounts = new Map(overlay.invoiceAmounts.map((p) => [p.id, p.amount]));
   const hidden = new Set(overlay.hiddenPayroll);
   const planted: Snapshot = {

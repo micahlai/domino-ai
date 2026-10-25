@@ -37,7 +37,10 @@ import { computedRefs } from "./lib/refs";
  * (Claude explaining new flags) runs separately in fieldAi.explainNewFindings.
  */
 
-/** Auto-ingest cadence and bound: one tick every 45 s, at most 120 ticks per enable. */
+/**
+ * Auto-ingest cadence and bound: one tick every 45 s, at most 120 ticks per enable. A fallback
+ * only: the simulated clock (fieldClock.ts) ingests right after each day it adds entries.
+ */
 export const AUTO_INTERVAL_MS = 45_000;
 export const AUTO_MAX_TICKS = 120;
 export const AGENT = "field.ingest";
@@ -364,8 +367,28 @@ async function recordSources(
   }
 }
 
-/** One full ingest run. Never throws: a failure is logged and recorded on the feed. */
-export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trigger: string) {
+export type IngestResult =
+  | { changed: false; error?: string }
+  | {
+      changed: true;
+      snapshotId: Id<"snapshots">;
+      version: number;
+      newFindings: number;
+      recomputed: boolean;
+    };
+
+/**
+ * One full ingest run. Never throws: a failure is logged and recorded on the feed. The flag
+ * explainer and the analyst are scheduled only after the forecast recompute committed, so they
+ * never race it. `analyst: false` leaves the analyst to the caller (the simulated clock decides
+ * whether a day is worth a run).
+ */
+export async function runIngest(
+  ctx: ActionCtx,
+  companyId: Id<"companies">,
+  trigger: string,
+  options: { analyst?: boolean } = {},
+): Promise<IngestResult> {
   const runId = `ingest-${Date.now().toString(36)}`;
   const step = (s: Omit<Step, "agent"> & { failed?: string }) =>
     ctx.runMutation(internal.fieldJobs.logStep, { companyId, runId, agent: AGENT, ...s });
@@ -413,22 +436,22 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       tieOut: ingested.tieOut,
       bankFallback: ingested.bankFallback,
     });
-    // Field analyst after the ingest (and after recompute, which scans the log).
-    const analyst = () =>
-      ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, {
+    // Field analyst after the ingest, only once the recompute below has committed.
+    const analyst = async () => {
+      if (options.analyst === false) return;
+      await ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, {
         companyId,
         changed: result.changed,
       });
-    if (!result.changed) return analyst().then(() => result);
-    // Claude explains the new rule-based flags in the background (budgeted, skipped without a key).
-    if (result.newFindings > 0)
-      await ctx.scheduler.runAfter(0, internal.fieldAi.explainNewFindings, {
-        companyId,
-        runId,
-        version: result.version,
-      });
+    };
+    if (!result.changed) {
+      await analyst();
+      return { changed: false };
+    }
+    let recomputed = false;
     try {
-      const r = await ctx.runMutation(computedRefs.recompute, { companyId });
+      const r = await recomputeWithRetry(ctx, companyId);
+      recomputed = true;
       await step({
         actor: "engine",
         action: "ingest.recomputed",
@@ -445,8 +468,15 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
         summary: `Forecast recompute refused: ${message(error)}`,
       });
     }
+    // Claude explains the new rule-based flags in the background (budgeted, skipped without a key).
+    if (result.newFindings > 0)
+      await ctx.scheduler.runAfter(0, internal.fieldAi.explainNewFindings, {
+        companyId,
+        runId,
+        version: result.version,
+      });
     await analyst();
-    return result;
+    return { ...result, recomputed };
   } catch (error) {
     await step({
       actor: "connector",
@@ -455,9 +485,26 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       summary: `Ingest failed: ${message(error)}`,
       failed: message(error),
     });
-    return { changed: false as const, error: message(error) };
+    return { changed: false, error: message(error) };
   }
 }
+
+/**
+ * The recompute is one heavy mutation (a few hundred ms of engine work against Convex's 1 s
+ * limit). Under load, with the agents' actions computing beside it, it can time out; that is
+ * transient, so it gets one more try after a short pause. Refusals (bad data, decided futures)
+ * are not retried.
+ */
+async function recomputeWithRetry(ctx: ActionCtx, companyId: Id<"companies">) {
+  try {
+    return await ctx.runMutation(computedRefs.recompute, { companyId });
+  } catch (error) {
+    if (!/timed out|conflict|retry/i.test(message(error))) throw error;
+    await new Promise((resolve) => setTimeout(resolve, RECOMPUTE_RETRY_MS));
+    return ctx.runMutation(computedRefs.recompute, { companyId });
+  }
+}
+const RECOMPUTE_RETRY_MS = 750;
 
 /** The mock vendors in process, plus Domino's own Nessie accounts when they are ready. */
 export function bankFetcher(served: Snapshot, bank: Prepared | null) {
