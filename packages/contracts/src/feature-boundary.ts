@@ -147,31 +147,57 @@ function unsafeNumberPaths(value: unknown, path: Path = []): Path[] {
 }
 
 /**
+ * Zod still runs refinements on "dirty" values (for example cents that failed .int()), so
+ * every refinement here is wrapped: an unexpected exception becomes a validation failure,
+ * never a throw from safeParse. Refinements also guard their own conversions.
+ */
+const total =
+  <T>(check: (value: T, ctx: z.RefinementCtx) => void) =>
+  (value: T, ctx: z.RefinementCtx): void => {
+    try {
+      check(value, ctx);
+    } catch {
+      issuer(ctx)([], "malformed input could not be validated");
+    }
+  };
+
+/**
  * Parse, then require the input to be exactly its parse (so the hashed bytes are the
- * contract) and every number to be a safe integer.
+ * contract) and every number to be a safe integer. Every failure is FATAL: the parse
+ * aborts, so composed schemas (forecast-ready, contexts) never refine a failed record.
  */
 function exact<T extends z.ZodTypeAny>(schema: T) {
   return z.unknown().transform((raw, ctx): z.output<T> => {
-    const r = schema.safeParse(raw);
+    const fail = (path: Path, message: string): never => {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path, message, fatal: true });
+      return z.NEVER;
+    };
+    let r: z.SafeParseReturnType<unknown, z.output<T>>;
+    try {
+      r = schema.safeParse(raw);
+    } catch {
+      return fail([], "malformed input could not be validated");
+    }
     if (!r.success) {
-      for (const i of r.error.issues) ctx.addIssue(i);
+      for (const i of r.error.issues) ctx.addIssue({ ...i, fatal: true });
       return z.NEVER;
     }
-    const unsafe = unsafeNumberPaths(raw);
-    for (const path of unsafe) issuer(ctx)(path, "number must be a safe integer");
-    if (unsafe.length) return z.NEVER;
     let same: boolean;
     try {
       same = canonicalJson(raw) === canonicalJson(r.data);
     } catch {
-      same = false;
+      return fail([], "not plain JSON data (cycle, NaN, Infinity or a non-JSON value)");
     }
     if (!same) {
+      // raw is acyclic plain JSON here: canonicalJson succeeded on it.
       const paths = driftPaths(raw, r.data);
       for (const path of paths.length ? paths : [[]])
-        issuer(ctx)(path, "field is not part of the contract (unknown field or omitted default)");
+        fail(path, "field is not part of the contract (unknown field or omitted default)");
       return z.NEVER;
     }
+    const unsafe = unsafeNumberPaths(r.data);
+    for (const path of unsafe) fail(path, "number must be a safe integer");
+    if (unsafe.length) return z.NEVER;
     return r.data;
   });
 }
@@ -258,8 +284,12 @@ const nextQuarterEnd = (date: string): string | undefined => {
 };
 const monthIndex = (date: string): number =>
   Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7));
-const dayAfter = (date: string): string =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+/** undefined for an impossible date (refinements also see values that failed the date check). */
+const dayAfter = (date: string): string | undefined => {
+  const t = Date.parse(`${date}T00:00:00Z`);
+  return Number.isFinite(t) ? new Date(t + 86_400_000).toISOString().slice(0, 10) : undefined;
+};
+const safeInts = (...ns: number[]): boolean => ns.every((n) => Number.isSafeInteger(n));
 
 // ---------- TimelineSeedV1 ----------
 
@@ -326,152 +356,169 @@ const SeedObjectSchema = z
     contentHash: Sha256Schema,
   })
   .strict()
-  .superRefine((seed, ctx) => {
-    const issue = issuer(ctx);
-    const { snapshot: snap, quarterBridge: qb } = seed;
-    const c = snap.case;
-    const cutoff = ms(snap.cutoff);
+  .superRefine(
+    total((seed, ctx) => {
+      const issue = issuer(ctx);
+      const { snapshot: snap, quarterBridge: qb } = seed;
+      const c = snap.case;
+      const cutoff = ms(snap.cutoff);
 
-    // Identity and company linkage: one company throughout.
-    if (seed.snapshotRef.id !== snap.id) issue(["snapshotRef", "id"], "snapshot id differs");
-    if (seed.snapshotRef.contentHash !== snap.contentHash)
-      issue(["snapshotRef", "contentHash"], "snapshot content hash differs");
-    if (seed.company.cik !== snap.cik) issue(["company", "cik"], "company differs from snapshot");
-    if (seed.company.name !== c.companyName)
-      issue(["company", "name"], "company name differs from the snapshot case");
-    if (seed.provenance !== c.provenance)
-      issue(["provenance"], "provenance differs from the snapshot case");
-    for (const [i, r] of snap.reconciliations.entries())
-      if (r.key.cik !== snap.cik)
-        issue(["snapshot", "reconciliations", i, "key", "cik"], "receipt is for another company");
+      // Identity and company linkage: one company throughout.
+      if (seed.snapshotRef.id !== snap.id) issue(["snapshotRef", "id"], "snapshot id differs");
+      if (seed.snapshotRef.contentHash !== snap.contentHash)
+        issue(["snapshotRef", "contentHash"], "snapshot content hash differs");
+      if (seed.company.cik !== snap.cik) issue(["company", "cik"], "company differs from snapshot");
+      if (seed.company.name !== c.companyName)
+        issue(["company", "name"], "company name differs from the snapshot case");
+      if (seed.provenance !== c.provenance)
+        issue(["provenance"], "provenance differs from the snapshot case");
+      for (const [i, r] of snap.reconciliations.entries())
+        if (r.key.cik !== snap.cik)
+          issue(["snapshot", "reconciliations", i, "key", "cik"], "receipt is for another company");
 
-    // Chronology: nothing in the seed postdates the cutoff.
-    if (qb.knowledgeCutoff !== snap.cutoff)
-      issue(["quarterBridge", "knowledgeCutoff"], "bridge cutoff differs from the snapshot cutoff");
-    if (ms(seed.exportedAt) < cutoff) issue(["exportedAt"], "exported before the cutoff");
-    for (const [i, s] of c.sources.entries())
-      if (ms(s.publishedAt) > cutoff)
-        issue(["snapshot", "case", "sources", i, "publishedAt"], "source is after the cutoff");
-    const cutoffDate = localDate(snap.cutoff);
-    const origin = qb.originBalanceDate;
-    if (!QUARTER_ENDS.includes(origin.slice(5)))
-      issue(["quarterBridge", "originBalanceDate"], "origin is not a calendar quarter end");
-    else if (qb.targetDate !== nextQuarterEnd(origin))
-      issue(["quarterBridge", "targetDate"], "target is not the quarter end after the origin");
-    if (!(origin < cutoffDate && cutoffDate < qb.targetDate))
-      issue(["quarterBridge", "knowledgeCutoff"], "cutoff must fall inside the target quarter");
-
-    // Post-hoc taint anywhere in the embedded case, used or not.
-    for (const [i, a] of c.assumptions.entries()) {
-      if (a.label === "hindsight")
-        issue(["snapshot", "case", "assumptions", i, "label"], "hindsight assumption in a seed");
-      if (a.selectedAfterReveal)
+      // Chronology: nothing in the seed postdates the cutoff.
+      if (qb.knowledgeCutoff !== snap.cutoff)
         issue(
-          ["snapshot", "case", "assumptions", i, "selectedAfterReveal"],
-          "post-reveal assumption in a seed",
+          ["quarterBridge", "knowledgeCutoff"],
+          "bridge cutoff differs from the snapshot cutoff",
         );
-    }
+      if (ms(seed.exportedAt) < cutoff) issue(["exportedAt"], "exported before the cutoff");
+      for (const [i, s] of c.sources.entries())
+        if (ms(s.publishedAt) > cutoff)
+          issue(["snapshot", "case", "sources", i, "publishedAt"], "source is after the cutoff");
+      const cutoffDate = localDate(snap.cutoff);
+      const origin = qb.originBalanceDate;
+      // Parity policy: the contract may be stricter than engine quarterly_cash_bridge@0.1.0,
+      // never looser. Intentional stricter v1 rule: calendar-quarter-end origins only (the
+      // engine accepts any month end). v1 supports calendar-quarter facts; L1 requires FYE 12-31.
+      if (!QUARTER_ENDS.includes(origin.slice(5)))
+        issue(["quarterBridge", "originBalanceDate"], "origin is not a calendar quarter end");
+      else if (qb.targetDate !== nextQuarterEnd(origin))
+        issue(["quarterBridge", "targetDate"], "target is not the quarter end after the origin");
+      if (!(origin < cutoffDate && cutoffDate < qb.targetDate))
+        issue(["quarterBridge", "knowledgeCutoff"], "cutoff must fall inside the target quarter");
 
-    // Selected assumptions exist, are distinct and are cents ranges. Their dependency
-    // closure and basis facts are checked by the case schema plus the taint check above.
-    const assumptions = new Map(c.assumptions.map((a) => [a.id, a]));
-    const selected: [Path, string][] = [
-      [["quarterBridge", "financingAssumptionId"], qb.financingAssumptionId],
-      [["quarterBridge", "fxAssumptionId"], qb.fxAssumptionId],
-      ...qb.methodAssumptionIds.map((id, i): [Path, string] => [
-        ["quarterBridge", "methodAssumptionIds", i],
-        id,
-      ]),
-    ];
-    const seen = new Set<string>();
-    for (const [n, [path, id]] of selected.entries()) {
-      const a = assumptions.get(id);
-      if (!a) issue(path, "selected assumption not in the snapshot case");
-      else if (a.value.unit !== "cents") issue(path, "selected assumption is not in cents");
-      // Engine: a financing/FX rate covers the whole modeled interval (no partial-quarter timing).
-      else if (n < 2 && a.effectiveFrom > dayAfter(origin))
-        issue(path, "financing/FX assumption must apply from the day after the origin");
-      if (seen.has(id)) issue(path, "assumption selected twice");
-      seen.add(id);
-    }
-
-    // Required roles: bound to the snapshot's validated facts, or listed as blocked.
-    const required = timelineMethodRoles(seed.pins.method);
-    const bindings = new Map(snap.roles.map((r) => [r.role, r]));
-    const facts = new Map(c.facts.map((f) => [f.id, f]));
-    const blocked: BridgeFactRole[] = [];
-    for (const role of required) {
-      const b = bindings.get(role);
-      const chosen = qb.roleFacts[role];
-      const path = ["quarterBridge", "roleFacts", role];
-      if (b?.status !== "validated") {
-        blocked.push(role);
-        if (chosen !== undefined) issue(path, "a blocked or missing role has no fact");
-        continue;
-      }
-      if (chosen !== b.factId) {
-        issue(path, "role fact differs from the snapshot binding");
-        continue;
-      }
-      const f = facts.get(chosen);
-      const want = ROLE_FACT[role];
-      if (!f) issue(path, "role fact not in the snapshot case");
-      else if (f.metric !== want.metric) issue(path, `role fact is not ${want.metric}`);
-      else if (
-        want.instant
-          ? f.period.kind !== "instant" || f.period.date !== origin
-          : f.period.kind !== "duration" || f.period.end !== origin
-      )
-        issue(path, "role fact does not end at the origin balance date");
-    }
-    const roleFact = (r: BridgeFactRole) => {
-      const id = qb.roleFacts[r];
-      return id === undefined ? undefined : facts.get(id);
-    };
-    // Engine: YTD flows start on a month start and cover 3, 6, 9 or 12 whole months.
-    const ytd = (["operating_ytd", "investing_ytd"] as const).map((r) => {
-      const f = roleFact(r);
-      if (f?.period.kind !== "duration" || f.period.end !== origin) return undefined;
-      const { start } = f.period;
-      const months = monthIndex(origin) - monthIndex(start) + 1;
-      if (!start.endsWith("-01"))
-        issue(["quarterBridge", "roleFacts", r], "YTD flow must start on a month start");
-      else if (months % 3 !== 0 || months > 12)
-        issue(["quarterBridge", "roleFacts", r], "YTD flow must cover 3, 6, 9 or 12 whole months");
-      return start;
-    });
-    if (ytd[0] !== undefined && ytd[1] !== undefined && ytd[0] !== ytd[1])
-      issue(["quarterBridge", "roleFacts", "investing_ytd"], "YTD flows have different starts");
-    // Engine: total covers usable, and any reported origin restricted cash is the difference.
-    const usable = roleFact("usable_cash");
-    const total = roleFact("total_cash");
-    if (
-      usable?.metric === "cash_and_equivalents" &&
-      total?.metric === "cash_including_restricted"
-    ) {
-      if (total.cents < usable.cents)
-        issue(["quarterBridge", "roleFacts", "total_cash"], "total cash is below usable cash");
-      for (const [i, f] of c.facts.entries())
-        if (
-          f.metric === "restricted_cash" &&
-          f.period.kind === "instant" &&
-          f.period.date === origin &&
-          BigInt(f.cents) !== BigInt(total.cents) - BigInt(usable.cents)
-        )
+      // Post-hoc taint anywhere in the embedded case, used or not.
+      for (const [i, a] of c.assumptions.entries()) {
+        if (a.label === "hindsight")
+          issue(["snapshot", "case", "assumptions", i, "label"], "hindsight assumption in a seed");
+        if (a.selectedAfterReveal)
           issue(
-            ["snapshot", "case", "facts", i, "cents"],
-            "restricted cash contradicts total minus usable at the origin",
+            ["snapshot", "case", "assumptions", i, "selectedAfterReveal"],
+            "post-reveal assumption in a seed",
           );
-    }
-    const declared = seed.readiness.status === "blocked" ? seed.readiness.blockedRoles : [];
-    if (declared.join() !== blocked.join())
-      issue(
-        ["readiness"],
-        blocked.length
-          ? `blocked required roles must be listed exactly: ${blocked.join(", ")}`
-          : "every required role is validated, so the seed is forecast_ready",
-      );
-  });
+      }
+
+      // Selected assumptions exist, are distinct and are cents ranges. Their dependency
+      // closure and basis facts are checked by the case schema plus the taint check above.
+      // Intentional stricter v1 rule (contract may be stricter than the engine, never looser):
+      // financing and FX are distinct selections, even when one zero assumption would fit both.
+      const assumptions = new Map(c.assumptions.map((a) => [a.id, a]));
+      const selected: [Path, string][] = [
+        [["quarterBridge", "financingAssumptionId"], qb.financingAssumptionId],
+        [["quarterBridge", "fxAssumptionId"], qb.fxAssumptionId],
+        ...qb.methodAssumptionIds.map((id, i): [Path, string] => [
+          ["quarterBridge", "methodAssumptionIds", i],
+          id,
+        ]),
+      ];
+      const seen = new Set<string>();
+      for (const [n, [path, id]] of selected.entries()) {
+        const a = assumptions.get(id);
+        if (!a) issue(path, "selected assumption not in the snapshot case");
+        else if (a.value.unit !== "cents") issue(path, "selected assumption is not in cents");
+        // Engine: a financing/FX rate covers the whole modeled interval (no partial-quarter timing).
+        else if (n < 2 && a.effectiveFrom > (dayAfter(origin) ?? a.effectiveFrom))
+          issue(path, "financing/FX assumption must apply from the day after the origin");
+        if (seen.has(id)) issue(path, "assumption selected twice");
+        seen.add(id);
+      }
+
+      // Required roles: bound to the snapshot's validated facts, or listed as blocked.
+      const required = timelineMethodRoles(seed.pins.method);
+      const bindings = new Map(snap.roles.map((r) => [r.role, r]));
+      const facts = new Map(c.facts.map((f) => [f.id, f]));
+      const blocked: BridgeFactRole[] = [];
+      for (const role of required) {
+        const b = bindings.get(role);
+        const chosen = qb.roleFacts[role];
+        const path = ["quarterBridge", "roleFacts", role];
+        if (b?.status !== "validated") {
+          blocked.push(role);
+          if (chosen !== undefined) issue(path, "a blocked or missing role has no fact");
+          continue;
+        }
+        if (chosen !== b.factId) {
+          issue(path, "role fact differs from the snapshot binding");
+          continue;
+        }
+        const f = facts.get(chosen);
+        const want = ROLE_FACT[role];
+        if (!f) issue(path, "role fact not in the snapshot case");
+        else if (f.metric !== want.metric) issue(path, `role fact is not ${want.metric}`);
+        else if (
+          want.instant
+            ? f.period.kind !== "instant" || f.period.date !== origin
+            : f.period.kind !== "duration" || f.period.end !== origin
+        )
+          issue(path, "role fact does not end at the origin balance date");
+      }
+      const roleFact = (r: BridgeFactRole) => {
+        const id = qb.roleFacts[r];
+        return id === undefined ? undefined : facts.get(id);
+      };
+      // Engine: YTD flows start on a month start and cover 3, 6, 9 or 12 whole months.
+      const ytd = (["operating_ytd", "investing_ytd"] as const).map((r) => {
+        const f = roleFact(r);
+        if (f?.period.kind !== "duration" || f.period.end !== origin) return undefined;
+        const { start } = f.period;
+        const months = monthIndex(origin) - monthIndex(start) + 1;
+        if (!start.endsWith("-01"))
+          issue(["quarterBridge", "roleFacts", r], "YTD flow must start on a month start");
+        else if (months % 3 !== 0 || months > 12)
+          issue(
+            ["quarterBridge", "roleFacts", r],
+            "YTD flow must cover 3, 6, 9 or 12 whole months",
+          );
+        return start;
+      });
+      if (ytd[0] !== undefined && ytd[1] !== undefined && ytd[0] !== ytd[1])
+        issue(["quarterBridge", "roleFacts", "investing_ytd"], "YTD flows have different starts");
+      // Engine: total covers usable, and any reported origin restricted cash is the difference.
+      const usable = roleFact("usable_cash");
+      const total = roleFact("total_cash");
+      if (
+        usable?.metric === "cash_and_equivalents" &&
+        total?.metric === "cash_including_restricted"
+      ) {
+        // Only exact integers are compared; invalid cents are already reported by SafeCents.
+        const exactPair = safeInts(total.cents, usable.cents);
+        if (exactPair && total.cents < usable.cents)
+          issue(["quarterBridge", "roleFacts", "total_cash"], "total cash is below usable cash");
+        for (const [i, f] of c.facts.entries())
+          if (
+            exactPair &&
+            safeInts(f.cents) &&
+            f.metric === "restricted_cash" &&
+            f.period.kind === "instant" &&
+            f.period.date === origin &&
+            BigInt(f.cents) !== BigInt(total.cents) - BigInt(usable.cents)
+          )
+            issue(
+              ["snapshot", "case", "facts", i, "cents"],
+              "restricted cash contradicts total minus usable at the origin",
+            );
+      }
+      const declared = seed.readiness.status === "blocked" ? seed.readiness.blockedRoles : [];
+      if (declared.join() !== blocked.join())
+        issue(
+          ["readiness"],
+          blocked.length
+            ? `blocked required roles must be listed exactly: ${blocked.join(", ")}`
+            : "every required role is validated, so the seed is forecast_ready",
+        );
+    }),
+  );
 
 /**
  * Self-contained immutable snapshot export from Field to Timeline. A valid seed may be
@@ -480,13 +527,15 @@ const SeedObjectSchema = z
 export const TimelineSeedV1Schema = exact(SeedObjectSchema);
 export type TimelineSeedV1 = z.infer<typeof SeedObjectSchema>;
 
-export const ForecastReadyTimelineSeedV1Schema = TimelineSeedV1Schema.superRefine((seed, ctx) => {
-  if (seed.readiness.status !== "forecast_ready")
-    issuer(ctx)(
-      ["readiness", "status"],
-      "a seed with a blocked required role is not forecast-ready",
-    );
-});
+export const ForecastReadyTimelineSeedV1Schema = TimelineSeedV1Schema.superRefine(
+  total((seed, ctx) => {
+    if (seed.readiness.status !== "forecast_ready")
+      issuer(ctx)(
+        ["readiness", "status"],
+        "a seed with a blocked required role is not forecast-ready",
+      );
+  }),
+);
 
 // ---------- TimelineResultRefV1 ----------
 
@@ -522,16 +571,18 @@ const ResultRefObjectSchema = z
     savedAt: TimestampSchema.optional(),
   })
   .strict()
-  .superRefine((r, ctx) => {
-    const issue = issuer(ctx);
-    if (r.route.resultId !== r.id) issue(["route", "resultId"], "route names another result");
-    if (r.postHoc && r.scenarioId === undefined)
-      issue(["postHoc"], "a baseline-only result cannot be post-hoc");
-    if ((r.status === "saved") !== (r.savedAt !== undefined))
-      issue(["savedAt"], "saved results have savedAt, and only they do");
-    if (r.savedAt !== undefined && ms(r.savedAt) < ms(r.createdAt))
-      issue(["savedAt"], "saved before it was created");
-  });
+  .superRefine(
+    total((r, ctx) => {
+      const issue = issuer(ctx);
+      if (r.route.resultId !== r.id) issue(["route", "resultId"], "route names another result");
+      if (r.postHoc && r.scenarioId === undefined)
+        issue(["postHoc"], "a baseline-only result cannot be post-hoc");
+      if ((r.status === "saved") !== (r.savedAt !== undefined))
+        issue(["savedAt"], "saved results have savedAt, and only they do");
+      if (r.savedAt !== undefined && ms(r.savedAt) < ms(r.createdAt))
+        issue(["savedAt"], "saved before it was created");
+    }),
+  );
 
 /** Read-only pointer from Timeline back to Field. Field links to it; it never rewrites results. */
 export const TimelineResultRefV1Schema = exact(ResultRefObjectSchema);
@@ -541,29 +592,31 @@ export type TimelineResultRefV1 = z.infer<typeof ResultRefObjectSchema>;
 export const TimelineResultRefContextV1Schema = z
   .object({ seed: TimelineSeedV1Schema, result: TimelineResultRefV1Schema })
   .strict()
-  .superRefine(({ seed, result }, ctx) => {
-    const issue = issuer(ctx);
-    if (result.seed.id !== seed.id || result.seed.contentHash !== seed.contentHash)
-      issue(["result", "seed"], "result names another seed or seed content");
-    if (
-      result.snapshot.id !== seed.snapshotRef.id ||
-      result.snapshot.contentHash !== seed.snapshotRef.contentHash
-    )
-      issue(["result", "snapshot"], "result names another snapshot or snapshot content");
-    if (result.company.cik !== seed.company.cik || result.company.name !== seed.company.name)
-      issue(["result", "company"], "result is for another company");
-    if (
-      result.method.id !== seed.pins.method.id ||
-      result.method.version !== seed.pins.method.version
-    )
-      issue(["result", "method"], "result method differs from the seed pin");
-    if (result.target.date !== seed.quarterBridge.targetDate)
-      issue(["result", "target", "date"], "result target differs from the seed target");
-    if (seed.readiness.status !== "forecast_ready")
-      issue(["seed", "readiness"], "a result needs a forecast-ready seed");
-    if (ms(result.createdAt) < ms(seed.exportedAt))
-      issue(["result", "createdAt"], "result created before its seed was exported");
-  });
+  .superRefine(
+    total(({ seed, result }, ctx) => {
+      const issue = issuer(ctx);
+      if (result.seed.id !== seed.id || result.seed.contentHash !== seed.contentHash)
+        issue(["result", "seed"], "result names another seed or seed content");
+      if (
+        result.snapshot.id !== seed.snapshotRef.id ||
+        result.snapshot.contentHash !== seed.snapshotRef.contentHash
+      )
+        issue(["result", "snapshot"], "result names another snapshot or snapshot content");
+      if (result.company.cik !== seed.company.cik || result.company.name !== seed.company.name)
+        issue(["result", "company"], "result is for another company");
+      if (
+        result.method.id !== seed.pins.method.id ||
+        result.method.version !== seed.pins.method.version
+      )
+        issue(["result", "method"], "result method differs from the seed pin");
+      if (result.target.date !== seed.quarterBridge.targetDate)
+        issue(["result", "target", "date"], "result target differs from the seed target");
+      if (seed.readiness.status !== "forecast_ready")
+        issue(["seed", "readiness"], "a result needs a forecast-ready seed");
+      if (ms(result.createdAt) < ms(seed.exportedAt))
+        issue(["result", "createdAt"], "result created before its seed was exported");
+    }),
+  );
 
 // ---------- OperationSummaryV1 ----------
 
@@ -613,62 +666,64 @@ const OperationObjectSchema = z
     updatedAt: TimestampSchema,
   })
   .strict()
-  .superRefine((op, ctx) => {
-    const issue = issuer(ctx);
-    if (domainOf(op.id) !== op.ownerDomain)
-      issue(["id"], "operation id is owned by another domain");
-    for (const [i, d] of op.dependencies.entries())
-      if (d === op.id) issue(["dependencies", i], "an operation cannot depend on itself");
-    flagRepeats(
-      ctx,
-      op.dependencies,
-      (d) => d,
-      (i) => ["dependencies", i],
-      "duplicate dependency",
-    );
-    flagRepeats(
-      ctx,
-      op.evidenceRefs,
-      (r) => canonicalJson(r),
-      (i) => ["evidenceRefs", i],
-      "duplicate evidence ref",
-    );
-    flagRepeats(
-      ctx,
-      op.outputRefs,
-      (r) => r,
-      (i) => ["outputRefs", i],
-      "duplicate output ref",
-    );
-    for (const [i, r] of op.outputRefs.entries())
-      if (domainOf(r) !== op.ownerDomain)
-        issue(["outputRefs", i], "an operation only outputs records of its own domain");
-    if (op.outputRefs.length > 0 && op.status !== "succeeded" && op.status !== "partial")
-      issue(["outputRefs"], "only succeeded or partial operations have outputs");
+  .superRefine(
+    total((op, ctx) => {
+      const issue = issuer(ctx);
+      if (domainOf(op.id) !== op.ownerDomain)
+        issue(["id"], "operation id is owned by another domain");
+      for (const [i, d] of op.dependencies.entries())
+        if (d === op.id) issue(["dependencies", i], "an operation cannot depend on itself");
+      flagRepeats(
+        ctx,
+        op.dependencies,
+        (d) => d,
+        (i) => ["dependencies", i],
+        "duplicate dependency",
+      );
+      flagRepeats(
+        ctx,
+        op.evidenceRefs,
+        (r) => canonicalJson(r),
+        (i) => ["evidenceRefs", i],
+        "duplicate evidence ref",
+      );
+      flagRepeats(
+        ctx,
+        op.outputRefs,
+        (r) => r,
+        (i) => ["outputRefs", i],
+        "duplicate output ref",
+      );
+      for (const [i, r] of op.outputRefs.entries())
+        if (domainOf(r) !== op.ownerDomain)
+          issue(["outputRefs", i], "an operation only outputs records of its own domain");
+      if (op.outputRefs.length > 0 && op.status !== "succeeded" && op.status !== "partial")
+        issue(["outputRefs"], "only succeeded or partial operations have outputs");
 
-    const terminal = (TERMINAL as readonly string[]).includes(op.status);
-    const started = op.startedAt !== undefined;
-    const finished = op.finishedAt !== undefined;
-    if (op.status === "queued" && (started || finished))
-      issue(["startedAt"], "a queued operation has not started");
-    if (op.status === "running" && (!started || finished))
-      issue(["startedAt"], "a running operation has started and not finished");
-    if (terminal && !finished) issue(["finishedAt"], "a finished operation needs finishedAt");
-    if (terminal && op.status !== "cancelled" && !started)
-      issue(["startedAt"], "a completed or failed operation needs startedAt");
-    const order: [string, string | undefined][] = [
-      ["createdAt", op.createdAt],
-      ["startedAt", op.startedAt],
-      ["finishedAt", op.finishedAt],
-      ["updatedAt", op.updatedAt],
-    ];
-    let last = Number.NEGATIVE_INFINITY;
-    for (const [key, t] of order) {
-      if (t === undefined) continue;
-      if (ms(t) < last) issue([key], "timestamps must not go backwards");
-      last = Math.max(last, ms(t));
-    }
-  });
+      const terminal = (TERMINAL as readonly string[]).includes(op.status);
+      const started = op.startedAt !== undefined;
+      const finished = op.finishedAt !== undefined;
+      if (op.status === "queued" && (started || finished))
+        issue(["startedAt"], "a queued operation has not started");
+      if (op.status === "running" && (!started || finished))
+        issue(["startedAt"], "a running operation has started and not finished");
+      if (terminal && !finished) issue(["finishedAt"], "a finished operation needs finishedAt");
+      if (terminal && op.status !== "cancelled" && !started)
+        issue(["startedAt"], "a completed or failed operation needs startedAt");
+      const order: [string, string | undefined][] = [
+        ["createdAt", op.createdAt],
+        ["startedAt", op.startedAt],
+        ["finishedAt", op.finishedAt],
+        ["updatedAt", op.updatedAt],
+      ];
+      let last = Number.NEGATIVE_INFINITY;
+      for (const [key, t] of order) {
+        if (t === undefined) continue;
+        if (ms(t) < last) issue([key], "timestamps must not go backwards");
+        last = Math.max(last, ms(t));
+      }
+    }),
+  );
 
 /**
  * Safe, bounded display record for one real operation. Field owns agent jobs; Timeline owns
@@ -692,27 +747,32 @@ const RevealObjectSchema = z
     disclosures: HistoricalCaseSchema,
   })
   .strict()
-  .superRefine((r, ctx) => {
-    const issue = issuer(ctx);
-    const cutoff = ms(r.knowledgeCutoff);
-    const through = ms(r.revealedThrough);
-    const d = r.disclosures;
-    if (through <= cutoff) issue(["revealedThrough"], "reveal must be after the cutoff");
-    if (d.companyName !== r.company.name)
-      issue(["disclosures", "companyName"], "company name differs");
-    if (d.assumptions.length > 0)
-      issue(["disclosures", "assumptions"], "a reveal has no assumptions");
-    if (d.facts.length === 0) issue(["disclosures", "facts"], "a reveal needs at least one fact");
-    for (const [i, s] of d.sources.entries())
-      if (!(cutoff < ms(s.publishedAt) && ms(s.publishedAt) <= through))
-        issue(
-          ["disclosures", "sources", i, "publishedAt"],
-          "a revealed source is published after the cutoff and by revealedThrough",
-        );
-    for (const [i, f] of d.facts.entries())
-      if (f.kind !== "reported")
-        issue(["disclosures", "facts", i, "kind"], "derive later facts against the seed, not here");
-  });
+  .superRefine(
+    total((r, ctx) => {
+      const issue = issuer(ctx);
+      const cutoff = ms(r.knowledgeCutoff);
+      const through = ms(r.revealedThrough);
+      const d = r.disclosures;
+      if (through <= cutoff) issue(["revealedThrough"], "reveal must be after the cutoff");
+      if (d.companyName !== r.company.name)
+        issue(["disclosures", "companyName"], "company name differs");
+      if (d.assumptions.length > 0)
+        issue(["disclosures", "assumptions"], "a reveal has no assumptions");
+      if (d.facts.length === 0) issue(["disclosures", "facts"], "a reveal needs at least one fact");
+      for (const [i, s] of d.sources.entries())
+        if (!(cutoff < ms(s.publishedAt) && ms(s.publishedAt) <= through))
+          issue(
+            ["disclosures", "sources", i, "publishedAt"],
+            "a revealed source is published after the cutoff and by revealedThrough",
+          );
+      for (const [i, f] of d.facts.entries())
+        if (f.kind !== "reported")
+          issue(
+            ["disclosures", "facts", i, "kind"],
+            "derive later facts against the seed, not here",
+          );
+    }),
+  );
 
 /** Permitted later actuals, kept apart from the seed and every earlier forecast. */
 export const TimelineRevealV1Schema = exact(RevealObjectSchema);
@@ -722,24 +782,26 @@ export type TimelineRevealV1 = z.infer<typeof RevealObjectSchema>;
 export const TimelineRevealContextV1Schema = z
   .object({ seed: TimelineSeedV1Schema, reveal: TimelineRevealV1Schema })
   .strict()
-  .superRefine(({ seed, reveal }, ctx) => {
-    const issue = issuer(ctx);
-    const c = seed.snapshot.case;
-    const d = reveal.disclosures;
-    if (reveal.seed.id !== seed.id || reveal.seed.contentHash !== seed.contentHash)
-      issue(["reveal", "seed"], "reveal names another seed or seed content");
-    if (reveal.company.cik !== seed.company.cik || reveal.company.name !== seed.company.name)
-      issue(["reveal", "company"], "reveal is for another company");
-    if (reveal.knowledgeCutoff !== seed.snapshot.cutoff)
-      issue(["reveal", "knowledgeCutoff"], "reveal cutoff differs from the seed cutoff");
-    if (d.id !== c.id || d.currency !== c.currency || d.provenance !== c.provenance)
-      issue(["reveal", "disclosures"], "disclosures belong to another case");
-    const sourceIds = new Set(c.sources.map((s) => s.id));
-    const factIds = new Set(c.facts.map((f) => f.id));
-    for (const [i, s] of d.sources.entries())
-      if (sourceIds.has(s.id))
-        issue(["reveal", "disclosures", "sources", i, "id"], "source id already in the seed");
-    for (const [i, f] of d.facts.entries())
-      if (factIds.has(f.id))
-        issue(["reveal", "disclosures", "facts", i, "id"], "fact id already in the seed");
-  });
+  .superRefine(
+    total(({ seed, reveal }, ctx) => {
+      const issue = issuer(ctx);
+      const c = seed.snapshot.case;
+      const d = reveal.disclosures;
+      if (reveal.seed.id !== seed.id || reveal.seed.contentHash !== seed.contentHash)
+        issue(["reveal", "seed"], "reveal names another seed or seed content");
+      if (reveal.company.cik !== seed.company.cik || reveal.company.name !== seed.company.name)
+        issue(["reveal", "company"], "reveal is for another company");
+      if (reveal.knowledgeCutoff !== seed.snapshot.cutoff)
+        issue(["reveal", "knowledgeCutoff"], "reveal cutoff differs from the seed cutoff");
+      if (d.id !== c.id || d.currency !== c.currency || d.provenance !== c.provenance)
+        issue(["reveal", "disclosures"], "disclosures belong to another case");
+      const sourceIds = new Set(c.sources.map((s) => s.id));
+      const factIds = new Set(c.facts.map((f) => f.id));
+      for (const [i, s] of d.sources.entries())
+        if (sourceIds.has(s.id))
+          issue(["reveal", "disclosures", "sources", i, "id"], "source id already in the seed");
+      for (const [i, f] of d.facts.entries())
+        if (factIds.has(f.id))
+          issue(["reveal", "disclosures", "facts", i, "id"], "fact id already in the seed");
+    }),
+  );

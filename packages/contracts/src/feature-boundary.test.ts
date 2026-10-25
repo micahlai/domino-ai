@@ -944,3 +944,281 @@ describe("audit: operation summary bounds", () => {
     ).toHaveLength(1);
   });
 });
+
+// ---------- Re-audit: validation is total (safeParse never throws) ----------
+
+type Schema = { safeParse: (v: unknown) => { success: boolean } };
+/** safeParse result without letting an exception escape the assertion. */
+const outcome = (schema: Schema, v: unknown): "accepted" | "rejected" | "threw" => {
+  try {
+    return schema.safeParse(v).success ? "accepted" : "rejected";
+  } catch {
+    return "threw";
+  }
+};
+const edited = <T>(base: T, edit: (v: T) => void): T => {
+  const v = clone(base);
+  edit(v);
+  return v;
+};
+/** Every composed entry point a seed reaches. */
+const seedEntryPoints = (s: unknown): [string, Schema, unknown][] => [
+  ["TimelineSeedV1", S, s],
+  ["ForecastReadyTimelineSeedV1", ForecastReadyTimelineSeedV1Schema, s],
+  ["TimelineResultRefContextV1", TimelineResultRefContextV1Schema, { seed: s, result }],
+  ["TimelineRevealContextV1", TimelineRevealContextV1Schema, { seed: s, reveal }],
+];
+
+describe("re-audit: composed schemas reject instead of throwing", () => {
+  const ytd = (start: string) => (s: TimelineSeedV1) => {
+    for (const f of s.snapshot.case.facts)
+      if (f.id === "F05" || f.id === "F06")
+        f.period = { kind: "duration", start, end: "2023-09-30" };
+  };
+  const from = (id: string) => (s: TimelineSeedV1) => {
+    s.snapshot.case.assumptions.find((a) => a.id === id)!.effectiveFrom = "2024-01-01";
+  };
+  const repros: [string, (s: TimelineSeedV1) => void][] = [
+    ["YTD not month-start", ytd("2023-01-02")],
+    ["YTD spans 21 months", ytd("2022-01-01")],
+    ["financing starts after target", from("AS-FIN0")],
+    ["FX starts after target", from("AS-FX0")],
+    [
+      "unsafe benefitLagDays",
+      (s) => {
+        s.snapshot.case.assumptions.find((a) => a.id === "A1")!.benefitLagDays = 2 ** 53;
+      },
+    ],
+    [
+      "unsafe rule.version",
+      (s) => {
+        s.snapshot.rules.push({
+          id: "rule-v",
+          ruleId: "rule",
+          version: 2 ** 53,
+          feedbackId: "fb",
+          scope: {
+            kind: "company",
+            cik: s.snapshot.cik,
+            schemaVersion: 1,
+            sourceSignature: s.snapshot.sourceSignature,
+          },
+          action: { kind: "method_selection", methodId: "quarterly_cash_bridge", version: "0.1.0" },
+          rationale: "pin the bridge",
+          evidenceRefs: ["F01"],
+          status: "accepted",
+          validatorVersion: "1.0.0",
+          recordedAt: "2023-11-01T00:00:00-05:00",
+          effectiveFrom: "2023-11-01T00:00:00-05:00",
+        });
+      },
+    ],
+    [
+      "unknown nested field",
+      (s) => {
+        Object.assign(s.snapshot.case.facts[0]!, { apiKey: "x" });
+      },
+    ],
+    [
+      "impossible origin date",
+      (s) => {
+        s.quarterBridge.originBalanceDate = "2023-02-30";
+      },
+    ],
+  ];
+
+  it.each(repros)("%s: every entry point returns success:false", (_, edit) => {
+    const bad = edited(seed, edit);
+    for (const [name, schema, value] of seedEntryPoints(bad))
+      expect(outcome(schema, value), name).toBe("rejected");
+  });
+
+  it("contexts reject an invalid nested result or reveal without throwing", () => {
+    const badResult = edited(result, (r) => {
+      r.route = { kind: "timeline_result", resultId: "timeline:result/other" };
+    });
+    const badReveal = edited(reveal, (r) => {
+      r.disclosures.facts[0]!.cents = 0.5;
+    });
+    expect(outcome(TimelineResultRefContextV1Schema, { seed, result: badResult })).toBe("rejected");
+    expect(outcome(TimelineRevealContextV1Schema, { seed, reveal: badReveal })).toBe("rejected");
+    expect(outcome(TimelineResultRefContextV1Schema, { seed: blocked, result: badResult })).toBe(
+      "rejected",
+    );
+  });
+});
+
+describe("re-audit: invalid cents are rejected, never converted", () => {
+  const BAD = [0.5, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NaN, 2 ** 53];
+  const cases: [string, TimelineSeedV1, string][] = [
+    ["2U", seed, "F01"],
+    ["2U", seed, "F02"],
+    ["2U", seed, "F03"],
+    ["blocked", blocked, "f_cash"],
+    ["blocked", blocked, "f_restricted"],
+    ["blocked", blocked, "f_total"],
+  ];
+  for (const [label, base, id] of cases)
+    it.each(BAD)(`${label} ${id} cents %s`, (bad) => {
+      const v = clone(base);
+      v.snapshot.case.facts.find((f) => f.id === id)!.cents = bad;
+      for (const [name, schema, value] of seedEntryPoints(v))
+        expect(outcome(schema, value), name).toBe("rejected");
+    });
+});
+
+describe("re-audit: fuzzed malformed shapes never throw", () => {
+  const BAD: unknown[] = [
+    null,
+    0,
+    -1,
+    0.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    2 ** 53,
+    "",
+    "2023-02-30",
+    true,
+    [],
+    {},
+    [null],
+  ];
+  /** Every node path (objects, arrays and leaves) of a JSON value. */
+  const nodePaths = (v: unknown, path: (string | number)[] = []): (string | number)[][] => {
+    const out = [path];
+    if (Array.isArray(v)) v.forEach((x, i) => out.push(...nodePaths(x, [...path, i])));
+    else if (v && typeof v === "object")
+      for (const [k, x] of Object.entries(v)) out.push(...nodePaths(x, [...path, k]));
+    return out;
+  };
+  const setAt = (root: unknown, path: (string | number)[], value: unknown, remove = false) => {
+    const v = clone(root) as Record<string | number, unknown>;
+    if (path.length === 0) return value;
+    let node = v;
+    for (const k of path.slice(0, -1)) node = node[k] as Record<string | number, unknown>;
+    const last = path.at(-1)!;
+    if (remove) delete node[last];
+    else node[last] = value;
+    return v;
+  };
+  const targets: [string, Schema, unknown, (x: unknown) => unknown][] = [
+    ["ForecastReady seed", ForecastReadyTimelineSeedV1Schema, seed, (x) => x],
+    ["blocked seed", S, blocked, (x) => x],
+    [
+      "result context (result)",
+      TimelineResultRefContextV1Schema,
+      result,
+      (x) => ({ seed, result: x }),
+    ],
+    [
+      "reveal context (reveal)",
+      TimelineRevealContextV1Schema,
+      reveal,
+      (x) => ({ seed, reveal: x }),
+    ],
+    [
+      "operation",
+      OperationSummaryV1Schema,
+      {
+        schemaVersion: 1,
+        id: "field:operation/x",
+        ownerDomain: "field",
+        status: "succeeded",
+        title: "x",
+        dependencies: ["timeline:operation/y"],
+        evidenceRefs: [
+          { kind: "case_item", snapshotId: "field:snapshot/s", item: "fact", id: "F" },
+        ],
+        outputRefs: ["field:seed/x"],
+        createdAt: "2026-10-24T12:00:00Z",
+        startedAt: "2026-10-24T12:00:00Z",
+        finishedAt: "2026-10-24T12:00:00Z",
+        updatedAt: "2026-10-24T12:00:00Z",
+      },
+      (x) => x,
+    ],
+  ];
+
+  it.each(targets)("%s: replace or delete every node", (_, schema, base, wrap) => {
+    const threw: string[] = [];
+    let runs = 0;
+    for (const path of nodePaths(base)) {
+      const variants = [...BAD.map((b) => setAt(base, path, b)), setAt(base, path, null, true)];
+      for (const v of variants) {
+        runs++;
+        if (outcome(schema, wrap(v)) === "threw") threw.push(path.join("."));
+      }
+    }
+    expect(runs).toBeGreaterThan(100);
+    expect(threw).toEqual([]);
+  });
+
+  it("rejects garbage and cyclic inputs at every exported schema", () => {
+    const cyclic: Record<string, unknown> = clone(seed) as unknown as Record<string, unknown>;
+    cyclic.self = cyclic;
+    const all: Schema[] = [
+      S,
+      ForecastReadyTimelineSeedV1Schema,
+      TimelineResultRefV1Schema,
+      TimelineResultRefContextV1Schema,
+      OperationSummaryV1Schema,
+      TimelineRevealV1Schema,
+      TimelineRevealContextV1Schema,
+    ];
+    for (const schema of all)
+      for (const v of [...BAD, undefined, cyclic, { seed: cyclic, result, reveal }])
+        expect(outcome(schema, v)).toBe("rejected");
+  });
+});
+
+describe("intentional stricter-than-engine v1 rules", () => {
+  it("rejects a month-end origin that is not a calendar quarter end (engine accepts it)", () => {
+    expect(
+      mutated(S, seed, (s) => {
+        s.snapshot.cutoff = "2023-09-01T12:00:00Z";
+        s.quarterBridge.knowledgeCutoff = "2023-09-01T12:00:00Z";
+        s.quarterBridge.originBalanceDate = "2023-08-31";
+        s.quarterBridge.targetDate = "2023-11-30";
+        for (const f of s.snapshot.case.facts) {
+          f.period =
+            f.period.kind === "instant"
+              ? { kind: "instant", date: "2023-08-31" }
+              : { kind: "duration", start: "2023-06-01", end: "2023-08-31" };
+          f.availableAt = "2023-09-01T09:00:00Z";
+        }
+        s.snapshot.case.sources[0]!.publishedAt = "2023-09-01T09:00:00Z";
+        for (const a of s.snapshot.case.assumptions)
+          if (a.id.startsWith("AS-")) a.effectiveFrom = "2023-09-01";
+      }),
+    ).toEqual(["origin is not a calendar quarter end"]);
+  });
+
+  it("rejects one zero assumption selected for both financing and FX (engine accepts it)", () => {
+    expect(
+      mutated(S, seed, (s) => {
+        s.quarterBridge.fxAssumptionId = s.quarterBridge.financingAssumptionId;
+      }),
+    ).toEqual(["assumption selected twice"]);
+  });
+
+  it("caps output refs at 64", () => {
+    const op = {
+      schemaVersion: 1,
+      id: "field:operation/x",
+      ownerDomain: "field",
+      status: "succeeded",
+      title: "x",
+      dependencies: [],
+      evidenceRefs: [],
+      outputRefs: Array.from({ length: 64 }, (_, i) => `field:seed/s${i}`),
+      createdAt: "2026-10-24T12:00:00Z",
+      startedAt: "2026-10-24T12:00:00Z",
+      finishedAt: "2026-10-24T12:00:00Z",
+      updatedAt: "2026-10-24T12:00:00Z",
+    };
+    expect(check(OperationSummaryV1Schema, op)).toEqual([]);
+    expect(
+      mutated(OperationSummaryV1Schema, op, (o) => o.outputRefs.push("field:seed/s64")),
+    ).toHaveLength(1);
+  });
+});
