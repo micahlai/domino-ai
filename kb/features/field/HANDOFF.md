@@ -1,5 +1,11 @@
 # Field lane handoff, Oct 25
 
+## Active filing-backed operating demo work
+- User requested2U as primary full-product demo, one reconciling synthetic operating ledger, four scenarios, exact provenance label, and two additional company-inspired demos researched by subagents.
+- Integration branch `merge/field-2u-ledger-20261025`, base `af7977d`; research merged from Asana `bcdc689` and GitLab `e0baca5`. Contract and scoped task cards are in OPERATING-LEDGER-CONTRACT.md and kb/tasks/FIELD-operating-*.md.
+- Architecture: pure generator/provenance sidecar in packages/sim; optional selected-demo metadata on companies; fieldOperating ensure/list/context; reuse existing mock source-shaped connector pipeline and Timeline seed. Historical replay remains separate. No future/held-out data or assumptions.json imports.
+- Current workers: research complete; implementation dispatch next. Live3114 and Convex3260 remain old checked release until integration passes. Next exact step: implement pure generator, backend adapter and UI against the frozen shared API, verify exact reconciliation and full browser flow, then publish field/main only.
+
 ## Completed map stability fix
 - Branch `merge/field-map-stability-20261025` in `../domino-merge`, base `aac6de6`; current field/main was already pushed.
 - Reproduced with existing scripted agent updates in frontend-only preview3138: latest summary24/48/24px causes map top326/350/326px. scrollY remains0; map height478px and camera unchanged. Trace `/tmp/field-map-before.json`.
