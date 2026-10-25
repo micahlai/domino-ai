@@ -129,6 +129,18 @@ describe("current filing operating books", () => {
     });
   }
 
+  it("emits no zero-dollar bank transactions for current companies in any scenario", () => {
+    for (const company of currentCompanies) {
+      for (const scenario of OPERATING_SCENARIO_IDS) {
+        const { world, provenance } = createOperatingDemo({ company, scenario }, 19);
+        for (const state of [world, advanceOperatingDays(world, 91)]) {
+          expect(state.snapshot.bankTxns.every((txn) => txn.amount !== 0)).toBe(true);
+        }
+        expect(provenance.cashFlowPostings.every((posting) => posting.cents !== 0)).toBe(true);
+      }
+    }
+  });
+
   it("uses exact reported cash, receivable and deferred liability endpoints", () => {
     const asana = createOperatingDemo({
       company: "asana-current",
@@ -294,7 +306,7 @@ describe("current filing operating books", () => {
         const postings = p.cashFlowPostings.filter((t) =>
           t.bankTxnId.includes(`/${component.category}/${component.id}/`),
         );
-        expect(postings).toHaveLength(3);
+        expect(postings).toHaveLength(component.cents === 0 ? 0 : 3);
         expect(sum(postings.map((t) => t.cents))).toBe(component.cents);
         for (const posting of postings) {
           const bank = world.snapshot.bankTxns.find((t) => t.id === posting.bankTxnId)!;
