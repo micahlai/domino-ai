@@ -6,6 +6,7 @@ import {
   CircleCheck,
   Eye,
   Flag,
+  Inbox,
   Network,
   TriangleAlert,
 } from "lucide-react";
@@ -14,9 +15,12 @@ import { type ReactNode, useEffect, useState } from "react";
 import { formatCents, formatDate } from "../../../lib/format";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../ui/badge";
-import { Card } from "../../ui/card";
+import { Button } from "../../ui/button";
+import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
-import { CashFlowBars, CashLine } from "./charts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
+import { EmptyRow, Panel } from "../panel";
+import { CashFlowBars, CashLine, FLOW_SECTIONS } from "./charts";
 import {
   type DashboardData,
   DashboardDataProvider,
@@ -43,7 +47,7 @@ function DashboardBody() {
   const data = useDashboard();
   const result = data.result;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-[1200px] space-y-8">
       <Header data={data} />
       {result === undefined ? (
         <LoadingState />
@@ -67,8 +71,10 @@ function DashboardBody() {
 function Sections({ view, header }: { view: DashboardView; header?: DashboardHeader }) {
   return (
     <>
-      <HealthHero view={view} />
-      <Tiles view={view} />
+      <div className="space-y-4">
+        <HealthBanner view={view} />
+        <Tiles view={view} />
+      </div>
       <CashFlowSection view={view} />
       <CashLineSection view={view} />
       <ComingUp view={view} />
@@ -104,29 +110,45 @@ function Header({ data }: { data: DashboardData }) {
   const now = useNow();
   const h = data.header;
   return (
-    <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div className="min-w-0">
-        <p className="text-sm text-muted-foreground">Cash health, next 13 weeks</p>
-        <h1 className="mt-1 text-3xl font-medium tracking-tight">
-          {h?.name ?? <Skeleton className="h-9 w-56" />}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {h ? (
-            <>
-              {h.asOf ? <>As of {formatDate(h.asOf)} · </> : null}
-              Books updated {ago(h.updatedAt, now)} from {h.tools.connected} connected tool
-              {h.tools.connected === 1 ? "" : "s"}
-            </>
-          ) : (
-            "Loading the latest books"
-          )}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {h ? <AgentStatus agent={h.agent} /> : null}
-        <SourceBadge data={data} />
-      </div>
-    </header>
+    <PageHeader
+      eyebrow="Cash health, next 13 weeks"
+      title={h?.name ?? <Skeleton className="h-9 w-56" />}
+      description={
+        h ? (
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {h.asOf ? (
+              <>
+                <span>
+                  As of <span className="text-foreground">{formatDate(h.asOf)}</span>
+                </span>
+                <Dot />
+              </>
+            ) : null}
+            <span>Books updated {ago(h.updatedAt, now)}</span>
+            <Dot />
+            <span>
+              {h.tools.connected} of {h.tools.total} tools connected
+            </span>
+          </span>
+        ) : (
+          "Loading the latest books"
+        )
+      }
+      actions={
+        <>
+          {h ? <AgentStatus agent={h.agent} /> : null}
+          <SourceBadge data={data} />
+        </>
+      }
+    />
+  );
+}
+
+function Dot() {
+  return (
+    <span aria-hidden="true" className="text-border">
+      •
+    </span>
   );
 }
 
@@ -144,20 +166,20 @@ function AgentStatus({ agent }: { agent: DashboardHeader["agent"] }) {
       href="/field/map"
       title={agent.lastError ?? undefined}
       className={cn(
-        "inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-xs text-muted-foreground transition-colors hover:text-foreground",
+        "inline-flex h-8 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground",
         focusRing,
       )}
     >
       <span className="relative flex size-2" aria-hidden="true">
         {agent.state === "on" ? (
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:hidden" />
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-safe opacity-50 motion-reduce:hidden" />
         ) : null}
         <span
           className={cn(
             "relative inline-flex size-2 rounded-full",
-            agent.state === "on" && "bg-primary",
+            agent.state === "on" && "bg-safe",
             agent.state === "failed" && "bg-destructive",
-            (agent.state === "idle" || agent.state === "demo") && "bg-muted-foreground",
+            (agent.state === "idle" || agent.state === "demo") && "bg-muted-foreground/50",
           )}
         />
       </span>
@@ -169,69 +191,73 @@ function AgentStatus({ agent }: { agent: DashboardHeader["agent"] }) {
 function SourceBadge({ data }: { data: DashboardData }) {
   if (data.source === "live")
     return (
-      <Badge variant="outline" className="gap-1.5 font-normal">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+      <Badge variant="success" className="h-8 gap-1.5 px-2.5 text-[13px]">
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-safe" />
         Live
       </Badge>
     );
   if (data.source === "loading")
     return (
-      <Badge variant="outline" className="font-normal text-muted-foreground">
+      <Badge variant="secondary" className="h-8 px-2.5 text-[13px] font-normal">
         Connecting...
       </Badge>
     );
   return (
-    <Badge variant="outline" title={data.note} className="border-dashed font-normal text-clay">
+    <Badge
+      variant="outline"
+      title={data.note}
+      className="h-8 gap-1.5 border-dashed px-2.5 text-[13px] font-normal text-muted-foreground"
+    >
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-clay" />
       Demo data · {data.note.toLowerCase()}
     </Badge>
   );
 }
 
+/** Marks sections that still show sample numbers. Quiet on purpose: a label, not an alarm. */
 function SampleTag() {
   return (
     <span
       title="This section will show the Timeline lane's results once they are connected"
-      className="inline-flex shrink-0 items-center rounded border border-dashed border-clay/60 px-1.5 py-0.5 text-[11px] leading-4 text-clay"
+      className="inline-flex shrink-0 items-center gap-1 rounded border border-dashed px-1.5 py-px text-[11px] font-normal leading-4 tracking-normal text-muted-foreground"
     >
-      Sample data until Timeline is connected
+      Sample data<span className="sr-only"> until Timeline is connected</span>
     </span>
   );
 }
 
-function SectionTitle({
-  title,
-  tag,
-  action,
-}: { title: string; tag?: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-base font-medium">{title}</h2>
-        {tag}
-      </div>
-      {action}
-    </div>
-  );
-}
-
-// ---------- 2. Health hero ----------
+// ---------- 2. Health banner ----------
 
 const HEALTH: Record<
   Health,
-  { label: string; icon: typeof CircleCheck; tone: string; ring: string }
+  {
+    label: string;
+    icon: typeof CircleCheck;
+    tone: string;
+    box: string;
+    badge: "success" | "warning" | "destructive";
+  }
 > = {
   ok: {
-    label: "OK",
+    label: "On track",
     icon: CircleCheck,
-    tone: "text-primary",
-    ring: "border-primary/40 bg-primary/10",
+    tone: "text-safe",
+    box: "border-safe/25 bg-safe/[0.04]",
+    badge: "success",
   },
-  watch: { label: "Watch", icon: Eye, tone: "text-clay", ring: "border-clay/50 bg-clay/10" },
+  watch: {
+    label: "Watch",
+    icon: Eye,
+    tone: "text-warning",
+    box: "border-warning/30 bg-warning/[0.05]",
+    badge: "warning",
+  },
   at_risk: {
     label: "At risk",
     icon: TriangleAlert,
     tone: "text-destructive",
-    ring: "border-destructive/50 bg-destructive/10",
+    box: "border-destructive/20 bg-destructive/[0.03]",
+    badge: "destructive",
   },
 };
 
@@ -259,111 +285,97 @@ export function healthWords(view: DashboardView): { sentence: string; action: st
   };
 }
 
-function HealthHero({ view }: { view: DashboardView }) {
+function HealthBanner({ view }: { view: DashboardView }) {
   const meta = HEALTH[view.health.rating];
   const Icon = meta.icon;
   const words = healthWords(view);
   return (
-    <Card className="relative overflow-hidden p-[var(--card-pad)]">
-      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
-          <div
-            className={cn(
-              "flex size-14 shrink-0 items-center justify-center rounded-2xl border",
-              meta.ring,
-            )}
-          >
-            <Icon className={cn("size-7", meta.tone)} aria-hidden="true" />
+    <section
+      aria-label="Cash health"
+      className={cn(
+        "flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between md:px-5",
+        meta.box,
+      )}
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <Icon className={cn("mt-0.5 size-5 shrink-0", meta.tone)} aria-hidden="true" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={meta.badge} className="font-semibold">
+              {meta.label}
+            </Badge>
+            <SampleTag />
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className={cn("text-2xl font-semibold tracking-tight", meta.tone)}>{meta.label}</p>
-              <SampleTag />
-            </div>
-            <p className="mt-1 max-w-2xl text-lg leading-7">{words.sentence}</p>
-            {words.action ? (
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                <span className="font-medium text-foreground">What to do: </span>
-                {words.action}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Link
-            href="/c/kestrel"
-            className={cn(
-              "inline-flex min-h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90",
-              focusRing,
-            )}
-          >
-            Try fixes on the timeline
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
+          <p className="mt-2 max-w-3xl text-[15px] font-medium leading-6 text-foreground">
+            {words.sentence}
+          </p>
+          {words.action ? (
+            <p className="mt-0.5 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {words.action}
+            </p>
+          ) : null}
         </div>
       </div>
-    </Card>
+      <Button asChild className="shrink-0 self-start md:self-center">
+        <Link href="/c/kestrel">
+          Try fixes on the timeline
+          <ArrowRight aria-hidden="true" />
+        </Link>
+      </Button>
+    </section>
   );
 }
 
 // ---------- 3. Tiles ----------
 
-function Tile({
-  label,
-  value,
-  sub,
-  tone,
-}: { label: string; value: string; sub: string; tone?: string }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("mt-2 text-2xl font-semibold tabular-nums tracking-tight", tone)}>{value}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{sub}</p>
-    </Card>
-  );
-}
-
 function Tiles({ view }: { view: DashboardView }) {
   const min = view.lenderMinimum;
   const low = view.lowest;
-  const below = (c: number | null) => (c !== null && c < 0 ? "text-destructive" : undefined);
+  const lowBelow = Boolean(min && low && low.usable < min.cents);
   return (
     <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <Tile
+      <StatTile
+        className="col-span-2 lg:col-span-1"
         label="Cash today"
         value={formatCents(view.cashToday)}
-        sub={`${formatCents(view.usableToday)} usable; ${formatCents(view.restrictedCash)} is held back`}
+        delta={`${formatCents(view.usableToday)} usable · ${formatCents(view.restrictedCash)} held back`}
       />
-      <Tile
-        label="Lowest usable cash, 13 weeks"
+      <StatTile
+        label="Lowest usable cash"
         value={low ? formatCents(low.usable) : "None"}
-        sub={low ? `Week of ${formatDate(low.weekStart)}` : "No forecast weeks"}
-        tone={min && low && low.usable < min.cents ? "text-destructive" : undefined}
+        delta={
+          low
+            ? `Week of ${formatDate(low.weekStart)}${
+                min ? ` · ${lowBelow ? "below" : "above"} the minimum` : ""
+              }`
+            : "No forecast weeks"
+        }
+        tone={lowBelow ? "negative" : "neutral"}
       />
-      <Tile
-        label="Room above the minimum"
+      <StatTile
+        label="Room at the low point"
         value={view.roomAtLow === null ? "No minimum" : formatCents(view.roomAtLow)}
-        sub={
+        delta={
           min && view.roomToday !== null
-            ? `At the low point. Today ${formatCents(view.roomToday)}; lender's minimum ${formatCents(min.cents)}`
+            ? `Versus the ${formatCents(min.cents)} minimum · today ${formatCents(view.roomToday)}`
             : "No lender's minimum on file"
         }
-        tone={below(view.roomAtLow)}
+        tone={view.roomAtLow !== null && view.roomAtLow < 0 ? "negative" : "neutral"}
       />
-      <Tile
+      <StatTile
         label="Runway"
-        value={view.runway.weeks === null ? "Not burning" : `${view.runway.weeks} weeks`}
-        sub={
+        value={view.runway.weeks === null ? "Not burning" : `${view.runway.weeks}`}
+        unit={view.runway.weeks === null ? undefined : "weeks"}
+        delta={
           view.runway.weeks === null
             ? `Cash grew over the last ${view.runway.basisWeeks} full weeks`
-            : `At ${formatCents(view.runway.weeklyBurn)} a week, last ${view.runway.basisWeeks} full weeks`
+            : `At ${formatCents(view.runway.weeklyBurn)} a week, last ${view.runway.basisWeeks} weeks`
         }
       />
-      <Tile
-        label="13-week net change"
+      <StatTile
+        label="Net change, 13 weeks"
         value={`${view.netChange13 > 0 ? "+" : ""}${formatCents(view.netChange13)}`}
-        sub="Projected money in minus money out"
-        tone={view.netChange13 < 0 ? "text-destructive" : "text-primary"}
+        delta="Next 13 weeks, money in minus out"
       />
     </section>
   );
@@ -372,64 +384,78 @@ function Tiles({ view }: { view: DashboardView }) {
 // ---------- 4. Cash flow statement ----------
 
 function CashFlowSection({ view }: { view: DashboardView }) {
-  const totals = [
-    { label: "Operating", cents: view.totals.operating },
-    { label: "Investing", cents: view.totals.investing },
-    { label: "Financing", cents: view.totals.financing },
-  ];
   return (
-    <Card className="p-[var(--card-pad)]">
-      <SectionTitle
-        title="Cash flow, next 13 weeks"
-        action={
-          view.unclassified > 0 ? (
-            <span className="text-xs text-clay">
-              {view.unclassified} entries could not be classified
-            </span>
-          ) : null
-        }
-      />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="min-w-0">
+    <Section
+      title="Cash flow statement"
+      description="Net cash by week for the last 4 weeks and the next 13, split by activity."
+      actions={
+        view.unclassified > 0 ? (
+          <Badge variant="warning" className="font-normal">
+            {view.unclassified} entries could not be classified
+          </Badge>
+        ) : null
+      }
+      flush
+    >
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 p-[var(--card-pad)]">
           <CashFlowBars bars={view.bars} />
         </div>
-        <div className="space-y-5">
-          <dl className="grid grid-cols-3 gap-2 lg:grid-cols-1">
-            {totals.map((t) => (
-              <div key={t.label} className="rounded-lg border bg-muted/30 px-3 py-2">
-                <dt className="text-xs text-muted-foreground">{t.label}</dt>
-                <dd
-                  className={cn(
-                    "text-lg font-semibold tabular-nums",
-                    t.cents < 0 && "text-destructive",
-                  )}
-                >
-                  {formatCents(t.cents)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <div>
-            <p className="mb-2 text-xs text-muted-foreground">Biggest lines</p>
-            <ul className="space-y-1.5 text-sm">
+        <div className="min-w-0 border-t lg:border-l lg:border-t-0">
+          <div className="px-4 pb-1 pt-4 text-xs font-medium text-muted-foreground">
+            Next 13 weeks by activity
+          </div>
+          <Table>
+            <TableBody>
+              {FLOW_SECTIONS.map((s) => (
+                <TableRow key={s.key} className="hover:bg-transparent">
+                  <TableCell className="h-10 py-1.5">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="size-2.5 rounded-[3px]"
+                        style={{ background: s.color }}
+                      />
+                      {s.label}
+                    </span>
+                  </TableCell>
+                  <TableCell className="h-10 py-1.5 text-right font-medium">
+                    {formatCents(view.totals[s.key])}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableCell className="h-10 py-1.5 font-medium">Net change</TableCell>
+                <TableCell className="h-10 py-1.5 text-right font-semibold">
+                  {formatCents(view.netChange13)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="border-t px-4 pb-1 pt-4 text-xs font-medium text-muted-foreground">
+            Biggest lines
+          </div>
+          <Table>
+            <TableBody>
               {view.biggestLines.map((l) => (
-                <li key={l.id} className="flex items-baseline justify-between gap-3">
-                  <span className="truncate">{l.label}</span>
-                  <span
+                <TableRow key={l.id} className="hover:bg-transparent">
+                  <TableCell className="h-9 max-w-0 truncate py-1">{l.label}</TableCell>
+                  <TableCell
                     className={cn(
-                      "shrink-0 tabular-nums",
-                      l.cents < 0 ? "text-muted-foreground" : "text-primary",
+                      "h-9 w-28 py-1 text-right",
+                      l.cents > 0 ? "text-safe" : "text-foreground",
                     )}
                   >
+                    {l.cents > 0 ? "+" : ""}
                     {formatCents(l.cents)}
-                  </span>
-                </li>
+                  </TableCell>
+                </TableRow>
               ))}
-            </ul>
-          </div>
+            </TableBody>
+          </Table>
         </div>
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -437,29 +463,38 @@ function CashFlowSection({ view }: { view: DashboardView }) {
 
 function CashLineSection({ view }: { view: DashboardView }) {
   return (
-    <Link
-      href="/c/kestrel"
-      aria-label="Open the 13-week timeline"
-      className={cn("group block rounded-xl", focusRing)}
+    <Section
+      title="Usable cash, next 13 weeks"
+      description={
+        view.lenderMinimum
+          ? `Cash you can spend at the end of each week, against the lender's ${formatCents(view.lenderMinimum.cents)} minimum.`
+          : "Cash you can spend at the end of each week."
+      }
+      actions={
+        <Button asChild variant="outline" size="sm">
+          <Link href="/c/kestrel">
+            Open the timeline
+            <ArrowUpRight aria-hidden="true" />
+          </Link>
+        </Button>
+      }
+      card={false}
     >
-      <Card className="p-[var(--card-pad)] transition-colors group-hover:border-primary/60">
-        <SectionTitle
-          title="Usable cash, next 13 weeks"
-          action={
-            <span className="inline-flex items-center gap-1 text-sm text-muted-foreground group-hover:text-foreground">
-              Open the timeline
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </span>
-          }
-        />
+      {/* The whole chart opens the timeline too; the header button is the keyboard path. */}
+      <Link
+        href="/c/kestrel"
+        tabIndex={-1}
+        aria-label="Open the 13-week timeline"
+        className="block rounded-lg border bg-card p-[var(--card-pad)] shadow-xs transition-colors hover:border-foreground/20"
+      >
         <CashLine
           points={view.cashLine}
           minimum={view.lenderMinimum?.cents ?? null}
           markers={view.markers}
           breach={view.firstBreach}
         />
-      </Card>
-    </Link>
+      </Link>
+    </Section>
   );
 }
 
@@ -472,116 +507,166 @@ const KIND_LABEL = {
   other: "Other",
 };
 
+function Money({ cents, signed = true }: { cents: number; signed?: boolean }) {
+  return (
+    <span className={cn("tabular-nums", cents > 0 ? "text-safe" : "text-foreground")}>
+      {signed && cents > 0 ? "+" : ""}
+      {formatCents(cents)}
+    </span>
+  );
+}
+
 function ComingUp({ view }: { view: DashboardView }) {
   const n = view.next2Weeks;
+  const w0 = formatDate(n.weeks[0] ?? view.forecastStart);
+  const w1 = formatDate(n.weeks[1] ?? view.forecastStart);
   return (
-    <section aria-labelledby="coming-up">
-      <h2 id="coming-up" className="mb-3 text-base font-medium">
-        Coming up
-      </h2>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-sm font-medium">Next 2 weeks, scheduled</p>
-          <p className="text-xs text-muted-foreground">
-            Weeks of {formatDate(n.weeks[0] ?? view.forecastStart)} and{" "}
-            {formatDate(n.weeks[1] ?? view.forecastStart)}
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg border bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Money in</p>
-              <p className="text-lg font-semibold tabular-nums text-primary">
-                {formatCents(n.inflows)}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">Money out</p>
-              <p className="text-lg font-semibold tabular-nums">{formatCents(n.outflows)}</p>
-            </div>
-          </div>
-          <ul className="mt-3 divide-y text-sm">
-            {n.items.map((i) => (
-              <li key={i.id} className="flex items-baseline justify-between gap-3 py-1.5">
-                <span className="min-w-0 truncate">
-                  {i.counterparty}
-                  <span className="ml-1.5 text-xs text-muted-foreground">
-                    {KIND_LABEL[i.kind]}
-                    {i.status === "at_risk" ? " · overdue" : ""}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 tabular-nums",
-                    i.cents > 0 ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  {formatCents(i.cents)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm font-medium">Overdue customer payments</p>
-          <p className="text-xs text-muted-foreground">
-            {view.overdue.count === 0
-              ? "No customer is past due"
-              : `${view.overdue.count} invoice${view.overdue.count === 1 ? "" : "s"}, ${formatCents(view.overdue.cents)} in total`}
-          </p>
-          <ul className="mt-3 space-y-2">
-            {view.overdue.buckets.map((b) => {
-              const share = view.overdue.cents > 0 ? b.cents / view.overdue.cents : 0;
-              return (
-                <li key={b.label} className="text-sm">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span>{b.label} late</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {b.count > 0 ? `${b.count} · ${formatCents(b.cents)}` : "None"}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-muted" aria-hidden="true">
-                    <div
-                      className="h-1.5 rounded-full bg-clay"
-                      style={{ width: `${Math.round(share * 100)}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm font-medium">Bills due soon</p>
-          <p className="text-xs text-muted-foreground">
-            Unpaid, due in the next 14 days or already late
-          </p>
-          {view.billsDueSoon.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">Nothing due in the next 14 days.</p>
+    <Section
+      title="Coming up"
+      description={`Scheduled for the weeks of ${w0} and ${w1}.`}
+      card={false}
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Panel
+          title="Scheduled, next 2 weeks"
+          aside={
+            <dl className="flex gap-4 text-right text-[13px]">
+              <div>
+                <dt className="text-muted-foreground">Money in</dt>
+                <dd className="font-semibold tabular-nums text-safe">+{formatCents(n.inflows)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Money out</dt>
+                <dd className="font-semibold tabular-nums">{formatCents(n.outflows)}</dd>
+              </div>
+            </dl>
+          }
+        >
+          {n.items.length === 0 ? (
+            <EmptyRow icon={<Inbox />}>Nothing scheduled in the next 2 weeks.</EmptyRow>
           ) : (
-            <ul className="mt-3 divide-y text-sm">
-              {view.billsDueSoon.map((b) => (
-                <li key={b.id} className="flex items-baseline justify-between gap-3 py-1.5">
-                  <span className="min-w-0 truncate">
-                    {b.vendor}
-                    <span
-                      className={cn(
-                        "ml-1.5 text-xs",
-                        b.overdue ? "text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {b.overdue ? "late" : formatDate(b.payOn)}
-                      {b.critical ? " · must pay" : ""}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {formatCents(-b.cents)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Week of</TableHead>
+                  <TableHead>Counterparty</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...n.items]
+                  .sort((a, b) => a.dueWeek.localeCompare(b.dueWeek))
+                  .map((i) => (
+                    <TableRow key={i.id}>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {formatDate(i.dueWeek)}
+                      </TableCell>
+                      <TableCell className="max-w-0 w-full">
+                        <span className="block truncate font-medium">{i.counterparty}</span>
+                        <span className="block truncate text-xs text-muted-foreground sm:hidden">
+                          {KIND_LABEL[i.kind]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                        <span className="text-muted-foreground">{KIND_LABEL[i.kind]}</span>
+                        {i.status === "at_risk" ? (
+                          <Badge variant="warning" className="ml-2">
+                            Overdue
+                          </Badge>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <Money cents={i.cents} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
           )}
-        </Card>
+        </Panel>
+        <div className="flex min-w-0 flex-col gap-4">
+          <Panel
+            title="Bills due soon"
+            description="Unpaid, due in the next 14 days or already late"
+          >
+            {view.billsDueSoon.length === 0 ? (
+              <EmptyRow icon={<Inbox />}>Nothing due in the next 14 days.</EmptyRow>
+            ) : (
+              <Table>
+                <TableBody>
+                  {view.billsDueSoon.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="w-full max-w-0">
+                        <span className="block truncate font-medium">{b.vendor}</span>
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          {b.overdue ? (
+                            <span className="text-destructive">Late</span>
+                          ) : (
+                            <>Pay by {formatDate(b.payOn)}</>
+                          )}
+                          {b.critical ? (
+                            <>
+                              <Dot />
+                              Must pay
+                            </>
+                          ) : null}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {formatCents(-b.cents)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Panel>
+          <Panel
+            title="Overdue customer payments"
+            aside={
+              <span className="text-[13px] tabular-nums text-muted-foreground">
+                {view.overdue.count === 0
+                  ? "None past due"
+                  : `${view.overdue.count} · ${formatCents(view.overdue.cents)}`}
+              </span>
+            }
+            padded
+          >
+            <ul className="space-y-3">
+              {view.overdue.buckets.map((b) => {
+                const share = view.overdue.cents > 0 ? b.cents / view.overdue.cents : 0;
+                return (
+                  <li key={b.label} className="text-sm">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">{b.label} late</span>
+                      <span className="tabular-nums">
+                        {b.count > 0 ? (
+                          <>
+                            <span className="text-muted-foreground">{b.count} · </span>
+                            {formatCents(b.cents)}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">None</span>
+                        )}
+                      </span>
+                    </div>
+                    {view.overdue.cents > 0 ? (
+                      <div className="mt-1.5 h-1 rounded-full bg-muted" aria-hidden="true">
+                        <div
+                          className="h-1 rounded-full bg-warning"
+                          style={{ width: `${Math.round(share * 100)}%` }}
+                        />
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -589,37 +674,52 @@ function ComingUp({ view }: { view: DashboardView }) {
 
 function Risks({ view }: { view: DashboardView }) {
   return (
-    <section aria-label="Risks from auto-analysis">
-      <SectionTitle title="Risks from auto-analysis" tag={<SampleTag />} />
-      <div className="grid gap-3 lg:grid-cols-3">
+    <Section
+      title={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          Risks from auto-analysis
+          <SampleTag />
+        </span>
+      }
+      description="What happens to the low point if each event comes true, and the fix the agent suggests."
+      card={false}
+    >
+      <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {view.risks.map((r) => (
-          <Card key={r.id} className="flex flex-col p-4">
-            <p className="text-sm font-medium leading-5">{r.title}</p>
-            <p className={cn("mt-2 text-sm", r.failsWeek ? "text-destructive" : "text-primary")}>
-              {r.failsWeek
-                ? `Fails in the week of ${formatDate(r.failsWeek)}`
-                : "Survives all 13 weeks"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Low point moves by{" "}
-              <span className="tabular-nums text-foreground">{formatCents(r.impact)}</span>
-            </p>
+          <li
+            key={r.id}
+            className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-xs"
+          >
+            <div className="flex-1 space-y-3 p-4">
+              {r.failsWeek ? (
+                <Badge variant="destructive">Fails week of {formatDate(r.failsWeek)}</Badge>
+              ) : (
+                <Badge variant="success">Survives all 13 weeks</Badge>
+              )}
+              <p className="text-sm font-medium leading-5">{r.title}</p>
+              <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="text-muted-foreground">Low point moves by</span>
+                <span className="font-medium tabular-nums">{formatCents(r.impact)}</span>
+              </div>
+            </div>
             {r.fix ? (
-              <div className="mt-4 rounded-lg border border-dashed px-3 py-2 text-sm">
-                <p>
-                  {r.fix.label}:{" "}
-                  <span className="font-medium tabular-nums">{formatCents(r.fix.cents)}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {r.fix.survives ? "Survives with this fix" : "Still short with this fix"} ·
-                  awaiting your approval
+              <div className="border-t bg-muted/40 px-4 py-3 text-[13px]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span>{r.fix.label}</span>
+                  <span className="font-semibold tabular-nums">{formatCents(r.fix.cents)}</span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  <span className={r.fix.survives ? "text-safe" : "text-destructive"}>
+                    {r.fix.survives ? "Survives with this fix" : "Still short with this fix"}
+                  </span>{" "}
+                  · awaiting your approval
                 </p>
               </div>
             ) : null}
-          </Card>
+          </li>
         ))}
-      </div>
-    </section>
+      </ul>
+    </Section>
   );
 }
 
@@ -631,53 +731,58 @@ function Attention({ header }: { header?: DashboardHeader }) {
   return (
     <section
       aria-label="Needs your attention"
-      className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+      className="grid overflow-hidden rounded-lg border bg-card shadow-xs md:grid-cols-2"
     >
-      <Link href="/field" className={cn("group block rounded-xl", focusRing)}>
-        <Card className="flex h-full items-center justify-between gap-4 p-4 transition-colors group-hover:border-primary/60">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl border bg-muted/40">
-              <Flag
-                className={cn("size-5", open > 0 ? "text-clay" : "text-muted-foreground")}
-                aria-hidden="true"
-              />
-            </div>
-            <div>
-              <p className="font-medium">
-                {open === 0
-                  ? "Nothing needs your attention"
-                  : `${open} open flag${open === 1 ? "" : "s"} to review`}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {urgent > 0 ? `${urgent} marked urgent by the audit. ` : ""}Review flagged entries
-                in the worker.
-              </p>
-            </div>
-          </div>
-          <ArrowRight
-            className="size-5 shrink-0 text-primary transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
-            aria-hidden="true"
-          />
-        </Card>
-      </Link>
-      <Link href="/field/map" className={cn("group block rounded-xl", focusRing)}>
-        <Card className="flex h-full items-center justify-between gap-4 p-4 transition-colors group-hover:border-primary/60">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl border bg-muted/40">
-              <Network className="size-5 text-muted-foreground" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="font-medium">Brain map</p>
-              <p className="text-sm text-muted-foreground">See every agent and tool at work</p>
-            </div>
-          </div>
-          <ArrowRight
-            className="size-5 shrink-0 text-primary transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
-            aria-hidden="true"
-          />
-        </Card>
-      </Link>
+      <AttentionLink
+        href="/field"
+        icon={<Flag className={open > 0 ? "text-warning" : undefined} />}
+        title={
+          open === 0
+            ? "Nothing needs your attention"
+            : `${open} open flag${open === 1 ? "" : "s"} to review`
+        }
+        body={`${urgent > 0 ? `${urgent} marked urgent by the audit. ` : ""}Review flagged entries in the worker.`}
+      />
+      <AttentionLink
+        href="/field/map"
+        icon={<Network />}
+        title="Brain map"
+        body="See every agent and tool at work"
+        className="border-t md:border-l md:border-t-0"
+      />
     </section>
+  );
+}
+
+function AttentionLink({
+  href,
+  icon,
+  title,
+  body,
+  className,
+}: { href: string; icon: ReactNode; title: string; body: string; className?: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/50",
+        focusRing,
+        "focus-visible:-outline-offset-2",
+        className,
+      )}
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground [&_svg]:size-4">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="block text-[13px] text-muted-foreground">{body}</span>
+      </span>
+      <ArrowRight
+        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground motion-reduce:transition-none"
+        aria-hidden="true"
+      />
+    </Link>
   );
 }
 
@@ -686,13 +791,14 @@ function Attention({ header }: { header?: DashboardHeader }) {
 function LoadingState() {
   return (
     <div className="space-y-4" aria-busy="true">
-      <Skeleton className="h-28 w-full rounded-xl" />
+      <p className="text-sm text-muted-foreground">Reading the latest books...</p>
+      <Skeleton className="h-24 w-full rounded-lg" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[0, 1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+          <Skeleton key={i} className="h-[104px] rounded-lg" />
         ))}
       </div>
-      <Skeleton className="h-72 w-full rounded-xl" />
+      <Skeleton className="h-80 w-full rounded-lg" />
     </div>
   );
 }
@@ -703,9 +809,16 @@ function Notice({
   tone,
 }: { title: string; children: ReactNode; tone?: "danger" }) {
   return (
-    <Card className={cn("p-[var(--card-pad)]", tone === "danger" && "border-destructive/50")}>
-      <p className={cn("font-medium", tone === "danger" && "text-destructive")}>{title}</p>
+    <div
+      className={cn(
+        "rounded-lg border bg-card p-[var(--card-pad)] shadow-xs",
+        tone === "danger" && "border-destructive/30 bg-destructive/[0.04]",
+      )}
+    >
+      <p className={cn("text-[15px] font-semibold", tone === "danger" && "text-destructive")}>
+        {title}
+      </p>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{children}</p>
-    </Card>
+    </div>
   );
 }

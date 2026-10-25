@@ -37,7 +37,8 @@ const shortMoney = (c: number) => formatCents(Math.round(c));
 
 // ---------- Weekly cash flow bars ----------
 
-const SECTIONS = [
+/** Activity series, shared with the dashboard's totals table so its swatches match the bars. */
+export const FLOW_SECTIONS = [
   { key: "operating", label: "Operating", color: ACCENT },
   { key: "investing", label: "Investing", color: CLAY },
   { key: "financing", label: "Financing", color: "hsl(var(--foreground) / 0.55)" },
@@ -48,15 +49,15 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
   const firstProjected = bars.findIndex((b) => b.kind === "projected");
   const [hover, setHover] = useState<number | null>(null);
   const shown = hover ?? Math.max(0, firstProjected);
-  const height = 200;
-  const m = { top: 14, right: 8, bottom: 26, left: 52 };
+  const height = 220;
+  const m = { top: 22, right: 8, bottom: 26, left: 52 };
   const innerW = width - m.left - m.right;
   const band = innerW / Math.max(1, bars.length);
   const barW = Math.max(4, Math.min(28, band * 0.6));
   let lo = 0;
   let hi = 0;
   for (const b of bars) {
-    const vals = SECTIONS.map((s) => b[s.key]);
+    const vals = FLOW_SECTIONS.map((s) => b[s.key]);
     hi = Math.max(
       hi,
       vals.filter((v) => v > 0).reduce((a, v) => a + v, 0),
@@ -92,7 +93,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
                   : "Projected"}
               </span>
             </span>
-            {SECTIONS.map((s) => (
+            {FLOW_SECTIONS.map((s) => (
               <span key={s.key} className="tabular-nums text-muted-foreground">
                 {s.label} <span className="text-foreground">{shortMoney(cur[s.key])}</span>
               </span>
@@ -140,12 +141,28 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
               <line
                 x1={m.left + band * firstProjected}
                 x2={m.left + band * firstProjected}
-                y1={m.top - 6}
+                y1={m.top - 20}
                 y2={height - m.bottom}
-                stroke={MUTED}
-                strokeDasharray="3 3"
+                stroke={GRID}
+                strokeWidth={1}
               />
-              <text x={m.left + band * firstProjected + 4} y={m.top} fontSize={10} fill={MUTED}>
+              <text
+                x={m.left + band * firstProjected - 6}
+                y={m.top - 10}
+                textAnchor="end"
+                fontSize={10}
+                fontWeight={500}
+                fill={MUTED}
+              >
+                Actual
+              </text>
+              <text
+                x={m.left + band * firstProjected + 6}
+                y={m.top - 10}
+                fontSize={10}
+                fontWeight={500}
+                fill={MUTED}
+              >
                 Forecast
               </text>
             </g>
@@ -155,7 +172,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
             const projected = b.kind === "projected";
             let up = 0;
             let down = 0;
-            const segs = SECTIONS.flatMap((s) => {
+            const segs = FLOW_SECTIONS.flatMap((s) => {
               const v = b[s.key];
               if (v === 0) return [];
               const from = v > 0 ? up : down;
@@ -184,10 +201,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
                     height={s.h}
                     rx={2}
                     fill={s.color}
-                    fillOpacity={projected ? 0.32 : 1}
-                    stroke={projected ? s.color : "none"}
-                    strokeWidth={1}
-                    strokeDasharray={projected ? "3 2" : undefined}
+                    fillOpacity={projected ? 0.38 : 1}
                   />
                 ))}
                 {i % labelEvery === 0 ? (
@@ -209,25 +223,22 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
         </svg>
       </div>
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-        {SECTIONS.map((s) => (
+        {FLOW_SECTIONS.map((s) => (
           <span key={s.key} className="inline-flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className="size-2.5 rounded-sm"
+              className="size-2.5 rounded-[3px]"
               style={{ background: s.color }}
             />
             {s.label}
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="size-2.5 rounded-sm bg-foreground" />
+          <span aria-hidden="true" className="size-2.5 rounded-[3px] bg-foreground/80" />
           Actual
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className="size-2.5 rounded-sm border border-dashed border-foreground bg-foreground/30"
-          />
+          <span aria-hidden="true" className="size-2.5 rounded-[3px] bg-foreground/30" />
           Projected
         </span>
       </div>
@@ -344,8 +355,8 @@ export function CashLine({
             ))}
           </>
         ) : (
-          <span className="text-muted-foreground">
-            Usable cash at the end of each week. Hover for details; click to open the timeline.
+          <span className="text-[13px] text-muted-foreground">
+            Hover a week for details. Click the chart to open the timeline.
           </span>
         )}
       </div>
@@ -405,7 +416,7 @@ export function CashLine({
                 y={minY}
                 width={width - m.left - m.right}
                 height={Math.max(0, plotBottom - minY)}
-                fill="hsl(var(--destructive) / 0.08)"
+                fill="hsl(var(--destructive) / 0.05)"
               />
               <line
                 x1={m.left}

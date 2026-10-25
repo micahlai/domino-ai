@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
+import { Select } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { useFieldData } from "./data";
 import { ANOMALY_OPTIONS, type Anomaly, type FieldFinding, type OperationKind } from "./types";
@@ -21,12 +22,6 @@ export const SEVERITY_LABEL: Record<FieldFinding["severity"], string> = {
   high: "High",
   medium: "Medium",
   low: "Low",
-};
-
-export const SEVERITY_TONE: Record<FieldFinding["severity"], string> = {
-  high: "border-destructive/50 bg-destructive/10 text-[hsl(var(--danger-text))]",
-  medium: "border-clay/50 bg-clay/10 text-clay",
-  low: "border-border bg-muted text-muted-foreground",
 };
 
 export const OPERATION_LABEL: Record<OperationKind, string> = {
@@ -75,19 +70,29 @@ export function clock(iso: string): string {
   });
 }
 
+/** Severity as a status badge: red only for high (a likely broken rule), amber for medium. */
+export const SEVERITY_BADGE: Record<
+  FieldFinding["severity"],
+  "destructive" | "warning" | "secondary"
+> = {
+  high: "destructive",
+  medium: "warning",
+  low: "secondary",
+};
+
 /** Says where the numbers come from. Demo data is always labelled as such. */
 export function DataLabel({ className }: { className?: string }) {
   const { source, sourceNote } = useFieldData();
   if (source === "live")
     return (
-      <Badge variant="outline" className={cn("gap-1.5 font-normal", className)}>
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+      <Badge variant="success" className={cn("gap-1.5", className)}>
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-safe" />
         Live
       </Badge>
     );
   if (source === "loading")
     return (
-      <Badge variant="outline" className={cn("font-normal text-muted-foreground", className)}>
+      <Badge variant="secondary" className={cn("font-normal", className)}>
         Connecting...
       </Badge>
     );
@@ -95,8 +100,9 @@ export function DataLabel({ className }: { className?: string }) {
     <Badge
       variant="outline"
       title={sourceNote}
-      className={cn("border-dashed font-normal text-clay", className)}
+      className={cn("gap-1.5 border-dashed font-normal text-muted-foreground", className)}
     >
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-clay" />
       Demo data · {sourceNote.toLowerCase()}
     </Badge>
   );
@@ -114,16 +120,16 @@ export function AnomalyPicker({
 }) {
   const id = useId();
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <label htmlFor={id} className="text-muted-foreground">
+    <span className="inline-flex min-w-0 items-center gap-2 text-sm">
+      <label htmlFor={id} className="shrink-0 text-muted-foreground">
         With
       </label>
-      <select
+      <Select
         id={id}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as Anomaly | "")}
-        className="min-h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className="sm:w-56"
       >
         <option value="">no planted anomaly</option>
         {ANOMALY_OPTIONS.map((a) => (
@@ -131,7 +137,7 @@ export function AnomalyPicker({
             {a.label}
           </option>
         ))}
-      </select>
+      </Select>
     </span>
   );
 }
@@ -161,7 +167,9 @@ export function AutoIngestToggle() {
           }
         }}
       />
-      <label htmlFor={id}>Auto ingest {on ? "on" : "off"}</label>
+      <label htmlFor={id} className="whitespace-nowrap">
+        Auto ingest {on ? "on" : "off"}
+      </label>
       {error ? <span className="text-[hsl(var(--danger-text))]">{error}</span> : null}
     </span>
   );
@@ -176,7 +184,10 @@ const TABS = [
 export function FieldTabs() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Agent workspace" className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+    <nav
+      aria-label="Agent workspace"
+      className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-secondary p-0.5"
+    >
       {TABS.map((tab) => {
         const active = pathname === tab.href;
         return (
@@ -185,8 +196,8 @@ export function FieldTabs() {
             href={tab.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-9 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-              active && "bg-background font-medium text-foreground shadow-sm",
+              "inline-flex h-7 shrink-0 items-center rounded-[5px] px-2.5 text-[13px] font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+              active && "bg-card text-foreground shadow-sm",
             )}
           >
             {tab.label}
