@@ -34,7 +34,22 @@ export interface Overlay extends JudgeOverlay {
   hiddenPayroll: string[];
   /** Storyline beats the simulated clock fired (lib/storylines.ts); absent on older rows. */
   story?: StoryState;
+  /**
+   * Vendor remit-to bank account changes the books report on an incoming bill (a planted
+   * payment-detail change). The audit's identity and fraud agent checks each once (fieldCrs.ts).
+   */
+  payeeChanges?: PayeeChange[];
 }
+
+export type PayeeChange = {
+  billId: string;
+  vendor: string;
+  amount: number;
+  /** Masked account numbers, last four digits only. */
+  fromAccount: string;
+  toAccount: string;
+  at: string;
+};
 
 export const ANOMALIES = [
   "duplicate",

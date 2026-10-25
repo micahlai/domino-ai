@@ -61,6 +61,7 @@ import {
   judgeSourcePlan,
   plantCsv,
   plantScenario,
+  plantVendorBankChange,
   rankCustomers,
   surpriseScenario,
   validateCsvRows,
@@ -432,7 +433,9 @@ export const surprise = mutation({
       );
     const label = SURPRISE_LABEL[preset].title;
     return inject(ctx, companyId, `surprise:${preset}`, label, (served, overlay, tag) =>
-      plantScenario(served, overlay, surpriseScenario(preset, served), tag),
+      preset === "vendor_bank_change"
+        ? plantVendorBankChange(served, overlay, tag)
+        : plantScenario(served, overlay, surpriseScenario(preset, served), tag),
     );
   },
 });

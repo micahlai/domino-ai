@@ -37,6 +37,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { AUDIT_AGENT } from "./fieldAi";
+import { runIdentityAgent } from "./fieldCrs";
 import { writeLog } from "./fieldJobs";
 import { type AgentRow, agentLog } from "./lib/agentLog";
 import { SWARM_LIMIT, mapBounded, member } from "./lib/swarm";
@@ -317,5 +318,14 @@ export async function runAuditSwarm(
     failed,
     dropped,
   });
-  return { found: findings.length, added };
+  // Identity & fraud check agent (CRS): payee changes and large first-time payees. Never throws.
+  const crsAdded = await runIdentityAgent(ctx, {
+    companyId: a.companyId,
+    ingestRunId: a.ingestRunId,
+    swarmRunId,
+    snapshotId: a.snapshotId,
+    ...(a.previousId && { previousId: a.previousId }),
+    version: a.version,
+  });
+  return { found: findings.length + crsAdded.length, added: [...added, ...crsAdded] };
 }

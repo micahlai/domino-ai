@@ -47,6 +47,7 @@ const LANES = {
     "analystLoops",
     "aiCalls",
     "apifyRuns",
+    "crsChecks",
     "tools",
     "suggestions",
     "investigationRequests",
@@ -102,6 +103,11 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
   aiCalls: [
     ["by_hour", ["hour"]],
     ["by_companyId_and_kind_and_scope", ["companyId", "kind", "scope"]],
+  ],
+  crsChecks: [
+    ["by_kind_and_personaId", ["kind", "personaId"]],
+    ["by_kind_and_at", ["kind", "at"]],
+    ["by_companyId_and_at", ["companyId", "at"]],
   ],
   apifyRuns: [
     ["by_day", ["day"]],
@@ -182,7 +188,7 @@ describe("schema composition", () => {
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
     const all = [...LANES.timeline, ...LANES.field];
-    expect(new Set(all).size).toBe(46);
+    expect(new Set(all).size).toBe(47);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });
 

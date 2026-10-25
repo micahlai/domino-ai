@@ -101,6 +101,36 @@ export type FieldFinding = Finding & {
   /** Live only: Claude's plain-language explanation of the flag and a check to run. */
   explanation?: string;
   suggestedCheck?: string;
+  /** Live only: CRS sandbox identity and fraud check on the vendor's account owner. */
+  crs?: FieldCrs;
+};
+
+/** CRS sandbox identity and fraud check (convex/fieldCrs.ts), as stored on the flag. */
+export type FieldCrs = {
+  verdict: "verified" | "signals" | "unavailable" | "not_configured" | "capped";
+  personaId: string;
+  personaName: string;
+  personaProfile: string;
+  identity: {
+    result: "PASS" | "FAIL" | "REVIEW";
+    messages: { code: string; text: string }[];
+    requestId: string | null;
+  } | null;
+  fraud: {
+    score: number | null;
+    emailStatus: string | null;
+    emailFirstSeen: string | null;
+    domainRisk: number | null;
+    phoneMatch: string | null;
+    addressMatch: string | null;
+    requestId: string | null;
+  } | null;
+  headline: string;
+  signals: string[];
+  calls: number;
+  detail: string | null;
+  cached: boolean;
+  checkedAt: string;
 };
 
 export type Decision = "approved" | "rejected";

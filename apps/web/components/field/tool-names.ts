@@ -78,6 +78,10 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "claude.explainflags": { label: "Claude: explain flags", category: "audit" },
   "claude.summarizescenarios": { label: "Claude: summarize scenarios", category: "other" },
   "creao.counterpartyrisk": { label: "CREAO: counterparty risk notes", category: "other" },
+  // CRS sandbox identity and fraud checks (convex/fieldCrs.ts).
+  "crs.truvalidate": { label: "CRS: verify identity (TruValidate)", category: "audit" },
+  "crs.fraudfinder": { label: "CRS: fraud signals (Fraud Finder)", category: "audit" },
+  "crs.identityfraud": { label: "CRS identity and fraud check", category: "audit" },
 };
 
 const CATEGORIES = new Set<string>(Object.keys(TOOL_CATEGORY_LABEL));

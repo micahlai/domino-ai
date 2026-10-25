@@ -26,6 +26,7 @@ export const MARKS: Record<Exclude<VendorId, "bank" | "generic">, Mark> = {
   plaid: { kind: "image", src: "/logos/plaid.png", tile: "#00282F", scale: 1 },
   capitalone: { kind: "image", src: "/logos/capitalone.svg", tile: "#fff", scale: 0.78 },
   apify: { kind: "image", src: "/logos/apify.svg", tile: "#fff", scale: 0.62 },
+  crs: { kind: "image", src: "/logos/crs.svg", tile: "#fff", scale: 1 },
 };
 
 export type ToolLogoProps = {

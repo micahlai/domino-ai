@@ -302,7 +302,11 @@ export function traceExplain(trace: FieldTrace): Explain {
             label: "Providers",
             value: trace.providers.length
               ? trace.providers
-                  .map((p) => `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`)
+                  .map((p) =>
+                    p.provider === "crs"
+                      ? `CRS identity and fraud check (${p.attribution}, ${p.status}): ${p.detail ?? "no detail"}`
+                      : `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`,
+                  )
                   .join("; ")
               : "None recorded",
           },

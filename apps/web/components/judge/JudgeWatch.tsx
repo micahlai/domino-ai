@@ -17,6 +17,7 @@ import { formatCents, formatDate } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { BrainMap } from "../field/BrainMap";
 import { OpenInTimeline } from "../field/OpenInTimeline";
+import { CrsCheck } from "../field/CrsCheck";
 import { FieldCompanyOverride } from "../field/company";
 import { FieldDataProvider } from "../field/data";
 import { Button } from "../ui/button";
@@ -100,6 +101,7 @@ function SidePanel({ state, onLeave }: { state: JudgeState; onLeave: () => void 
           </FieldCompanyOverride>
         </div>
       ) : null}
+      <CrsFlags companyId={state.companyId} />
       <div className="space-y-2 rounded-lg border bg-card p-4 shadow-xs">
         <div className="flex flex-wrap gap-2">
           <Button
@@ -317,6 +319,29 @@ function Surprises({ state }: { state: JudgeState }) {
           {state.limits.perMinute} a minute at most. Try again shortly.
         </p>
       ) : null}
+    </section>
+  );
+}
+
+/** Payment-change flags the identity and fraud agent checked with CRS, newest first. */
+function CrsFlags({ companyId }: { companyId: Id<"companies"> }) {
+  const open = useQuery(api.field.findings, { companyId, status: "open" });
+  const checked = (open ?? []).filter((f) => f.crs).slice(0, 3);
+  if (checked.length === 0) return null;
+  return (
+    <section
+      aria-label="Identity and fraud checks"
+      className="space-y-3 rounded-lg border bg-card p-4 shadow-xs"
+    >
+      <h2 className="text-sm font-medium">Payment changes checked with CRS</h2>
+      {checked.map((f) =>
+        f.crs ? (
+          <div key={f.findingId}>
+            <p className="text-[13px] leading-5">{f.summary.split(". ")[0]}</p>
+            <CrsCheck crs={f.crs} />
+          </div>
+        ) : null,
+      )}
     </section>
   );
 }
