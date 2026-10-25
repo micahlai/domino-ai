@@ -13,15 +13,25 @@ import {
 } from "./_generated/server";
 import { toolInfo } from "./connectors/catalog";
 import { inProcessFetcher } from "./connectors/inProcess";
+import { nessieFetcher, withNessie } from "./connectors/nessie";
 import type { ToolId } from "./connectors/types";
 import { type Overlay, servedSnapshot } from "./fieldFeed";
-import { type Ingested, type Pull, SOURCE_OF_TOOL, ingestConnected } from "./fieldSources";
+import { type Prepared, prepareNessie } from "./fieldNessie";
+import {
+  BANK_FALLBACK,
+  type Ingested,
+  type Pull,
+  SOURCE_OF_TOOL,
+  ingestConnected,
+} from "./fieldSources";
 import { storeToolResults, toolArg, toolResult } from "./lib/connectionRows";
 import { computedRefs } from "./lib/refs";
 
 /**
  * Field ingestion agent (internal). One run: read every connected tool through the connectors
- * (connectors/pullAll over the in-process vendor mocks), map and validate, then commit a new immutable snapshot version, audit it, store
+ * (connectors/pullAll over the in-process vendor mocks, and the bank from the Capital One
+ * Nessie sandbox after posting the week's lines to Domino's own accounts there; the simulated
+ * bank stands in when Nessie cannot be used), map and validate, then commit a new immutable snapshot version, audit it, store
  * findings and recompute the forecast. Every step writes a `log` row naming the agent, tool
  * and data source. Deterministic code only: no money estimate, no real API. The one model call
  * (Claude explaining new flags) runs separately in fieldAi.explainNewFindings.
@@ -184,12 +194,23 @@ export const commit = internalMutation({
     stale: v.array(v.string()),
     results: v.array(toolResult),
     tieOut: v.object({ checked: v.number(), mismatches: v.array(v.string()) }),
+    bankFallback: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const { companyId, runId, hash, pulls, skipped, stale, results, tieOut } = args;
     const snapshot = SnapshotSchema.parse(args.snapshot);
     const feed = await requireFeed(ctx, companyId);
     const at = new Date().toISOString();
+    if (args.bankFallback)
+      await writeLog(ctx, companyId, runId, {
+        actor: "connector",
+        action: "ingest.bankFallback",
+        refs: ["nessie", "plaid"],
+        agent: AGENT,
+        tool: "nessie.read",
+        source: "nessie",
+        summary: `${BANK_FALLBACK}: ${args.bankFallback}`,
+      });
     for (const p of pulls) await writeLog(ctx, companyId, runId, pullStep(p));
     if (skipped.length > 0)
       await writeLog(ctx, companyId, runId, {
@@ -357,11 +378,27 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
     });
     const inputs: { served: Snapshot; connected: ToolId[]; previous: Snapshot | null } =
       await ctx.runQuery(internal.fieldJobs.ingestInputs, { companyId });
+    const bank = inputs.connected.includes("nessie")
+      ? await prepareNessie(ctx, companyId, inputs.served)
+      : null;
+    if (bank?.ok && (bank.posted > 0 || bank.adopted > 0 || bank.created > 0))
+      await step({
+        actor: "connector",
+        action: "nessie.posted",
+        refs: [bank.plan.checkingId, ...(bank.plan.savingsId ? [bank.plan.savingsId] : [])],
+        tool: "nessie.post",
+        source: "nessie",
+        summary: `Posted ${bank.posted} simulated bank lines to Domino's Capital One Nessie sandbox account${
+          bank.adopted > 0 ? ` (${bank.adopted} already there)` : ""
+        }; ${bank.createdTotal} Nessie objects created for this company so far`,
+      });
     const ingested: Ingested = await ingestConnected({
-      fetcher: inProcessFetcher(inputs.served),
+      fetcher: bankFetcher(inputs.served, bank),
       companyId: inputs.served.companyId,
       connected: inputs.connected,
       previous: inputs.previous,
+      nessie: bank?.ok ? bank.plan : null,
+      nessieDown: bank && !bank.ok ? bank.reason : null,
     });
     const hash = await sha256(canonicalJson(ingested.snapshot));
     const result = await ctx.runMutation(internal.fieldJobs.commit, {
@@ -374,6 +411,7 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       stale: ingested.stale,
       results: ingested.results,
       tieOut: ingested.tieOut,
+      bankFallback: ingested.bankFallback,
     });
     // Field analyst after the ingest (and after recompute, which scans the log).
     const analyst = () =>
@@ -419,6 +457,14 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
     });
     return { changed: false as const, error: message(error) };
   }
+}
+
+/** The mock vendors in process, plus Domino's own Nessie accounts when they are ready. */
+export function bankFetcher(served: Snapshot, bank: Prepared | null) {
+  const mocks = inProcessFetcher(served);
+  if (!bank?.ok) return mocks;
+  const ids = [bank.plan.checkingId, ...(bank.plan.savingsId ? [bank.plan.savingsId] : [])];
+  return withNessie(mocks, nessieFetcher(bank.http, ids));
 }
 
 function message(error: unknown): string {

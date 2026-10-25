@@ -3,7 +3,7 @@ import { PROFILE_IDS } from "@domino/sim";
 import { describe, expect, it } from "vitest";
 import { inProcessFetcher } from "../../connectors/inProcess";
 import { type ConnectionInput, pullAll } from "../../connectors/pullAll";
-import { type Fetcher, TOOL_IDS, type ToolId } from "../../connectors/types";
+import { type Fetcher, MOCK_TOOL_IDS as TOOL_IDS, type ToolId } from "../../connectors/types";
 import { emptyOverlay, newWorld, nextWorld, servedSnapshot } from "../../fieldFeed";
 
 const connected = (tools: readonly ToolId[] = TOOL_IDS): ConnectionInput[] =>

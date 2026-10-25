@@ -283,14 +283,16 @@ describe("live log mapping", () => {
       "cards",
       "books",
       "payroll",
-      "plaid",
+      "bank",
     ]);
     // An empty log window: every source still shows as read, with the date its data runs to.
     const graph = withSavedState(buildBrainGraph([]), {
       sources: mapped.sources,
       booksVersions: mapped.counts.snapshots,
     });
-    const sources = graph.nodes.filter((n) => n.kind === "source");
+    // The simulated bank (Plaid mock) is an unread alternative to Capital One here.
+    const sources = graph.nodes.filter((n) => n.kind === "source" && n.id !== "source:plaid");
+    expect(sources).toHaveLength(6);
     expect(sources.every(hasWork)).toBe(true);
     expect(sources[0]?.saved).toBe("Data through Nov 2");
     expect(graph.nodes.find((n) => n.id === "output:books")?.saved).toBe("4 versions saved");

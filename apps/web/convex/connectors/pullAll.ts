@@ -1,6 +1,7 @@
 import { type BankTxn, type Snapshot, SnapshotSchema } from "@domino/contracts";
 import { fetchGusto, translateGusto } from "./gusto";
 import { fetchHubspot, translateHubspot } from "./hubspot";
+import { type NessiePlan, fetchNessie, translateNessie } from "./nessie";
 import { fetchPlaid, translatePlaid } from "./plaid";
 import { fetchQbo, translateQbo } from "./qbo";
 import { fetchRamp, translateRamp } from "./ramp";
@@ -28,7 +29,8 @@ import { VendorError } from "./vendorHttp";
  * result with SnapshotSchema. Pure apart from the fetcher; synthetic mocks only.
  *
  * Which tool is the record for what (the other copy is skipped with a reason):
- *   cash and restricted cash, bank transactions  Plaid (QuickBooks balances when no bank)
+ *   cash and restricted cash, bank transactions  Capital One Nessie, else Plaid (QuickBooks
+ *     balances when no bank)
  *   customers, invoices, billing plans, payouts in transit  Stripe (QuickBooks invoices when no Stripe)
  *   bills  QuickBooks (Ramp Bill Pay bills when not in the books)
  *   card transactions  Ramp; payroll runs  Gusto; deals  HubSpot
@@ -80,6 +82,8 @@ export async function pullAll(args: {
   companyId: string;
   connections: ConnectionInput[];
   since?: PullSince;
+  /** Domino's own Nessie accounts; without them a connected Nessie reports an error. */
+  nessie?: NessiePlan | null;
 }): Promise<PullAllResult> {
   const { fetcher, companyId, since } = args;
   const on = new Set(args.connections.filter((c) => c.status === "connected").map((c) => c.tool));
@@ -141,6 +145,13 @@ export async function pullAll(args: {
     cursor.plaid = raw.cursor;
     return translatePlaid(raw, since?.bankTxns ?? []);
   });
+  await run("nessie", async (r) => {
+    const plan = args.nessie;
+    if (!plan) throw new Error("Capital One (Nessie) is not set up for this company yet");
+    const raw = await fetchNessie(fetcher, plan);
+    r.calls = calls(raw.pages);
+    return translateNessie(raw, plan);
+  });
   for (const tool of TOOL_IDS) if (!on.has(tool)) cursor[tool] = null;
 
   const merged = merge(out, log);
@@ -154,7 +165,8 @@ export async function pullAll(args: {
   let snapshot: Snapshot | null = null;
   let snapshotError: string | null = null;
   if (!merged.balances)
-    snapshotError = "Connect a bank (Plaid) or books (QuickBooks) for the cash balance";
+    snapshotError =
+      "Connect a bank (Capital One or Plaid) or books (QuickBooks) for the cash balance";
   else {
     const { billingPlans, pendingPayouts, ...lists } = merged.records;
     // Optional lists are left out when empty, so the snapshot stays plain JSON for Convex.
@@ -187,7 +199,7 @@ export async function pullAll(args: {
 const OWNERS: Record<ListName, ToolId[]> = {
   customers: ["stripe"],
   invoices: ["stripe", "qbo"],
-  bankTxns: ["plaid"],
+  bankTxns: ["nessie", "plaid"],
   bills: ["qbo", "ramp"],
   cardTxns: ["ramp"],
   payroll: ["gusto"],
@@ -202,6 +214,7 @@ const TOOL_NAME: Record<ToolId, string> = {
   gusto: "Gusto",
   hubspot: "HubSpot",
   plaid: "the bank (Plaid)",
+  nessie: "the bank (Capital One Nessie)",
 };
 
 function merge(out: Map<ToolId, AnyTranslated>, log: Map<ToolId, Receipt>) {
@@ -245,8 +258,9 @@ function merge(out: Map<ToolId, AnyTranslated>, log: Map<ToolId, Receipt>) {
   }));
   log.get("stripe")?.skipped.push(...payoutSkips);
 
-  const balances = out.get("plaid")?.balances ?? out.get("qbo")?.balances ?? null;
-  if (out.get("plaid")?.balances && out.get("qbo")?.balances)
+  const bank = out.get("nessie")?.balances ? out.get("nessie") : out.get("plaid");
+  const balances = bank?.balances ?? out.get("qbo")?.balances ?? null;
+  if (bank?.balances && out.get("qbo")?.balances)
     log
       .get("qbo")
       ?.notes.push("cash balance comes from the bank; the books balance is checked against it");
@@ -255,7 +269,11 @@ function merge(out: Map<ToolId, AnyTranslated>, log: Map<ToolId, Receipt>) {
 
 function tieOut(out: Map<ToolId, AnyTranslated>, records: Lists): Check[] {
   const checks: Check[] = [];
-  const plaid = out.get("plaid") as ReturnType<typeof translatePlaid> | undefined;
+  // The bank of record: Nessie when it was read, else Plaid. Both link lines to references.
+  const plaid = (out.get("nessie") ?? out.get("plaid")) as
+    | ReturnType<typeof translatePlaid>
+    | ReturnType<typeof translateNessie>
+    | undefined;
   if (!plaid) return checks;
   const full = !plaid.notes.some((n) => n.startsWith("incremental"));
   const bank = new Map(records.bankTxns.map((t) => [t.id, t]));

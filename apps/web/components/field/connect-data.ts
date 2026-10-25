@@ -132,7 +132,9 @@ type DemoRun = Omit<
   error: string | null;
 };
 const RUNS = demo.runs as unknown as Record<string, DemoRun[]>;
-const ORDER: ToolId[] = ["plaid", "stripe", "qbo", "gusto", "ramp", "hubspot"];
+// Demo mode has no backend, so it cannot reach the Nessie sandbox: Capital One is listed but
+// recorded runs cover the mock tools only, with the simulated bank (Plaid mock) as the bank.
+const ORDER: ToolId[] = ["nessie", "plaid", "stripe", "qbo", "gusto", "ramp", "hubspot"];
 /** Demo only: a read takes a moment, as a real sync would. */
 export const DEMO_SYNC_MS = 900;
 
@@ -143,7 +145,7 @@ type DemoState = {
 };
 
 const keyOf = (tools: DemoState["tools"]) =>
-  ORDER.filter((t) => tools[t])
+  ORDER.filter((t) => tools[t] && t !== "nessie")
     .sort()
     .join(",");
 

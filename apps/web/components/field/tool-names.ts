@@ -27,6 +27,8 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "qbo.read": { label: "Read books (QuickBooks)", category: "read" },
   "gusto.read": { label: "Read payroll (Gusto)", category: "read" },
   "plaid.read": { label: "Read bank (Plaid)", category: "read" },
+  "nessie.read": { label: "Read bank (Capital One Nessie)", category: "read" },
+  "nessie.post": { label: "Post bank lines to Capital One Nessie", category: "save" },
   "connectors.pullall": { label: "Sync connected tools", category: "read" },
   read_feed: { label: "Read new entries", category: "read" },
   "field.map": { label: "Map to books format", category: "map" },

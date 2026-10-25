@@ -14,12 +14,15 @@ import type { z } from "zod";
 /**
  * Shared types for the per-tool connectors (pure, no Convex functions). A connector pages
  * through one vendor-shaped mock API and translates its JSON into canonical Snapshot records.
- * Synthetic mocks only: the fetcher is the in-process mock handler, never a real provider.
+ * Synthetic mocks, except the bank: Capital One Nessie is the real sandbox API (connectors/nessie.ts).
  */
 export type Fetcher = (path: string) => Promise<Response>;
 
-export const TOOL_IDS = ["stripe", "ramp", "qbo", "gusto", "hubspot", "plaid"] as const;
+export const TOOL_IDS = ["stripe", "ramp", "qbo", "gusto", "hubspot", "plaid", "nessie"] as const;
 export type ToolId = (typeof TOOL_IDS)[number];
+/** The tools served by the in-process vendor mocks (every tool but the Nessie sandbox bank). */
+export type MockToolId = Exclude<ToolId, "nessie">;
+export const MOCK_TOOL_IDS = TOOL_IDS.filter((t): t is MockToolId => t !== "nessie");
 
 /** Canonical lists a connector can fill, named as in SnapshotSchema. */
 export interface Lists {

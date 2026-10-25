@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { toolSummaries } from "../../connectors/catalog";
 import { inProcessFetcher } from "../../connectors/inProcess";
 import { pullAll } from "../../connectors/pullAll";
-import { TOOL_IDS, type ToolId } from "../../connectors/types";
+import { MOCK_TOOL_IDS as TOOL_IDS, type ToolId } from "../../connectors/types";
 import { emptyOverlay, newWorld, servedSnapshot } from "../../fieldFeed";
 
 // The connect page's demo mode shows these numbers. They are real pullAll results over the

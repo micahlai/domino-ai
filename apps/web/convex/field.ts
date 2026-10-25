@@ -54,7 +54,7 @@ import { deriveDashboard } from "../components/field/dashboard/derive";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/server";
-import { connectAll } from "./connections";
+import { DEFAULT_OFF, connectAll } from "./connections";
 import { TOOL_IDS } from "./connectors/types";
 import {
   ANOMALIES,
@@ -83,7 +83,7 @@ const SOURCES = [
   ["ramp", "inproc://mocks/cards"],
   ["books", "inproc://mocks/books"],
   ["payroll", "inproc://mocks/payroll"],
-  ["nessie", "inproc://mocks/bank"],
+  ["nessie", "https://prod-api.nessieisreal.com (Capital One Nessie sandbox)"],
 ] as const;
 const ESCALATION_BRANCH = "field:escalation";
 const anomaly = v.union(...ANOMALIES.map((a) => v.literal(a)));
@@ -95,7 +95,7 @@ async function personName(ctx: { auth: QueryCtx["auth"] }) {
   return identity?.tokenIdentifier ?? "demo-user (unverified)";
 }
 
-/** One new live-feed company with six connected tools; its first ingest is queued. */
+/** One new live-feed company with six connected tools (Capital One bank); first ingest queued. */
 async function createFeedCompany(ctx: MutationCtx, seed: number, profile: ProfileId | undefined) {
   const world = newWorld(seed, profile);
   const name = profileName(profile);
@@ -150,10 +150,10 @@ async function createFeedCompany(ctx: MutationCtx, seed: number, profile: Profil
   await writeLog(ctx, companyId, undefined, {
     actor: "person",
     action: "feed.created",
-    refs: [...TOOL_IDS],
+    refs: TOOL_IDS.filter((t) => !DEFAULT_OFF.includes(t)),
     agent: "mock.feed",
     tool: "sim.createCompany",
-    summary: `Connected six tools (read only, mock vendor APIs) for ${name} as of ${world.today}`,
+    summary: `Connected six tools for ${name} as of ${world.today}: five mock vendor APIs (read only) and the bank from Domino's own Capital One Nessie sandbox account`,
   });
   await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
   return companyId;
