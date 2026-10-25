@@ -1,0 +1,10 @@
+# Simulate option handoff, Oct 25 2026
+
+- Checkout: `domino-field-operating-ui`, branch `field/run-trace-ui`, based on prior UI commit `e278807`.
+- Goal: exact frozen Field suggestion -> saved Timeline baseline -> risk scenario -> fix child; editable comparison and calculation links follow in integration.
+- Backend: `fieldTimeline.suggestionInputs` reads company-scoped analyst run, frozen receipt, pinned model/rules and run snapshot ID. It rejects missing/legacy/incomplete/mismatched evidence. Pure `pinnedOptionSeedDraft` uses `snapshot.companyId` as Timeline semantic company, excludes unpinned findings. `fieldSuggestionSimulation.simulate` calls public Timeline save/open/simulate/get only, with deterministic request keys and saved before/after low points. It never reads latest Field state or calls providers.
+- UI: primary Simulate this option saves and opens the exact fix child; secondary Dismiss retains existing decision mutation and optional note. Open and decided suggestions retain exact Why links. Legacy cards without full identity explain why simulation is unavailable. Cash floor and credit line are labeled illustrative assumptions.
+- Calculation page: structured source notes are summarized in the main story; full saved note is in collapsed Technical details. The new simulation baseline note includes pinned provenance label and reported ledger period.
+- Verified with Node 24.11.1: 27 focused tests pass, including a real current Asana operating seed; changed-file Biome and `git diff --check` pass.
+- Local web typecheck is blocked by the B-owned shared trace contract, Field trace module and schema index/columns absent from this branch. Root must rerun after B+UI integration. No browser verification or live backend write was done in this worker branch.
+- Next exact step: root integrates B and this branch, reruns typecheck/tests, then gives a fresh combined checkout for small exact-run How links in friend-owned Timeline WorkspaceView/ScenarioNav. Verify the saved risk/fix comparison and retry in browser. No live process, provider, merge or push was changed here.

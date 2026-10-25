@@ -14,6 +14,17 @@ export const SUGGESTIONS_ENABLED = true;
 
 export type SuggestionStatus = "open" | "accepted" | "declined";
 export type SuggestionDecision = "accepted" | "declined";
+export type SimulationResult = {
+  timelineCompanyId: string;
+  baselineRunId: string;
+  rootRunId: string;
+  scenarioRunId: string;
+  fixRunId: string;
+  route: string;
+  reused: boolean;
+  scenarioLow: { cents: number; weekStart: string };
+  fixLow: { cents: number; weekStart: string };
+};
 
 /** A fix as the backend may send it: a sentence, or the parts of one. */
 export type SuggestionFix =
@@ -68,6 +79,40 @@ export const SUGGESTIONS_API = {
     unknown
   >("fieldSuggestions:decide"),
 };
+
+export const SIMULATE_SUGGESTION_API = makeFunctionReference<
+  "action",
+  {
+    companyId: string;
+    runId: string;
+    scenarioId: string;
+    fixKind: string;
+    suggestionId: string;
+    snapshotVersion: number;
+  },
+  SimulationResult
+>("fieldSuggestionSimulation:simulate");
+
+/** Refuse incomplete legacy identities instead of simulating a different current suggestion. */
+export function simulationArgs(companyId: string, s: Suggestion) {
+  if (
+    !companyId ||
+    !s.runId ||
+    !s.scenarioId ||
+    !Number.isSafeInteger(s.snapshotVersion) ||
+    typeof s.fix === "string" ||
+    !s.fix.kind
+  )
+    throw new Error("This older suggestion has no complete saved inputs to simulate.");
+  return {
+    companyId,
+    runId: s.runId,
+    scenarioId: s.scenarioId,
+    fixKind: s.fix.kind,
+    suggestionId: s.id,
+    snapshotVersion: s.snapshotVersion as number,
+  };
+}
 
 /** True for the Convex error a query raises when its function is not deployed. */
 export const isNotDeployed = (error: unknown) =>

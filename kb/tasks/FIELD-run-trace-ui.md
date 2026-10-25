@@ -8,3 +8,4 @@
 - Coordination: friend modifies WorkspaceView/ScenarioSidebar and adds ScenarioNav. Build independent pages/suggestion links first; defer overlapping Timeline links/header changes until root provides safe merged friend base.
 - Check: explanation on engine-only/legacy/failed/running cases, correct IDs/URL slashes, company switches and no latest contamination, no-backend behavior, meaningful rendering tests/tsc/Biome; browser root integration.
 - Result: pending.
+- Result (UI branch): exact Field and Timeline read-only calculation pages, Field guard/header scoping, suggestion links, and URL/story tests implemented. Five focused tests and changed-file Biome passed. Web typecheck awaits B's shared trace contract merge; browser and overlapping Timeline entry links await root integration. See TAKEOVER-RUN-TRACE-UI.md.

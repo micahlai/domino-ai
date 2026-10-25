@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -40,7 +41,11 @@ import {
   useNow,
 } from "./parts";
 import type { Anomaly, FieldFinding, FieldOperation } from "./types";
-import type { DecideSuggestion, SuggestionsState } from "./worker/SuggestionsSection";
+import type {
+  DecideSuggestion,
+  SimulateSuggestion,
+  SuggestionsState,
+} from "./worker/SuggestionsSection";
 import { WorkerSections } from "./worker/WorkerSections";
 import { introLine } from "./worker/format";
 import { type WatchedRisk, watchedRisks } from "./worker/risks";
@@ -90,6 +95,7 @@ export function WorkerPage() {
 }
 
 function LiveWorker() {
+  const router = useRouter();
   const dashboard = useDashboard();
   const { companyId } = useSelectedCompany();
   const latest = useQuery(
@@ -99,10 +105,15 @@ function LiveWorker() {
   const suggestions = useLiveSuggestions(companyId);
   return (
     <WorkerBody
+      companyId={companyId ?? null}
       dashboard={dashboard}
       latest={latest ?? undefined}
       suggestions={suggestions.state}
       onDecide={suggestions.decide}
+      onSimulate={async (suggestion) => {
+        const result = await suggestions.simulate(suggestion);
+        router.push(result.route);
+      }}
     />
   );
 }
@@ -116,6 +127,7 @@ function DemoWorker() {
   );
   return (
     <WorkerBody
+      companyId={null}
       dashboard={dashboard}
       latest={undefined}
       suggestions={suggestions.state}
@@ -140,15 +152,19 @@ export function effectContext(d: DashboardData, risks: WatchedRisk[]): EffectCon
 }
 
 function WorkerBody({
+  companyId,
   dashboard,
   latest,
   suggestions,
   onDecide,
+  onSimulate,
 }: {
+  companyId: string | null;
   dashboard: DashboardData;
   latest: AnalystLatest | undefined;
   suggestions: SuggestionsState;
   onDecide: DecideSuggestion;
+  onSimulate?: SimulateSuggestion;
 }) {
   const data = useFieldData();
   const company = useSelectedCompanyName();
@@ -226,9 +242,11 @@ function WorkerBody({
       </div>
 
       <WorkerSections
+        companyId={companyId}
         suggestions={suggestions}
         context={context}
         onDecide={onDecide}
+        onSimulate={onSimulate}
         risks={risks}
         risksLoading={risksLoading}
         timelineAction={<OpenInTimeline variant="outline" label="Open in timeline" />}

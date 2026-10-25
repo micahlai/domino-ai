@@ -132,6 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function TopBar({ pathname }: { pathname: string }) {
   const selection = useOperatingSelection();
   const timelineCompany = encodeURIComponent(operatingWorldId(selection));
+  const savedFieldTrace = pathname === "/field/analysis" || pathname.startsWith("/field/analysis/");
   return (
     <>
       <Suspense fallback={null}>
@@ -185,12 +186,16 @@ function TopBar({ pathname }: { pathname: string }) {
             </ul>
           </nav>
           <div className="ml-auto flex shrink-0 items-center">
-            <CompanySwitcher />
+            {savedFieldTrace ? (
+              <span className="text-xs text-muted-foreground">Recorded run</span>
+            ) : (
+              <CompanySwitcher />
+            )}
           </div>
         </div>
-        {isOperatingProduct(pathname) ? <OperatingProvenanceStrip /> : null}
+        {isOperatingProduct(pathname) && !savedFieldTrace ? <OperatingProvenanceStrip /> : null}
         {/* Simulated time for the dashboard and Field pages (Field lane). */}
-        <SimClockBar pathname={pathname} />
+        {!savedFieldTrace ? <SimClockBar pathname={pathname} /> : null}
       </header>
     </>
   );
