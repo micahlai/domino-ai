@@ -21,7 +21,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant script built from the style registry; no user input reaches it */}
         <script dangerouslySetInnerHTML={{ __html: styleInitScript }} />
       </head>
-      <body className="font-sans">
+      {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React hydrates. */}
+      <body className="font-sans" suppressHydrationWarning>
         <ConvexClientProvider>
           <AppShell>{children}</AppShell>
         </ConvexClientProvider>
