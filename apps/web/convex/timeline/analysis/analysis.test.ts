@@ -309,7 +309,7 @@ describe("TL7 saved automatic analysis", () => {
     const run = await root(t);
     const scan = vi.spyOn(engine, "scanRisks");
     const big = structuredClone(run);
-    big.baseline.seed.snapshot.customers = Array.from({ length: 2001 }, (_, i) => ({
+    big.baseline.seed.snapshot.customers = Array.from({ length: 4001 }, (_, i) => ({
       id: `customer-${i}`,
       name: `Customer ${i}`,
       paymentTermsDays: 30,

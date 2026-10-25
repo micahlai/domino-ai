@@ -146,6 +146,8 @@ export function checkChanges(changes: Change[], snapshot: Snapshot, horizon: Hor
     if (matches.length !== 1 || !invoice)
       return bad(`invoice ${id} must exist exactly once in the seed`);
     if (invoice.paid !== undefined) history(`Invoice ${id} was already paid on ${invoice.paid}`);
+    if (invoice.writtenOff !== undefined)
+      history(`Invoice ${id} was written off on ${invoice.writtenOff}`);
     return invoice;
   };
   const labels = new Set<string>();
@@ -340,6 +342,9 @@ export function checkMoneyBound(
   add(snapshot.deals);
   add(snapshot.bankTxns);
   add(snapshot.cardTxns);
+  add(snapshot.pendingPayouts ?? []);
+  // A plan issues at most monthly: at most 4 occurrences in the 98-day horizon; 5 is safe.
+  for (const p of snapshot.billingPlans ?? []) total += abs(p.amount) * 5n;
   for (const s of model.recurringSpend)
     total += abs(s.amount) * BigInt(Math.floor(HORIZON_DAYS / s.everyDays) + 1);
   for (const c of constraints) if (c.kind === "min_cash") total += abs(c.limit);

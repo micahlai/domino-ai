@@ -148,24 +148,25 @@ function checkConstraints(constraints: Constraint[], snapshot: Snapshot) {
 
 /**
  * Valid contract fields the current engine does not read. Saving a forecast that silently
- * ignores them would misstate cash (a written-off invoice still counted as an inflow, an
- * agreed later payment still on its due date), so the baseline fails closed instead.
- * Empty optional arrays carry no cash and are accepted.
+ * ignores them would misstate cash (an agreed later payment still on its due date), so the
+ * baseline fails closed instead. Empty optional arrays carry no cash and are accepted.
+ * Supported since the TL7 joint integration (engine schedule.ts): billing plans and their
+ * invoice links (projected plan collections), written-off invoices (never projected),
+ * paidAmount (terminal; a paid invoice projects nothing) and pending payouts (inflow on the
+ * expected arrival). UNSUPPORTED_SEED_FIELDS lists what still rejects.
  */
+export const UNSUPPORTED_SEED_FIELDS = [
+  "invoice.collection (agreed settlement date and amount)",
+  "bill.agreedPayOn (agreed later payment date)",
+] as const;
 function checkSupportedFields(snapshot: Snapshot) {
   const bad = (field: string): never =>
     reject(
       "UNSUPPORTED_INPUT",
       `Seed uses ${field}, which this baseline method cannot calculate yet; remove it or wait for engine support`,
     );
-  if (snapshot.billingPlans?.length) bad("snapshot.billingPlans");
-  if (snapshot.pendingPayouts?.length) bad("snapshot.pendingPayouts");
-  for (const i of snapshot.invoices) {
-    if (i.writtenOff !== undefined) bad(`invoice ${i.id} writtenOff`);
+  for (const i of snapshot.invoices)
     if (i.collection !== undefined) bad(`invoice ${i.id} collection`);
-    if (i.paidAmount !== undefined) bad(`invoice ${i.id} paidAmount`);
-    if (i.billingPlanId !== undefined) bad(`invoice ${i.id} billingPlanId`);
-  }
   for (const b of snapshot.bills) if (b.agreedPayOn !== undefined) bad(`bill ${b.id} agreedPayOn`);
 }
 
@@ -190,6 +191,9 @@ function checkMoneyBound(snapshot: Snapshot, model: CompanyModel, constraints: C
   add(snapshot.deals);
   add(snapshot.bankTxns);
   add(snapshot.cardTxns);
+  add(snapshot.pendingPayouts ?? []);
+  // A plan issues at most monthly, so at most 4 occurrences fall in the 98-day horizon; 5 is safe.
+  for (const p of snapshot.billingPlans ?? []) total += abs(p.amount) * 5n;
   for (const s of model.recurringSpend)
     total += abs(s.amount) * BigInt(Math.floor(HORIZON_DAYS / s.everyDays) + 1);
   for (const c of constraints) if (c.kind === "min_cash") total += abs(c.limit);

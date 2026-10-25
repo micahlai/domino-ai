@@ -288,7 +288,8 @@ describe("timeline baselines", () => {
         out[name] = (await ctx.db.query(name).collect()).length;
       return out;
     });
-    expect(Object.keys(counts)).toHaveLength(11);
+    // 22 Field tables after the TL7 joint integration (Field lane growth + timelineLinks).
+    expect(Object.keys(counts)).toHaveLength(22);
     expect(Object.values(counts).every((n) => n === 0)).toBe(true);
     // The stored seed is canonical text, so its hash preimage is reproducible.
     const [row] = await rows(t);
@@ -378,25 +379,10 @@ describe("timeline baselines: R1 money bounds", () => {
 describe("timeline baselines: R1 unsupported forward fields", () => {
   const cases: [string, RegExp, (s: WeeklySeedV1) => void][] = [
     [
-      "writtenOff",
-      /invoice .* writtenOff/,
-      (s) => {
-        unpaidInvoice(s).writtenOff = s.snapshot.asOf;
-      },
-    ],
-    [
       "collection",
       /invoice .* collection/,
       (s) => {
         unpaidInvoice(s).collection = { payOn: "2027-12-01", amount: 1 };
-      },
-    ],
-    [
-      "paidAmount",
-      /invoice .* paidAmount/,
-      (s) => {
-        const i = paidInvoice(s);
-        i.paidAmount = i.amount;
       },
     ],
     [
@@ -406,9 +392,25 @@ describe("timeline baselines: R1 unsupported forward fields", () => {
         s.snapshot.bills.find((b) => !b.paid)!.agreedPayOn = "2027-12-01";
       },
     ],
+  ];
+
+  // Supported since the TL7 joint integration: the engine now calculates each of these.
+  const supported: [string, (s: WeeklySeedV1) => void][] = [
+    [
+      "writtenOff",
+      (s) => {
+        unpaidInvoice(s).writtenOff = s.snapshot.asOf;
+      },
+    ],
+    [
+      "paidAmount",
+      (s) => {
+        const i = paidInvoice(s);
+        i.paidAmount = i.amount;
+      },
+    ],
     [
       "billingPlans",
-      /snapshot.billingPlans/,
       (s) => {
         s.snapshot.deals = [];
         s.snapshot.billingPlans = [
@@ -426,7 +428,6 @@ describe("timeline baselines: R1 unsupported forward fields", () => {
     ],
     [
       "pendingPayouts",
-      /snapshot.pendingPayouts/,
       (s) => {
         const paid = paidInvoice(s);
         s.snapshot.pendingPayouts = [
@@ -440,6 +441,21 @@ describe("timeline baselines: R1 unsupported forward fields", () => {
       },
     ],
   ];
+
+  it.each(supported)("accepts %s and saves the engine's own forecast", async (_field, edit) => {
+    const t = setup();
+    let edited: WeeklySeedV1 | undefined;
+    const seedJson = await rehashed((s) => {
+      const next = bare(s, "supported-field");
+      edit(next);
+      edited = next;
+      return next;
+    });
+    const { runId } = await save(t, args({ seedJson }));
+    const saved = await t.query(r.get, { companyId: "kestrel", runId });
+    if (!edited) throw new Error("no seed");
+    expect(saved?.forecast).toEqual(engine.forecast(edited.snapshot, NEUTRAL, []));
+  });
 
   it.each(cases)("fails closed on %s and writes nothing", async (_field, message, edit) => {
     const t = setup();

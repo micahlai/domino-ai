@@ -9,6 +9,7 @@ import {
 } from "@domino/contracts";
 import { engine, rankFixes } from "@domino/engine";
 import { cashSchedule } from "@domino/engine/src/forecast";
+import { isOpenInvoice } from "@domino/engine/src/schedule";
 import type { WorkspaceRun } from "../questions/context";
 import {
   addDays,
@@ -21,6 +22,9 @@ import {
 import { ruleReceipts } from "../workspaceRules";
 import { type AnalysisResponse, type AnalysisRisk, MAX_RISKS } from "./receipt";
 
+const MAX_SOURCE_RECORDS = 4000;
+const MAX_OPEN_INVOICES = 100;
+const MAX_DEALS = 100;
 export function checkSource(run: WorkspaceRun) {
   if (run.changes.length || run.kind === "scenario")
     reject(
@@ -36,16 +40,18 @@ export function checkSource(run: WorkspaceRun) {
     s.deals.length +
     s.cardTxns.length +
     s.bankTxns.length;
+  // Budgets raised at the TL7 joint integration so Field's simulated companies (about 1,800
+  // records, 35-47 open invoices, ~40 deals) fit; each forecast stays a few milliseconds.
   if (
-    rows > 2000 ||
-    s.invoices.filter((i) => !i.paid).length > 24 ||
-    s.deals.length > 24 ||
+    rows > MAX_SOURCE_RECORDS ||
+    s.invoices.filter((i) => isOpenInvoice(i)).length > MAX_OPEN_INVOICES ||
+    s.deals.length > MAX_DEALS ||
     run.baseline.model.recurringSpend.length > 32 ||
     run.constraints.length > 32
   )
     reject(
       "BUDGET_EXCEEDED",
-      "This analysis supports at most 2,000 records, 24 open invoices, 24 deals, 32 recurring costs and 32 rules.",
+      `This analysis supports at most ${MAX_SOURCE_RECORDS.toLocaleString("en-US")} records, ${MAX_OPEN_INVOICES} open invoices, ${MAX_DEALS} deals, 32 recurring costs and 32 rules.`,
     );
   checkRowSize({ run });
   checkMoneyBound(s, run.baseline.model, run.constraints, []);
@@ -86,7 +92,7 @@ export function candidates(run: WorkspaceRun): { risks: RiskEvent[]; warnings: s
     const h = horizon(run);
     const schedule = cashSchedule(s, m, []);
     const invoice = s.invoices
-      .filter((i) => !i.paid)
+      .filter((i) => isOpenInvoice(i))
       .sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
       .find((i) =>
         schedule.items.some(
@@ -203,7 +209,7 @@ export function responsesFor(run: WorkspaceRun, risk: AnalysisRisk): AnalysisRes
   const h = horizon(run);
   const templates: FixCandidate[] = [];
   const invoice = s.invoices
-    .filter((i) => !i.paid)
+    .filter((i) => isOpenInvoice(i))
     .sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
     .find((i) =>
       schedule.items.some(
