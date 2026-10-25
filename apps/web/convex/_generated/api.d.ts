@@ -45,6 +45,7 @@ import type * as fieldAudit from "../fieldAudit.js";
 import type * as fieldClock from "../fieldClock.js";
 import type * as fieldCoordinator from "../fieldCoordinator.js";
 import type * as fieldCrs from "../fieldCrs.js";
+import type * as fieldCustomers from "../fieldCustomers.js";
 import type * as fieldDashboard from "../fieldDashboard.js";
 import type * as fieldFeed from "../fieldFeed.js";
 import type * as fieldJobs from "../fieldJobs.js";
@@ -173,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   fieldClock: typeof fieldClock;
   fieldCoordinator: typeof fieldCoordinator;
   fieldCrs: typeof fieldCrs;
+  fieldCustomers: typeof fieldCustomers;
   fieldDashboard: typeof fieldDashboard;
   fieldFeed: typeof fieldFeed;
   fieldJobs: typeof fieldJobs;
