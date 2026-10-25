@@ -168,6 +168,7 @@ export const ProposedResponseSchema = z
     respondFrom: z.enum(["breach", "event"]),
     growthSpend: z.array(z.string().trim().min(1).max(200)).max(12),
     spendCutPercent: z.number().min(0).max(60),
+    payrollCutPercent: z.number().min(0).max(30),
     reactionDays: z.number().int().min(0).max(60),
     growthSensitivity: z.number().min(0).max(1),
     revenueLagDays: z.number().int().min(0).max(180),
@@ -186,12 +187,13 @@ const GROWTH_WORDS =
 export const DEFAULT_RESPONSE = {
   respondFrom: "breach",
   spendCutPercent: 20,
+  payrollCutPercent: 5,
   reactionDays: 14,
   growthSensitivity: 0.25,
   revenueLagDays: 56,
   likelihood: "possible",
   reason:
-    "Default assumption: once usable cash falls below the lowest cash rule, management cuts growth spending by 20% two weeks later, and recurring billing grows a quarter as much less eight weeks after that.",
+    "Default assumption: once usable cash falls below the lowest cash rule, management cuts growth spending by 20% and freezes hiring (payroll 5% lower) two weeks later; eight weeks after that, recurring billing and new deals are a quarter of the total cut lower.",
   evidence: [],
 } as const;
 
@@ -251,6 +253,7 @@ export function screenResponse(
     notBefore: floor ?? horizonOf(run).firstWeek,
     growthSpend: names,
     spendCutPercent: chosen.spendCutPercent,
+    payrollCutPercent: chosen.payrollCutPercent,
     reactionDays: chosen.reactionDays,
     growthSensitivity: chosen.growthSensitivity,
     revenueLagDays: chosen.revenueLagDays,
@@ -269,7 +272,8 @@ export function screenResponse(
     changes: [],
     skipped,
   });
-  if (!names.length) return skip("No growth spending was named, so nothing was cut.");
+  if (!names.length && chosen.payrollCutPercent <= 0)
+    return skip("No growth spending or payroll cut was chosen, so nothing was cut.");
   if (policy.respondFrom === "breach" && policy.floor === null)
     return skip("These books have no cash rule to cross, so no response was triggered.");
   const prior = [...run.changes, ...effects];
@@ -281,28 +285,32 @@ export function screenResponse(
   }
   if (!built.trigger)
     return skip("Cash stays above the lowest cash rule, so management has no reason to cut.");
-  if (!built.changes.length) return skip("The response would start after the forecast ends.");
-  // Keep each change only if it moves cash: books without billing plans have nothing to slow,
-  // and a cut dated after the last growth bill saves nothing. With no cut, nothing slows.
+  if (!built.parts.length) return skip("The response would start after the forecast ends.");
+  // Keep a part only if it moves cash: books without billing plans or deals have nothing to
+  // slow, and a cut dated after the last growth bill saves nothing. Revenue slows only after a
+  // cut that was kept.
   const horizon = horizonOf(run);
   const kept: Change[] = [];
   const notes: string[] = [];
-  for (const [i, change] of built.changes.entries()) {
-    if (i > 0 && kept.length === 0) break;
-    const all = [...prior, ...kept, change];
+  let cutKept = false;
+  for (const part of built.parts) {
+    const isCut = part.part === "spend" || part.part === "payroll";
+    if (!isCut && !cutKept) continue;
+    const all = [...prior, ...kept, ...part.changes];
     try {
       checkChanges(all, snapshot, horizon);
       checkEffects(all, snapshot, model, horizon);
       checkMoneyBound(snapshot, model, run.constraints, all);
-      kept.push(change);
-      notes.push(built.notes[i] ?? "");
+      kept.push(...part.changes);
+      notes.push(part.note);
+      if (isCut) cutKept = true;
     } catch (e) {
-      notes.push(`Left out: ${message(e)}`);
+      notes.push(`Left out (${part.part}): ${message(e)}`);
     }
   }
   if (unknown.length) notes.push(`Not in these books: ${unknown.join(", ")}`);
   if (!kept.length)
-    return { ...skip("The growth spending has no payments left after the cut date."), notes };
+    return { ...skip("Nothing the response cuts has payments left after the cut date."), notes };
   return { ...base, trigger: built.trigger, notes, changes: kept, skipped: null };
 }
 

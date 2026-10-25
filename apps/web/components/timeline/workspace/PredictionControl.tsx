@@ -109,7 +109,9 @@ export function PredictionView({
           {count === 0
             ? "No knock-on effects found"
             : `${count} knock-on ${count === 1 ? "effect" : "effects"}`}
-          {response?.applied ? ` · growth spending cut ${response.spendCutPercent}%` : ""}
+          {response?.applied
+            ? ` · growth spending cut ${response.spendCutPercent}%${response.payrollCutPercent ? `, payroll ${response.payrollCutPercent}%` : ""}`
+            : ""}
           {prediction.interest
             ? ` · interest ${prediction.interest.netCents < 0 ? "lost" : "gained"} ${formatCents(Math.abs(prediction.interest.netCents))} at ${prediction.interest.annualBps / 100}%/yr`
             : ""}

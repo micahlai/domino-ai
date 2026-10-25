@@ -128,6 +128,7 @@ describe("screenResponse", () => {
     respondFrom: "event" as const,
     growthSpend: ["northlight marketing", "Imaginary Ads"],
     spendCutPercent: 40,
+    payrollCutPercent: 0,
     reactionDays: 0,
     growthSensitivity: 0.5,
     revenueLagDays: 28,
@@ -149,9 +150,16 @@ describe("screenResponse", () => {
       growthSpend: ["Northlight Marketing"],
       spendCutPercent: DEFAULT_RESPONSE.spendCutPercent,
     });
-    // The two-week reaction lands after the Nov 15 bill, so there is nothing left to cut.
-    expect(out.changes).toEqual([]);
-    expect(out.skipped).toMatch(/no payments left after the cut date/);
+    // The two-week reaction lands after the Nov 15 marketing bill, so only the hiring freeze
+    // applies: a share of each later payroll run, computed by the engine.
+    expect(out.skipped).toBeNull();
+    expect(out.notes[0]).toMatch(/^Left out \(spend\)/);
+    expect(out.changes.length).toBeGreaterThan(0);
+    expect(
+      out.changes.every(
+        (c) => c.kind === "add_cash" && c.label.startsWith("Response: payroll 5% lower"),
+      ),
+    ).toBe(true);
   });
 
   it("applies the agents' cut, drops the slowdown with no plans, and lists unknown spend", () => {
@@ -169,7 +177,7 @@ describe("screenResponse", () => {
         fromDate: big.date,
       },
     ]);
-    expect(out.notes[1]).toMatch(/^Left out: /);
+    expect(out.notes[1]).toMatch(/^Left out \(billing\): /);
     expect(out.notes).toContain("Not in these books: Imaginary Ads");
   });
 

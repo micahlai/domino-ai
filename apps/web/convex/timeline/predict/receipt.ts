@@ -58,6 +58,7 @@ export const PredictionReceiptSchema = z
         floor: z.number().int().nullable(),
         growthSpend: z.array(z.string()),
         spendCutPercent: z.number(),
+        payrollCutPercent: z.number().optional(),
         reactionDays: z.number().int(),
         growthSensitivity: z.number(),
         revenueLagDays: z.number().int(),

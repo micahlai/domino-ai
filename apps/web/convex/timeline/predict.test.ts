@@ -206,6 +206,7 @@ describe("timeline/predict", () => {
         respondFrom: "event",
         growthSpend: ["Northlight Marketing"],
         spendCutPercent: 50,
+        payrollCutPercent: 0,
         reactionDays: 0,
         growthSensitivity: 0.3,
         revenueLagDays: 30,

@@ -1,15 +1,18 @@
 import type { Change, CompanyModel, ISODate, Snapshot } from "@domino/contracts";
 import { addDays, horizonEnd } from "./dates";
-import { forecast } from "./forecast";
+import { cashSchedule, forecast } from "./forecast";
+import { ratio, roundCents } from "./money";
+import { bucketOf } from "./schedule";
 
 /**
- * How a company responds when a scenario leaves it short of cash: it cuts growth spending,
- * and that lower investment slows recurring billing after a lag. Without this, a one-time
- * loss only shifts the forecast down; with it, less cash means less investment and less growth.
+ * How a company responds when a scenario leaves it short of cash: it cuts growth spending and
+ * payroll (a hiring freeze), and that lower investment slows revenue after a lag: recurring
+ * billing and new deals both shrink. Without this, a one-time loss only shifts the forecast
+ * down; with it, less cash means less investment and less growth.
  *
  * Every number is a stated assumption on the policy, never inferred here. The engine turns the
- * policy into ordinary scale_recurring changes, so every cent is computed the same way as any
- * other what-if.
+ * policy into ordinary changes and computes every amount from the saved schedule: payroll
+ * savings and lost deal cash are fractions of the scheduled runs and deals themselves.
  */
 export type CashResponsePolicy = {
   /**
@@ -25,28 +28,38 @@ export type CashResponsePolicy = {
   growthSpend: string[];
   /** Percent cut to growth spending, 0-60. */
   spendCutPercent: number;
-  /** Days from the trigger until the cut takes effect, 0-60. */
+  /** Percent cut to every payroll run (a hiring freeze or layoffs), 0-30. */
+  payrollCutPercent: number;
+  /** Days from the trigger until the cuts take effect, 0-60. */
   reactionDays: number;
-  /** Percent of lost recurring billing per percent of spending cut, 0-1. */
+  /** Percent of revenue lost per percent of total investment cut, 0-1. */
   growthSensitivity: number;
-  /** Days from the cut until billing slows, 0-180. */
+  /** Days from the cuts until revenue slows, 0-180. */
   revenueLagDays: number;
 };
 
-export type CashResponse = {
-  /** Week the response was triggered, or null when it was not. */
-  trigger: { date: ISODate; usable: number | null } | null;
+/** One labelled part of the response; screening keeps or drops a part whole. */
+export type CashResponsePart = {
+  part: "spend" | "payroll" | "billing" | "deals";
+  note: string;
   changes: Change[];
-  /** Plain-words notes, one per change, in the same order. */
-  notes: string[];
+};
+
+export type CashResponse = {
+  /** When the response was triggered, or null when it was not. */
+  trigger: { date: ISODate; usable: number | null } | null;
+  /** Cuts first, then the revenue slowdown they cause. */
+  parts: CashResponsePart[];
 };
 
 const LIMITS = {
   spendCutPercent: [0, 60],
+  payrollCutPercent: [0, 30],
   reactionDays: [0, 60],
   growthSensitivity: [0, 1],
   revenueLagDays: [0, 180],
 } as const;
+const MAX_SLOWDOWN = 60;
 
 function checkPolicy(p: CashResponsePolicy) {
   for (const [key, [min, max]] of Object.entries(LIMITS)) {
@@ -60,8 +73,11 @@ function checkPolicy(p: CashResponsePolicy) {
     throw new Error("a breach response needs a cash floor");
 }
 
-/** Percent with one decimal place, so scale_recurring stays an exact decimal. */
+/** Percent with one decimal place, so every scaled amount stays an exact decimal. */
 const tenth = (x: number) => Math.round(x * 10) / 10;
+/** `percent` of `cents`, rounded once; percent has at most one decimal place. */
+const share = (cents: number, percent: number) =>
+  roundCents(ratio(BigInt(cents) * BigInt(Math.round(percent * 10)), 1000n));
 
 export function cashResponseChanges(
   snapshot: Snapshot,
@@ -70,9 +86,9 @@ export function cashResponseChanges(
   policy: CashResponsePolicy,
 ): CashResponse {
   checkPolicy(policy);
-  const none: CashResponse = { trigger: null, changes: [], notes: [] };
+  const schedule = cashSchedule(snapshot, model, changes);
   const plan = forecast(snapshot, model, changes);
-  const end = horizonEnd(plan.weeks.map((w) => w.weekStart));
+  const end = horizonEnd(schedule.weeks);
   let trigger: CashResponse["trigger"] = null;
   if (policy.respondFrom === "event") {
     trigger = { date: policy.notBefore, usable: null };
@@ -88,35 +104,98 @@ export function cashResponseChanges(
         usable: week.usable,
       };
   }
-  if (!trigger) return none;
-  const out: Change[] = [];
-  const notes: string[] = [];
+  if (!trigger) return { trigger: null, parts: [] };
+  const parts: CashResponsePart[] = [];
   const cutOn = addDays(trigger.date, policy.reactionDays);
-  const cut = tenth(policy.spendCutPercent);
+  if (cutOn > end) return { trigger, parts };
+
+  const spendCut = tenth(policy.spendCutPercent);
   const names = [...new Set(policy.growthSpend.map((n) => n.trim()).filter(Boolean))];
-  if (cut > 0 && names.length && cutOn <= end) {
-    out.push({
-      kind: "scale_recurring",
-      label: `Response: growth spending cut ${cut}%`,
-      flows: "spend",
-      names,
-      percent: -cut,
-      fromDate: cutOn,
+  if (spendCut > 0 && names.length)
+    parts.push({
+      part: "spend",
+      note: `Cut ${names.join(", ")} by ${spendCut}% from ${cutOn}`,
+      changes: [
+        {
+          kind: "scale_recurring",
+          label: `Response: growth spending cut ${spendCut}%`,
+          flows: "spend",
+          names,
+          percent: -spendCut,
+          fromDate: cutOn,
+        },
+      ],
     });
-    notes.push(`Cut ${names.join(", ")} by ${cut}% from ${cutOn}`);
-    const slowOn = addDays(cutOn, policy.revenueLagDays);
-    const slower = tenth(cut * policy.growthSensitivity);
-    if (slower > 0 && slowOn <= end) {
-      out.push({
+
+  const payrollCut = tenth(policy.payrollCutPercent);
+  // One saving per scheduled run keeps payroll's own rhythm in the line.
+  const runs = schedule.items.filter(
+    (i) => i.kind === "payroll" && i.date >= cutOn && i.date <= end && i.amount < 0,
+  );
+  const payroll = runs.flatMap((run): Change[] => {
+    const saved = share(-run.amount, payrollCut);
+    return saved > 0
+      ? [
+          {
+            kind: "add_cash",
+            date: run.date,
+            amount: saved,
+            label: `Response: payroll ${payrollCut}% lower, run ${run.id} on ${run.date}`,
+          },
+        ]
+      : [];
+  });
+  if (payroll.length)
+    parts.push({
+      part: "payroll",
+      note: `Payroll ${payrollCut}% lower from ${cutOn} (hiring freeze), ${payroll.length} runs`,
+      changes: payroll,
+    });
+
+  // Revenue slows only if the company actually invests less.
+  const invested = parts.length ? Math.min(MAX_SLOWDOWN, spendCut + payrollCut) : 0;
+  const slower = tenth(invested * policy.growthSensitivity);
+  const slowOn = addDays(cutOn, policy.revenueLagDays);
+  if (slower <= 0 || slowOn > end) return { trigger, parts };
+  parts.push({
+    part: "billing",
+    note: `Recurring billing ${slower}% lower from ${slowOn}`,
+    changes: [
+      {
         kind: "scale_recurring",
-        label: `Response: slower growth after the spending cut, billing ${slower}% lower`,
+        label: `Response: slower growth, recurring billing ${slower}% lower`,
         flows: "billing",
         names: [],
         percent: -slower,
         fromDate: slowOn,
-      });
-      notes.push(`Recurring billing ${slower}% lower from ${slowOn} after the cut`);
+      },
+    ],
+  });
+  // New deals close smaller or fewer; one change per week keeps the plan within its limits.
+  const lost = new Map<number, number>();
+  for (const deal of schedule.items)
+    if (deal.kind === "deal" && deal.date >= slowOn && deal.date <= end && deal.amount > 0) {
+      const week = bucketOf(deal.date, schedule.weeks);
+      if (week !== null) lost.set(week, (lost.get(week) ?? 0) + share(deal.amount, slower));
     }
-  }
-  return { trigger, changes: out, notes };
+  const deals = [...lost.entries()]
+    .filter(([, amount]) => amount > 0)
+    .sort(([a], [b]) => a - b)
+    .map(([week, amount]): Change => {
+      const weekStart = schedule.weeks[week] ?? slowOn;
+      const date = weekStart < slowOn ? slowOn : weekStart;
+      return {
+        kind: "remove_cash",
+        date,
+        amount,
+        label: `Response: new deals ${slower}% smaller, week of ${weekStart}`,
+      };
+    });
+  if (deals.length)
+    parts.push({
+      part: "deals",
+      note: `New deals ${slower}% smaller from ${slowOn}`,
+      changes: deals,
+    });
+  return { trigger, parts };
 }

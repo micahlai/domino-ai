@@ -35,6 +35,7 @@ export const PredictionSchema = z
         respondFrom: z.enum(["breach", "event"]),
         growthSpend: z.array(z.string()),
         spendCutPercent: z.number(),
+        payrollCutPercent: z.number().optional(),
         likelihood: z.enum(["likely", "possible"]),
         reason: z.string(),
         evidence: z.array(z.string()),

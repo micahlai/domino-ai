@@ -286,6 +286,7 @@ function shownResponse(r: ScreenedResponse) {
     growthSpend: r.policy.growthSpend,
     spendCutPercent: r.policy.spendCutPercent,
     reactionDays: r.policy.reactionDays,
+    payrollCutPercent: r.policy.payrollCutPercent,
     growthSensitivity: r.policy.growthSensitivity,
     revenueLagDays: r.policy.revenueLagDays,
     likelihood: r.likelihood,
@@ -454,8 +455,9 @@ Propose one only when the story or the evidence links it to this event. Zero eff
 
 2. response: how management responds to having less cash. A company with less cash invests less, and less investment means slower growth. Choose for this company:
 - growthSpend: which spending is growth investment, by exact name from spendNames (campaigns, marketing, sales, events, growth tools). Never obligations needed to serve customers or keep operating (hosting, facilities, legal, tax).
+- payrollCutPercent (0-30): payroll is usually the largest cost. A hiring freeze is a few percent; layoffs are more. Use 0 when the story shows the company would protect headcount.
 - respondFrom: "event" if management would cut as soon as the event happens (a large known loss, a lawsuit, a lost major customer); "breach" if they would only cut once cash falls below the lowest cash rule (cashRule).
-- spendCutPercent (0-60), reactionDays (0-60) from the trigger until the cut, growthSensitivity (0-1: percent of recurring billing lost per percent of growth spending cut), revenueLagDays (0-180) from the cut until billing slows.
+- spendCutPercent (0-60), reactionDays (0-60) from the trigger until the cuts, growthSensitivity (0-1: percent of revenue lost per percent of total investment cut; it applies to recurring billing and to new deals closing in the window), revenueLagDays (0-180) from the cuts until revenue slows. Use a short lag (2-6 weeks) when the story says the event itself hurts sales, for example reputation damage from a lawsuit or a public outage; use a longer one when only the lower investment slows growth.
 - likelihood, a reason tied to the story, and evidence.
 Return response null only when the scenario leaves the company with as much cash or more, or the story shows no spending would change. Call preview_response to see what your choice does and adjust it.
 
@@ -487,6 +489,7 @@ const RESPONSE_JSON = {
     "respondFrom",
     "growthSpend",
     "spendCutPercent",
+    "payrollCutPercent",
     "reactionDays",
     "growthSensitivity",
     "revenueLagDays",
@@ -498,6 +501,7 @@ const RESPONSE_JSON = {
     respondFrom: { type: "string", enum: ["breach", "event"] },
     growthSpend: { type: "array", items: { type: "string" } },
     spendCutPercent: { type: "number" },
+    payrollCutPercent: { type: "number" },
     reactionDays: { type: "integer" },
     growthSensitivity: { type: "number" },
     revenueLagDays: { type: "integer" },
