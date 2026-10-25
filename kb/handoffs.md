@@ -1,5 +1,216 @@
 # Handoffs
 
+## 2026-10-25 Main release
+- Done: combined origin/main fe39898 with field/main af7977d in isolated release/main-20261025; preserved existing main commits and README cleanup. Retained passing Field Convex tsconfig at sole conflict. Combined web/Convex typechecks pass; application code identical to recorded Field tests/build.
+- Next: verify remote main after the authorized push. Live3114/3260 and the dirty original main checkout remain unchanged.
+- Watch out: TL9 provides deterministic guided chat; real LLM chat is still missing.
+
+## 2026-10-25 Field map stability fixed
+- Done: reproduced24px page movement caused by activity-summary wrapping; reserved two summary lines in BrainMap only. Full message stays in DOM and hover title. Code b07c8c5 pushed to field/main.80 browser samples across7 messages remained fixed;63 focused tests, web tsc, Biome and webpack build pass. Live3114 map verified, existing server kept running.
+- Next: prior Field queue in features/field/HANDOFF.md. No backend, camera or main changes; no full-suite rerun.
+
+## 2026-10-25 Codex Field integration
+- Done: took over five worktrees; convex-depth already merged. Finished and committed remaining work, independently reviewed swarm durability/version/caching fixes, merged the four branches in order in domino-merge. Isolated backend and browser decision smoke passed; one real synthetic CREAO advisor request validated.
+- Done: combined1,901 tests/typechecks/lint/build pass; field/main fast-forwarded/pushed; Next3114 restarted and live3260 APIs/pages verified. Final hydration guard passed focused23 tests/web tsc/lint/build and fresh browser. CREAO advisor enabled after explicit user approval.
+- Next: reproduce the newly reported map vertical shifting during updates; see features/field/HANDOFF.md.
+- Watch out: default Turbopack production build cannot bind its worker port here; supported webpack build is the checked fallback. No main or protected-port change.
+
+## 2026-10-24 Independent full-feature ownership prepared
+- Done: replaced tiny T1 split with complete Field/Knowledge and Timeline/Simulations briefs, continuous owner prompts, explicit UI/backend ownership and shared P0 setup cards. See spec/independent-feature-lanes.md. Documentation only, no worker/branch/runtime launch.
+- Next: current Claude lead reads ../prompts/shared/prepare-independent-features.md, checks actual L1/S2 activity, checkpoints safely, then assigns P0. Exact accepted common base precedes long forks; each lane then steers its own internal queue.
+- Watch out: P0 is not implemented or tested. L1 57a1581 first audit rejected; current repair state unverified. Existing combined 1,251-test result predates these planning docs. No new feature/build/browser acceptance or Goal resumption claimed. Main untouched, monitor PAUSED.
+
+## 2026-10-24 E0 user-approved follow-up integrated
+- Jayden approved audit/integration of existing config fix 5f1d772 after third rejection. Narrow audit passes six synthetic boundary probes, fresh self-check and real E0 lint. Independent CLI round 4 audit also ACCEPT. No protected values opened.
+- Integrated 05f10db. Combined pnpm check passes 1,251 tests/five typechecks/lint 265 files; contracts fresh, other package tasks cached. Fresh Python synthetic self-check passes. No new build/browser/provider/database acceptance.
+- Next: sole Claude lead assigns READY L1 after slot/worktree check, preserving friend S2. No implementation worker launched here. Native Goal still needs user /goal resume; monitor remains PAUSED. L4 proof remains open.
+
+## 2026-10-24 S3 checked preview integration
+
+- Done: user requested publishing tested features. Integrated independently audited S3 repair 5ecae8a via merge 16a3a56 on preview/historical-overnight. Combined uncached pnpm check passed 1,208 tests, five typechecks and lint (263 files). Log: /tmp/domino-s3-preview-check.log.
+- Next: one user-launched Claude lead owns ROADMAP and assigns ready L0/E0 while friend retains S2. Codex remains audit/integration support.
+- Limits: no new UI/build/provider/database acceptance. S4/U2, onboarding, reconciliation, learning, sealed improvement and real CREAO remain incomplete. Main, runtimes and data preserved; monitor PAUSED.
+
+## 2026-10-24 Claude lead control and S3 support audit
+- Latest user direction: launch one Claude lead; it owns ROADMAP.md, queue and worker dispatch. Codex provides independent audit/integration on request. No implementation dispatched; monitor stays PAUSED.
+- S3 repair 5ecae8a independently approved for scoped code integration: 54 focused tests, 14 independent real-source/frozen/adversarial probes, full 1,208 uncached tests/typechecks/lint. No preview merge/build/browser/database/provider acceptance.
+- ROADMAP has visible statuses and user request inbox. CREAO memory/data/SKILL evidence is user-reported; remote prompt rename, backend key/binding and complete isolation unverified. No provider call.
+- Next: user starts Claude lead with ROADMAP/control rules; lead checks friend S2/slots, requests S3 integration and assigns ready L0/E0. Codex stops dispatch ownership.
+
+## 2026-10-24 Codex new lead: required-loop design
+- Fresh fetch/main/S2/worktrees/processes checked; monitor confirmed PAUSED. No implementation launched. S3 real saved-baseline defect reproduced despite50passing focused tests.
+- Added reviewed supported-source/reconciliation/rule design, frozen evaluation recipe with pending seals, exact additiveS4 design and7 bounded cards/manual L0/E0 prompts. Six independent design issues corrected.
+- pnpm check passed cached typechecks/tests and fresh lint. Expanded planned PNG/PDF generated and inspected. Existing runtimes/data/main preserved.
+- Next: human S3 repair/friend S2; L0/E0 only as slots permit. Follow learning-loop-design dependency order. All L1-L4 and real CREAO remain required and incomplete; no improvement evidence yet.
+
+
+## 2026-10-24 Codex team reset and manual launches
+- Fetched origin; no new remote main or S2 implementation to merge. Preview remains the accepted integration branch, main unchanged.
+- S3 finished38297d4 but independent audit reproduced rejection of real saved2U baseline with AS-RESTRICTED.50focusedtests pass; hold feature integration.
+- Published friend S2 and local S3 repair prompts; user launches Claude manually. Codex audits/designs/integrates, monitor must not dispatch implementation.
+- team-checkpoint.md is the concise agreement. S4 needs reviewed persistence design including response evidence extension and protocol post-hoc taint.
+
+## 2026-10-24 Codex early product checkpoint
+- G8/S1/U1 independently accepted, combined1,185tests/typechecks/lint/build and actualdesktop/mobile/keyboardbrowser. Stable3102 updated; early visual shown. Main unchanged.
+- S3 Claude7799/68959 verified in domino-S3; friendS2 catalog prompt/branch published, no local duplicate. S4 waits explicit design plus accepteddependencies; U2 follows.
+- Dedicated CREAO evidenceapp created, empty appmemory/connectors and zero runs observed. Account/team isolation stillunknown; no APIkey/gate/livecall.
+
+## 2026-10-24 Codex unified product plan
+- Inspected completed G8, existing frozen runs/operations and quarterly engine. No event branch or historical causal graph yet. Reuse existing persistence and charts.
+- G8 repair owns sole UI; S1 additive contracts local; S2 read-only catalog is independent friend task. U1 early visual precedes full U2 wiring. S3 engine and S4 persistence have explicit gates.
+- New product scope: kb/spec/product-workspace-2026-10-24.md. Main unchanged; no live CREAO calls or new billing.
+
+## 2026-10-24 Codex friend knowledge accepted, inspector launched
+- G7friend42421c6 independently approved and actual saved payload probe passed; integrated7ee475b,1,128combinedtests/typecheck/lint pass. No future/reveal data entered frozen projection.
+- Sole G8Claude8943/exec14882 now wires raw saved snapshot (including roles) into Company knowledge details. Stable3102 remains acceptedb261057. Chrome control timeout blocks current CREAO setup attempt; no calls or settings changed. Main untouched.
+
+## 2026-10-24 Codex product cleanup accepted
+- G8a320c42c independently accepted/integratedb261057 after1,080combinedtests/typecheck/lint/build and mobile browser/CTA checks. Stable3102 refreshed, navigation now promotes investigation, old routes preserved.
+- No owned Claude active. G7 friend projection pending; G8 knowledge wiring awaits it. CREAO setup/live coordinator still unverified. Main unchanged.
+
+## 2026-10-24 Codex grouped map accepted, cleanup running
+- G6a5d7723 acceptedc6e0a89 after independent reconnect/caption repair review,1,077combinedtests/build and desktop/mobile browser. Stable3102 updated; grouped Sources/Toolbox and knowledge detail shown.
+- G8a Claude71724 is sole UI writer, shell/landing cleanup; friend G7 projection remains separate. Backend3214 restarted with preserved data. Main unchanged, no live CREAO acceptance.
+
+## 2026-10-24 Codex grouped map and friend handoff
+- User requests grouped tools/sources, central Domino plus inspectable company knowledge, real-operation pulses, differentiated shapes and product cleanup. Spec and G6/G7/G8 cards prepared.
+- G6 local sole UI writer; friend owns G7 pure frozen-run knowledge projection only. G8 shell/wiring queued after both audits. No schema/dependency changes or main merge.
+- Existing Chrome session is signed in to CREAO Pro Plus; use native computer use, not IAB login. Live historical agent setup and coordinator remain gates.
+
+## 2026-10-24 Codex detail cleanup accepted
+- G5eaa54d7 acceptedc40552a;1049tests/build andactualbrowserinstructionScope/earlyalternativechecks pass. Sharedbuilderreused; misleadingjourneylabel fixed.
+- CREAOUIstilllogin, dedicatedsettingsabsent; gateOFF andno calls. Preparedcreao-live-acceptance.md. NoClaudeimplementationactive; nextaccountsetup/isolationverification. Mainuntouched.
+
+## 2026-10-24 Codex spatial preview published
+- PairedG3/G4repairsef019a6/475fe57 accepted3accfb9 afterindependentaudit,1044combinedtests/build, actualdesktop/mobile/financialflow/reloadbrowser checks. Stable3102updated, screenshot/tmp/domino-accepted-spatial-web.png.
+- CREAOgateOFF; no livecalls. UIneeds signin for dedicatedappinstruction/memoryverification; userasked. Fullagent/coordinatorjourneynotcomplete.
+- ClaudeG5cleanup86419/21240 active, soleUIwriter. Nextauditcleanup andCREAOsetupwhenaccessible. Mainuntouched.
+
+## 2026-10-24 Codex spatial audit and CREAO runtime acceptance
+- G2d3738d5c accepted, integrated3ea78ef;998tests and actual3214bundle/codegen/4APIchecks pass. DefaultgateOFF, no livecalls.
+- G4e7b7944 passed1028tests/build but browser+review foundFitViewclipping and labelbounds overlap. Actual3418localquestion createdrealforecastnodes/chart, providerhonestlyunavailable.
+- SoleUIClaude32944/73011 repairs G4 and G3fourboundedfindings. No candidateUIintegration, no mainmerge. Nextaudit+browserthenpublish.
+
+## 2026-10-24 Codex live wiring dispatch
+- G2b actual3212/runtime passed ninechecks, integratedcb44894 with auditedR1/G2c; combined991tests/typechecks/lint pass. No provider calls, no main changes.
+- ClaudeG3 Sonnet18646/99532 andG2d Opus18871/10780 verified separate worktrees, oneUIwriter, requestedskills, nochildren/livecalls.
+- Next: audit completed checkpoints, fullchecks/build/realbrowser then dedicated historical CREAO app instructions/memory gate. Current3102 screenshot is labelled fixture, not real execution.
+
+## 2026-10-24 Codex repaired canvas accepted
+- R1 0148df5 independently approved, integrated79a6e19; combined940tests/typechecks/lint/build and desktop/mobile browser checks pass. Updated3102 labelled fixture shown, not real execution.
+- G2b7801fb5 passed independent repair audit and934tests; isolated local runtime smoke pending. G2cabb6d07 approved after callback-deadline repair, fullcheck passes; no live CREAO acceptance yet.
+- Next: runtime gate, G3 Claude live wiring, bounded backend provider integration. No main merge, no account-key use.
+
+## 2026-10-24 Codex old CREAO route and audit repairs
+- User selects existing app-scoped CREAO only; new developer key unused. G2c adapter launched in isolated domino-G2c, exec88483/PID7172. No live calls by worker.
+- G2b and R1 each pass930tests/typechecks/lint but independent reviews found4backend and3UI blockers. Repairs verified in original worktrees: G2b14827/47892 and R115437/90404. Three processes total, no children.
+- Next: reuse reviewers after repairs, fullchecks/build/live local/browser then integration; G2c independent provider audit and dedicated profile/real execution gate. Main untouched, current canvas visual-only.
+
+## 2026-10-24 Codex CREAO v2 correction
+- Read current Developer Platform docs in browser: v2 project keys and USD wallet are separate from v1 Account keys/consumer credits. Same key prefix; old docs linked a console now issuing v2 keys.
+- Supplied key PASSED read-only GET /v2/me200. Earlier401 was wrong API generation. Retract replacement request. User screenshot confirms Team Pro Plus, not its remaining balance. No paid v2 actions/top-ups.
+- Next: assess existing app-scoped integration against bounded coordinator/research needs before separate spend. Do not invent v2 memory/workspace/Super Agent support from v1 docs. Backend/UI workers continue independently.
+
+## 2026-10-24 Codex credential check and audit reporting
+- User clarified: send a chat report after every scheduled coding audit, not development activity in the product canvas. Automation and C1 updated; no extra UI feature dispatched.
+- Account-format key present and correctly parsed, but Node24 GET usage/agents returns401 AUTHENTICATION_REQUIRED. Python client earlier hit signature403. No paid runs, creations or memory edits. User asked for freshly copied key; do not retry unchanged value.
+- G2b and R1 remain active locally, latest in-progress backend adds schema/investigation/tests. Neither phase accepted yet; main untouched.
+
+## 2026-10-24 Codex local UI reassignment
+- User canceled the other computer. R1 now runs locally: exec7438/PID66496, cwd domino-R1 verified, baseb48d13f. Frozen dependencies installed. G2b42092 continues backend. No duplicate remote branch found on fetch.
+- One UI process without children; G2b may use one child, total cap3. Full checks/build/browser serialized by Codex. Monitor and ownership docs updated. Main untouched.
+- CREAO account key remains absent on presence-only check; user has official Developer Console instructions. Continue independent implementation.
+
+## 2026-10-24 Codex G2a acceptance and G2b dispatch
+- Done: repaired specialist boundary independently accepted2db9a8b, integrated77127d3, combined919tests/typechecks/lint pass. Ready previewdca5d11/G1/G2a pushed. Main untouched.
+- Next: Claude42092 verified in domino-G2b, durable backend phase. Remote R1 UI prompt pushed and ownership reserved; launch unconfirmed. Audit before integration/wiring.
+- Watch out: CREAO account credential pending; current key is app-scoped. No real investigation connected to canvas yet. Monitor remains active; node profiles are in scope.
+
+## 2026-10-24 12:46 Codex specialist audit
+- Done: G2a973dac3 full863tests/typechecks/lint pass. Independent Astra audit reproduced invalid context reaching provider despite tests. No live provider call or integration.
+- Next: Claude repair1 verified exec94944/PID69311 from1a1cb90, original worktree/scope. Re-review with audit_g2a, then combined check before G2b.
+- Watch out: enforce run/reference closure, hindsight/cutoff boundaries, real baseline relation and exact comparison context; safe negated caveats must pass. Report kb/reviews/G2a-specialists-audit.md. Canvas preview remains healthy, main untouched.
+
+## 2026-10-24 12:37 Codex early canvas accepted
+- Done: G1 initial90da27c plus taste/UIUX Max repair285d7de independently checked;820tests/build/browser pass and integrated previewdcfb1ab. Early visual shown before backend dispatch. Current3102/investigate is visual only; temporary3103 stopped.
+- Next: Claude G2a real specialist contracts/provider runs exec49171/PID29046; audit, then G2b durable conversation/operations and G3 live graph/chart journey. Scheduled C1 supervision active every20minutes.
+- Watch out: no real investigation is connected yet; Send deliberately disabled. All UI phases require /orchestrator, /ponytail, taste, ui-ux-pro-max. Main untouched. See G1-accepted.md and active-run.md.
+
+## 2026-10-24 12:31 Codex canvas reprioritization
+- Done: user corrected centerpiece; inspected backend/provider/UI reuse, prepared G1 scope and C1 supervisor, created isolated domino-G1 frombc1d21f. Claude Opus worker verifiedPID4552 with requested /orchestrator and /ponytail. Existing monitor reactivated with revised scope.
+- Next: review/show G1 actual browser visual before full-flow implementation; then narrow real specialist and persisted conversation/graph APIs, then live UI wiring.
+- Watch out: old dashboard completion is not canvas completion. No fake agent activity, no theme expansion, no main merge. Details/process ownership in active-run.md.
+
+## 2026-10-24 08:49 Codex final overnight checkpoint
+- Done: H4d code5db5f21 independently accepted at3570989. Final preview assembled in its own worktree, fresh offline install,815tests/typechecks/lint/build and real save/reveal/alternative/reload/activity journey pass. Four desktop/mobile styles captured. All Claude workers finished; monitor paused.
+- Next: review `preview/historical-overnight` at http://127.0.0.1:3102/historical and `kb/coordination/historical/overnight-result.md` before main integration. Preserve isolated backend3210/3211 and all worktrees.
+- Watch out: accepted case is a retrospective cash forecast miss, not validated distress warning. Unknown alternative benefit/downside remains explicit. Main694ab2a unchanged. Forced outage/reduced-motion runtime emulation are unverified; mutation request IDs do not survive reload.
+
+## 2026-10-24 08:26 Codex heartbeat
+- Done: core4d5c86f independently accepted;798tests/build and real browser journey pass. Frozen sources, retrospective miss, cost-only alternative, reload, keyboard and mobile checked. Combined backend/UI90bcbf5 passed806tests and pushed.
+- Next: verified Sonnet H4d wires actual activity using existing panel; audit/build/fresh live journey then final preview branch.
+- Watch out: activity first history must stay quiet and alternatives must survive case-only filtering. Pending mutation IDs do not survive reload; no runtime reduced-motion emulation available in browser tool.
+
+## 2026-10-24 08:02 Codex heartbeat
+- Done: core UI594b185 passes792tests/build; actual browser and independent review found runtime blockers.
+- Next: verified Sonnet repair1 fixes the query render loop, stale completion navigation, uncertain failure wording, malformed response recovery and historical sidebar context. Rebuild/browser before accepting.
+- Watch out: preview3101 serves the crashing candidate. Backend4795d51 is accepted; activity wiring waits for clean core UI.
+
+## 2026-10-24 07:46 Codex heartbeat
+- Done: full historical backend accepted and pushed4795d51. Activity code6498b75 independently approved;734tests and live parallel sequencing/retry/isolation checks passed.
+- Next: collect H4c core UI, audit/build/browser, then adopt accepted activity at a clean checkpoint. Only UI worker remains active.
+- Watch out: activity reducer must reset by baselineRunId but filter by caseId, so alternative events remain visible. Initial historical batch is not new live work.
+
+## 2026-10-24 07:42 Codex heartbeat
+- Done: H2c8389326 independently approved, full726tests and local concurrency/snapshot checks passed, acceptance66b2d2a pushed. H4 dependency integration passed772tests.
+- Next: two verified Claude workers build real activity and core live UI in separate worktrees. Core UI uses only accepted H2c; later activity wiring follows tested H2d.
+- Watch out: saved inputSnapshot and available/revealed evidence have different roles. UI must use retrospective wording and unknown unmodeled downside, not inherited synthetic prospective claims. No main or shared cloud changes.
+
+## 2026-10-24 07:23 Codex heartbeat
+- Done: H2c repair1 passed725tests and local retry/reveal/reload checks. Independent probes cleared availability, request receipts and frozen revealed evidence. Live UI card prepared.
+- Next: final bounded repair2 exposes frozen input objects and saved method/date metadata; re-review then H2d.
+- Watch out: getCase available evidence and saved forecast inputSnapshot are distinct; never replace old input provenance with current values. No main/cloud changes.
+
+## 2026-10-24 07:07 Codex heartbeat
+- Done: H2c candidate passes719tests; isolated anonymous local backend compiled and concurrent save/reveal/alternative smoke passed. Generated bindings0377a9b.
+- Next: Claude repair1 addresses independently reproduced frozen-run/reveal/request-key defects and adds read-only retrieval. Re-audit before H2d and live UI wiring.
+- Watch out: passing tests did not clear persistence audit. No main merge or shared cloud writes; local backend3210/3211 only.
+
+## 2026-10-24 06:46 Codex heartbeat
+- Done: real 2U cash engine validation passed713tests; H4 presentation436878e passed728tests/build and desktop/mobile activity checks. Both branches pushed.
+- Next: Claude H2c builds immutable run/reveal APIs, then audit/local smoke, actual activity, and live UI wiring on H4 ancestry.
+- Watch out: historical model honestly misses by$37.58M; response is cost-only sensitivity with unmodeled downside. No live feed or complete journey yet.
+
+## 2026-10-24 06:02 Codex heartbeat
+- Done: approved H2acontract repair and H3presentation; raw-backed2Ucashsubset independentlyverified. H4foundation buildfailure andURLbugs routedtoClaude.
+- Next: normalizecashsubset, auditpureperiodmodel, repairfourstyles; three boundedworkersverified. Fullstate in active-run.md.
+- Watch out: retrospectivecashforecastmiss, notbankruptcywarning; unverifieddebt andheldoutresearchnotes excluded. CoreAPI/persistence/liveUI notdone.
+
+## 2026-10-24 05:20 Codex (overnight workers verified)
+- Done: pushed d5b2c94, created H1/H2/H3 worktrees, launched bounded Claude Sonnet/Opus/Sonnet phases; verified live processes and file changes. Codex heartbeat domino-overnight-audit ACTIVE every 20 minutes. Standalone bounded awake guard covers idle gaps.
+- Next: audit completed checkpoints and advance evidence/contracts -> model/persistence -> UI wiring -> styles -> isolated preview checks. See kb/coordination/historical/active-run.md for exact ownership and recovery.
+- Watch out: three workers maximum, one UI writer, serialized full checks; no main merge, secrets, shared cloud writes or billable Apify runs. Stop new dispatch at 11:15 PDT. Fresh chats do not reset usage limits.
+
+## 2026-10-24 Codex (supervised execution authorization)
+- Done: user authorized direct Claude development with Codex audit/monitoring. C0 supervisor and bounded H1/H2 worker prompts added; H0 becomes manual fallback. UI reuse and four-style/activity requirements retained.
+- Next: start isolated evidence/contracts/presentation phases, record exact process state, then review and advance gates through heartbeat supervision. No duplicate fresh-chat dispatch.
+- Watch out: Apify token reported available but unverified; do not print/copy it or introduce unnecessary crawler/integration work. Existing main/local changes remain untouched; three writers maximum, one check/build slot.
+
+## 2026-10-24 Codex (four-style UI and motion handoff)
+- Done: researched official references, confirmed Hyphenate identity, inspected existing Radix/shadcn tokens/Motion; added H4 spec/prompt/card and H2d truthful activity seam. H0 carries the updated single-computer run.
+- Next: H3 core checkpoint -> separate H4 worktree in the same UI slot; four styles with shared components, real-event transitions and same-state visual comparisons. No new implementation launched during preparation.
+- Watch out: no four parallel UI writers, no fabricated agent/tool work, no chart rewrite or fake weekly actuals. Ramp fidelity limited to observable references; original style remains default. Core preview survives incomplete polish.
+
+## 2026-10-24 Codex (overnight launch preparation)
+- Done: pushed assessment108cdaa to origin/integration/historical-case-study; prepared rest-of-project stage gates, Claude orchestration/UI prompts, scoped H1/H2/H3 cards and versioned contract handoff.
+- Next: one fresh Claude session launches all three workers on this computer. Three writers total, isolated worktrees, serialized full checks/builds, provisional preview assembly; Codex independently audits before final integration. No worker launched during prompt preparation.
+- Watch out: this supersedes the assessment-only hold. Six-hour ceiling, source/publication gates, no main merge, no production deploy or shared cloud reseed. E3c/E2a remain blocked and parked; agent canvas is later.
+
+## 2026-10-24 Codex brain (historical pivot assessment)
+- Done: dedicated integration/historical-case-study worktree at main694ab2a; saved user scope, source comparison and minimal plan. P5 connect/detail remain stubs, main timeline/components reusable. E3c blocked despite657 passing tests; E2a blocked by three independent defects despite 650 passing tests. E1b repair 9ab358a independently approved as a preserved checkpoint; 661 tests and sim:print pass.
+- Next: review the proposed historical plan and provisional company choice before H1. H1-H3 are proposed only; all prior workers and audits finished. No new implementation, main merge, push or deployment.
+- Watch out: prior backend-completion instructions below are superseded. Keep reported facts, assumptions, financial periods and publication dates distinct. Existing weekly grade/learn cannot grade quarterly reports. Main remains694ab2a with all unrelated changes preserved.
+
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 

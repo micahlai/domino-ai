@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "id": "field:seed/synthetic-blocked-2031q3-v1",
+  "exportedAt": "2032-03-01T12:00:00Z",
+  "company": {
+    "cik": "0000000001",
+    "name": "Fixture Blocked Co (synthetic)"
+  },
+  "provenance": "synthetic_fixture",
+  "snapshotRef": {
+    "id": "field:snapshot/synthetic-blocked-2031q3-v1",
+    "contentHash": "54ca5b9c03251a273ed1e9770c75911f4518d77d462dc00128145f903b6a99c9"
+  },
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "field:snapshot/synthetic-blocked-2031q3-v1",
+    "cik": "0000000001",
+    "sourceSignature": "synthetic_fixture:blocked-role@1",
+    "cutoff": "2031-11-10T23:59:59-05:00",
+    "sourcePackageIds": ["synthetic-blocked-package"],
+    "mappingReceiptIds": [],
+    "reconciliations": [],
+    "rules": [],
+    "case": {
+      "id": "synthetic-blocked-case",
+      "companyName": "Fixture Blocked Co (synthetic)",
+      "provenance": "synthetic_fixture",
+      "currency": "USD",
+      "sources": [
+        {
+          "id": "src_q3",
+          "title": "Synthetic Q3 quarterly report",
+          "url": "https://example.com/fixture/blocked/q3",
+          "publishedAt": "2031-11-09T16:45:46-05:00",
+          "timezone": "America/New_York",
+          "period": {
+            "kind": "duration",
+            "start": "2031-07-01",
+            "end": "2031-09-30"
+          },
+          "retrievedOn": "2032-03-01",
+          "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "facts": [
+        {
+          "id": "f_cash",
+          "kind": "reported",
+          "metric": "cash_and_equivalents",
+          "period": {
+            "kind": "instant",
+            "date": "2031-09-30"
+          },
+          "currency": "USD",
+          "cents": 7000000000,
+          "availableAt": "2031-11-09T16:45:46-05:00",
+          "sourceId": "src_q3",
+          "locator": "Balance sheet, cash and cash equivalents",
+          "reportedScale": "thousands"
+        },
+        {
+          "id": "f_restricted",
+          "kind": "reported",
+          "metric": "restricted_cash",
+          "period": {
+            "kind": "instant",
+            "date": "2031-09-30"
+          },
+          "currency": "USD",
+          "cents": 500000000,
+          "availableAt": "2031-11-09T16:45:46-05:00",
+          "sourceId": "src_q3",
+          "locator": "Cash reconciliation note",
+          "reportedScale": "thousands"
+        },
+        {
+          "id": "f_total",
+          "kind": "derived",
+          "metric": "cash_including_restricted",
+          "period": {
+            "kind": "instant",
+            "date": "2031-09-30"
+          },
+          "currency": "USD",
+          "cents": 7500000000,
+          "availableAt": "2031-11-09T16:45:46-05:00",
+          "derivedFrom": ["f_cash", "f_restricted"],
+          "derivation": "cash and equivalents plus restricted cash"
+        },
+        {
+          "id": "f_ocf_ytd",
+          "kind": "reported",
+          "metric": "operating_cash_flow",
+          "period": {
+            "kind": "duration",
+            "start": "2031-01-01",
+            "end": "2031-09-30"
+          },
+          "currency": "USD",
+          "cents": -1200000000,
+          "availableAt": "2031-11-09T16:45:46-05:00",
+          "sourceId": "src_q3",
+          "locator": "Cash flow statement, net cash used in operating activities",
+          "reportedScale": "thousands"
+        }
+      ],
+      "assumptions": [
+        {
+          "id": "as_fin0",
+          "label": "synthetic",
+          "description": "Synthetic analyst assumption: net financing cash flow is zero next quarter.",
+          "basisFactIds": [],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 0
+          },
+          "effectiveFrom": "2031-10-01",
+          "dependsOn": [],
+          "feasibleAtCutoff": "yes",
+          "selectedAfterReveal": false
+        },
+        {
+          "id": "as_fx0",
+          "label": "synthetic",
+          "description": "Synthetic analyst assumption: exchange-rate effect on cash is zero next quarter.",
+          "basisFactIds": [],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 0
+          },
+          "effectiveFrom": "2031-10-01",
+          "dependsOn": [],
+          "feasibleAtCutoff": "yes",
+          "selectedAfterReveal": false
+        }
+      ]
+    },
+    "roles": [
+      {
+        "role": "usable_cash",
+        "status": "validated",
+        "factId": "f_cash"
+      },
+      {
+        "role": "total_cash",
+        "status": "validated",
+        "factId": "f_total"
+      },
+      {
+        "role": "restricted_cash",
+        "status": "validated",
+        "factId": "f_restricted"
+      },
+      {
+        "role": "operating_ytd",
+        "status": "validated",
+        "factId": "f_ocf_ytd"
+      },
+      {
+        "role": "investing_ytd",
+        "status": "blocked",
+        "reason": "missing_input",
+        "detail": "Synthetic fixture: no investing cash flow was disclosed by the cutoff."
+      },
+      {
+        "role": "financing_ytd",
+        "status": "blocked",
+        "reason": "missing_input",
+        "detail": "Synthetic fixture: no financing cash flow was disclosed by the cutoff."
+      },
+      {
+        "role": "fx_ytd",
+        "status": "blocked",
+        "reason": "missing_input",
+        "detail": "Synthetic fixture: no exchange-rate effect was disclosed by the cutoff."
+      }
+    ],
+    "completeness": "incomplete",
+    "contentHash": "54ca5b9c03251a273ed1e9770c75911f4518d77d462dc00128145f903b6a99c9"
+  },
+  "quarterBridge": {
+    "knowledgeCutoff": "2031-11-10T23:59:59-05:00",
+    "originBalanceDate": "2031-09-30",
+    "targetDate": "2031-12-31",
+    "roleFacts": {
+      "usable_cash": "f_cash",
+      "total_cash": "f_total",
+      "operating_ytd": "f_ocf_ytd"
+    },
+    "financingAssumptionId": "as_fin0",
+    "fxAssumptionId": "as_fx0",
+    "methodAssumptionIds": []
+  },
+  "pins": {
+    "boundaryVersion": "1.0.0",
+    "hashScheme": "sha256/domino-canonical-json-v1",
+    "snapshotSchemaVersion": 1,
+    "method": {
+      "id": "quarterly_cash_bridge",
+      "version": "0.1.0"
+    }
+  },
+  "readiness": {
+    "status": "blocked",
+    "blockedRoles": ["investing_ytd"]
+  },
+  "postHoc": false,
+  "contentHash": "eb38f85f582e8540872c78befc76067c90eea04162d30d5530a4201b7a91ea00"
+}

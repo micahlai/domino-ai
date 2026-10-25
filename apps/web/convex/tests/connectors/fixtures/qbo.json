@@ -1,0 +1,411 @@
+[
+  {
+    "path": "/vendor/qbo/v3/company/kestrel/query?query=select%20*%20from%20Account%20startposition%201%20maxresults%201000&minorversion=75",
+    "status": 200,
+    "link": null,
+    "body": {
+      "QueryResponse": {
+        "Account": [
+          {
+            "Id": "35",
+            "Name": "Operating checking",
+            "AccountType": "Bank",
+            "AccountSubType": "Checking",
+            "CurrentBalance": 4500000,
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "Active": true,
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-30T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-30T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "36",
+            "Name": "Lease collateral (restricted)",
+            "AccountType": "Bank",
+            "AccountSubType": "TrustAccounts",
+            "CurrentBalance": 600000,
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "Active": true,
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-30T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-30T09:00:00-08:00"
+            }
+          }
+        ],
+        "startPosition": 1,
+        "maxResults": 2
+      },
+      "time": "2026-10-30T23:59:59-08:00"
+    }
+  },
+  {
+    "path": "/vendor/qbo/v3/company/kestrel/query?query=select%20*%20from%20Bill%20startposition%201%20maxresults%201000&minorversion=75",
+    "status": 200,
+    "link": null,
+    "body": {
+      "QueryResponse": {
+        "Bill": [
+          {
+            "Id": "bill_agency_nov",
+            "DocNumber": "bill_agency_nov",
+            "VendorRef": {
+              "value": "northlight-marketing",
+              "name": "Northlight Marketing"
+            },
+            "TxnDate": "2026-11-15",
+            "DueDate": "2026-11-15",
+            "TotalAmt": 45000,
+            "Balance": 45000,
+            "CustomField": [
+              {
+                "DefinitionId": "1",
+                "Name": "Critical vendor",
+                "Type": "StringType",
+                "StringValue": "false"
+              },
+              {
+                "DefinitionId": "2",
+                "Name": "Agreed pay date",
+                "Type": "StringType",
+                "StringValue": "2026-11-29"
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-11-15T09:00:00-08:00",
+              "LastUpdatedTime": "2026-11-15T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "bill_cloud_q1",
+            "DocNumber": "bill_cloud_q1",
+            "VendorRef": {
+              "value": "cloud-provider",
+              "name": "Cloud provider"
+            },
+            "TxnDate": "2027-01-01",
+            "DueDate": "2027-01-01",
+            "TotalAmt": 210000,
+            "Balance": 210000,
+            "CustomField": [
+              {
+                "DefinitionId": "1",
+                "Name": "Critical vendor",
+                "Type": "StringType",
+                "StringValue": "true"
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2027-01-01T09:00:00-08:00",
+              "LastUpdatedTime": "2027-01-01T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "bill_paid_oct",
+            "DocNumber": "bill_paid_oct",
+            "VendorRef": {
+              "value": "law-firm",
+              "name": "Law firm"
+            },
+            "TxnDate": "2026-10-12",
+            "DueDate": "2026-10-12",
+            "TotalAmt": 123.45,
+            "Balance": 0,
+            "CustomField": [
+              {
+                "DefinitionId": "1",
+                "Name": "Critical vendor",
+                "Type": "StringType",
+                "StringValue": "false"
+              }
+            ],
+            "SyncToken": "1",
+            "MetaData": {
+              "CreateTime": "2026-10-12T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-10T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "bill_rent_nov",
+            "DocNumber": "bill_rent_nov",
+            "VendorRef": {
+              "value": "office-landlord",
+              "name": "Office landlord"
+            },
+            "TxnDate": "2026-11-05",
+            "DueDate": "2026-11-05",
+            "TotalAmt": 62000,
+            "Balance": 62000,
+            "CustomField": [
+              {
+                "DefinitionId": "1",
+                "Name": "Critical vendor",
+                "Type": "StringType",
+                "StringValue": "true"
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-11-05T09:00:00-08:00",
+              "LastUpdatedTime": "2026-11-05T09:00:00-08:00"
+            }
+          }
+        ],
+        "startPosition": 1,
+        "maxResults": 4
+      },
+      "time": "2026-10-30T23:59:59-08:00"
+    }
+  },
+  {
+    "path": "/vendor/qbo/v3/company/kestrel/query?query=select%20*%20from%20BillPayment%20startposition%201%20maxresults%201000&minorversion=75",
+    "status": 200,
+    "link": null,
+    "body": {
+      "QueryResponse": {
+        "BillPayment": [
+          {
+            "Id": "bp_bill_paid_oct",
+            "DocNumber": "rb_bill_paid_oct",
+            "TxnDate": "2026-10-10",
+            "PayType": "Check",
+            "TotalAmt": 123.45,
+            "VendorRef": {
+              "value": "law-firm",
+              "name": "Law firm"
+            },
+            "Line": [
+              {
+                "Amount": 123.45,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "bill_paid_oct",
+                    "TxnType": "Bill"
+                  }
+                ]
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-10T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-10T09:00:00-08:00"
+            }
+          }
+        ],
+        "startPosition": 1,
+        "maxResults": 1
+      },
+      "time": "2026-10-30T23:59:59-08:00"
+    }
+  },
+  {
+    "path": "/vendor/qbo/v3/company/kestrel/query?query=select%20*%20from%20Invoice%20startposition%201%20maxresults%201000&minorversion=75",
+    "status": 200,
+    "link": null,
+    "body": {
+      "QueryResponse": {
+        "Invoice": [
+          {
+            "Id": "inv_acme_2027",
+            "DocNumber": "inv_acme_2027",
+            "CustomerRef": {
+              "value": "cus_acme",
+              "name": "Acme Logistics"
+            },
+            "TxnDate": "2026-10-26",
+            "DueDate": "2026-11-25",
+            "TotalAmt": 240000,
+            "Balance": 240000,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-26T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-26T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_acme_sep",
+            "DocNumber": "inv_acme_sep",
+            "CustomerRef": {
+              "value": "cus_acme",
+              "name": "Acme Logistics"
+            },
+            "TxnDate": "2026-09-01",
+            "DueDate": "2026-10-01",
+            "TotalAmt": 12345.67,
+            "Balance": 0,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "1",
+            "MetaData": {
+              "CreateTime": "2026-09-01T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-29T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_bp_nov",
+            "DocNumber": "inv_bp_nov",
+            "CustomerRef": {
+              "value": "cus_brightpath",
+              "name": "Brightpath Retail"
+            },
+            "TxnDate": "2026-11-01",
+            "DueDate": "2026-12-01",
+            "TotalAmt": 36000,
+            "Balance": 36000,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-11-01T09:00:00-08:00",
+              "LastUpdatedTime": "2026-11-01T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_bp_oct",
+            "DocNumber": "inv_bp_oct",
+            "CustomerRef": {
+              "value": "cus_brightpath",
+              "name": "Brightpath Retail"
+            },
+            "TxnDate": "2026-10-01",
+            "DueDate": "2026-10-31",
+            "TotalAmt": 36000,
+            "Balance": 0,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "1",
+            "MetaData": {
+              "CreateTime": "2026-10-01T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-20T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_cobalt_2027",
+            "DocNumber": "inv_cobalt_2027",
+            "CustomerRef": {
+              "value": "cus_cobalt",
+              "name": "Cobalt Labs"
+            },
+            "TxnDate": "2026-10-15",
+            "DueDate": "2026-11-14",
+            "TotalAmt": 96000,
+            "Balance": 96000,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-15T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-15T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_cobalt_old",
+            "DocNumber": "inv_cobalt_old",
+            "CustomerRef": {
+              "value": "cus_cobalt",
+              "name": "Cobalt Labs"
+            },
+            "TxnDate": "2026-06-01",
+            "DueDate": "2026-07-01",
+            "TotalAmt": 500.01,
+            "Balance": 0,
+            "PrivateNote": "Written off 2026-10-01",
+            "SyncToken": "1",
+            "MetaData": {
+              "CreateTime": "2026-06-01T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-01T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "inv_nw_q4",
+            "DocNumber": "inv_nw_q4",
+            "CustomerRef": {
+              "value": "cus_northwind",
+              "name": "Northwind Health"
+            },
+            "TxnDate": "2026-10-01",
+            "DueDate": "2026-11-30",
+            "TotalAmt": 250000,
+            "Balance": 250000,
+            "PrivateNote": "Synced from Stripe",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-01T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-01T09:00:00-08:00"
+            }
+          }
+        ],
+        "startPosition": 1,
+        "maxResults": 7
+      },
+      "time": "2026-10-30T23:59:59-08:00"
+    }
+  },
+  {
+    "path": "/vendor/qbo/v3/company/kestrel/query?query=select%20*%20from%20Payment%20startposition%201%20maxresults%201000&minorversion=75",
+    "status": 200,
+    "link": null,
+    "body": {
+      "QueryResponse": {
+        "Payment": [
+          {
+            "Id": "pmt_inv_acme_sep",
+            "TxnDate": "2026-10-29",
+            "TotalAmt": 12345.67,
+            "CustomerRef": {
+              "value": "cus_acme"
+            },
+            "Line": [
+              {
+                "Amount": 12345.67,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "inv_acme_sep",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-29T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-29T09:00:00-08:00"
+            }
+          },
+          {
+            "Id": "pmt_inv_bp_oct",
+            "TxnDate": "2026-10-20",
+            "TotalAmt": 36000,
+            "CustomerRef": {
+              "value": "cus_brightpath"
+            },
+            "Line": [
+              {
+                "Amount": 36000,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "inv_bp_oct",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-10-20T09:00:00-08:00",
+              "LastUpdatedTime": "2026-10-20T09:00:00-08:00"
+            }
+          }
+        ],
+        "startPosition": 1,
+        "maxResults": 2
+      },
+      "time": "2026-10-30T23:59:59-08:00"
+    }
+  }
+]

@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivitySimulation } from "@/components/ActivitySimulation";
 import { AddEventDialog } from "@/components/AddEventDialog";
 import { BranchChart } from "@/components/BranchChart";
 import { ConnectChecklist, type SourcePreview } from "@/components/ConnectChecklist";
@@ -12,9 +13,16 @@ import { ProofDrawer } from "@/components/ProofDrawer";
 import { ResilienceBar } from "@/components/ResilienceBar";
 import { RiskList } from "@/components/RiskList";
 import { RuleCard } from "@/components/RuleCard";
+import { StyleComparison } from "@/components/StyleComparison";
+import { ThemePrimitives } from "@/components/ThemePrimitives";
 import { FixtureCompany } from "@/components/company/FixtureCompany";
+import { HistoricalReplay } from "@/components/historical/HistoricalReplay";
+import { previewView } from "@/components/historical/preview";
+import type { HistoricalView } from "@/components/historical/types";
+import { InvestigateWorkspace } from "@/components/investigate/InvestigateWorkspace";
 import { ParticleMotionPreview } from "@/components/multiverse/ParticleMotionPreview";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,11 +33,16 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 const sections = [
+  "Primitives",
   "CompanyWorkspace",
   "Headline",
   "ResilienceBar",
   "MultiverseTimeline",
+  "StyleComparison",
+  "ActivityPanel",
+  "AgentCanvas",
   "ParticleMotion",
+  "HistoricalReplay",
   "RiskList",
   "DominoChain",
   "FixCard",
@@ -83,7 +96,17 @@ function PreviewSection({
   );
 }
 
+const previewStages: { id: HistoricalView["stage"]; label: string }[] = [
+  { id: "baseline", label: "Before reveal" },
+  { id: "observed", label: "After reveal" },
+  { id: "response", label: "With alternative" },
+];
+const previewStatuses = ["ready", "loading", "error", "unavailable"] as const;
+
 export function Playground() {
+  const [historicalStage, setHistoricalStage] = useState<HistoricalView["stage"]>("baseline");
+  const [historicalStatus, setHistoricalStatus] =
+    useState<(typeof previewStatuses)[number]>("ready");
   const [showFixes, setShowFixes] = useState(false);
   const [selectedFutureKey, setSelectedFutureKey] = useState<string>();
   const [selectedRiskId, setSelectedRiskId] = useState(fixtures.risks[0]?.id);
@@ -134,6 +157,18 @@ export function Playground() {
           <ArrowUpRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
+      <Link
+        href="/playground/timeline-analysis"
+        className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
+      >
+        Preview Timeline risk analysis
+      </Link>
+      <Link
+        href="/playground/timeline-chat"
+        className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
+      >
+        Preview Timeline chat
+      </Link>
       <Separator />
       <nav aria-label="Component previews" className="flex flex-wrap gap-2">
         {sections.map((name) => (
@@ -146,6 +181,12 @@ export function Playground() {
           </a>
         ))}
       </nav>
+      <PreviewSection
+        name="Primitives"
+        description="Shared theme primitives and layout helpers (components/ui). Preview values only."
+      >
+        <ThemePrimitives />
+      </PreviewSection>
       <PreviewSection
         name="CompanyWorkspace"
         description="The assembled main screen. Sample approvals only; no records change."
@@ -188,10 +229,70 @@ export function Playground() {
         />
       </PreviewSection>
       <PreviewSection
+        name="StyleComparison"
+        description="The same fixed preview state in all four styles, drawn from shared components. Preview values only; no data is loaded. Ramp and Hyphenate follow only the public pages that were inspected, not their private product screens."
+      >
+        <StyleComparison />
+      </PreviewSection>
+      <PreviewSection
+        name="ActivityPanel"
+        description="Real activity events in a stable list. Here the events are a clearly labelled simulation: Step delivers a few at a time, Replay starts over."
+      >
+        <ActivitySimulation />
+      </PreviewSection>
+      <PreviewSection
+        name="AgentCanvas"
+        description="Visual checkpoint of the investigate workspace: one idle Domino node on a pan and zoom canvas, with a conversation panel. Nothing runs here and no company data is loaded. The full page is at /investigate."
+      >
+        <div data-style="original" className="h-[560px] overflow-hidden rounded-lg border">
+          <InvestigateWorkspace />
+        </div>
+      </PreviewSection>
+      <PreviewSection
         name="ParticleMotion"
         description="Motion stress preview: 30 copies of sample forecast paths, not new financial scenarios."
       >
         <ParticleMotionPreview />
+      </PreviewSection>
+      <PreviewSection
+        name="HistoricalReplay"
+        description="Historical case view. Synthetic preview values for an invented Example Co: layout only, not reported history. Nothing is loaded, saved or revealed here; the buttons only switch which preview state is drawn. The live journey is at /historical."
+      >
+        <fieldset className="mb-5 flex flex-wrap gap-2 border-0 p-0">
+          <legend className="sr-only">Preview state</legend>
+          {previewStages.map((stage) => (
+            <Button
+              key={stage.id}
+              size="sm"
+              variant={historicalStage === stage.id ? "default" : "outline"}
+              aria-pressed={historicalStage === stage.id}
+              onClick={() => setHistoricalStage(stage.id)}
+            >
+              {stage.label}
+            </Button>
+          ))}
+          <span className="mx-1 hidden border-l sm:block" aria-hidden="true" />
+          {previewStatuses.map((status) => (
+            <Button
+              key={status}
+              size="sm"
+              variant={historicalStatus === status ? "secondary" : "ghost"}
+              aria-pressed={historicalStatus === status}
+              onClick={() => setHistoricalStatus(status)}
+            >
+              {status}
+            </Button>
+          ))}
+        </fieldset>
+        <HistoricalReplay
+          view={previewView(historicalStage)}
+          status={historicalStatus}
+          statusMessage={
+            historicalStatus === "error"
+              ? "Preview of the error state. Nothing was saved or changed."
+              : "Preview of the unavailable state: the historical service is not connected yet."
+          }
+        />
       </PreviewSection>
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <PreviewSection

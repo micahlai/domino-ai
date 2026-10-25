@@ -1,0 +1,2244 @@
+{
+  "companyId": "kestrel",
+  "asOf": "2026-10-30",
+  "runs": {
+    "stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto": [
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot": [
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot": [
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "gusto,hubspot,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "plaid": [
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "plaid,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 484,
+        "checksTotal": 484
+      }
+    ],
+    "plaid,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "plaid,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 484,
+        "checksTotal": 484
+      }
+    ],
+    "plaid,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 35,
+        "checksTotal": 35
+      }
+    ],
+    "plaid,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 519,
+        "checksTotal": 519
+      }
+    ],
+    "plaid,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 35,
+        "checksTotal": 35
+      }
+    ],
+    "plaid,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 519,
+        "checksTotal": 519
+      }
+    ],
+    "gusto,plaid": [
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      }
+    ],
+    "gusto,plaid,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 497,
+        "checksTotal": 497
+      }
+    ],
+    "gusto,plaid,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      }
+    ],
+    "gusto,plaid,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 497,
+        "checksTotal": 497
+      }
+    ],
+    "gusto,plaid,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 48,
+        "checksTotal": 48
+      }
+    ],
+    "gusto,plaid,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 532,
+        "checksTotal": 532
+      }
+    ],
+    "gusto,plaid,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 48,
+        "checksTotal": 48
+      }
+    ],
+    "gusto,plaid,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 532,
+        "checksTotal": 532
+      }
+    ],
+    "hubspot,plaid": [
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,plaid,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 484,
+        "checksTotal": 484
+      }
+    ],
+    "hubspot,plaid,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      }
+    ],
+    "hubspot,plaid,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 484,
+        "checksTotal": 484
+      }
+    ],
+    "hubspot,plaid,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 35,
+        "checksTotal": 35
+      }
+    ],
+    "hubspot,plaid,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 519,
+        "checksTotal": 519
+      }
+    ],
+    "hubspot,plaid,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 35,
+        "checksTotal": 35
+      }
+    ],
+    "hubspot,plaid,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 519,
+        "checksTotal": 519
+      }
+    ],
+    "gusto,hubspot,plaid": [
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      }
+    ],
+    "gusto,hubspot,plaid,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 497,
+        "checksTotal": 497
+      }
+    ],
+    "gusto,hubspot,plaid,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      }
+    ],
+    "gusto,hubspot,plaid,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 40, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 46,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 497,
+        "checksTotal": 497
+      }
+    ],
+    "gusto,hubspot,plaid,qbo": [
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 48,
+        "checksTotal": 48
+      }
+    ],
+    "gusto,hubspot,plaid,qbo,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 35,
+        "checksTotal": 35
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 532,
+        "checksTotal": 532
+      }
+    ],
+    "gusto,hubspot,plaid,qbo,ramp": [
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 547, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 599,
+        "skipped": 518,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 48,
+        "checksTotal": 48
+      }
+    ],
+    "gusto,hubspot,plaid,qbo,ramp,stripe": [
+      {
+        "tool": "stripe",
+        "error": null,
+        "cursor": null,
+        "counts": { "customers": 300, "invoices": 547, "billingPlans": 296 },
+        "recordsIn": 2111,
+        "recordsOut": 1143,
+        "skipped": 968,
+        "checksOk": 484,
+        "checksTotal": 484
+      },
+      {
+        "tool": "ramp",
+        "error": null,
+        "cursor": null,
+        "counts": { "bills": 0, "cardTxns": 6 },
+        "recordsIn": 46,
+        "recordsOut": 6,
+        "skipped": 40,
+        "checksOk": 26,
+        "checksTotal": 26
+      },
+      {
+        "tool": "qbo",
+        "error": null,
+        "cursor": null,
+        "counts": { "invoices": 0, "bills": 52 },
+        "recordsIn": 1119,
+        "recordsOut": 52,
+        "skipped": 1065,
+        "checksOk": 61,
+        "checksTotal": 61
+      },
+      {
+        "tool": "gusto",
+        "error": null,
+        "cursor": null,
+        "counts": { "payroll": 20 },
+        "recordsIn": 20,
+        "recordsOut": 20,
+        "skipped": 0,
+        "checksOk": 13,
+        "checksTotal": 13
+      },
+      {
+        "tool": "hubspot",
+        "error": null,
+        "cursor": null,
+        "counts": { "deals": 2 },
+        "recordsIn": 2,
+        "recordsOut": 2,
+        "skipped": 0,
+        "checksOk": 0,
+        "checksTotal": 0
+      },
+      {
+        "tool": "plaid",
+        "error": null,
+        "cursor": null,
+        "counts": { "bankTxns": 537 },
+        "recordsIn": 539,
+        "recordsOut": 537,
+        "skipped": 0,
+        "checksOk": 532,
+        "checksTotal": 532
+      }
+    ]
+  }
+}

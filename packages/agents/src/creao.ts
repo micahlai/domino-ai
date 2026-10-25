@@ -1,7 +1,13 @@
 import type { AgentJob } from "@domino/contracts";
 import { z } from "zod";
-import { type FailureCategory, ProviderError, failer } from "./errors";
-import { type Candidate, scanChatText, selectOne } from "./extract";
+import {
+  type FailureCategory,
+  ProviderError,
+  type ProviderJob,
+  failer,
+  sanitizeErrorDetail,
+} from "./errors";
+import { type Candidate, type Selection, scanChatText, selectOne } from "./extract";
 import {
   type BoundedResponse,
   type TransportRuntime,
@@ -58,7 +64,7 @@ export const artifactKinds = ["json", "markdown", "text"] as const;
 export type ArtifactKind = (typeof artifactKinds)[number];
 
 export interface CreaoDiagnostics {
-  job: AgentJob;
+  job: ProviderJob;
   /** Last stage reached; "done" only when a validated result was returned. */
   stage: CreaoDiagnosticStage;
   failure?: FailureCategory | "unexpected";
@@ -139,7 +145,7 @@ function artifactCategory(type: string | null | undefined): ArtifactCategory {
   return "other";
 }
 
-function emptyDiagnostics(job: AgentJob): CreaoDiagnostics {
+function emptyDiagnostics(job: ProviderJob): CreaoDiagnostics {
   return {
     job,
     stage: "config",
@@ -173,6 +179,29 @@ function report(callback: CreaoOptions["diagnostics"], diagnostics: CreaoDiagnos
   } catch {
     // Ignored by design.
   }
+}
+
+/** Runs one CREAO attempt and reports its diagnostics once, whatever the outcome. */
+export async function withCreaoDiagnostics<T>(
+  job: ProviderJob,
+  callback: CreaoOptions["diagnostics"],
+  attempt: (diag: CreaoDiagnostics) => Promise<T>,
+): Promise<T> {
+  const diagnostics = emptyDiagnostics(job);
+  try {
+    const value = await attempt(diagnostics);
+    diagnostics.stage = "done";
+    return value;
+  } catch (error) {
+    diagnostics.failure = error instanceof ProviderError ? error.category : "unexpected";
+    throw error;
+  } finally {
+    report(callback, diagnostics);
+  }
+}
+
+export function creaoBounds(options: CreaoOptions): typeof creaoDefaults {
+  return { ...creaoDefaults, ...definedOnly(options) };
 }
 
 function isEnvelope(json: unknown): boolean {
@@ -219,94 +248,225 @@ export function createCreaoClient(
   options: CreaoOptions = {},
 ): ProviderClient {
   const runtime = runtimeFrom(options);
-  const bounds = { ...creaoDefaults, ...definedOnly(options) };
+  const bounds = creaoBounds(options);
 
   return {
-    async run(job, input) {
-      const diagnostics = emptyDiagnostics(job);
-      try {
-        const value = await attempt(job, input, diagnostics);
-        diagnostics.stage = "done";
-        return value;
-      } catch (error) {
-        diagnostics.failure = error instanceof ProviderError ? error.category : "unexpected";
-        throw error;
-      } finally {
-        report(options.diagnostics, diagnostics);
-      }
-    },
+    run: (job, input) =>
+      withCreaoDiagnostics(job, options.diagnostics, async (diag) => {
+        const fail = failer("creao", job);
+        const apiKey = env.CREAO_API_KEY?.trim();
+        const base = (env.CREAO_API_BASE_URL?.trim() || CREAO_API_BASE_URL).replace(/\/+$/, "");
+        const agentId = agentIdFor(job, env);
+        if (!apiKey || base !== CREAO_API_BASE_URL || !agentId) throw fail("config");
+        const run = await runCreaoApp(runtime, bounds, diag, {
+          fail,
+          apiKey,
+          appId: agentId,
+          prompt: buildCreaoPrompt(job, input),
+          select: (candidates) => selectOne(job, input, candidates, { bareArray: true }),
+        });
+        return run.value;
+      }),
   };
+}
 
-  async function attempt(job: AgentJob, input: unknown, diag: CreaoDiagnostics) {
-    const fail = failer("creao", job);
-    const apiKey = env.CREAO_API_KEY?.trim();
-    const base = (env.CREAO_API_BASE_URL?.trim() || CREAO_API_BASE_URL).replace(/\/+$/, "");
-    const agentId = agentIdFor(job, env);
-    if (!apiKey || base !== CREAO_API_BASE_URL || !agentId) throw fail("config");
+/** What differs between one app run of the five jobs and of a historical specialist. */
+export interface CreaoAppRun {
+  fail: ReturnType<typeof failer>;
+  apiKey: string;
+  appId: string;
+  prompt: string;
+  select: (candidates: Candidate[]) => Selection;
+  /**
+   * Historical runs: every poll must repeat the created run id, and an answer that is
+   * present but fails validation reports invalid_output instead of no_result.
+   */
+  strict?: boolean;
+  /**
+   * Awaited once the created run is accepted and before the first poll, so the caller can
+   * persist the run id. If it throws or outlives the run deadline, the run stops with
+   * run_record_failed; nothing is polled or reposted.
+   */
+  onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
+  /**
+   * Opt-in: on HTTP 429 from the create call, wait Retry-After (seconds or HTTP date; 5 s when
+   * absent, capped at maxWaitMs) and post once more. A 429 means no run was created, so this
+   * cannot duplicate one. Other statuses are never reposted.
+   */
+  createRetryOn429?: { maxWaitMs: number };
+  /**
+   * Opt-in: after the run reports completed, an answer that is missing (no result, no
+   * candidates) or an artifact download that is not 200 is retried after each delay in turn,
+   * re-reading the run for fresh artifact links. An answer that is present but invalid is not.
+   */
+  resultRetryDelaysMs?: readonly number[];
+  /** Awaited before each result retry; a throwing callback is ignored. */
+  onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
+  /**
+   * Opt-in: put each result marker on its own line before scanning. CREAO can join chat
+   * segments without a newline ("...manifest.<<<DOMINO_RESULT>>>"). The block must still be
+   * delimited at both ends and pass validation; prose alone never becomes an answer.
+   */
+  markersOnOwnLine?: boolean;
+}
 
-    const body = JSON.stringify({ inputs: { prompt: buildCreaoPrompt(job, input) } });
-    if (byteLength(body) > bounds.maxPromptBytes) throw fail("input_too_large");
+/** Splits a result marker glued to surrounding text onto its own line. */
+export function markersOnOwnLine(text: string): string {
+  return text
+    .replaceAll(RESULT_START, `\n${RESULT_START}\n`)
+    .replaceAll(RESULT_END, `\n${RESULT_END}\n`);
+}
 
-    const start = runtime.now();
-    const remaining = () => bounds.runDeadlineMs - (runtime.now() - start);
-    const request = (url: string, init: RequestInit, maxBytes: number) => {
-      const left = remaining();
-      if (left <= 0) throw fail("deadline");
-      return boundedFetch(
-        runtime,
-        url,
-        init,
-        { timeoutMs: Math.min(bounds.requestTimeoutMs, left), maxBytes },
-        fail,
-      );
-    };
-    const expectOk = (response: BoundedResponse, ok: number[]) => {
-      if (response.status >= 300 && response.status < 400) throw fail("redirect_rejected");
-      if (!ok.includes(response.status)) throw fail("http_status", response.status);
-    };
-    const auth = { authorization: `Bearer ${apiKey}`, accept: "application/json" };
+/** Retry-After as milliseconds: delta seconds or an HTTP date; undefined when unusable. */
+export function retryAfterMs(header: string | null, now: number): number | undefined {
+  if (!header?.trim()) return undefined;
+  const seconds = Number(header.trim());
+  if (Number.isFinite(seconds)) return seconds >= 0 ? seconds * 1000 : undefined;
+  const date = Date.parse(header);
+  return Number.isNaN(date) ? undefined : Math.max(0, date - now);
+}
 
-    diag.stage = "create";
-    const runsUrl = `${base}/apps/${encodeURIComponent(agentId)}/runs`;
-    const created = await request(
+/**
+ * One app run: one create (plus at most one repost after a 429 when opted in), bounded polls
+ * to a terminal status, then exactly one validated answer from chat text or trusted
+ * artifacts. Without the opt-ins it never retries or reposts.
+ */
+export async function runCreaoApp(
+  runtime: TransportRuntime,
+  bounds: typeof creaoDefaults,
+  diag: CreaoDiagnostics,
+  spec: CreaoAppRun,
+): Promise<{ value: unknown; runId: string }> {
+  const { fail, apiKey } = spec;
+  const base = CREAO_API_BASE_URL;
+  const body = JSON.stringify({ inputs: { prompt: spec.prompt } });
+  if (byteLength(body) > bounds.maxPromptBytes) throw fail("input_too_large");
+
+  const start = runtime.now();
+  const remaining = () => bounds.runDeadlineMs - (runtime.now() - start);
+  const request = (url: string, init: RequestInit, maxBytes: number) => {
+    const left = remaining();
+    if (left <= 0) throw fail("deadline");
+    return boundedFetch(
+      runtime,
+      url,
+      init,
+      { timeoutMs: Math.min(bounds.requestTimeoutMs, left), maxBytes },
+      fail,
+    );
+  };
+  const expectOk = (response: BoundedResponse, ok: number[]) => {
+    if (response.status >= 300 && response.status < 400) throw fail("redirect_rejected");
+    if (!ok.includes(response.status))
+      throw fail("http_status", response.status, sanitizeErrorDetail(response.text));
+  };
+  const auth = { authorization: `Bearer ${apiKey}`, accept: "application/json" };
+
+  diag.stage = "create";
+  const runsUrl = `${base}/apps/${encodeURIComponent(spec.appId)}/runs`;
+  const post = () =>
+    request(
       runsUrl,
       { method: "POST", headers: { ...auth, "content-type": "application/json" }, body },
       bounds.maxResponseBytes,
     );
-    expectOk(created, [200, 201, 202]);
-    const createdRun = createdRunSchema.safeParse(parseJson(created.text));
-    if (!createdRun.success) throw fail("malformed_response");
-    const runId = createdRun.data.id;
-    checkStatus(createdRun.data.status, fail);
-
-    diag.stage = "poll";
-    const runUrl = `${runsUrl}/${encodeURIComponent(runId)}`;
-    let result: z.infer<typeof runResultSchema> | null | undefined;
-    for (let polls = 0; ; polls++) {
-      if (polls >= bounds.maxPolls) throw fail("poll_limit");
-      if (remaining() < bounds.pollIntervalMs) throw fail("deadline");
-      await runtime.sleep(bounds.pollIntervalMs);
-      const polled = await request(
-        runUrl,
-        { method: "GET", headers: auth },
-        bounds.maxResponseBytes,
-      );
-      expectOk(polled, [200]);
-      const run = polledRunSchema.safeParse(parseJson(polled.text));
-      if (!run.success || (run.data.id !== undefined && run.data.id !== runId)) {
-        throw fail("malformed_response");
-      }
-      if (checkStatus(run.data.status, fail) === "completed") {
-        result = run.data.result;
-        break;
-      }
+  let created = await post();
+  if (created.status === 429 && spec.createRetryOn429) {
+    const wait = Math.min(
+      retryAfterMs(created.retryAfter, runtime.now()) ?? 5_000,
+      spec.createRetryOn429.maxWaitMs,
+    );
+    if (remaining() - wait < bounds.pollIntervalMs) expectOk(created, [200, 201, 202]);
+    await runtime.sleep(wait);
+    created = await post();
+  }
+  expectOk(created, [200, 201, 202]);
+  const createdRun = createdRunSchema.safeParse(parseJson(created.text));
+  if (!createdRun.success) throw fail("malformed_response");
+  const runId = createdRun.data.id;
+  checkStatus(createdRun.data.status, fail);
+  if (spec.onRunCreated) {
+    // The callback shares the whole-run deadline. If it fails or the deadline wins, stop:
+    // no poll and no repost. The raced promise stays handled, so a late settle is harmless.
+    const { onRunCreated } = spec;
+    const status = createdRun.data.status.trim().toLowerCase();
+    const left = remaining();
+    let recorded = false;
+    if (left > 0) {
+      try {
+        await Promise.race([
+          (async () => onRunCreated({ runId, status }))().then(() => {
+            recorded = true;
+          }),
+          runtime.sleep(left),
+        ]);
+      } catch {}
     }
+    if (!recorded) throw fail("run_record_failed");
+  }
+
+  diag.stage = "poll";
+  const runUrl = `${runsUrl}/${encodeURIComponent(runId)}`;
+  const pollOnce = async () => {
+    const polled = await request(runUrl, { method: "GET", headers: auth }, bounds.maxResponseBytes);
+    expectOk(polled, [200]);
+    const run = polledRunSchema.safeParse(parseJson(polled.text));
+    // A changed id means another run's state; strict runs also refuse an absent id.
+    const id = run.success ? run.data.id : undefined;
+    if (!run.success || (id === undefined ? spec.strict : id !== runId)) {
+      throw fail("malformed_response");
+    }
+    return { status: checkStatus(run.data.status, fail), result: run.data.result };
+  };
+  let result: z.infer<typeof runResultSchema> | null | undefined;
+  for (let polls = 0; ; polls++) {
+    if (polls >= bounds.maxPolls) throw fail("poll_limit");
+    if (remaining() < bounds.pollIntervalMs) throw fail("deadline");
+    await runtime.sleep(bounds.pollIntervalMs);
+    const polled = await pollOnce();
+    if (polled.status === "completed") {
+      result = polled.result;
+      break;
+    }
+  }
+  const delays = spec.resultRetryDelaysMs ?? [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return { value: await extract(result), runId };
+    } catch (error) {
+      const retriable =
+        error instanceof ProviderError &&
+        (error.category === "no_result" || error.category === "http_status");
+      const delayMs = delays[attempt];
+      if (!retriable || delayMs === undefined || remaining() - delayMs < bounds.pollIntervalMs)
+        throw error;
+      try {
+        await spec.onResultRetry?.({ attempt: attempt + 1, delayMs });
+      } catch {
+        // Ignored: logging must not change the result.
+      }
+      await runtime.sleep(delayMs);
+      result = (await pollOnce()).result;
+    }
+  }
+
+  /** One extraction pass over a completed run's result; diagnostics describe the last pass. */
+  async function extract(
+    result: z.infer<typeof runResultSchema> | null | undefined,
+  ): Promise<unknown> {
     diag.stage = "extract";
+    Object.assign(diag, {
+      artifacts: { json: 0, markdown: 0, text: 0, other: 0, missing: 0 },
+      recognizedArtifacts: { json: 0, markdown: 0, text: 0 },
+      downloadedArtifacts: { json: 0, markdown: 0, text: 0 },
+      parsedArtifacts: { json: 0, markdown: 0, text: 0 },
+      artifactCandidates: 0,
+    });
     if (!result) throw fail("no_result");
     diag.resultPresent = true;
 
     const chatText = result.chatText ?? "";
-    const scan = scanChatText(chatText);
+    const scan = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(chatText) : chatText);
     const candidates = scan.candidates;
     Object.assign(diag, {
       chatTextPresent: chatText.length > 0,
@@ -335,7 +495,7 @@ export function createCreaoClient(
         found = json === undefined ? [] : [{ json }];
       } else {
         // The same strict scan as chat text: prose alone is never an answer.
-        found = scanChatText(text).candidates;
+        found = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(text) : text).candidates;
       }
       if (found.length > 0) diag.parsedArtifacts[kind]++;
       diag.artifactCandidates += found.length;
@@ -345,60 +505,63 @@ export function createCreaoClient(
     diag.stage = "select";
     diag.candidates = candidates.length;
     diag.envelopes = candidates.filter((c) => "json" in c && isEnvelope(c.json)).length;
-    const selection = selectOne(job, input, candidates, { bareArray: true });
+    const selection = spec.select(candidates);
     diag.validated = selection.validated;
     diag.distinct = selection.distinct;
-    if (selection.kind === "none") throw fail("no_result");
+    if (selection.kind === "none") {
+      throw fail(spec.strict && candidates.length > 0 ? "invalid_output" : "no_result");
+    }
     if (selection.kind === "ambiguous") throw fail("ambiguous_result");
     return selection.value;
+  }
 
-    /**
-     * Only the authenticated download endpoint for this run on the trusted origin is
-     * fetched with credentials. Redirects are followed by hand: HTTPS public hosts only,
-     * and Authorization is dropped for good once the chain leaves the trusted origin.
-     */
-    async function downloadArtifact(artifact: Artifact, id: string): Promise<string> {
-      const trusted = new URL(`${base}/`);
-      let url: URL;
-      try {
-        url = new URL(artifact.url, trusted);
-      } catch {
-        throw fail("untrusted_artifact");
-      }
-      const expectedSuffix = `/runs/${encodeURIComponent(id)}/artifacts/download`;
-      if (
-        url.origin !== trusted.origin ||
-        url.username ||
-        url.password ||
-        !url.pathname.startsWith(trusted.pathname) ||
-        !url.pathname.endsWith(expectedSuffix) ||
-        url.searchParams.get("artifactId") !== artifact.id
-      ) {
-        throw fail("untrusted_artifact");
-      }
-      let authorized = true;
-      for (let hop = 0; hop <= bounds.maxRedirects; hop++) {
-        const response = await request(
-          url.href,
-          { method: "GET", headers: authorized ? auth : { accept: "application/json" } },
-          bounds.maxArtifactBytes,
-        );
-        if (response.status < 300 || response.status >= 400) {
-          if (response.status !== 200) throw fail("http_status", response.status);
-          return response.text;
-        }
-        let next: URL;
-        try {
-          next = new URL(response.location ?? "", url);
-        } catch {
-          throw fail("redirect_rejected");
-        }
-        if (!response.location || !isSafeRedirectTarget(next)) throw fail("redirect_rejected");
-        if (next.origin !== trusted.origin) authorized = false;
-        url = next;
-      }
-      throw fail("redirect_rejected");
+  /**
+   * Only the authenticated download endpoint for this run on the trusted origin is
+   * fetched with credentials. Redirects are followed by hand: HTTPS public hosts only,
+   * and Authorization is dropped for good once the chain leaves the trusted origin.
+   */
+  async function downloadArtifact(artifact: Artifact, id: string): Promise<string> {
+    const trusted = new URL(`${base}/`);
+    let url: URL;
+    try {
+      url = new URL(artifact.url, trusted);
+    } catch {
+      throw fail("untrusted_artifact");
     }
+    const expectedSuffix = `/runs/${encodeURIComponent(id)}/artifacts/download`;
+    if (
+      url.origin !== trusted.origin ||
+      url.username ||
+      url.password ||
+      !url.pathname.startsWith(trusted.pathname) ||
+      !url.pathname.endsWith(expectedSuffix) ||
+      url.searchParams.get("artifactId") !== artifact.id
+    ) {
+      throw fail("untrusted_artifact");
+    }
+    let authorized = true;
+    for (let hop = 0; hop <= bounds.maxRedirects; hop++) {
+      const response = await request(
+        url.href,
+        { method: "GET", headers: authorized ? auth : { accept: "application/json" } },
+        bounds.maxArtifactBytes,
+      );
+      if (response.status < 300 || response.status >= 400) {
+        if (response.status !== 200)
+          throw fail("http_status", response.status, "artifact download");
+        return response.text;
+      }
+      let next: URL;
+      try {
+        next = new URL(response.location ?? "", url);
+      } catch {
+        throw fail("redirect_rejected");
+      }
+      if (!response.location || !isSafeRedirectTarget(next)) throw fail("redirect_rejected");
+      if (next.origin !== trusted.origin) authorized = false;
+      url = next;
+    }
+    throw fail("redirect_rejected");
   }
 }
 

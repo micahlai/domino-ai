@@ -1,5 +1,7 @@
 # Domino design spec
 
+Scope update (2026-10-24): preserve the completed chart UI. Historical dates, projected/observed distinction and progressive reveal follow `historical-case-study-plan.md`. The separate later agent canvas does not replace this financial timeline. Latest user visual scope: `ui-styles-motion-2026-10-24.md` adds Original/Ramp/Hyphenate/shadcn variants and meaningful activity motion; its specific palette/layout requirements supersede older single-style restrictions below.
+
 Status: v1, 2026-10-24. Owner: Micah. Read with `build-spec.md`.
 Style: clean, calm, dark. Mint is the primary accent. A person with no finance knowledge must understand
 the main screen in 10 seconds.

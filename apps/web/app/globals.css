@@ -3,7 +3,53 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  /* Default look: a clean light finance workspace (see kb/spec/ui-theme-ramp-2026-10-24.md).
+     White cards on a warm off-white page, 1px hairlines, near-black primary actions and one
+     restrained blue ink for links, selection and chart highlights. Semantic green/amber/red
+     are muted and pass 4.5:1 as text on white. */
+  :root,
+  [data-style="ramp"] {
+    --background: 40 11% 96%;
+    --foreground: 40 6% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 40 6% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 40 6% 9%;
+    --primary: 40 6% 9%;
+    --primary-foreground: 0 0% 100%;
+    /* The single brand accent. Text, lines and chart marks only; never large fills. */
+    --primary-ink: 221 60% 42%;
+    --secondary: 40 9% 93%;
+    --secondary-foreground: 40 6% 9%;
+    --muted: 40 10% 94.5%;
+    --muted-foreground: 40 4% 38%;
+    --accent: 40 10% 94%;
+    --accent-foreground: 40 6% 9%;
+    --destructive: 0 62% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --danger-text: 0 62% 40%;
+    --safe: 152 52% 28%;
+    --warning: 32 80% 34%;
+    --border: 40 8% 89%;
+    --input: 40 6% 82%;
+    --ring: 221 60% 42%;
+    --clay: 24 62% 45%;
+    --radius: 0.5rem;
+    --control-h: 2.25rem;
+    --row-h: 2.75rem;
+    --card-pad: 1.25rem;
+    --overlay: 40 6% 9% / 0.32;
+    --shadow-xs: 0 1px 1px 0 hsl(40 6% 9% / 0.04);
+    --shadow-sm: 0 1px 2px 0 hsl(40 6% 9% / 0.05);
+    --shadow: 0 1px 3px 0 hsl(40 6% 9% / 0.06), 0 1px 2px -1px hsl(40 6% 9% / 0.04);
+    --shadow-md: 0 6px 16px -4px hsl(40 6% 9% / 0.1), 0 2px 4px -2px hsl(40 6% 9% / 0.05);
+    --shadow-lg: 0 18px 40px -12px hsl(40 6% 9% / 0.18), 0 4px 10px -4px hsl(40 6% 9% / 0.06);
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  /* Original: Domino's first warm dark look. Still selectable, and pinned by the full-window
+     /investigate and /case pages. [data-style="original"] also resets a scoped preview. */
+  [data-style="original"] {
     --background: 20.0 16.67% 7.06%;
     --foreground: 40.0 29.03% 93.92%;
     --card: 24.0 17.86% 10.98%;
@@ -21,6 +67,7 @@
     --destructive: 340.83 48.65% 70.98%;
     --destructive-foreground: 135.0 7.69% 10.20%;
     --safe: 160.0 36.65% 56.67%;
+    --warning: 38 70% 65%;
     --border: 23.48 18.70% 24.12%;
     --input: 23.48 18.70% 24.12%;
     --ring: 160.0 36.65% 56.67%;
@@ -28,12 +75,120 @@
     color-scheme: dark;
     --danger-text: 341.54 56.52% 77.45%;
     --radius: 0.5rem;
+    /* Accent for text, lines and chart marks. Original uses the mint directly. */
+    --primary-ink: var(--primary);
+    --particle-blend: lighter;
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
+    --overlay: 0 0% 0% / 0.8;
+    /* Tailwind's stock shadows, so Original keeps its pre-theme depth. */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+  /* Hyphenate hex values were read from the public site's CSS; the rest is inferred
+     (see ui-styles-result.md). Same variables feed Tailwind, SVG, canvas and Radix portals. */
+  [data-style="hyphenate"] {
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
+    --overlay: 358 100% 10% / 0.5;
+    --background: 38 38% 94%;
+    --foreground: 358 100% 24%;
+    --card: 40 33% 98%;
+    --card-foreground: 358 100% 24%;
+    --popover: 40 33% 98%;
+    --popover-foreground: 358 100% 24%;
+    --primary: 20 100% 54%;
+    --primary-foreground: 358 100% 14%;
+    --primary-ink: 20 100% 33%;
+    --secondary: 38 30% 89%;
+    --secondary-foreground: 358 100% 24%;
+    --muted: 38 30% 91%;
+    --muted-foreground: 358 30% 34%;
+    --accent: 38 40% 87%;
+    --accent-foreground: 358 100% 24%;
+    --destructive: 340 80% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --danger-text: 340 80% 38%;
+    --safe: 140 45% 27%;
+    --warning: 32 85% 35%;
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --border: 12 28% 80%;
+    --input: 12 28% 80%;
+    --ring: 20 100% 40%;
+    --clay: 200 35% 36%;
+    --radius: 0.25rem;
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  [data-style="shadcn"] {
+    --control-h: 2.25rem;
+    --row-h: 2.5rem;
+    --card-pad: 1.5rem;
+    --primary-ink: var(--primary);
+    --overlay: 0 0% 0% / 0.8;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --danger-text: 0 72% 45%;
+    --safe: 142 60% 28%;
+    --warning: 32 90% 36%;
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --clay: 25 85% 45%;
+    --radius: 0.5rem;
+    --particle-blend: multiply;
+    color-scheme: light;
+  }
+  /* Hyphenate's public pages use fine structured lines; a quiet grid is the inferred equivalent. */
+  [data-style="hyphenate"] body {
+    background-image: linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.35) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Tight Inter headings; feature classes such as tracking-tight still win. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
+  }
+  /* Numbers line up in every table without each cell opting in. */
+  table {
+    font-variant-numeric: tabular-nums;
   }
   button,
   a,
@@ -61,5 +216,15 @@
 @layer utilities {
   .text-destructive {
     color: hsl(var(--danger-text));
+  }
+  .text-primary {
+    color: hsl(var(--primary-ink));
+  }
+  /* Chart marks follow the ink too, so a selected line and its label share one colour. */
+  .fill-primary {
+    fill: hsl(var(--primary-ink));
+  }
+  .stroke-primary {
+    stroke: hsl(var(--primary-ink));
   }
 }

@@ -1,5 +1,63 @@
 # Status board
 
+## Field lane takeover, Oct 25
+
+| Work | Status | Checkout / evidence |
+| --- | --- | --- |
+| Four in-flight Field features | done | Merged in order,1,901 combined tests/checks/build passed, final hydration fix passed focused23/build. Pushed field/main; live3114/3260 verified. Current authority: `../features/field/HANDOFF.md`. |
+| Agent-map vertical shifting during updates | done | b07c8c5: reproduced24px activity reflow;80 update samples stable after fixed two-line summary.63 focused tests/tsc/lint/build and live3114 pass. |
+| Publish verified Field release to main | ready | Explicitly authorized Oct25; release/main-20261025 combines fe39898 + af7977d. Web/Convex tsc pass; same app source as recorded passing Field release. Remote verification follows push. |
+
+Latest planning checkpoint: two full-stack features, Field/Knowledge for Jayden and Timeline/Simulations for friend. See ../spec/independent-feature-lanes.md. P0 shared setup is planned, not implemented; after audit each lane owns its UI/backend/queue on a long-lived branch. Current lead first verifies/checkpoints existing L1/S2; L1 57a1581 first review rejected (../reviews/L1-57a1581-codex-audit.md), repair state unverified here. Older ready/sole-UI/global-queue rows below are history where superseded. No new worker launched; main/monitor/runtimes unchanged.
+
+Current authority: ../../ROADMAP.md and ../coordination/historical/claude-lead-control.md. User launches ONE Claude lead which owns queue/dispatch. Codex provides independent audit/integration support on request. S3 repair 5ecae8a passed independent scoped code audit and is integrated at 16a3a56; combined uncached preview check passed 1,208 tests/typechecks/lint. Friend S2 remains exclusive. Monitor PAUSED, main unchanged. Older rows below are history, not a launch queue.
+
+## Required-loop takeover queue
+
+Authority: ../../ROADMAP.md, Claude-lead control and ../spec/learning-loop-design-2026-10-24.md. Claude lead dispatches after one user launch; Codex audits on request. No implementation launched by Codex. Monitor PAUSED; main unchanged.
+
+| Work | Status | Gate / owner |
+| --- | --- | --- |
+| Lead reuse/design/evaluation recipe | done | Independent design recheck clear; data/candidate seals still pending |
+| S2 catalog | reserved | Friend only; origin1154972, no implementation submitted |
+| S3 scenario engine | done | 5ecae8a independently approved; 54 focused tests, 14 probes; integrated at 16a3a56 with combined uncached 1,208-test/typecheck/lint pass. Persistence/UI gates remain separate |
+| L0 contracts / E0 custody | done | L0 d4e24d9 and user-approved E0 05f10db integrated; combined 1,251-test/typecheck/lint pass (mixed cache); protected data unopened |
+| L1 normalization | ready | Claude lead assigns after slot/worktree check; L0/E0 prerequisites pass. No protected reads |
+| L2 reconciliation / L3 rules | blocked | Ordered L1/L2 dependencies; no sealed test reads |
+| L5 durable knowledge / E1 evaluator | blocked | Frozen pure interfaces; L5 owns backend before S4 |
+| S4 / U2 | blocked | Reviewed exact design; accepted dependencies; joint activation/legacy compatibility |
+| L4 measured improvement | unmet |16 planned pairs, data/candidate seals pending, no positive result |
+| C2 real coordinator | blocked | Dedicated app isolation/instructions/visibility not verified |
+
+## Current scope: agent canvas centerpiece, supervised Claude implementation
+
+Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed plan: `../spec/historical-case-study-plan.md`. Launch stages: `../spec/project-stages-2026-10-24.md`. Older rows below are implementation history, not a launch queue. Main is frozen at 694ab2a. Current integration uses `preview/historical-overnight` in `../domino-preview`.
+
+| Work | Checkpoint | Decision |
+| --- | --- | --- |
+| G6 grouped company map | done | a5d7723 acceptedc6e0a89;1,077tests/build/desktop-mobilebrowser; stable3102 |
+| G7 frozen knowledge projection | done | Friend42421c6 independently approved with actual payload probe, integrated7ee475b;1,128combinedtests pass |
+| G8a product entry cleanup | done | 320c42c acceptedb261057;1,080tests/build/mobilebrowser; stable3102 |
+| G8 knowledge wiring | done | 6364068 acceptedffb7971; frozen provenance inspector verified |
+| Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
+| G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
+| G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |
+| G2b durable investigation | doing | Repair7801fb5 independently approved;934tests pass, nine actual local runtime checks pass; integratedcb44894 |
+| R1 canvas presentation | done | Repair0148df5 accepted/integrated79a6e19;940tests/build and desktop/mobile browser pass |
+| G4 spatial agent web | done | Repairsef019a6/475fe57 accepted; integrated3accfb9,1044tests/build+desktop/mobile/browserflow pass |
+| CREAO complete cycle | doing | User selected old app API; G2cabb6d07 and G2d3738d5c accepted;998tests+actualruntime pass, gateOFF, dedicated historical profiles/coordinator/live gates remain; developer key unused |
+| G3 complete canvas journey | doing | Repair475fe57 accepted; deterministic question/forecast/reveal/alternative/reload pass. G5eaa54d7 accepted;1049tests/build/browserpass; realCREAOgate awaits signin/config |
+| C0/H1/H2/H3/H4 overnight run | done | Reviewable preview/historical-overnight complete;815tests/build/browser pass; monitor paused; main untouched; see overnight-result.md |
+| H4 visual styles/motion | done | Final5db5f21 accepted3570989; four shared-component themes, quiet initial history and real three-event journey verified |
+| H2d actual activity | done | Code6498b75 independently accepted; full backend4795d51 pushed;734tests/live checks pass; final UI wiring accepted5db5f21 |
+| E3c ffeea88 | blocked | 657 tests pass, two independent money/date defects; no merge or repair dispatch |
+| E2a 29de286 | blocked | 650 tests/typecheck/lint pass; pagination, payout and OpenAPI defects independently reproduced; parked |
+| E1b repair 9ab358a | review | Independently approved checkpoint; 661 tests/typechecks/lint and sim:print pass; parked unmerged |
+| P1-P4, I1/I3, particles/crosshair | preserved | Reuse timeline, selection, proof, risk/fix presentation |
+| P5 | rescope | Connect/detail are stubs; preserve interfaces and E5/E7 dependencies; reveal disclosure replaces simulated Next week |
+| I4, E2b, broad E5/E7, E8 | deferred | No implementation launch under the old plan |
+
+
 Update your rows at the start and end of every task. Status: `todo`, `doing`, `review`, `done`, `blocked`.
 Prompts are in `prompts/`. Gates are in `kb/spec/build-spec.md` §11.
 

@@ -1,0 +1,234 @@
+[
+  {
+    "path": "/vendor/plaid/accounts/get",
+    "status": 200,
+    "link": null,
+    "body": {
+      "accounts": [
+        {
+          "account_id": "acc_operating_checking",
+          "name": "Operating checking",
+          "official_name": "Business Checking",
+          "mask": "0042",
+          "type": "depository",
+          "subtype": "checking",
+          "balances": {
+            "current": 4500000,
+            "available": 4500000,
+            "iso_currency_code": "USD",
+            "last_updated_datetime": "2026-10-30T23:59:59Z"
+          }
+        },
+        {
+          "account_id": "acc_lease_collateral",
+          "name": "Lease collateral",
+          "official_name": "Certificate of deposit (pledged)",
+          "mask": "0077",
+          "type": "depository",
+          "subtype": "cd",
+          "balances": {
+            "current": 600000,
+            "available": 0,
+            "iso_currency_code": "USD",
+            "last_updated_datetime": "2026-10-30T23:59:59Z"
+          }
+        }
+      ],
+      "item": {
+        "item_id": "item_kestrel",
+        "institution_id": "ins_mock_bank"
+      },
+      "request_id": "mock"
+    }
+  },
+  {
+    "path": "/vendor/plaid/transactions/sync?count=500&cursor=",
+    "status": 200,
+    "link": null,
+    "body": {
+      "added": [
+        {
+          "transaction_id": "txn_001",
+          "account_id": "acc_operating_checking",
+          "amount": -120000,
+          "iso_currency_code": "USD",
+          "date": "2026-10-27",
+          "authorized_date": "2026-10-27",
+          "name": "STRIPE PAYOUT",
+          "merchant_name": "Stripe",
+          "counterparties": [
+            {
+              "name": "Stripe",
+              "type": "financial_institution"
+            }
+          ],
+          "payment_channel": "other",
+          "pending": false,
+          "personal_finance_category": {
+            "primary": "TRANSFER_IN",
+            "detailed": "TRANSFER_IN_ACCOUNT_TRANSFER",
+            "confidence_level": "VERY_HIGH"
+          },
+          "payment_meta": {
+            "reference_number": "txn_001",
+            "payee": null,
+            "payer": null,
+            "ppd_id": null
+          }
+        },
+        {
+          "transaction_id": "txn_002",
+          "account_id": "acc_operating_checking",
+          "amount": 600000,
+          "iso_currency_code": "USD",
+          "date": "2026-10-30",
+          "authorized_date": "2026-10-30",
+          "name": "GUSTO PAYROLL",
+          "merchant_name": "Gusto",
+          "counterparties": [
+            {
+              "name": "Gusto",
+              "type": "merchant"
+            }
+          ],
+          "payment_channel": "other",
+          "pending": false,
+          "personal_finance_category": {
+            "primary": "GENERAL_SERVICES",
+            "detailed": "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+            "confidence_level": "VERY_HIGH"
+          },
+          "payment_meta": {
+            "reference_number": "txn_002",
+            "payee": null,
+            "payer": null,
+            "ppd_id": null
+          }
+        },
+        {
+          "transaction_id": "bank_po_inv_bp_oct",
+          "account_id": "acc_operating_checking",
+          "amount": -34956,
+          "iso_currency_code": "USD",
+          "date": "2026-10-22",
+          "authorized_date": "2026-10-22",
+          "name": "STRIPE PAYOUT inv_bp_oct NET FEES",
+          "merchant_name": "Stripe",
+          "counterparties": [
+            {
+              "name": "Stripe",
+              "type": "financial_institution"
+            }
+          ],
+          "payment_channel": "other",
+          "pending": false,
+          "personal_finance_category": {
+            "primary": "TRANSFER_IN",
+            "detailed": "TRANSFER_IN_ACCOUNT_TRANSFER",
+            "confidence_level": "VERY_HIGH"
+          },
+          "payment_meta": {
+            "reference_number": "bank_po_inv_bp_oct",
+            "payee": null,
+            "payer": null,
+            "ppd_id": null
+          }
+        },
+        {
+          "transaction_id": "bank_pay_1023",
+          "account_id": "acc_operating_checking",
+          "amount": 600000,
+          "iso_currency_code": "USD",
+          "date": "2026-10-23",
+          "authorized_date": "2026-10-23",
+          "name": "GUSTO PAYROLL pay_1023",
+          "merchant_name": "Gusto",
+          "counterparties": [
+            {
+              "name": "Gusto",
+              "type": "merchant"
+            }
+          ],
+          "payment_channel": "other",
+          "pending": false,
+          "personal_finance_category": {
+            "primary": "GENERAL_SERVICES",
+            "detailed": "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+            "confidence_level": "VERY_HIGH"
+          },
+          "payment_meta": {
+            "reference_number": "pay_1023",
+            "payee": null,
+            "payer": null,
+            "ppd_id": null
+          }
+        },
+        {
+          "transaction_id": "bank_bill_paid_oct",
+          "account_id": "acc_operating_checking",
+          "amount": 123.45,
+          "iso_currency_code": "USD",
+          "date": "2026-10-10",
+          "authorized_date": "2026-10-10",
+          "name": "BILL bill_paid_oct",
+          "merchant_name": "Law firm",
+          "counterparties": [
+            {
+              "name": "Law firm",
+              "type": "merchant"
+            }
+          ],
+          "payment_channel": "other",
+          "pending": false,
+          "personal_finance_category": {
+            "primary": "GENERAL_SERVICES",
+            "detailed": "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+            "confidence_level": "VERY_HIGH"
+          },
+          "payment_meta": {
+            "reference_number": "bill_paid_oct",
+            "payee": null,
+            "payer": null,
+            "ppd_id": null
+          }
+        }
+      ],
+      "modified": [],
+      "removed": [],
+      "next_cursor": "JTdCJTIyaSUyMiUzQTUlMkMlMjJoJTIyJTNBJTIyazBwanN0JTIyJTdE",
+      "has_more": false,
+      "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE",
+      "accounts": [
+        {
+          "account_id": "acc_operating_checking",
+          "name": "Operating checking",
+          "official_name": "Business Checking",
+          "mask": "0042",
+          "type": "depository",
+          "subtype": "checking",
+          "balances": {
+            "current": 4500000,
+            "available": 4500000,
+            "iso_currency_code": "USD",
+            "last_updated_datetime": "2026-10-30T23:59:59Z"
+          }
+        },
+        {
+          "account_id": "acc_lease_collateral",
+          "name": "Lease collateral",
+          "official_name": "Certificate of deposit (pledged)",
+          "mask": "0077",
+          "type": "depository",
+          "subtype": "cd",
+          "balances": {
+            "current": 600000,
+            "available": 0,
+            "iso_currency_code": "USD",
+            "last_updated_datetime": "2026-10-30T23:59:59Z"
+          }
+        }
+      ],
+      "request_id": "mock"
+    }
+  }
+]

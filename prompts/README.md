@@ -1,11 +1,15 @@
 # Prompts: what to run, who runs it, in what order
 
+## Current launch: historical overnight run
+
+The old run order below is historical reference, not the current launch queue. Launch/resume only `shared/C0-codex-supervisor.md` in Codex on this computer; Codex runs bounded Claude evidence, backend and UI workers. H0 remains a manual alternative and must not run concurrently. The UI subagent reads `product/H3-historical-ui.md`, then hands off to `product/H4-ui-styles-motion.md` for four switchable styles and real activity motion in its own worktree. Read `../kb/spec/project-stages-2026-10-24.md`. All start from origin/integration/historical-case-study in isolated worktrees. Codex supervises all three Claude workers; Codex audits before final integration. No main merge or production deploy.
+
 Each file is a ready-to-paste prompt for a coding agent. Open the file, start the agent tool it names,
 in its own worktree, and paste the block under "Prompt".
 
 **Jayden = engine. Micah = product.** Max 2 to 3 agents per person at once.
 
-## Run order
+## Original run order, superseded
 
 | When | Jayden runs | Micah runs | In parallel? |
 | --- | --- | --- | --- |

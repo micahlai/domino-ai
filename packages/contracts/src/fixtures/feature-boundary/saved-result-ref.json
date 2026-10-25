@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "timeline:result/twou-2023q4-a1-response",
+  "seed": {
+    "id": "field:seed/twou-2023q3-v1",
+    "contentHash": "ec648c0c49a46a489346ab628df57adc26fd17de49b67aab5dbcc147cd9fe2ef"
+  },
+  "snapshot": {
+    "id": "field:snapshot/twou-2023q3-v1",
+    "contentHash": "691c60f0a42843c4d7b50330a323a40f0f5ebbed200e983eb42e2b7d14d1c11b"
+  },
+  "company": {
+    "cik": "0001459417",
+    "name": "2U, Inc."
+  },
+  "baselineRunId": "timeline:run/twou-2023q4-baseline",
+  "scenarioId": "timeline:scenario/twou-2023q4-a1-response",
+  "target": {
+    "date": "2023-12-31",
+    "metric": "cash_including_restricted"
+  },
+  "method": {
+    "id": "quarterly_cash_bridge",
+    "version": "0.1.0"
+  },
+  "status": "saved",
+  "postHoc": true,
+  "route": {
+    "kind": "timeline_result",
+    "resultId": "timeline:result/twou-2023q4-a1-response"
+  },
+  "createdAt": "2026-10-24T12:05:00Z",
+  "savedAt": "2026-10-24T12:05:01Z"
+}

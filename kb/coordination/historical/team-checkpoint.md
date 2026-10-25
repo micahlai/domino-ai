@@ -1,0 +1,14 @@
+# Team checkpoint: one Claude lead and required loop
+
+Current control: ../../../ROADMAP.md and claude-lead-control.md. User launches one Claude lead; it owns queue and dispatch. Codex provides independent audit/integration support on request. Required scope: ../../spec/required-learning-loop-2026-10-24.md. Implementation order and supported boundary: ../../spec/learning-loop-design-2026-10-24.md. All four L gates are required; broader source access and forecast improvement are not claimed.
+
+- Integration: preview/historical-overnight in domino-preview. Main 694ab2a untouched. Accepted G6/G7/G8a/G8/S1/U1 and stable 3102 preserved.
+- Fresh fetch: friend S2 origin 1154972, no implementation submitted. Exclusive friend ownership remains. Remote process state unknown; never duplicate locally.
+- S3 worker finished clean at 5ecae8a. Codex completed the bounded audit; 54 focused tests/typecheck/lint and 14 independent saved/frozen/adversarial probes pass. Full uncached check passes 1,208 tests/typechecks/lint; scoped code approved, preview integration pending. No repair redispatch.
+- Codex completed reuse assessment and independently reviewed source/evaluation/S4 designs. No implementation launched. Seven new bounded cards are prepared; exact plan has dependency/ownership table.
+- User launches one Claude lead, then it assigns L0/E0 as slots permit while preserving friend S2. S3 waits audit/integration, not another worker. At most 3 active implementation processes including friend/children; one UI writer. No Codex implementation dispatch.
+- L0 -> L1 normalization -> L2 reconciliation -> L3 rules -> L5 knowledge runtime. E0 custody is independent; E1 evaluator follows frozen interfaces. S4 waits accepted S2/S3/L0, serialized after L5. U2 consumes accepted APIs; S4/U2 activate together with legacy/V2 compatibility. C2 needs verified platform isolation then its own exact implementation card.
+- Evaluation recipe ../../spec/forecast-evaluation-protocol-v1.md is frozen, but dataset/candidate seals and 16-pair coverage are pending. Test cohort Tenable/Varonis has not been viewed by lead. Exposed Freshworks 2023Q3 is separate mapping acceptance after normalizer freeze. Report failures honestly; L4 stays open without actual qualifying improvement.
+- CREAO gate OFF. New USER-REPORTED evidence: empty memory, team Data access has no sources, supplied SKILL uses only frozen input. Remote job->prompt change and existing authorized key/backend binding are not independently verified. Historical isolation and real coordinator remain gates. Old app-scoped route only; no provider call in this handoff.
+- Automation domino-overnight-audit confirmed PAUSED. Keep paused during transfer; no duplicate and no Codex implementation auto-launch.
+- Preserve existing data/backend 3214/3210 and stable 3102. Actual runtime identities and audit evidence: active-run.md and ../../reviews/lead-takeover-2026-10-24.md.

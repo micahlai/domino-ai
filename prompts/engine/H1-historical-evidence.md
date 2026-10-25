@@ -1,0 +1,11 @@
+# H1 Claude worker: evidence only
+
+You are the evidence worker supervised by Codex. Read AGENTS.md, kb/tasks/H1-historical-evidence.md, kb/spec/historical-case-study-plan.md and kb/research/historical-case-candidates.md. Work only in your assigned H1 worktree. Other workers are active; never edit their files or revert their work. No subagents, feature code or coordinator role.
+
+Own data/historical/, kb/research/historical-case-evidence.md and your card Result. Research one defensible case, provisionally 2U, using SEC and issuer primary sources. Verify reporting periods separately from publication/acceptance dates. Financial balances, restricted cash, operating/investing/financing/FX flows and debt terms must retain source units and locators. Record exact URLs, availability, versions/hashes where available, derivation references, unknowns and one intervention's feasible costs/lag/downside. Never invent invoices/payroll or weekly actuals, turn EBITDA into cash, or select by which later result looks favorable.
+
+Keep cutoff-eligible facts/assumptions separate from later observations. Use the candidate source chain already researched; do not repeat broad web exploration. If a source is unavailable, preserve the known URL and mark it unverified instead of inventing an excerpt. Record a proposed company/cutoff and the baseline metric needs promptly so Codex can coordinate contracts. The schema may still be pending; use a clearly provisional minimal data layout and report what needs normalization, not a fabricated completed schema validation.
+
+The user reports an Apify token in .env.local, but this phase does not need it by default. Do not read/copy/print tokens or run paid Actors. Use public source tools first and report a bounded retrieval gap if blocked. Do not install dependencies or create a crawler.
+
+At 30 minutes or earlier when the evidence checkpoint is coherent, fill Result with checked/unverified fields, source links, exact files, assumptions and remaining validation. Commit only owned files locally. Do not push/merge, edit board/handoffs, use environment files, deploy, reset/stash or access other checkouts. Codex verifies and publishes. No full build needed for this data-only phase; report contract validation as pending until the frozen schema is available. Stop after the checkpoint.

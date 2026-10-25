@@ -1,0 +1,63 @@
+# H4a styles checkpoint: result and reference record (repair 1 applied)
+
+Branch H4-ui-styles-motion from accepted H3 97925fd. Phase scope: registry, tokens, selector, persistence, URL override, SSR, portal/canvas colors, chart label fix, plus repair 1 (build fix, URL rules, navigation resync, shape tokens, comparison playground). Not done: activity components, any browser run or production build (C0 owns).
+
+## Behavior
+- Registry `apps/web/lib/style-registry.ts` (pure, no React; the server layout imports only this) and client store `lib/style.ts`: `original` (default), `ramp`, `hyphenate`, `shadcn`. Truth is `<html data-style>`; no provider, no remount, no data refetch. Switching only changes CSS variables.
+- Precedence (changed in repair 1): if `?style=` is present it decides alone: valid id wins, invalid or empty means Original even when a choice is stored. Only an absent param uses the stored choice (`localStorage` `domino-style`), then Original. URL value is not stored. A valid URL works when `getItem` throws (storage is only read when the param is absent). An explicit selection is stored (kept in memory too if storage is blocked) and, if `?style=` is present, rewrites it with `history.replaceState`.
+- Navigation resync: `components/StyleSync.tsx` (renders null, inside `<Suspense fallback={null}>` in AppShell) calls `useSearchParams` and re-derives the attribute on client navigation, back/forward and a removed override. It only sets `<html data-style>`; selector and canvas follow via the store and the existing MutationObserver. No remount, no data fetch.
+- SSR: server and first client render are `original`; an inline pre-paint script (built from the registry) sets the attribute before first paint. `<html suppressHydrationWarning>` covers only that attribute.
+- Selector: native radio group in the shared header (all pages, playground included). Keyboard: arrows, one tab stop.
+- Portals (Radix dialog/sheet/tooltip) render under body and inherit the same variables. Canvas particles re-read variables through a MutationObserver (no remount); light styles use `multiply` instead of `lighter`.
+- New token `--primary-ink` (accent for text/lines/chart marks; Original = mint, so unchanged). `.text-primary` and chart/timeline strokes use it, because Ramp lime is unreadable as text on white. Buttons keep `--primary`. Risk colors stay `destructive`/`safe` in every style.
+- Chart fix: Knowledge cutoff and Disclosure published labels now sit on two rows (`HistoricalChart.tsx`, top margin 28 to 44). Geometry/scale untouched.
+
+## Reference record (inspected 2026-10-24; no signup, no email)
+| Style | Directly read | Inferred |
+| --- | --- | --- |
+| Ramp | ramp.com/expense-management CSS: page `#f4f2f0`, text `#0c0a08`, border `#d2cecb`, lime `#e4f222`, green `#18a957`, orange `#e96516`. One public product image (policy card): white rounded card, bordered square fields, pill chips on warm gray. | Lime-on-dark buttons, dark-green ink, 0.75rem radius, nav treatment. Fonts (Lausanne, IBM Plex) not used; Inter kept. ramp.com/reporting images and the gated tour were not seen. |
+| Hyphenate | hyphenate.ai/platform CSS: burgundy `#790005`, orange `#ff6716`, off-white `#fdfcfa`, `#990b17`, green `#7dc57d`. Public OG image: dark burgundy field, faint grid, orange wordmark. | Light warm page `38 38% 94%`, burgundy text, grid background, 0.25rem radius, ink orange `20 100% 33%`, chart second series blue-gray. Fonts (saans, bwGradual) not used. App screens not seen. |
+| shadcn | shadcn default zinc theme values (docs: ui.shadcn.com/docs/theming), Tailwind 3 HSL tokens. | `--safe`, `--clay`, danger text. |
+| Original | Existing tokens, unchanged. Baseline `/tmp/domino-H3-r1-desktop.png`. | |
+
+Shape tokens (repair 1, `--control-h`, `--row-h`, `--card-pad`, `--overlay`) feed Button, Table head, Card and Dialog/Sheet scrims. Original equals the old sizes. Ramp: control 2.5rem, row 2.25rem, card pad 1.25rem (inferred density, not measured). Other styles keep defaults.
+
+Comparison playground: `components/StyleComparison.tsx`, section `StyleComparison` at `/playground`. One fixed preview state (table, buttons, badge, open source panel, error and empty notes) drawn once per style by scoping `data-style` on a wrapper around the shared primitives. No queries, nothing stored, no app copies. The live Radix dialog/tooltip layers still follow only the page style. Hyphenate's grid background applies to the live page only, not the scoped panels.
+
+Gaps: no per-style navigation layout or typography beyond palette, radius, border, shape tokens and Hyphenate background. The Ramp and Hyphenate looks follow only the public pages named above; nothing here claims a match to their private product screens. Not pixel-matched; no browser screenshots by this worker. Hyphenate danger (`340 80% 42%`) is close to its burgundy text; rely on labels/icons.
+
+## Verified
+- H4b, focused only (apps/web): `tsc --noEmit` clean, `biome check` clean, `vitest run` 128 pass (new: activity dedupe/order/reconnect/cap/conflict/scope/failure-retry, panel unavailable/simulation/style-independent markup, chart dash and reduced motion). Not run: build, full pnpm check, browser, screenshots, keyboard/reduced-motion visual check (C0).
+- Repair 1, focused only: `tsc --noEmit`, `biome check apps/web`, `vitest run` in apps/web: 122 pass. New or changed rules: present-but-invalid URL beats stored value; valid URL with throwing `getItem` (pre-paint script); navigation resync incl. removed override; no attribute write when unchanged; explicit choice survives navigation with blocked storage; registry and layout stay free of the client store; every non-Original style defines all semantic colours and `--overlay`; comparison renders all four styles with source, error and empty states.
+- Original 115-test checkpoint run covered registry, script parity, setStyle, blocked storage and SSR default.
+- Not verified (C0): `next build` (the failure in /tmp/domino-H4a-build.log should be gone because layout no longer imports a module using `useSyncExternalStore`, and `useSearchParams` sits in Suspense, but I did not build), full `pnpm check`, browser, 375px header wrap (made `min-w-0`/`flex-wrap` on the selector and header group, not seen rendered), contrast, hydration/console, reduced motion.
+
+## Activity (H4b component checkpoint)
+Availability: **Live: none.** **Fixture: none** (no event fixture exists in contracts; the playground uses its own synthetic list). **Unavailable: the feed.** The real app (`HistoricalReplay`) renders `ActivityPanel source="unavailable"`: "Not connected", no events, and copy that says the status is unknown (it no longer claims nothing is running or recorded). No API was guessed; the panel takes already parsed, already authorized `ActivityEvent[]` plus `{caseId, runId?}`.
+
+- `lib/activity.ts` (pure): dedupe by id (first copy wins; same id with different content counts as a conflict and is shown), order by sequence then id, scope filter (other case/run dropped, case-level kept), cap with a floor so a reconnect cannot resurrect dropped events, idempotent (redelivery returns the same state object). First load is quiet; only ids new to a later delivery are `fresh`.
+- `components/ActivityPanel.tsx`: one row per entity in first-seen order (updates change a row in place, no re-sorting), latest event by sequence decides status (a failure stays until a later success; an older late "started" never reverts it), state/kind/label/UTC runtime time, details with history, evidence ids (buttons only if the host passes `onOpenEvidence`) and output id. "Started" is never shown as "running"; no timers or elapsed time. One `<output>` announcement per new finished/failed event, none on first load. Style is only an ancestor `data-style`; props and state are untouched by a style change, so no entrance replays and selection/scroll stay. Different case/run remounts via key (new feed).
+- `components/ActivitySimulation.tsx`, playground section `ActivityPanel`: labelled "Simulation preview", Step/Replay, fixed synthetic events (task start/finish/fail, tool register/use, run saved, branch failure then retry success, reconnect redelivery out of order). Not imported by the real app.
+- Limit: a first delivery into an already mounted empty panel animates (mount the panel with history, or pass it in the first render, to keep history quiet). (Superseded by Repair 2 below: cap eviction no longer moves rows.) Reduced-motion removes all panel entrances. Background tabs: no timers are used; Motion pauses with the browser frame loop. There was no existing visibility handling in the repo to reuse.
+- Chart fix (`HistoricalChart.tsx`): Motion `pathLength` animation overwrote `strokeDasharray`, so the saved forecast drew solid. The forecast now keeps `6 4` and is revealed by a clip-path width wipe (no value interpolation). Reduced motion: clip fully open, no animation. Test asserts the dasharray, no pathLength, and open/closed clip per motion preference. Not seen in a browser.
+
+### Repair 2 (H4b, on 59da0aa)
+- Reducer regressions now exist: `lib/activity.test.ts` (14 tests) plus 2 new panel tests. Against the old reducer 7 of the 14 fail (conflicts, retry, late order, cap); some cap failures are only because the old state has no `order`.
+- Conflicts: counted as distinct (id, content) variants, so redelivery is idempotent. Bounded at `MAX_CONFLICTS` (50); past it new variants are not tracked and the panel shows "50+".
+- Retry: `failed` then a later `started` keeps the row on Failed and shows "Retry started <time>" apart (`ActivityRow.retry`). A later success replaces it. A start after a success is still shown as Started.
+- Order: state keeps `order` (first-seen). A late earlier event never moves a row; a new entity delivered late is appended; one batch is sorted by sequence. Cap drops entities that have no retained events and keeps rows that still have some. Row order now depends on arrival order, by design.
+- Copy: unavailable panel says status unknown and that it cannot say whether anything is running or recorded.
+- Mobile: row is a 2-column grid (badge | label, time, retry) at every width; timestamp is full and under the label; list adds `overflow-x-hidden` (vertical scroll stays `max-h-72`). The 375px screenshot in /tmp showed the old bug; **not re-checked in a browser** (no server allowed), so the fix is verified only by markup tests.
+- Still true: live feed unavailable (backend not ready); no contracts, backend, env or lib changes.
+- Verification: tsc and biome clean; vitest on the two files, 19 pass. Not run: full suite, build, browser.
+
+## Files
+H4b adds: `lib/activity.ts` (+ test), `components/ActivityPanel.tsx` (+ test), `components/ActivitySimulation.tsx`, `components/historical/HistoricalChart.test.tsx`; changes `components/Playground.tsx`, `components/historical/{HistoricalChart,HistoricalReplay}.tsx`.
+
+New: `lib/style.ts`, `lib/style-registry.ts`, `lib/style.test.ts`, `components/StyleSelector.tsx`, `components/StyleSync.tsx`, `components/StyleComparison.tsx` (+ test). Repair 1 also changed `components/Playground.tsx`, `components/ui/{button,card,table,dialog,sheet}.tsx` (token classes only). Changed: `app/globals.css`, `app/layout.tsx`, `components/AppShell.tsx`, `components/historical/{HistoricalChart,HistoricalReplay}.tsx`, `components/multiverse/{MultiverseTimeline,TimelineParticles}.tsx`. Reused: Tailwind tokens, existing Radix primitives (untouched).
+
+## H4c live core (candidate; activity pending)
+`/historical` wires the accepted H2c APIs (getCase, getRun, getReveal, saveBaseline, reveal, computeAlternative) through `components/historical/{live.ts,HistoricalLive.tsx}` and the existing `HistoricalReplay`/`HistoricalChart`, with the four styles and `ActivityPanel` reused unchanged. Style changes do not touch financial state (style is an ancestor attribute; the URL keeps `style`, `run`, `alt`). Activity stays `source="unavailable"`; no H2d API is called or guessed. Details, verification and open items are in the Result of `kb/tasks/H4c-historical-live-wiring.md`. Focused only: tsc, biome, vitest 177 pass; no build or browser.
+
+## H4d live activity (candidate)
+`/historical` now feeds the existing `ActivityPanel` from `api.historical.getActivity` (baseline run only; scope by case, cap 50, keyed by baseline run id). Loading, failed or malformed answers keep the panel unavailable with an honest note; the first actual batch mounts quiet. The playground simulation is unchanged and labelled. Details and open browser checks are in the Result of `kb/tasks/H4d-live-activity-wiring.md`. Focused only: vitest 127 pass, tsc, biome; no build or browser.

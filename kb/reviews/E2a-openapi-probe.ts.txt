@@ -1,0 +1,8 @@
+import { fixtures } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/packages/contracts/src/fixtures/index.ts';
+import { SnapshotSchema } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/packages/contracts/src/index.ts';
+import { crmDeals } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/apps/mocks/src/sources.ts';
+import { openapi } from '/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-E2a/apps/mocks/src/openapi.ts';
+const s=SnapshotSchema.parse({...fixtures.snapshot,deals:[{id:'unknown-kind',customerId:fixtures.snapshot.customers[0]!.id,amount:100,stage:'open',expectedClose:fixtures.snapshot.asOf,signed:false}]});
+const value=crmDeals(s)[0]!.properties.deal_kind;
+const schema=(openapi('crm').paths as any)['/crm/v3/objects/deals'].get.responses['200'].content['application/json'].schema.properties.results.items.properties.properties.properties.deal_kind;
+console.log(JSON.stringify({value,schema,enumAcceptsValue:schema.enum.includes(value)}));

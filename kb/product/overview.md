@@ -1,3 +1,7 @@
+# Current product overview
+
+Read [the shared product plan](team-reset-2026-10-24.md) for the current 2U product, accepted features, gaps and ordered work. The text below is the superseded Kestrel vision, retained as history. Its autonomy, survival and connector claims are not current demo claims.
+
 # Domino overview
 
 **One line:** Domino stops cash problems before they start a chain reaction.

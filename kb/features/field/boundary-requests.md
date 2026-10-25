@@ -1,0 +1,10 @@
+# Field boundary notes (for the joint merge)
+
+- 2026-10-24 field/ingest touched shared files: apps/web/convex/schemaComposition.test.ts (Field tables added; count now 25) and allowImportingTsExtensions in both apps/web tsconfigs (needed by packages/sim advanceWeek). Expect trivial merge conflicts with timeline/main; keep both sides' tables.
+- Field added tables only in apps/web/convex/schemas/field.schema.ts.
+- 2026-10-24 field/sim touched shared engine forecast math (Timeline lane co-owns it), additively:
+  - New pure module packages/engine/src/recurring-revenue.ts (method `billing-plans-1.0.0`): unissued billing-plan occurrences in the 13 weeks become expected collections at issue + terms + payment delay (learned model mean, else the customer's observed mean days late, else the same-terms mean, else 0), weighted by observed revenue churn (customers whose last plan ended in the trailing 182 days, spread over six months). Plans with a known endDate stop at it.
+  - Hook: forecast.ts `cashSchedule` appends `recurringBillingItems(...)` to `baseSchedule(...)` before changes. Snapshots without billingPlans (all contract fixtures) are unchanged; every existing engine/web test passes. New CashItem kind `"plan"` (schedule.ts); changes.ts `churn` also removes `"plan"` items; cash-flow-statement.ts classifies `"plan"` as customer collections.
+  - cash-flow-statement.ts `cashFlowSummary` runway now uses projected burn (average net change of the projected weeks); statements without projected weeks keep the trailing-actual fallback. One CFS test expectation updated accordingly.
+  - Legacy sim Kestrel snapshots carry billingPlans, so their engine forecasts now include future billing (higher collections). Expect forecast numbers in Timeline fixtures generated from the sim to move.
+- 2026-10-24 field/sim: packages/sim gained devDependency @domino/engine (tests only; lockfile importer entry). field.setup takes optional `profile` (kestrel | kestrel-churn | kestrel-late | kestrel-crunch); no profile keeps the legacy world.

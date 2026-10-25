@@ -112,12 +112,15 @@ async function storedProposals(ctx: Ctx, companyId: Id<"companies">, branches: S
  */
 const ORDER = "engine.proposal-order";
 
+/**
+ * Reads only this company's order rows (index by_company_and_action), never the whole log: the
+ * old filtered scan grew with every ingest and collided with the agents writing log rows.
+ */
 async function savedOrder(ctx: Ctx, companyId: Id<"companies">) {
   const row = await ctx.db
     .query("log")
-    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .withIndex("by_company_and_action", (q) => q.eq("companyId", companyId).eq("action", ORDER))
     .order("desc")
-    .filter((q) => q.eq(q.field("action"), ORDER))
     .first();
   return row?.refs ?? null;
 }

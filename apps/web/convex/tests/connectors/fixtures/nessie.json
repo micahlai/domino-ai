@@ -1,0 +1,99 @@
+{
+  "_note": "Recorded 2026-10-24 from the real Capital One Nessie sandbox (prod-api), Domino's own customer and accounts only. GET responses verbatim except account_number zeroed; deposits and withdrawals are the first three of each list. Create responses follow the live probe in kb/research/nessie-api.md: 201 {code, message, objectCreated}.",
+  "customerAccounts": [
+    {
+      "_id": "abd52eb2-099f-4092-b97b-6c84ebce5a9d",
+      "type": "Checking",
+      "nickname": "domino-kestrel-8gz7g7 checking",
+      "rewards": 0,
+      "balance": 868956079,
+      "account_number": "0000000000000000",
+      "customer_id": "25bb4197-d4b8-4571-89df-5dfc6800b51d"
+    },
+    {
+      "_id": "b4ec5674-6cb9-4da9-9537-0d2d6614adef",
+      "type": "Savings",
+      "nickname": "domino-kestrel-8gz7g7 collateral",
+      "rewards": 0,
+      "balance": 60000000,
+      "account_number": "0000000000000000",
+      "customer_id": "25bb4197-d4b8-4571-89df-5dfc6800b51d"
+    }
+  ],
+  "checking": {
+    "_id": "abd52eb2-099f-4092-b97b-6c84ebce5a9d",
+    "type": "Checking",
+    "nickname": "domino-kestrel-8gz7g7 checking",
+    "rewards": 0,
+    "balance": 868956079,
+    "account_number": "0000000000000000",
+    "customer_id": "25bb4197-d4b8-4571-89df-5dfc6800b51d"
+  },
+  "savings": {
+    "_id": "b4ec5674-6cb9-4da9-9537-0d2d6614adef",
+    "type": "Savings",
+    "nickname": "domino-kestrel-8gz7g7 collateral",
+    "rewards": 0,
+    "balance": 60000000,
+    "account_number": "0000000000000000",
+    "customer_id": "25bb4197-d4b8-4571-89df-5dfc6800b51d"
+  },
+  "deposits": [
+    {
+      "_id": "0097b03b-2a61-4876-8b3f-75d31cf190c4",
+      "medium": "balance",
+      "transaction_date": "2026-06-16",
+      "status": "completed",
+      "amount": 1405918,
+      "description": "[domino id=bank_po_2026-06-16 cp=Stripe] STRIPE PAYOUT po_2026-06-16 inv_cus_s001_2026-06-13 inv_cus_s002_2026-06-12 inv_cus_s007_2026-06-14 inv_cus_s009_2026-06-13 inv_cus_s016_2026-06-12 inv_cus_s037_2026-06-14 inv_cus_s040_2026-06-13 inv_cus_s044_2026-06-13 inv_cus_s049_2026-06-12 inv_cus_s071_2026-06-14 inv_cus_s078_2026-06-12 inv_cus_s25120_2026-06-12 inv_cus_s25124_2026-06-14 inv_cus_s26022_2026-06-12 inv_cus_s26033_2026-06-13 inv_cus_s26050_2026-06-12"
+    },
+    {
+      "_id": "03d898f5-cc80-4198-b183-bcc3f1087051",
+      "medium": "balance",
+      "transaction_date": "2026-09-04",
+      "status": "completed",
+      "amount": 455608,
+      "description": "[domino id=bank_po_2026-09-04 cp=Stripe] STRIPE PAYOUT po_2026-09-04 inv_cus_s006_2026-09-02 inv_cus_s015_2026-09-02 inv_cus_s045_2026-09-02 inv_cus_s074_2026-09-02 inv_cus_s101_2026-09-02 inv_cus_s26057_2026-08-28"
+    },
+    {
+      "_id": "03e5f51e-c21f-40f8-b28b-de852eadef49",
+      "medium": "balance",
+      "transaction_date": "2026-07-21",
+      "status": "completed",
+      "amount": 309958,
+      "description": "[domino id=bank_po_2026-07-21 cp=Stripe] STRIPE PAYOUT po_2026-07-21 inv_cus_s054_2026-07-18 inv_cus_s062_2026-07-19 inv_cus_s082_2026-07-17 inv_cus_s091_2026-07-18 inv_cus_s099_2026-07-19 inv_cus_s26026_2026-07-19"
+    }
+  ],
+  "withdrawals": [
+    {
+      "_id": "074e792b-f87b-4c56-b8f5-55e9a464f0b6",
+      "type": "withdrawal",
+      "transaction_date": "2026-06-03",
+      "status": "completed",
+      "payer_id": "abd52eb2-099f-4092-b97b-6c84ebce5a9d",
+      "medium": "balance",
+      "amount": 1800000,
+      "description": "[domino id=bank_bill_enrichment_2026-05 ref=bill_enrichment_2026-05 cp=Signalbase%20data%20enrichment%20software] ACH DEBIT bill_enrichment_2026-05 Signalbase data enrichment software supplier payment"
+    },
+    {
+      "_id": "0b15aa32-0346-4a2a-9e84-90259ec21373",
+      "type": "withdrawal",
+      "transaction_date": "2026-05-04",
+      "status": "completed",
+      "payer_id": "abd52eb2-099f-4092-b97b-6c84ebce5a9d",
+      "medium": "balance",
+      "amount": 1140000,
+      "description": "[domino id=bank_bill_laptops_2026-03 ref=bill_laptops_2026-03 cp=Corelink%20hardware%20equipment%20(capex)] ACH DEBIT bill_laptops_2026-03 Corelink hardware equipment (capex) supplier payment"
+    },
+    {
+      "_id": "0b37ff06-8520-4ada-ac88-94423f1c0ac6",
+      "type": "withdrawal",
+      "transaction_date": "2026-05-15",
+      "status": "completed",
+      "payer_id": "abd52eb2-099f-4092-b97b-6c84ebce5a9d",
+      "medium": "balance",
+      "amount": 1410000,
+      "description": "[domino id=bank_bill_design_2026-04 ref=bill_design_2026-04 cp=Northfork%20design%20contractors] ACH DEBIT bill_design_2026-04 Northfork design contractors supplier payment"
+    }
+  ]
+}

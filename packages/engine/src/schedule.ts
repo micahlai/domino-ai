@@ -1,10 +1,10 @@
-import type { Cents, CompanyModel, ISODate, Snapshot } from "@domino/contracts";
+import type { Cents, CompanyModel, ISODate, Invoice, Snapshot } from "@domino/contracts";
 import { addDays, toMs, weekIndexOf } from "./dates";
 
 /** One dated cash movement. Positive = money in, negative = money out. */
 export type CashItem = {
-  kind: "invoice" | "deal" | "bill" | "payroll" | "recurring" | "change";
-  /** Source record id, or the change label */
+  kind: "invoice" | "deal" | "bill" | "payroll" | "recurring" | "change" | "plan" | "payout";
+  /** Source record id, the change label, or `planId@issueDate` for a projected plan invoice */
   id: string;
   customerId?: string;
   date: ISODate;
@@ -19,6 +19,14 @@ export function bucketOf(date: ISODate, weeks: ISODate[]): number | null {
   const i = weekIndexOf(date, weeks);
   return i >= weeks.length ? null : Math.max(i, 0);
 }
+
+/**
+ * An invoice that can still bring cash in: not paid and not written off. A paid invoice's
+ * paidAmount is terminal (a short payment never projects the remainder), and a written-off
+ * invoice is never collected.
+ */
+export const isOpenInvoice = (inv: Invoice): boolean =>
+  inv.paid === undefined && inv.writtenOff === undefined;
 
 const delayDays = (model: CompanyModel, customerId: string) =>
   Math.round(model.customerDelayDays[customerId]?.mean ?? 0);
@@ -35,7 +43,7 @@ export function baseSchedule(
   const horizonEnd = toMs(addDays(last, 7));
   const items: CashItem[] = [];
   for (const inv of snapshot.invoices) {
-    if (inv.paid) continue;
+    if (!isOpenInvoice(inv)) continue;
     const date = addDays(inv.due, delayDays(model, inv.customerId));
     items.push({
       kind: "invoice",
@@ -59,6 +67,17 @@ export function baseSchedule(
       date,
       amount: deal.amount,
     });
+  }
+  // Processor payouts: customer cash already collected (the invoices are paid) but not yet in
+  // the bank, so not in cashOnHand. Lands on its estimated arrival, net of processor fees.
+  for (const payout of snapshot.pendingPayouts ?? []) {
+    if (payout.amount !== 0)
+      items.push({
+        kind: "payout",
+        id: payout.id,
+        date: payout.expectedArrival,
+        amount: payout.amount,
+      });
   }
   for (const bill of snapshot.bills) {
     if (!bill.paid) items.push({ kind: "bill", id: bill.id, date: bill.due, amount: -bill.amount });

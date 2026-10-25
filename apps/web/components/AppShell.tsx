@@ -1,105 +1,188 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { ArrowUpRight, CircleHelp, PanelLeftClose } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
+import { cn } from "../lib/utils";
+import { StyleSync } from "./StyleSync";
+import { CompanySwitcher } from "./field/CompanySwitcher";
+import { SimClockBar } from "./field/SimClockBar";
+import { useSelectedProfile } from "./field/company";
 
-const links = [
+// Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
+// harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
+// case study opens from the company switcher.
+const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
+/** Timeline's own routes (TL7): /c/<company>/timeline and its analysis page. */
+const TIMELINE = /^\/c\/[^/]+\/timeline(\/|$)/;
+const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
+/** The Timeline link follows the company picked in the top bar. */
+const primaryLinks = (profile: string) => [
+  { href: "/", label: "Dashboard", on: (p: string) => p === "/" },
+  {
+    href: "/field",
+    label: "Worker",
+    on: (p: string) => under(p, "/field") && !under(p, "/field/map") && !under(p, "/field/connect"),
+  },
+  { href: "/field/map", label: "Brain map", on: (p: string) => under(p, "/field/map") },
+  {
+    href: "/field/connect",
+    label: "Connected tools",
+    on: (p: string) => under(p, "/field/connect"),
+  },
+  {
+    href: `/c/${profile}/timeline`,
+    label: "Timeline",
+    on: (p: string) => under(p, "/c") && !SIMULATIONS.test(p),
+  },
+  { href: "/simulations", label: "Simulations", on: (p: string) => SIMULATIONS.test(p) },
+  // Judge sandbox: a fresh simulated company to try scenarios on.
+  { href: "/judge", label: "Try it", on: (p: string) => under(p, "/judge") },
+];
+
+/** Routes that own the whole window under the top bar and pin the Original dark tokens. */
+export const isFullWindow = (p: string) => under(p, "/investigate") || under(p, "/case/2u");
+
+// The old Kestrel demo pages keep their sub-navigation inside the Timeline routes.
+const demoLinks = [
   { href: "/c/kestrel", label: "Cash forecast" },
   { href: "/c/kestrel/learning", label: "What we learned" },
   { href: "/c/kestrel/record", label: "Decision record" },
 ];
 
+const focusRing =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const companyId =
-    pathname.split("/")[1] === "c"
-      ? pathname.split("/")[2]
-      : (process.env.NEXT_PUBLIC_DEMO_COMPANY_ID ?? "kestrel");
-  const showNavigation = pathname !== "/";
+  // The older demo sub-navigation stays on the legacy /c pages; Timeline pages have their own.
+  const inDemo = pathname.startsWith("/c/") && !TIMELINE.test(pathname);
+  const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
+  const demoNav = demoLinks.map((l) => ({
+    ...l,
+    href: l.href.replace("/c/kestrel", `/c/${companyId}`),
+  }));
+  // The agent canvas and the case workspace keep the same top bar, then fill the rest of the
+  // window with their own (dark) layout.
+  if (isFullWindow(pathname)) {
+    return (
+      <div className="flex h-dvh flex-col">
+        <TopBar pathname={pathname} />
+        <main id="main" className="min-h-0 flex-1">
+          {children}
+        </main>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen">
-      <a
-        href="#main"
-        className="sr-only z-50 rounded bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-      >
-        Skip to content
-      </a>
-      <header className="flex min-h-20 items-center justify-between gap-4 border-b px-6 md:px-10">
-        <Link
-          href="/"
-          aria-label="Domino home"
-          className="flex min-h-11 items-center gap-3 rounded font-semibold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <Image src="/domino-logo.svg" width={32} height={32} alt="" priority />
-          <span className="text-xl">
-            domino<span className="text-primary">.</span>
-          </span>
-        </Link>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">Plan cash needs before you act.</span>
-          <Link
-            href="/playground"
-            className="flex min-h-11 items-center gap-2 rounded px-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Playground
-            <ArrowUpRight className="size-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </header>
+      <TopBar pathname={pathname} />
       <div
         className={cn(
           "mx-auto max-w-[1600px]",
-          showNavigation && "lg:grid lg:grid-cols-[224px_minmax(0,1fr)]",
+          inDemo && "lg:grid lg:grid-cols-[216px_minmax(0,1fr)]",
         )}
       >
-        {showNavigation ? (
-          <aside className="border-b bg-muted/50 px-6 py-4 lg:min-h-[calc(100vh-80px)] lg:border-b-0 lg:border-r lg:px-5 lg:py-8">
-            <div className="mb-3 flex items-center justify-between text-sm font-medium lg:mb-6">
-              <span>{companyId === "kestrel" ? "Kestrel Data" : "Company workspace"}</span>
-              <PanelLeftClose className="size-4 text-muted-foreground" aria-hidden="true" />
-            </div>
-            <nav aria-label="Main navigation" className="flex flex-wrap gap-1 lg:flex-col">
-              {links.map(({ href, label }) => (
+        {inDemo ? (
+          <aside className="border-b px-4 py-3 md:px-6 lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:border-b-0 lg:border-r lg:px-3 lg:py-6">
+            <p className="mb-2 hidden px-2.5 text-xs font-medium text-muted-foreground lg:block">
+              Demo company
+            </p>
+            <nav aria-label="Timeline pages" className="flex flex-wrap gap-1 lg:flex-col">
+              {demoNav.map(({ href, label }) => (
                 <Link
                   key={href}
-                  href={href.replace("/c/kestrel", `/c/${companyId}`)}
-                  aria-current={
-                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) ? "page" : undefined
-                  }
+                  href={href}
+                  aria-current={pathname === href ? "page" : undefined}
                   className={cn(
-                    "flex min-h-11 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-                    pathname === href.replace("/c/kestrel", `/c/${companyId}`) &&
-                      "bg-background font-medium text-primary",
+                    "flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+                    focusRing,
+                    pathname === href && "bg-secondary font-medium text-foreground",
                   )}
                 >
                   {label}
                 </Link>
               ))}
-              <div className="my-4 hidden border-t lg:block" />
-              <Link
-                href="/connect"
-                aria-current={pathname === "/connect" ? "page" : undefined}
-                className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <CircleHelp className="size-4" aria-hidden="true" />
-                Connect a company
-              </Link>
             </nav>
-            <p className="mt-10 hidden px-3 text-xs leading-5 text-muted-foreground lg:block">
+            <p className="mt-8 hidden px-2.5 text-xs leading-5 text-muted-foreground lg:block">
               Your judgment comes first.
               <br />
               Domino never moves money.
             </p>
           </aside>
         ) : null}
-        <main id="main" className={cn("min-w-0", showNavigation && "px-6 py-8 md:px-10 md:py-10")}>
+        <main id="main" className="min-w-0 px-4 py-6 md:px-8 md:py-8">
           {children}
         </main>
       </div>
     </div>
+  );
+}
+
+/** Logo, page links, then the company switcher. On small screens the page links drop to their
+ * own scrollable row under the logo. Always the light style, even above the dark pages. */
+function TopBar({ pathname }: { pathname: string }) {
+  const profile = useSelectedProfile();
+  return (
+    <>
+      <Suspense fallback={null}>
+        <StyleSync />
+      </Suspense>
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-40 shrink-0 border-b bg-card/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-card/85">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 px-4 md:h-14 md:flex-nowrap md:px-6">
+          <Link
+            href="/"
+            aria-label="Domino home"
+            className={cn(
+              "flex h-14 shrink-0 items-center gap-2 rounded-md text-[15px] font-semibold tracking-[-0.01em]",
+              focusRing,
+            )}
+          >
+            <Image src="/domino-logo.svg" width={24} height={24} alt="" priority />
+            <span>domino</span>
+          </Link>
+          <nav
+            aria-label="Main navigation"
+            className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto border-t px-2 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:border-t-0 md:px-0"
+          >
+            <ul className="flex h-11 gap-1 md:h-full">
+              {primaryLinks(profile).map(({ href, label, on }) => {
+                const active = on(pathname);
+                return (
+                  <li key={href} className="flex shrink-0">
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "relative flex items-center px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground",
+                        // A 2px bar on the header's bottom hairline marks the current page.
+                        "after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent after:transition-colors",
+                        focusRing,
+                        "focus-visible:outline-offset-[-2px]",
+                        active && "font-medium text-foreground after:bg-foreground",
+                      )}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <div className="ml-auto flex shrink-0 items-center">
+            <CompanySwitcher />
+          </div>
+        </div>
+        {/* Simulated time for the dashboard and Field pages (Field lane). */}
+        <SimClockBar pathname={pathname} />
+      </header>
+    </>
   );
 }

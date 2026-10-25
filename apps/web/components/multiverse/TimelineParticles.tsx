@@ -54,13 +54,16 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     const style = getComputedStyle(surface);
     const color = (token: string) => `hsl(${style.getPropertyValue(token).trim()})`;
-    const palette = {
-      primary: color("--primary"),
+    const readPalette = () => ({
+      primary: color("--primary-ink"),
       history: color("--clay"),
       neutral: color("--muted-foreground"),
       danger: color("--destructive"),
       glint: color("--foreground"),
-    };
+      blend: (style.getPropertyValue("--particle-blend").trim() ||
+        "lighter") as GlobalCompositeOperation,
+    });
+    let palette = readPalette();
     const scratch = new Float32Array(2);
     const tangent = new Float32Array(2);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -77,7 +80,7 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
       const current = field.current;
       context.clearRect(0, 0, width, height);
       if (!current) return;
-      context.globalCompositeOperation = "lighter";
+      context.globalCompositeOperation = palette.blend;
       const blend = settle ? 1 : morphAmount(time - current.changed);
       const selected = settings.current.activeKey;
       for (const particle of current.particles) {
@@ -201,12 +204,22 @@ export function TimelineParticles({ tracks, width, height, activeKey, enabled }:
       { threshold: 0.01 },
     );
     observer.observe(surface);
+    // A style switch changes the CSS variables, not the props, so re-read them without remounting.
+    const restyle = new MutationObserver(() => {
+      palette = readPalette();
+      sync();
+    });
+    restyle.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-style"],
+    });
     document.addEventListener("visibilitychange", sync);
     reducedMotion.addEventListener("change", sync);
     sync();
     return () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
       observer.disconnect();
+      restyle.disconnect();
       document.removeEventListener("visibilitychange", sync);
       reducedMotion.removeEventListener("change", sync);
       synchronize.current = undefined;

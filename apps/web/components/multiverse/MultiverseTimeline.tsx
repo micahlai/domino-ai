@@ -324,7 +324,7 @@ export function MultiverseTimeline({
                   }}
                   stroke={
                     isSelected
-                      ? "hsl(var(--primary))"
+                      ? "hsl(var(--primary-ink))"
                       : key === "base"
                         ? "hsl(var(--foreground))"
                         : future.survives

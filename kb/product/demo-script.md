@@ -1,3 +1,5 @@
+> Historical planning document. The Kestrel examples, metrics and claims below are not accepted proof or the current demo script. Use [the October 24 shared product plan](team-reset-2026-10-24.md). Do not present unmeasured values or old planned capabilities as results.
+
 # Demo script (3 minutes)
 
 The demo video opens with step 3. Rehearse with a timer. Keep a recorded backup.

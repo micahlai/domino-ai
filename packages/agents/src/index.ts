@@ -4,7 +4,21 @@ export type { JobInputs, JobOutputs, ProviderClient, ProviderClients } from "./t
 export { createAgentRuntime, createAgents } from "./agents";
 export type { AgentsOptions } from "./agents";
 export { ProviderError, failureCategories } from "./errors";
-export type { FailureCategory } from "./errors";
+export type { FailureCategory, ProviderJob } from "./errors";
+export {
+  buildHistoricalCreaoPrompt,
+  buildHistoricalRequest,
+  creaoHistoricalEnv,
+  historicalSpecialistDefaults,
+  runCreaoHistoricalSpecialist,
+  runHistoricalSpecialist,
+} from "./historical";
+export type {
+  CreaoHistoricalOptions,
+  CreaoHistoricalSpecialistResult,
+  HistoricalSpecialistOptions,
+  HistoricalSpecialistResult,
+} from "./historical";
 export {
   ANTHROPIC_VERSION,
   CLAUDE_MESSAGES_URL,
@@ -40,3 +54,36 @@ export {
   schemaText,
   systemPrompt,
 } from "./prompts";
+export {
+  FIELD_FALLBACK_BETA,
+  FIELD_MODEL,
+  MAX_COUNTERPARTIES,
+  MAX_EXPLAINED_FINDINGS,
+  acceptAnalystSummary,
+  acceptCounterpartyNotes,
+  acceptExplanations,
+  buildAnalystRequest,
+  buildCounterpartyCreaoPrompt,
+  buildExplainRequest,
+  callClaudeJson,
+  counterpartyCreaoEnv,
+  counterpartyProfileVersion,
+  explainFindings,
+  fieldClaude,
+  newMoneyMentions,
+  pickFindingsToExplain,
+  runCreaoCounterpartyResearch,
+  summarizeScenarios,
+} from "./fieldAi";
+export type {
+  AnalystDigest,
+  AnalystSummary,
+  ClaudeOutcome,
+  Counterparty,
+  CounterpartyJob,
+  CounterpartyNote,
+  FindingExplanation,
+  FindingRecord,
+  ScenarioDigest,
+  SendMessage,
+} from "./fieldAi";

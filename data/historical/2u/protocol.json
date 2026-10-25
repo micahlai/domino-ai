@@ -1,0 +1,156 @@
+{
+  "id": "twou-2023-cash-protocol-v1",
+  "caseId": "twou-2023-cash-v1",
+  "status": "candidate, pending Codex audit",
+  "disclosure": "Retrospective case study written 2026-10-24 with the outcome known. Not predeclared before 2024. A hindsight exercise, not a prospective test and not evidence of predictive accuracy.",
+  "knowledgeCutoff": "2023-11-10T23:59:59-05:00",
+  "originBalanceDate": "2023-09-30",
+  "target": {
+    "quarter": {
+      "kind": "duration",
+      "start": "2023-10-01",
+      "end": "2023-12-31"
+    },
+    "balanceDate": "2023-12-31",
+    "quarterDays": 92
+  },
+  "days": {
+    "originToCutoff": 41,
+    "cutoffToTarget": 51
+  },
+  "method": {
+    "id": "ytd-thirds-uniform-daily",
+    "version": "1.0.0"
+  },
+  "steps": [
+    "Quarterly operating and investing flow = nine-month flow / 3, exact in cents.",
+    "Financing and exchange-rate effect = 0 (AS-FIN0, AS-FX0).",
+    "Quarter change / 92 days = one constant daily change, exact in cents.",
+    "Nowcast at the cutoff = origin balance + 41 days of the daily change. Same in baseline and response.",
+    "Target = nowcast + 51 days of the daily change.",
+    "Cash outside restricted cash = combined cash minus restricted cash held flat (AS-RESTRICTED). Modeled estimate, never observed."
+  ],
+  "inputs": {
+    "sourceIds": ["S7"],
+    "factIds": ["F01", "F02", "F03", "F05", "F06", "F07", "F08"],
+    "baselineAssumptionIds": ["AS-FIN0", "AS-FX0", "AS-RESTRICTED"],
+    "responseAssumptionIds": ["AS-FIN0", "AS-FX0", "AS-RESTRICTED", "A1"]
+  },
+  "observation": {
+    "sourceIds": ["S8"],
+    "factIds": ["H01", "H02", "H03", "D01", "D02", "D03", "D04"],
+    "note": "Revealed only after the cutoff. Observed cash outside restricted cash (H01) is reported, so it can score the modeled estimate."
+  },
+  "projection": {
+    "operatingPerQuarterCents": -584000000,
+    "investingPerQuarterCents": -1219200000,
+    "financingPerQuarterCents": 0,
+    "fxPerQuarterCents": 0,
+    "quarterChangeCents": -1803200000,
+    "dailyChangeCents": -19600000,
+    "restrictedCashCents": 1271000000
+  },
+  "response": {
+    "decisionAssumptionIds": ["A1"],
+    "unmodeledAssumptionIds": ["A1-DOWNSIDE"],
+    "unmodeledNote": "UNMODELED. A1-DOWNSIDE (0 to USD 13.75M a year, timing unknown, feasibility unknown) is not a run input and is not netted into any figure. The response shows cost only, with no benefit claim. The downside is a visible limitation, not a zero.",
+    "postHoc": true,
+    "postHocReason": "Chosen in a retrospective with the outcome known, though no number was tuned from the outcome. Hypothetical, feasibility unknown.",
+    "oneTimeCostCents": {
+      "low": 137500000,
+      "high": 715000000
+    },
+    "inWindowSavingsCents": 0,
+    "pointCostCents": 426250000,
+    "pointNote": "The response point is the midpoint of the cost range, not an estimate."
+  },
+  "nowcast": [
+    {
+      "id": "P-NOW-TOTAL",
+      "kind": "nowcast",
+      "metric": "cash_including_restricted",
+      "period": {
+        "kind": "instant",
+        "date": "2023-11-10"
+      },
+      "currency": "USD",
+      "cents": 4581500000
+    },
+    {
+      "id": "P-NOW-CASH",
+      "kind": "nowcast",
+      "metric": "cash_and_equivalents",
+      "period": {
+        "kind": "instant",
+        "date": "2023-11-10"
+      },
+      "currency": "USD",
+      "cents": 3310500000
+    }
+  ],
+  "baselineForecast": [
+    {
+      "id": "P-B-TOTAL",
+      "kind": "forecast",
+      "metric": "cash_including_restricted",
+      "period": {
+        "kind": "instant",
+        "date": "2023-12-31"
+      },
+      "currency": "USD",
+      "cents": 3581900000
+    },
+    {
+      "id": "P-B-CASH",
+      "kind": "forecast",
+      "metric": "cash_and_equivalents",
+      "period": {
+        "kind": "instant",
+        "date": "2023-12-31"
+      },
+      "currency": "USD",
+      "cents": 2310900000
+    }
+  ],
+  "responseForecast": [
+    {
+      "id": "P-R-TOTAL",
+      "kind": "forecast",
+      "metric": "cash_including_restricted",
+      "period": {
+        "kind": "instant",
+        "date": "2023-12-31"
+      },
+      "currency": "USD",
+      "cents": 3155650000,
+      "range": {
+        "low": 2866900000,
+        "high": 3444400000
+      }
+    },
+    {
+      "id": "P-R-CASH",
+      "kind": "forecast",
+      "metric": "cash_and_equivalents",
+      "period": {
+        "kind": "instant",
+        "date": "2023-12-31"
+      },
+      "currency": "USD",
+      "cents": 1884650000,
+      "range": {
+        "low": 1595900000,
+        "high": 2173400000
+      }
+    }
+  ],
+  "riskRules": [],
+  "riskRulesNote": "No evidenced threshold, so no rule is scored.",
+  "excluded": [
+    "all debt, loan and lender facts",
+    "all narrative, outlook and management statements",
+    "non-cash metrics (revenue, net loss, adjusted EBITDA)",
+    "weekly or daily actuals (none exist)",
+    "unverified filing text; the earlier research files stay as an audit archive, not runtime input"
+  ]
+}

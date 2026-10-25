@@ -1,5 +1,10 @@
 # Requests
 
+- [ ] 2026-10-24 Codex planning -> current Claude lead: acknowledge U6/RQ11 and coordinate P0 shared setup before independent full-feature branches. See spec/independent-feature-lanes.md and ../prompts/shared/prepare-independent-features.md. Preserve/checkpoint actual L1/S2 activity; no new worker launched here.
+
+- [ ] 2026-10-24 Codex integration -> S1: additive historical-scenario input/result/impact schemas; existing branch unchanged. S3 engine and S4 persistence depend on audited shape.
+- [ ] 2026-10-24 Codex integration -> friend S2: additive by_case_createdAt index on investigationConversations only. S4 waits for acceptance before schema edits.
+
 Ask for a change in someone else's area here. Newest first.
 Format: `- [ ] YYYY-MM-DD From -> To: request (file or function). Why.` Tick it when done.
 

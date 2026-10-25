@@ -1,5 +1,22 @@
 # Decisions
 
+- 2026-10-25: Jayden authorized publishing verified field/main to main, superseding the historical main freeze for this release. Preserve remote main commits and use an isolated release checkout; TL9 LLM conversation remains incomplete.
+
+- 2026-10-24 Jayden: independently own complete Field/Knowledge and Timeline/Simulations features, each with UI/backend/agent/roadmap, after audited P0 seam/schema/harness setup. Long-lived branches merge later; one writer per domain, three implementation processes total. See spec/independent-feature-lanes.md. Earlier tiny T1/sole-UI split superseded after P0.
+
+- 2026-10-24 user steering: one user-launched Claude lead owns queue/roadmap and subagent dispatch; Codex is independent audit/integration support on request. Keep monitor PAUSED, cap 3 including friend/children and one UI writer. Counterargument: a second dispatcher can react faster, but duplicates ownership and work.
+
+- 2026-10-24 Codex lead: use bounded SEC JSON onboarding and source-dated reconciliation, scoped feedback receipts and a separately sealed quarterly evaluation. Preserve old run contracts, data and UI. Candidate changes only post-cutoff flows; proposed 16-pair Tenable/Varonis test stays sealed until exact hashes are recorded. Counterargument: narrow sources and strict improvement gates may leave completion unmet; do not broaden claims or relax gates after seeing outcomes. Human launches Claude; monitor remains PAUSED.
+
+
+- 2026-10-24 08:49 Codex: stop overnight dispatch and pause monitoring after the independently checked preview passes815tests/build and browser flow. Keep main frozen for review. Counterargument: debt-aware warning evidence would strengthen the pitch, but expanding now would exceed the accepted cash-only case and require another evidence gate.
+
+- 2026-10-24 Codex: user requested four toggleable visual styles and meaningful activity motion. Use one shared component system and a separate H4 worktree after H3 releases UI ownership; reuse installed Radix/shadcn/Motion. Counterargument: per-style apps could match layouts more literally, but duplicate state, bugs and usage. Preserve Original default, match public Ramp/Hyphenate references, expose actual events only.
+
+- 2026-10-24 Codex: prepare bounded overnight implementation with Claude lead, evidence/backend/UI subagents on one computer, per the latest correction. Serialize full checks/builds and share one owned preview server. Allow parallel presentation and generic contracts; gate real-case modeling on evidence and live UI wiring on the frozen API. Counterargument: broader parallelism may build more screens, but increases unsupported assumptions and integration conflicts. User requested launch prompts and project stages; no workers started in this turn.
+
+- 2026-10-24 Codex brain: user changed direction to a historical public-company replay. Freeze new implementation dispatch; checkpoint existing workers and keep future integration off main. Propose a curated case, period cash model, immutable forecast/reveal and one costed alternative. Counterargument: less weekly detail, but public data cannot substantiate synthetic weekly actuals. Company selection remains open.
+
 Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 
 - 2026-10-24 03:14 Codex brain: user requested merging Micah's ready code for the first prototype, so integrate origin/main 77d0df6 including V1/V2. This supersedes the earlier particle deferral. Continue backend work; keep fixture and computed results distinguishable.
@@ -40,3 +57,5 @@ Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 - 2026-10-23 Team: Convex is the only database. Capital One Nessie is the bank. Why: live UI updates; sponsor tracks with a real job.
 - 2026-10-23 Team: vertical is B2B software, seat is FP&A cash forecasting. Why: mentor feedback; rich cash-timing problems; public peers for realism.
 - 2026-10-23 Team: not entering Anthropic "Claude for Public Benefit" or Cartesia. Why: no real fit.
+
+- 2026-10-25 Field: suggestion decisions require the displayed run and snapshot version; delayed advisor writes cannot replace newer evidence. Audits retain durable exact inputs until audit and recompute succeed.

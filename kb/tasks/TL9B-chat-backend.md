@@ -1,0 +1,12 @@
+# TL9B: durable rule/scenario clarification chat
+
+- **Goal:** strict durable begin/send/reset/get/list/confirm; typed clarification retains partial fields and server-held reviewed proposal.
+- **Folder:** apps/web/convex ONLY: timeline/chat.ts, chat/*, additive schemas/timeline.schema.ts and schemaComposition.test.ts count; this Result.
+- **Contracts used:** Forecast, Change, Constraint, existing QuestionProposal, WorkspaceRun; shared types unchanged.
+- **Done when:** exact wire/limits/semantics in kb/features/timeline/TL9-chat-interface.md; meaningful fixture tests, pnpm check and relevant typecheck/build; commit.
+- **Notes:** Codex authorized; own supplied worktree. Read interface fully, skills/ui-build or review, nested AGENTS and installed guidance. No services/env/provider/shared contracts/engine/root-schema/dashboard/Field/main/push/TL7 edits; no delegation. All missing values remain user-supplied; no transcript-concatenation guess. Lead handles separate3109/3260 browser/runtime verification. Report interface blocker early.
+
+## Result
+- Done: durable begin/send/reset/get/list/confirm implemented. Focused 38 fixture-backed Convex tests pass; Convex TypeScript and scoped lint pass. Full `pnpm check` passed 1,998 tests, five typechecks and lint before the last shared qualifier-guard relocation; the final guard has the expanded 38-test focused pass. Lead runs combined validation after integration.
+- What changed: two Timeline-owned tables persist current typed draft and immutable accepted-request receipt snapshots. Short answers retain known fields; ambiguous money, dates, counterparties and unsupported conditions/scope clarify without calculating. Confirmation uses the server-held reviewed proposal in the same transaction as the linked workspace result. Frozen source/rule/selection validation, company scoping, bounded messages, exact retries, stale revisions, reset and terminal saved state are covered.
+- Watch out: deliberately bounded deterministic grammar, no provider or free-form dialogue claim. Daily/headcount, conditional/ranged/account-scoped rules and recurring events remain unsupported. Initial grammar supports multiple clauses; only unambiguous single-field corrections are accepted. Lead owns live API/browser/build acceptance and generated API integration. No services/env, published TL7, shared contract, engine, root schema or Field files changed.

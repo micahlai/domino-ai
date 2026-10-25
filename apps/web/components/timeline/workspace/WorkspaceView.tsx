@@ -1,0 +1,437 @@
+"use client";
+
+import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
+import { ChevronRight, MessageCircle, ShieldAlert, SquarePlus } from "lucide-react";
+import Link from "next/link";
+import { type ReactNode, useMemo, useState } from "react";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { PageHeader, StatTile } from "../../ui/page";
+import { analysisHref } from "../analysis/links";
+import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
+import { Assistant, type AssistantTab, smoothScroll } from "./Assistant";
+import { AncestryPanel } from "./CatalogPanel";
+import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
+import { RuleEditor } from "./RuleEditor";
+import {
+  ChangesPanel,
+  ComparisonPanel,
+  ImpactPanel,
+  ReceiptsPanel,
+  WeekDetail,
+  WhenDate,
+  formatDelta,
+} from "./RunPanels";
+import { ScenarioComposer } from "./ScenarioComposer";
+import { ScenarioSidebar } from "./ScenarioSidebar";
+import { WorkspaceChart } from "./WorkspaceChart";
+import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
+import { eventFromItem, eventOptions } from "./drafts";
+import type { Outcome } from "./requests";
+import { type ScenarioComparisons, comparisonIds, readComparison } from "./scenarioComparisons";
+import { floorReceipt, runHeadline } from "./summary";
+
+export type WorkspaceActions = QuestionActions & {
+  reviseRules: (constraints: Constraint[], note: string) => Promise<Outcome>;
+  simulate: (label: string, changes: Change[]) => Promise<Outcome>;
+  catalogHref: string;
+};
+
+export type WorkspaceViewProps = {
+  run: WorkspaceRun;
+  parent: Read<WorkspaceRun> | null;
+  graph: Read<CatalogEntry[]>;
+  questions: Read<QuestionReceipt[]>;
+  resultRef: Read<WeeklyResultRefV1>;
+  actions: WorkspaceActions;
+  /** Why writes are unavailable here (for example a fixture or no service connection). */
+  disabled?: string;
+  comparisons?: ScenarioComparisons;
+  initialContext?: { selectedWeek?: string; selectedItemId?: string };
+  chat?: (context: { selectedWeek?: string; selectedItemId?: string }) => ReactNode;
+  /** Opens the assistant on this tab (a chat link opens the chat, on phones too). */
+  initialAssistant?: AssistantTab;
+  /** Saved risk scenarios for these books; defaults to this run's analysis page. */
+  risksHref?: string;
+  /** A short page-level notice under the header, e.g. newer books exist. */
+  notice?: ReactNode;
+};
+
+const KIND = { baseline: "Imported books", rules: "Rules changed", scenario: "What-if" };
+const SUMMARY =
+  "flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[15px] font-semibold tracking-[-0.01em] [&::-webkit-details-marker]:hidden";
+const CHEVRON = "size-4 text-muted-foreground transition-transform group-open:rotate-90";
+
+/** One saved scenario, interactive. Props only; every number comes from the saved record. */
+export function WorkspaceView({
+  run,
+  parent,
+  graph,
+  questions,
+  resultRef,
+  actions,
+  disabled,
+  comparisons,
+  chat,
+  initialContext,
+  initialAssistant,
+  risksHref,
+  notice,
+}: WorkspaceViewProps) {
+  const b = run.baseline;
+  const low = run.forecast.lowPoint;
+  const [assistantTab, setAssistantTab] = useState<AssistantTab>(
+    chat && initialAssistant === "chat" ? "chat" : "ask",
+  );
+  const [assistantOpen, setAssistantOpen] = useState(initialAssistant === "chat");
+  const [focusKey, setFocusKey] = useState(0);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(
+    initialContext?.selectedWeek ?? low.weekStart,
+  );
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(
+    initialContext?.selectedItemId ?? null,
+  );
+  const options = useMemo(() => eventOptions(b.seed), [b.seed]);
+  const suggestion = useMemo(() => {
+    const item = b.seed.scheduledItems.find((i) => i.id === selectedItemId);
+    return item ? eventFromItem(item, options) : undefined;
+  }, [b.seed, selectedItemId, options]);
+  const [localComparisonIds, setLocalComparisonIds] = useState<string[]>(
+    run.parentRunId ? [run.parentRunId] : [],
+  );
+  const selection = comparisons ?? {
+    ids: localComparisonIds,
+    reads: run.parentRunId && parent ? { [run.parentRunId]: parent } : {},
+    onChange: setLocalComparisonIds,
+  };
+  const selectedIds = comparisonIds(selection.ids, run.runId);
+  const curves = selectedIds.flatMap((id) => {
+    const saved = selection.reads[id];
+    const read = saved?.state === "ready" ? readComparison(saved.value, run, id) : saved;
+    return read?.state === "ready"
+      ? [
+          {
+            runId: id,
+            label: read.value.label || "Untitled scenario",
+            href: actions.hrefFor(id),
+            forecast: read.value.forecast,
+            parent: id === run.parentRunId,
+          },
+        ]
+      : [];
+  });
+  const limits = run.constraints.flatMap((c) =>
+    c.kind === "min_cash" && Number.isSafeInteger(c.limit)
+      ? [{ id: c.id, label: c.label, cents: c.limit }]
+      : [],
+  );
+  const breaches = run.receipts.flatMap((r) =>
+    r.status === "breached" && r.kind === "min_cash" && r.weekStart
+      ? [
+          r.shortfall !== null && r.unit === "cents" && Number.isSafeInteger(r.shortfall)
+            ? {
+                weekStart: r.weekStart,
+                text: `Below ${r.label} · short ${formatExactCents(r.shortfall)}`,
+                short: `Short ${formatExactCents(r.shortfall)}`,
+              }
+            : { weekStart: r.weekStart, text: `Below ${r.label}` },
+        ]
+      : [],
+  );
+  const firstWeek = run.forecast.weeks[0]?.weekStart ?? b.seed.asOf;
+  const lastWeek = run.forecast.weeks.at(-1)?.weekStart ?? firstWeek;
+  const floor = floorReceipt(run);
+  const chatNode = chat
+    ? chat({
+        ...(selectedWeek ? { selectedWeek } : {}),
+        ...(selectedItemId ? { selectedItemId } : {}),
+      })
+    : null;
+
+  function openAssistant(tab: AssistantTab) {
+    setAssistantTab(tab);
+    setAssistantOpen(true);
+    setFocusKey((k) => k + 1);
+  }
+  function tryEvent() {
+    setComposerOpen(true);
+    requestAnimationFrame(() => {
+      const el = document.getElementById("try-an-event");
+      el?.scrollIntoView({ block: "start", behavior: smoothScroll() });
+      el?.querySelector<HTMLElement>('[data-testid="event-kind"]')?.focus({
+        preventScroll: true,
+      });
+    });
+  }
+
+  return (
+    <article
+      className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]"
+      data-testid="workspace"
+      data-run-id={run.runId}
+    >
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium text-foreground">{b.companyName}</span>
+            <Badge variant="secondary">Simulated company</Badge>
+            <span aria-hidden="true" className="max-sm:hidden">
+              ·
+            </span>
+            <span>{run.label || KIND[run.kind]}</span>
+            <span aria-hidden="true" className="max-sm:hidden">
+              ·
+            </span>
+            <span>Books as of {formatFullDate(b.seed.asOf)}</span>
+          </span>
+        }
+        title={<span data-testid="workspace-headline">{runHeadline(run)}</span>}
+        description={
+          <>
+            Lowest usable cash is {formatExactCents(low.usable)} in the week of{" "}
+            <WhenDate iso={low.weekStart} />. {KIND[run.kind]}, saved {formatSavedAt(run.savedAt)}.
+            Saved results never change.
+          </>
+        }
+        actions={
+          <>
+            <Button onClick={() => openAssistant("ask")} data-testid="action-ask">
+              <MessageCircle aria-hidden="true" />
+              Ask a question
+            </Button>
+            <Button variant="outline" onClick={tryEvent} data-testid="action-event">
+              <SquarePlus aria-hidden="true" />
+              Try an event
+            </Button>
+            <Button variant="outline" asChild>
+              <Link
+                href={risksHref ?? analysisHref(run.companyId, run.runId)}
+                data-testid="action-risks"
+              >
+                <ShieldAlert aria-hidden="true" />
+                See saved risks
+              </Link>
+            </Button>
+          </>
+        }
+      />
+      {notice}
+      {parent && parent.state !== "ready" ? (
+        <p className="text-xs text-muted-foreground" data-testid="parent-unavailable">
+          {parent.state === "loading"
+            ? "Reading the scenario it started from..."
+            : "The scenario it started from could not be shown, so it is not drawn."}
+        </p>
+      ) : null}
+
+      <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
+        <div className="min-w-0 max-w-full space-y-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatTile
+              label="Lowest point"
+              value={formatExactCents(low.usable)}
+              delta={`Week of ${formatFullDate(low.weekStart)}`}
+              data-testid="tile-low"
+            />
+            {floor ? (
+              <StatTile
+                label={floor.label}
+                value={formatExactCents(floor.limit)}
+                tone={
+                  floor.status === "breached"
+                    ? "negative"
+                    : floor.status === "clear"
+                      ? "positive"
+                      : "neutral"
+                }
+                delta={
+                  floor.status === "breached"
+                    ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatExactCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
+                    : floor.status === "clear"
+                      ? "Stays above in every week"
+                      : "Could not be checked"
+                }
+                data-testid="tile-minimum"
+              />
+            ) : (
+              <StatTile
+                label="Cash minimum"
+                value="None set"
+                delta="Add one under Change the cash rules"
+                data-testid="tile-minimum"
+              />
+            )}
+            {run.comparison ? (
+              <StatTile
+                label="Lowest point vs. where it started"
+                value={formatDelta(run.comparison.lowPointDelta)}
+                delta={
+                  run.ownChanges.length === 0
+                    ? "Only the rules changed"
+                    : `${run.ownChanges.length} ${run.ownChanges.length === 1 ? "change" : "changes"} in this scenario`
+                }
+              />
+            ) : (
+              <StatTile
+                className="max-sm:hidden"
+                label="Forecast"
+                value={`${run.forecast.weeks.length} weeks`}
+                delta={`${formatFullDate(firstWeek)} to ${formatFullDate(lastWeek)}`}
+              />
+            )}
+          </div>
+
+          <section className="min-w-0 space-y-4 rounded-lg border bg-card p-4 shadow-xs sm:p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Usable cash by week</h2>
+              <p className="text-xs text-muted-foreground">
+                Hover a week for details, click one to pick it
+              </p>
+            </div>
+            <WorkspaceChart
+              history={b.history}
+              forecast={run.forecast}
+              comparisons={curves}
+              items={b.seed.scheduledItems}
+              limits={limits}
+              breachedWeeks={breaches.map((n) => n.weekStart)}
+              breachNotes={breaches}
+              selectedWeek={selectedWeek}
+              onSelectWeek={(w) => {
+                setSelectedWeek(w);
+                setSelectedItemId(null);
+              }}
+            />
+          </section>
+
+          <ScenarioComposer
+            selectedWeek={selectedWeek}
+            firstWeek={firstWeek}
+            invoices={options.invoices}
+            bills={options.bills}
+            suggestion={suggestion}
+            onRun={actions.simulate}
+            disabled={disabled}
+            open={composerOpen}
+            onOpenChange={setComposerOpen}
+          />
+
+          <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+            <WeekDetail
+              run={run}
+              weekStart={selectedWeek}
+              selectedItemId={selectedItemId}
+              onSelectItem={setSelectedItemId}
+            />
+            <ReceiptsPanel run={run} />
+          </div>
+
+          <ScenarioSidebar
+            run={run}
+            graph={graph}
+            comparisons={{ ...selection, ids: selectedIds }}
+            hrefFor={actions.hrefFor}
+            catalogHref={actions.catalogHref}
+          />
+
+          <details className="group min-w-0">
+            <summary className={SUMMARY}>
+              <ChevronRight aria-hidden="true" className={CHEVRON} />
+              What changed and how it was built
+            </summary>
+            <div className="mt-2 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+              <ChangesPanel run={run} />
+              <ComparisonPanel run={run} />
+              <ImpactPanel dominoes={run.dominoes} />
+              <AncestryPanel graph={graph} runId={run.runId} hrefFor={actions.hrefFor} />
+            </div>
+          </details>
+          <details className="group min-w-0">
+            <summary className={SUMMARY}>
+              <ChevronRight aria-hidden="true" className={CHEVRON} />
+              Change the cash rules
+            </summary>
+            <div className="mt-2">
+              <RuleEditor
+                constraints={run.constraints}
+                bills={options.bills}
+                onSave={actions.reviseRules}
+                disabled={disabled}
+              />
+            </div>
+          </details>
+          <Provenance run={run} resultRef={resultRef} />
+        </div>
+
+        <Assistant
+          tab={assistantTab}
+          onTab={setAssistantTab}
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+          focusKey={focusKey}
+          chat={chatNode}
+          ask={
+            <QuestionsPanel
+              bare
+              questions={questions}
+              selectedWeek={selectedWeek}
+              selectedItemId={selectedItemId}
+              onClearContext={() => {
+                setSelectedWeek(null);
+                setSelectedItemId(null);
+              }}
+              actions={actions}
+              disabled={disabled}
+            />
+          }
+        />
+      </div>
+    </article>
+  );
+}
+
+function Provenance({ run, resultRef }: { run: WorkspaceRun; resultRef: Read<WeeklyResultRefV1> }) {
+  return (
+    <details
+      className="min-w-0 rounded-lg border bg-card text-xs shadow-xs"
+      data-testid="provenance"
+    >
+      <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">
+        Where this came from
+      </summary>
+      <dl className="grid gap-2 border-t p-4 sm:grid-cols-2">
+        {(
+          [
+            ["Saved scenario", run.runId],
+            ["Started from", run.parentRunId ?? "Nothing: this is the imported baseline"],
+            ["Imported baseline", run.baselineRunId],
+            ["Weekly seed", `${run.baseline.seed.id} (${run.baseline.seedHash})`],
+            ["Inputs fingerprint", run.inputHash],
+            ["Method", run.methodVersion],
+            ["Rules version", run.constraintVersion],
+            ["Rules note", run.constraintNote || "None"],
+            ["Operation", `${run.operation.title} (${run.operation.status})`],
+          ] as const
+        ).map(([k, v]) => (
+          <div key={k}>
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="break-all font-mono">{v}</dd>
+          </div>
+        ))}
+        <div>
+          <dt className="text-muted-foreground">Result pointer</dt>
+          <dd className="break-all font-mono" data-testid="result-ref">
+            {resultRef.state === "ready"
+              ? `${resultRef.value.kind} ${resultRef.value.route}`
+              : resultRef.state === "loading"
+                ? "Reading..."
+                : resultRef.state === "missing"
+                  ? "None saved"
+                  : "Could not be shown"}
+          </dd>
+        </div>
+      </dl>
+    </details>
+  );
+}

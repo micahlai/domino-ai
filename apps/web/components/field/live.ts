@@ -1,0 +1,264 @@
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "../../convex/_generated/api";
+import {
+  type FieldFinding,
+  type FieldOperation,
+  type FieldStatus,
+  type OperationKind,
+  isLifecycle,
+} from "./types";
+
+// Pure mapping from the real field.* records (convex/field.ts) into the Field UI view types.
+// Only fields the backend actually writes are used; nothing here invents work or numbers.
+
+export type LiveStatus = NonNullable<FunctionReturnType<typeof api.field.status>>;
+export type LiveLogRow = FunctionReturnType<typeof api.field.log>["page"][number];
+export type LiveFinding = FunctionReturnType<typeof api.field.findings>[number];
+
+/**
+ * Agent web fields on log rows (convex/lib/agentLog.ts). All optional and read defensively, so
+ * rows written before them map exactly as before. `agent` repeats agentId on these rows.
+ */
+export type SwarmLogFields = {
+  /** "analyst#1", "forecaster#3", "research#1", "analyst.loop". */
+  agentId?: string;
+  agentKind?: string;
+  parentAgentId?: string;
+  event?: "status" | "message" | "tool";
+  /** Lifecycle step on status rows: spawned, working, done or failed. */
+  status?: string;
+  currentTask?: string;
+  fromAgentId?: string;
+  toAgentId?: string;
+  /** "engine" | "apify" | "convex". */
+  toolCategory?: string;
+  /** Actor name on live Apify rows, "demo actor" on demo rows. */
+  toolLabel?: string;
+  step?: number;
+  steps?: number;
+};
+type SwarmRow = LiveLogRow & SwarmLogFields;
+
+const AGENT_KINDS = new Set(["domino", "claude", "creao", "system"]);
+const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : undefined);
+
+/**
+ * Agent ids -> how the map names them. A copy started by another agent ("forecaster#3" with a
+ * parent) stays an instance. A top-level agent's id ("analyst#1") is its role, so it lands on the
+ * built-in Analyst node rather than a second analyst.
+ */
+function agentNamer(rows: SwarmRow[]) {
+  const children = new Set(
+    rows.flatMap((r) => (r.parentAgentId && (r.agentId ?? r.agent) ? [r.agentId ?? r.agent] : [])),
+  );
+  return (v: unknown): string | undefined => {
+    const id = str(v);
+    if (!id) return undefined;
+    if (!id.includes("#")) return liveAgentName(id);
+    return children.has(id) ? id : liveAgentName(id.split("#")[0]);
+  };
+}
+
+/** Log agent ids -> names the brain map catalog knows (see catalog.ts). */
+const AGENT_NAME: Record<string, string> = {
+  "field.ingest": "Ingestion agent",
+  "field.audit": "Audit agent",
+  "mock.feed": "Mock feed",
+  "field.worker": "Reviewer",
+  "field.analyst": "Analyst",
+  "field.forecaster": "Forecaster",
+  "field.research": "Research agent",
+  analyst: "Analyst",
+  forecaster: "Forecaster",
+  research: "Research agent",
+  "analyst.loop": "Auto-run loop",
+  // Audit swarm (convex/fieldAudit.ts): checkers under the Audit agent ("field.audit").
+  "audit.duplicates": "Duplicates check",
+  "audit.crossToolTieOut": "Tie-out check",
+  "audit.amounts": "Amounts check",
+  "audit.timing": "Timing check",
+  "audit.overdueCustomers": "Overdue customers check",
+  "audit.missingExpected": "Missing items check",
+  "audit.billingEnds": "Billing ends check",
+  // Advisor swarm (convex/fieldAdvisor.ts): one advisor per candidate fix, under the Analyst.
+  "advisor.credit_line_draw": "Credit line advisor",
+  "advisor.delay_bill": "Bill timing advisor",
+  "advisor.accelerate_collections": "Collections advisor",
+  "advisor.defer_hires": "Hiring advisor",
+};
+
+/**
+ * Source kinds in the log -> catalog source ids. Field ingest and the Connect page write
+ * connector ids (stripe, hubspot, qbo, gusto, ramp, plaid); older logs carry mock server kinds
+ * (crm, books, nessie). Both name the same vendor, so they land on one node. The bank is read
+ * from the Capital One Nessie sandbox ("nessie"); the simulated bank (Plaid mock) keeps its own.
+ */
+const SOURCE_NAME: Record<string, string> = {
+  stripe: "billing",
+  crm: "crm",
+  hubspot: "crm",
+  ramp: "cards",
+  books: "books",
+  qbo: "books",
+  payroll: "payroll",
+  gusto: "payroll",
+  plaid: "plaid",
+  nessie: "bank",
+};
+
+/**
+ * Saved `sources` row kinds (convex/fieldSources.ts SOURCE_OF_TOOL) -> catalog source ids. The
+ * bank read (Capital One Nessie, or the simulated bank standing in) writes the "nessie" row.
+ */
+const SAVED_SOURCE: Record<string, string> = {
+  stripe: "billing",
+  crm: "crm",
+  ramp: "cards",
+  books: "books",
+  payroll: "payroll",
+  nessie: "bank",
+};
+
+/** "stripe.read" -> "stripe": a pull row that lost its source still names its connector. */
+const sourceOfPull = (row: LiveLogRow) =>
+  row.action === "ingest.pulled" && row.tool
+    ? /^([a-z0-9-]+)\.read$/i.exec(row.tool)?.[1]
+    : undefined;
+
+/** Rows written by shared engine code carry no agent; name them by actor instead. */
+const ACTOR_NAME: Record<string, string> = {
+  engine: "Engine",
+  connector: "Connector",
+  person: "Reviewer",
+};
+
+export const liveAgentName = (agent: string | undefined, actor = "") =>
+  agent ? (AGENT_NAME[agent] ?? agent) : (ACTOR_NAME[actor] ?? "Unknown");
+export const liveSourceName = (source: string) => SOURCE_NAME[source] ?? source;
+
+export function operationKind(action: string): OperationKind {
+  if (action === "agent.message" || action.endsWith(".message")) return "message";
+  if (action === "agent.spawned") return "spawn";
+  if (action.startsWith("feed.")) return "feed";
+  if (action === "ingest.pulled") return "pull";
+  if (action === "ingest.mapped" || action === "ingest.reconciled") return "map";
+  if (action === "ingest.snapshotWritten") return "snapshot";
+  if (/recompute/i.test(action)) return "forecast";
+  if (action.startsWith("audit.")) return "audit";
+  if (action.startsWith("escalation.")) return "decision";
+  return "run";
+}
+
+function operationStatus(action: string): string {
+  const step = /^agent\.(spawned|working|done|failed)$/.exec(action)?.[1];
+  if (step) return step;
+  if (/failed$/i.test(action)) return "failed";
+  if (action === "ingest.started") return "running";
+  return "succeeded";
+}
+
+/**
+ * Log rows (any order) -> operations, oldest first. Within one ingest run (same runId), a step
+ * by a different agent than the run's first step is recorded as started by that first step, so
+ * the map draws the ingestion agent handing the new snapshot to the audit agent.
+ */
+export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
+  const sorted = [...rows].sort((a, b) =>
+    a.at === b.at ? (a._creationTime ?? 0) - (b._creationTime ?? 0) : a.at < b.at ? -1 : 1,
+  );
+  const runStart = new Map<string, LiveLogRow>();
+  for (const row of sorted) if (row.runId && !runStart.has(row.runId)) runStart.set(row.runId, row);
+  const name = agentNamer(sorted as SwarmRow[]);
+  return sorted.map((plain) => {
+    const row = plain as SwarmRow;
+    const first = row.runId ? runStart.get(row.runId) : undefined;
+    const parentId =
+      first && first._id !== row._id && first.agent !== row.agent ? first._id : undefined;
+    const kind: OperationKind =
+      row.event === "message"
+        ? "message"
+        : row.event === "status" && row.status === "spawned"
+          ? "spawn"
+          : operationKind(row.action);
+    const status = isLifecycle(row.status) ? row.status : operationStatus(row.action);
+    const agentKind = str(row.agentKind);
+    const agentId = str(row.agentId);
+    const named = agentId ? name(agentId) : undefined;
+    const instanceId = named?.includes("#") ? named : undefined;
+    const progress =
+      typeof row.step === "number" && typeof row.steps === "number" && row.steps > 0
+        ? Math.min(1, Math.max(0, row.step / row.steps))
+        : undefined;
+    const source = row.source ?? sourceOfPull(row);
+    return {
+      id: row._id,
+      at: row.at,
+      seq: row._creationTime,
+      agent: named && !instanceId ? named : liveAgentName(row.agent, row.actor),
+      actor: row.actor,
+      ...(row.tool && { tool: row.tool }),
+      ...(source && { source: liveSourceName(source) }),
+      ...(instanceId && { instanceId }),
+      ...(agentKind &&
+        AGENT_KINDS.has(agentKind) && { agentKind: agentKind as FieldOperation["agentKind"] }),
+      ...(name(row.parentAgentId) && { parentAgentId: name(row.parentAgentId) }),
+      ...(name(row.fromAgentId) && { from: name(row.fromAgentId) }),
+      ...(name(row.toAgentId) && { to: name(row.toAgentId) }),
+      ...(str(row.currentTask) && { currentTask: str(row.currentTask) }),
+      ...(str(row.toolCategory) && { toolCategory: str(row.toolCategory) }),
+      ...(str(row.toolLabel) && { toolLabel: str(row.toolLabel) }),
+      ...(progress !== undefined && { progress }),
+      kind,
+      status,
+      summary: row.summary ?? row.action,
+      inputs: { action: row.action, actor: row.actor, ...(row.runId && { runId: row.runId }) },
+      ...(row.refs.length > 0 && { outputs: { refs: row.refs } }),
+      ...(parentId && { parentId }),
+    };
+  });
+}
+
+export function toStatus(status: LiveStatus, rows: LiveLogRow[]): FieldStatus {
+  const lastAdvance = rows
+    .filter((r) => r.action === "feed.advanced" || r.action === "feed.planted")
+    .reduce<string | null>((latest, r) => (latest && latest > r.at ? latest : r.at), null);
+  return {
+    feed: { enabled: true, lastAdvanceAt: lastAdvance },
+    ingest: {
+      enabled: status.auto,
+      lastRunAt: status.lastIngestAt,
+      lastStatus: status.lastIngestStatus,
+    },
+    counts: {
+      sources: status.sources.filter((s) => s.lastPull !== null).length,
+      snapshots: status.snapshotVersion,
+      openFindings: status.openFindings,
+    },
+    asOf: status.asOf,
+    week: status.week,
+    lastError: status.lastError,
+    openEscalations: status.openEscalations,
+    sources: status.sources.map((s) => ({
+      id: SAVED_SOURCE[s.kind] ?? liveSourceName(s.kind),
+      lastPull: s.lastPull,
+      step: s.step ?? null,
+      tieOut: s.tieOut ?? null,
+    })),
+  };
+}
+
+export function toFinding(f: LiveFinding): FieldFinding {
+  return {
+    id: f.findingId,
+    kind: f.kind,
+    severity: f.severity,
+    summary: f.summary,
+    refs: f.refs,
+    detectedAt: f.detectedAt,
+    status: f.status,
+    escalated: f.escalated,
+    ...(f.note && { note: f.note }),
+    ...(f.explanation?.text && { explanation: f.explanation.text }),
+    ...(f.explanation?.suggestedCheck && { suggestedCheck: f.explanation.suggestedCheck }),
+  };
+}
