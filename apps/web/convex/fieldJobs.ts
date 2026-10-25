@@ -344,7 +344,13 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       pulls: ingested.pulls,
       tieOut: ingested.tieOut,
     });
-    if (!result.changed) return result;
+    // Field analyst after the ingest (and after recompute, which scans the log).
+    const analyst = () =>
+      ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, {
+        companyId,
+        changed: result.changed,
+      });
+    if (!result.changed) return analyst().then(() => result);
     try {
       const r = await ctx.runMutation(computedRefs.recompute, { companyId });
       await step({
@@ -363,6 +369,7 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
         summary: `Forecast recompute refused: ${message(error)}`,
       });
     }
+    await analyst();
     return result;
   } catch (error) {
     await step({
