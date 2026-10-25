@@ -1,0 +1,12 @@
+# FIELD simulate option
+- Goal: suggestion -> exact saved scenario and proposed fix -> editable Timeline comparison -> How we got here.
+- Base: checked current release plus run-trace backend/UI; keep each immutable input identity.
+- Own: apps/web/convex/fieldTimeline.ts and new fieldSuggestionSimulation.ts/tests; Field suggestion UI/adapters/tests; scoped Timeline entry/navigation links after friend merge.
+- Allowed: existing public Timeline baseline/workspace APIs, no schema/packages/contracts changes.
+- Use: pinned analyst snapshot/model/constraints and selected scenario changes plus candidate fix changes; never latest substitution or provider rerun.
+- Interaction: primary Simulate this option, secondary Dismiss; optional notes belong to saved plan, record-only legacy decisions remain readable.
+- Result: reuse deterministic saved what-if branches, compare risk scenario against proposed fix, label reuse and illustrative rules/facilities; books unchanged.
+- Edit: existing Timeline event/assumption editing, real run IDs, exact How links; no fake active agents.
+- Checks: stale identity and retry isolation, exact before/after engine results, focused UI/API tests, web/Convex tsc, browser after integration.
+- Rules: AGENTS, RUN-TRACES-CONTRACT, integer cents, no providers/secrets/heldout/main/servers/push.
+- Result: pending.
