@@ -22,9 +22,10 @@ import { Skeleton } from "../ui/skeleton";
 import { useFieldData } from "./data";
 import { byTime } from "./graph";
 import {
+  AnomalyPicker,
+  AutoIngestToggle,
   DataLabel,
   FINDING_LABEL,
-  FieldTabs,
   OPERATION_LABEL,
   SEVERITY_LABEL,
   SEVERITY_TONE,
@@ -32,7 +33,7 @@ import {
   timeAgo,
   useNow,
 } from "./parts";
-import type { Decision, FieldFinding, FieldOperation } from "./types";
+import type { Anomaly, Decision, FieldFinding, FieldOperation } from "./types";
 
 export function WorkerPage() {
   const data = useFieldData();
@@ -60,9 +61,9 @@ export function WorkerPage() {
             never moves money.
           </p>
         </div>
-        <FieldTabs />
       </header>
 
+      {data.needsSetup ? <SetupCard /> : null}
       <StatusStrip now={now} />
       <ActionBar />
 
@@ -105,14 +106,17 @@ function StatusStrip({ now }: { now: number }) {
         {
           label: "New entries arrived",
           value: timeAgo(status.feed.lastAdvanceAt, now),
-          note: status.feed.enabled ? "Mock feed on" : "Mock feed off",
+          note:
+            status.week !== undefined
+              ? `Mock books as of ${status.asOf ?? "unknown"} · week ${status.week}`
+              : status.feed.enabled
+                ? "Mock feed on"
+                : "Mock feed off",
         },
         {
           label: "Agent last ran",
           value: timeAgo(status.ingest.lastRunAt, now),
-          note: status.ingest.enabled
-            ? `Always on · ${status.ingest.lastStatus === "ok" ? "last run fine" : (status.ingest.lastStatus ?? "no runs yet")}`
-            : "Paused",
+          note: `${status.ingest.enabled ? "Auto ingest on" : "Auto ingest off"} · ${RUN_NOTE[status.ingest.lastStatus ?? ""] ?? status.ingest.lastStatus ?? "no runs yet"}`,
         },
         { label: "Sources read", value: String(status.counts.sources), note: "of 6 connected" },
         {
@@ -123,32 +127,75 @@ function StatusStrip({ now }: { now: number }) {
       ]
     : null;
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border md:grid-cols-4">
-      {(items ?? Array.from({ length: 4 }, () => null)).map((item, i) => (
-        <div key={item?.label ?? i} className="bg-card p-4">
-          {item ? (
-            <>
-              <dt className="text-xs text-muted-foreground">{item.label}</dt>
-              <dd className="mt-1 text-lg font-medium">{item.value}</dd>
-              <dd className="text-xs text-muted-foreground">{item.note}</dd>
-            </>
-          ) : (
-            <Skeleton className="h-14 w-full" />
-          )}
-        </div>
-      ))}
-    </dl>
+    <div className="space-y-2">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border md:grid-cols-4">
+        {(items ?? Array.from({ length: 4 }, () => null)).map((item, i) => (
+          <div key={item?.label ?? i} className="bg-card p-4">
+            {item ? (
+              <>
+                <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                <dd className="mt-1 text-lg font-medium">{item.value}</dd>
+                <dd className="text-xs text-muted-foreground">{item.note}</dd>
+              </>
+            ) : (
+              <Skeleton className="h-14 w-full" />
+            )}
+          </div>
+        ))}
+      </dl>
+      {status?.ingest.lastStatus === "failed" && status.lastError ? (
+        <p role="alert" className="text-sm text-[hsl(var(--danger-text))]">
+          Last ingest failed: {status.lastError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const RUN_NOTE: Record<string, string> = {
+  ok: "last run saved new entries",
+  no_change: "last run found nothing new",
+  failed: "last run failed",
+};
+
+function SetupCard() {
+  const { actions } = useFieldData();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <section className="rounded-xl border border-dashed p-4 text-sm">
+      <p>No live feed yet. Connect the six mock sources for a synthetic company to start.</p>
+      <Button
+        className="mt-3"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await actions.setup();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Setup failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Connect mock sources
+      </Button>
+      {error ? <p className="mt-2 text-[hsl(var(--danger-text))]">{error}</p> : null}
+    </section>
   );
 }
 
 type Busy = "feed" | "ingest" | "analysis" | "export" | null;
 
 function ActionBar() {
-  const { actions, source } = useFieldData();
+  const { actions, source, status, needsSetup } = useFieldData();
   const [busy, setBusy] = useState<Busy>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [seed, setSeed] = useState<string | null>(null);
-  const disabled = source === "loading" || busy !== null;
+  const [anomaly, setAnomaly] = useState<Anomaly | "">("");
+  const disabled = source === "loading" || needsSetup || busy !== null;
 
   async function run(kind: Exclude<Busy, null>, task: () => Promise<void>, done: string) {
     setBusy(kind);
@@ -174,19 +221,26 @@ function ActionBar() {
           onClick={() =>
             run(
               "feed",
-              actions.advanceFeed,
-              "New entries arrived in the mock feed. The agent picks them up on its next run.",
+              () => actions.advanceFeed(anomaly || undefined),
+              `New entries arrived in the mock feed${anomaly ? " with a planted anomaly" : ""}. ${status?.ingest.enabled ? "Auto ingest picks them up on its next run." : "Press Ingest now to read them."}`,
             )
           }
         >
           <Download aria-hidden="true" className="mr-2 size-4" />
           New entries arrive
         </Button>
+        <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={disabled} />
         <Button
           variant="outline"
           disabled={disabled}
           onClick={() =>
-            run("ingest", actions.ingestNow, "The agent ran and checked every source.")
+            run(
+              "ingest",
+              actions.ingestNow,
+              source === "live"
+                ? "Ingest queued. The agent reads every source; results appear below as they land."
+                : "The agent ran and checked every source.",
+            )
           }
         >
           <RefreshCw
@@ -224,6 +278,7 @@ function ActionBar() {
           <FileOutput aria-hidden="true" className="mr-2 size-4" />
           Export seed for simulation
         </Button>
+        <AutoIngestToggle />
         <Link
           href="/field/map"
           className="ml-auto inline-flex min-h-9 items-center gap-1 rounded text-sm text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
@@ -240,12 +295,16 @@ function ActionBar() {
       >
         {busy ? "Working..." : (message?.text ?? "")}
       </output>
-      <SeedDialog text={seed} onClose={() => setSeed(null)} />
+      <SeedDialog text={seed} demo={source === "demo"} onClose={() => setSeed(null)} />
     </section>
   );
 }
 
-function SeedDialog({ text, onClose }: { text: string | null; onClose: () => void }) {
+function SeedDialog({
+  text,
+  demo,
+  onClose,
+}: { text: string | null; demo: boolean; onClose: () => void }) {
   const [verdict, setVerdict] = useState<{ text: string; ok: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -276,7 +335,9 @@ function SeedDialog({ text, onClose }: { text: string | null; onClose: () => voi
         <DialogHeader>
           <DialogTitle>Seed for the simulation</DialogTitle>
           <DialogDescription>
-            The weekly books, scheduled payments and open flags, as the text the timeline reads.
+            {demo
+              ? "Demo data: the built-in Kestrel fixture seed, not exported from a backend."
+              : "The latest saved weekly books, scheduled payments and open or confirmed flags, exported by field.exportSeed as the text the timeline reads."}
           </DialogDescription>
         </DialogHeader>
         <p
@@ -355,6 +416,9 @@ function FindingCard({ finding, now }: { finding: FieldFinding; now: number }) {
           {SEVERITY_LABEL[finding.severity]}
         </span>
         <span className="font-medium">{FINDING_LABEL[finding.kind]}</span>
+        {finding.escalated ? (
+          <span className="text-muted-foreground">· escalated to you</span>
+        ) : null}
         <span className="text-muted-foreground">· found {timeAgo(finding.detectedAt, now)}</span>
       </div>
       <p className="mt-2 text-sm leading-6">{finding.summary}</p>

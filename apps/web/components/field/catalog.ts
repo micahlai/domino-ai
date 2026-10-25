@@ -39,6 +39,13 @@ export const BUILT_IN_AGENTS: AgentProfile[] = [
   },
 ];
 
+/** Log actors that are not AI agents, keyed like catalogKey(). Shown as plain descriptions. */
+export const OTHER_ACTORS: Record<string, string> = {
+  "mock-feed":
+    "Simulator, not an agent: moves the synthetic company forward a week and plants test anomalies on request.",
+  reviewer: "A person deciding a flag. Every decision is recorded with who made it.",
+};
+
 export type SourceProfile = { id: string; title: string; brief: string };
 
 export const BUILT_IN_SOURCES: SourceProfile[] = [

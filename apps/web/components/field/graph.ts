@@ -1,5 +1,5 @@
 import type { CanvasStatus } from "../investigate/types";
-import { BUILT_IN_AGENTS, BUILT_IN_SOURCES, catalogKey } from "./catalog";
+import { BUILT_IN_AGENTS, BUILT_IN_SOURCES, OTHER_ACTORS, catalogKey } from "./catalog";
 import type { FieldOperation } from "./types";
 
 // Brain map model: built only from the operation log plus the built-in catalog. Pure and
@@ -97,7 +97,7 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
       title: humanize(op.agent),
       brief: sub
         ? `Started by ${nodes.get(sub)?.title ?? "another agent"} to handle part of its work.`
-        : "An agent recorded in the activity log.",
+        : (OTHER_ACTORS[agentKey(op.agent)] ?? "An agent recorded in the activity log."),
       status: "idle",
       parentId: sub,
     }));
@@ -118,7 +118,8 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
       touch(tool, op, () => ({
         id: tool,
         kind: "tool",
-        title: humanize(op.tool ?? ""),
+        // Tool ids are code names (mock.billing.list); show them as recorded.
+        title: op.tool ?? "Unnamed",
         brief: "A tool an agent called.",
         status: "idle",
       }));

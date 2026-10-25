@@ -233,6 +233,10 @@ export function demoIngest(state: DemoState, now: string): DemoState {
   });
 }
 
+export function demoSetAutoIngest(state: DemoState, enabled: boolean): DemoState {
+  return { ...state, status: { ...state.status, ingest: { ...state.status.ingest, enabled } } };
+}
+
 export function demoDecide(
   state: DemoState,
   args: { findingId: string; decision: Decision; note: string },

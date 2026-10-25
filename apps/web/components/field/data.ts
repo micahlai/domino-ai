@@ -1,7 +1,6 @@
 "use client";
 
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { makeFunctionReference } from "convex/server";
 import {
   type ReactNode,
   createContext,
@@ -13,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { api } from "../../convex/_generated/api";
 import { weeklyFixtureText } from "../../lib/feature-boundary/verify";
 import {
   type DemoState,
@@ -20,31 +20,20 @@ import {
   demoDecide,
   demoIngest,
   demoRecordExport,
+  demoSetAutoIngest,
   initialDemoState,
 } from "./fixture";
-import type { FieldActions, FieldData, FieldFinding, FieldOperation, FieldStatus } from "./types";
+import { toFinding, toOperations, toStatus } from "./live";
+import type { FieldActions, FieldData } from "./types";
 
-// The one switch between the real field.* backend and labelled demo data. Pages call the hooks
-// at the bottom and never know which one they got, except through `source` for the label.
-// To wire the backend: fix the names in FIELD_API and the shape mapping in LiveData.
+// The one switch between the real field.* backend (convex/field.ts) and labelled demo data.
+// Demo data is used only when NEXT_PUBLIC_CONVEX_URL is empty; with a URL set, backend errors
+// show as errors instead of silently swapping in fake data.
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
-// Referenced by name so this compiles before convex/field exists in _generated.
-export const FIELD_API = {
-  status: makeFunctionReference<"query", Record<string, never>, FieldStatus>("field:status"),
-  log: makeFunctionReference<"query">("field:log"),
-  findings: makeFunctionReference<"query", Record<string, never>, FieldFinding[]>("field:findings"),
-  exportSeed: makeFunctionReference<"query", Record<string, never>, string>("field:exportSeed"),
-  decide: makeFunctionReference<"mutation", { findingId: string; decision: string; note: string }>(
-    "field:decide",
-  ),
-  ingestNow: makeFunctionReference<"mutation", Record<string, never>>("field:ingestNow"),
-  advanceFeed: makeFunctionReference<"mutation", Record<string, never>>("field:advanceFeed"),
-};
-
 const LOG_PAGE = 100;
-/** Demo only: the always-on agent picks up new entries after this short wait. */
+/** Demo only: with auto-ingest on, the demo agent picks up new entries after this short wait. */
 export const DEMO_AUTO_INGEST_MS = 1500;
 
 const noop = async () => {};
@@ -53,7 +42,14 @@ const LOADING: FieldData = {
   sourceNote: "Connecting to the backend",
   canLoadMore: false,
   loadMore: () => {},
-  actions: { decide: noop, ingestNow: noop, advanceFeed: noop, exportSeed: async () => "" },
+  actions: {
+    decide: noop,
+    ingestNow: noop,
+    advanceFeed: noop,
+    setAutoIngest: noop,
+    setup: noop,
+    exportSeed: async () => "",
+  },
 };
 
 const FieldContext = createContext<FieldData>(LOADING);
@@ -61,62 +57,74 @@ const FieldContext = createContext<FieldData>(LOADING);
 export function FieldDataProvider({ children }: { children: ReactNode }) {
   if (!CONVEX_URL)
     return createElement(DemoFieldData, { note: "Backend not configured", children });
-  return createElement(ProbedData, null, children);
-}
-
-/** Try field.status once. Missing functions (backend not deployed yet) fall back to demo data. */
-function ProbedData({ children }: { children: ReactNode }) {
-  const client = useConvex();
-  const [probe, setProbe] = useState<"checking" | "live" | "missing">("checking");
-  useEffect(() => {
-    let alive = true;
-    client.query(FIELD_API.status, {}).then(
-      () => alive && setProbe("live"),
-      () => alive && setProbe("missing"),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [client]);
-  if (probe === "live") return createElement(LiveData, null, children);
-  if (probe === "missing")
-    return createElement(DemoFieldData, { note: "Field backend not available yet", children });
-  return createElement(FieldContext.Provider, { value: LOADING }, children);
+  return createElement(LiveData, null, children);
 }
 
 function LiveData({ children }: { children: ReactNode }) {
   const client = useConvex();
-  const status = useQuery(FIELD_API.status, {});
-  const findings = useQuery(FIELD_API.findings, {});
-  const log = usePaginatedQuery(FIELD_API.log, {}, { initialNumItems: LOG_PAGE });
-  const decide = useMutation(FIELD_API.decide);
-  const ingestNow = useMutation(FIELD_API.ingestNow);
-  const advanceFeed = useMutation(FIELD_API.advanceFeed);
-  const actions = useMemo<FieldActions>(
-    () => ({
-      decide: async (args) => {
-        await decide(args);
+  // field.status with no companyId follows the newest live feed.
+  const status = useQuery(api.field.status, {});
+  const companyId = status?.companyId;
+  const open = useQuery(api.field.findings, companyId ? { companyId, status: "open" } : "skip");
+  const approved = useQuery(
+    api.field.findings,
+    companyId ? { companyId, status: "approved" } : "skip",
+  );
+  const rejected = useQuery(
+    api.field.findings,
+    companyId ? { companyId, status: "rejected" } : "skip",
+  );
+  const log = usePaginatedQuery(api.field.log, companyId ? { companyId } : "skip", {
+    initialNumItems: LOG_PAGE,
+  });
+  const decide = useMutation(api.field.decide);
+  const ingestNow = useMutation(api.field.ingestNow);
+  const advanceFeed = useMutation(api.field.advanceFeed);
+  const setAutoIngest = useMutation(api.field.setAutoIngest);
+  const setup = useMutation(api.field.setup);
+  const actions = useMemo<FieldActions>(() => {
+    const need = () => {
+      if (!companyId) throw new Error("Connect the mock sources first");
+      return companyId;
+    };
+    return {
+      decide: async ({ findingId, decision, note }) => {
+        await decide({ companyId: need(), findingId, decision, ...(note && { note }) });
       },
       ingestNow: async () => {
-        await ingestNow({});
+        await ingestNow({ companyId: need() });
       },
-      advanceFeed: async () => {
-        await advanceFeed({});
+      advanceFeed: async (anomaly) => {
+        await advanceFeed({ companyId: need(), ...(anomaly && { anomaly }) });
       },
-      exportSeed: () => client.query(FIELD_API.exportSeed, {}),
-    }),
-    [client, decide, ingestNow, advanceFeed],
-  );
+      setAutoIngest: async (enabled) => {
+        await setAutoIngest({ companyId: need(), enabled });
+      },
+      setup: async () => {
+        await setup({});
+      },
+      exportSeed: async () =>
+        (await client.query(api.field.exportSeed, { companyId: need() })).json,
+    };
+  }, [client, companyId, decide, ingestNow, advanceFeed, setAutoIngest, setup]);
+  const loaded = log.status !== "LoadingFirstPage";
   const operations = useMemo(
-    () => (log.status === "LoadingFirstPage" ? undefined : (log.results as FieldOperation[])),
-    [log.results, log.status],
+    () => (loaded ? toOperations(log.results) : undefined),
+    [log.results, loaded],
   );
+  const findings = useMemo(
+    () =>
+      open && approved && rejected ? [...open, ...approved, ...rejected].map(toFinding) : undefined,
+    [open, approved, rejected],
+  );
+  const needsSetup = status === null;
   const value: FieldData = {
-    source: "live",
+    source: status === undefined ? "loading" : "live",
     sourceNote: "Live backend",
-    status,
-    findings,
-    operations,
+    status: status && loaded ? toStatus(status, log.results) : undefined,
+    needsSetup,
+    findings: needsSetup ? [] : findings,
+    operations: needsSetup ? [] : operations,
     canLoadMore: log.status === "CanLoadMore",
     loadMore: () => log.loadMore(LOG_PAGE),
     actions,
@@ -132,6 +140,7 @@ export function DemoFieldData({ note, children }: { note: string; children: Reac
     setState(initialDemoState(new Date(Date.now() - 3 * 3_600_000).toISOString()));
   }, []);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const auto = useRef(true);
   useEffect(() => () => clearTimeout(timer.current), []);
   const apply = useCallback((change: (s: DemoState, now: string) => DemoState) => {
     setState((s) => (s ? change(s, new Date().toISOString()) : s));
@@ -140,12 +149,17 @@ export function DemoFieldData({ note, children }: { note: string; children: Reac
     () => ({
       decide: async (args) => apply((s, now) => demoDecide(s, args, now)),
       ingestNow: async () => apply(demoIngest),
+      // Demo ignores the anomaly choice: its batches carry their own scripted flags.
       advanceFeed: async () => {
         apply(demoAdvanceFeed);
-        // The real agent is always on; in the demo it notices the new entries shortly after.
         clearTimeout(timer.current);
-        timer.current = setTimeout(() => apply(demoIngest), DEMO_AUTO_INGEST_MS);
+        if (auto.current) timer.current = setTimeout(() => apply(demoIngest), DEMO_AUTO_INGEST_MS);
       },
+      setAutoIngest: async (enabled) => {
+        auto.current = enabled;
+        apply((s) => demoSetAutoIngest(s, enabled));
+      },
+      setup: noop,
       exportSeed: async () => {
         apply(demoRecordExport);
         return weeklyFixtureText("validKestrelWeeklySeed");
