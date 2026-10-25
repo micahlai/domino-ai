@@ -1,6 +1,6 @@
 # Timeline roadmap
 
-Owner: friend and their feature lead, on checkpoint branches in `../domino-timeline` (stable smoke preview: `TL5-checkpoint`; background integration: `TL7-checkpoint`; lane base: `timeline/main`). Scope: [BRIEF.md](BRIEF.md), [weekly vision](../../spec/weekly-product-vision-2026-10-24.md), with the user's 2026-10-24 clarification below. Inventory checked at split base `ffdb603`. This is the active implementation roadmap for this lane; older global status pages have not been rewritten.
+Owner: friend and their feature lead, on checkpoint branches in `../domino-timeline` (published stable smoke preview: `TL7-checkpoint`; chat integration: `TL9-chat-checkpoint`; lane base: `timeline/main`). Scope: [BRIEF.md](BRIEF.md), [weekly vision](../../spec/weekly-product-vision-2026-10-24.md), with the user's 2026-10-24 clarification below. Inventory checked at split base `ffdb603`. This is the active implementation roadmap for this lane; older global status pages have not been rewritten.
 
 ## Primary user journey
 
@@ -15,7 +15,7 @@ Open a timeline built from existing company data -> select a date, item or scena
 
 ## Current implementation
 
-TL1–TL5 are implemented and locally accepted on `TL5-checkpoint`. [Acceptance evidence](TL5-acceptance.md) is the source for checks, runtime results and limits; [smoke tests](SMOKE-TESTS.md) gives the user walkthrough.
+TL1–TL7 are implemented, locally accepted and published on `TL7-checkpoint` (renamed from `TL5-checkpoint`). [Acceptance evidence](TL5-acceptance.md) is the source for checks, runtime results and limits; [smoke tests](SMOKE-TESTS.md) gives the user walkthrough.
 
 | Area | Implemented | Remaining |
 | --- | --- | --- |
