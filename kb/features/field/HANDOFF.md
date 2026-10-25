@@ -13,11 +13,11 @@
 | field/swarms `../domino-field-swarms` | Audit swarm (parallel checkers), forecasting swarm, advisor only on breach -> `fieldSuggestions.list/decide`, growing Apify toolbox (Store search -> tools table) | in progress |
 | field/judge-simple `../domino-field-judge-simple` | /judge 3 steps: pick company health -> pick sources -> watch map grow + Play + 3 surprise presets | in progress |
 | field/worker-page `../domino-field-worker-page` | /field: Suggestions (accept/decline, records only) -> Risks we're watching -> Flags to review | in progress |
-| field/convex-depth `../domino-field-convex` | Signed vendor webhooks via httpAction -> immediate ingestion; optimistic confirm/dismiss. Presence and Cmd-K were scrapped. | in progress |
+| field/convex-depth `../domino-field-convex` | Signed vendor webhooks via httpAction -> immediate ingestion; optimistic confirm/dismiss. Presence and Cmd-K were scrapped. | MERGED into field/main (dff349e) |
 Each brief's acceptance: tsc (web + `-p convex`), vitest, biome on changed files, `pnpm --filter @domino/web build`, isolated local Convex on free ports for smoke, screenshots in the Claude scratchpad. Commit with a Co-Authored-By trailer.
 
 ## Merge order after they finish
-convex-depth -> swarms -> worker-page (consumes fieldSuggestions) -> judge-simple -> timeline-ux. Resolve schema table-count test, api.d.ts registrations (let convex dev regenerate), AppShell/nav.
+(convex-depth done) swarms -> worker-page (consumes fieldSuggestions) -> judge-simple -> timeline-ux. Resolve schema table-count test, api.d.ts registrations (let convex dev regenerate), AppShell/nav.
 
 ## Next queue
 - Convex priority 2: Workpool for swarms (if not done), rate-limiter + action-cache components replacing hand-rolled AI budget/Apify cache; priority 3 Workflow component for the ingest pipeline.
@@ -28,3 +28,7 @@ convex-depth -> swarms -> worker-page (consumes fieldSuggestions) -> judge-simpl
 
 ## Rules
 Integer cents; engine pure; agents never compute money; a person approves every action; Domino never moves money; no secrets printed or committed; never touch main; no destructive git without asking Jayden.
+
+## Gotchas
+- The live convex dev regenerates apps/web/convex/_generated/api.d.ts (formatting differs from hand merges). Before `git merge --ff-only` in ../domino-field, commit or `git checkout --` that file.
+- Full vitest can time out a few convex tests while other workers run tests in parallel; rerun the failing files alone before treating them as real.
