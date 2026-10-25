@@ -147,7 +147,7 @@ function SuggestionCard({
           Suggested by <span className="font-medium text-foreground">{s.by}</span>
         </p>
         <Badge variant={effect.stays ? "success" : "destructive"}>
-          {effect.stays ? "Keeps you above the minimum" : "Still below the minimum"}
+          {effect.stays ? "Passes all lender checks" : "Some lender checks still fail"}
         </Badge>
       </div>
       <h3 id={`${id}-title`} className="mt-1 text-[15px] font-semibold leading-6">

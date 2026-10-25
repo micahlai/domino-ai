@@ -93,7 +93,7 @@ describe("worker page sections", () => {
     expect(html).toContain("Engine advisors");
     expect(html).toContain("$1.8M"); // lowest cash now
     expect(html).toContain("$3M"); // with the fix, and the lender's minimum
-    expect(html).toContain("Keeps you above the minimum");
+    expect(html).toContain("Passes all lender checks");
     expect(html).toContain(">Accept<");
     expect(html).toContain(">Decline<");
     expect(html).toContain("Accepting records your decision. Domino never moves money.");
