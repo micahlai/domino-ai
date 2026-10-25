@@ -21,6 +21,9 @@ const LANES = {
     "historicalRevealReceipts",
     "historicalActivity",
     "timelineBaselines",
+    "timelineRuns",
+    "timelineRunRequests",
+    "timelineQuestions",
   ],
   field: [
     "companies",
@@ -71,6 +74,18 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
     ["by_company_and_requestId", ["companyId", "requestId"]],
     ["by_company_and_seedId", ["companyId", "seedId"]],
   ],
+  // TL1C-TL4: additive Timeline tables.
+  timelineRuns: [
+    ["by_company_and_runId", ["companyId", "runId"]],
+    ["by_company_and_requestId", ["companyId", "requestId"]],
+    ["by_company_and_baselineRunId", ["companyId", "baselineRunId"]],
+    ["by_company", ["companyId"]],
+  ],
+  timelineQuestions: [
+    ["by_company_and_requestId", ["companyId", "requestId"]],
+    ["by_company_and_runId", ["companyId", "runId"]],
+  ],
+  timelineRunRequests: [["by_company_and_requestId", ["companyId", "requestId"]]],
   investigationRequests: [["by_requestId", ["requestId"]]],
   investigationConversations: [
     ["by_conversationId", ["conversationId"]],
@@ -89,7 +104,7 @@ describe("schema composition", () => {
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
     const all = [...LANES.timeline, ...LANES.field];
-    expect(new Set(all).size).toBe(23);
+    expect(new Set(all).size).toBe(26);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });
 
