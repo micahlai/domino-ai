@@ -222,7 +222,7 @@ describe("saved scenario comparisons", () => {
         onSelectWeek={() => undefined}
       />,
     );
-    expect(html).toContain("Drag the handles to zoom");
+    expect(html).toContain("Swipe to scroll · drag the handles to zoom");
     // A matching vertical scroller zooms and pans the cash axis.
     expect(html).toContain('data-testid="cash-range-top"');
     expect(html).toContain('data-testid="cash-range-bottom"');
@@ -236,6 +236,38 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain("Week starting");
     expect(html).toContain("Usable cash</text>");
     expect(html.match(/data-testid="time-grid"/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("forks a branch that differs from the first forecast week at the last recorded week", () => {
+    const history = fixtureRoot.baseline.history;
+    const html = renderToStaticMarkup(
+      <WorkspaceChart
+        history={history}
+        forecast={fixtureRoot.forecast}
+        comparisons={[
+          {
+            runId: "early",
+            label: "Early",
+            forecast: fixtureScenario.forecast,
+            href: "/early",
+            color: SCENARIO_COLORS[1],
+            fromIndex: -1,
+          },
+        ]}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+      />,
+    );
+    const line = html.match(/data-run-id="early"[^]*?<path d="M([\d.]+),([\d.]+)/);
+    const recorded = html.match(
+      /<path d="M[^"]*?L([\d.]+),([\d.]+)" fill="none" class="stroke-clay"/,
+    );
+    expect(line?.[1]).toBeDefined();
+    // The branch's first point is the last recorded week, so it never floats loose.
+    expect(line?.[1]).toBe(recorded?.[1]);
+    expect(line?.[2]).toBe(recorded?.[2]);
   });
 
   it("omits a branch that never leaves the line it builds on", () => {

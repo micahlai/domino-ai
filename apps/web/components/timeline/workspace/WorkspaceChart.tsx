@@ -22,7 +22,10 @@ export type ChartProps = {
     parent?: boolean;
     /** Solid line in this color; without one the line is a gray dash. */
     color?: string;
-    /** Forecast week the line starts from (its fork); null when it never leaves its anchor. */
+    /**
+     * Forecast week the line starts from (its fork); -1 forks from the last recorded week, which
+     * every line shares; null when it never leaves its anchor.
+     */
     fromIndex?: number | null;
     /** First date the scenario's own changes act, shown in the legend. */
     startsOn?: string | null;
@@ -41,6 +44,7 @@ export type ChartProps = {
 };
 
 const DEFAULT_W = 880;
+const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Phones open on the last two months of history so the forecast gets most of the width. */
 const RECENT_WEEKS = 8;
@@ -151,7 +155,8 @@ export function WorkspaceChart(p: ChartProps) {
   // A forked line starts at its fork week; an unforked (legacy) line joins the last recorded week.
   const comparisonPoints = (entry: (typeof comparisons)[number]): Point[] => {
     const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
-    if (entry.fromIndex === undefined) return lastPast ? [lastPast, ...points] : points;
+    if (entry.fromIndex === undefined || entry.fromIndex === -1)
+      return lastPast ? [lastPast, ...points] : points;
     return entry.fromIndex === null ? [] : points.slice(entry.fromIndex);
   };
   const rawToday = off > 0 ? (x(off - 1) + x(off)) / 2 : x(0);
@@ -184,6 +189,61 @@ export function WorkspaceChart(p: ChartProps) {
   ];
   const anyBreach = breachedWeeks.size > 0 || notes.some((n) => "dot" in n);
 
+  // Trackpad: two-finger swipes pan time and cash; a pinch zooms time around the pointer. The
+  // scrollers set the scale. At an edge the swipe goes back to the page, so it never traps it.
+  const panCarry = useRef(0);
+  const onWheel = useRef<(e: WheelEvent) => void>(() => undefined);
+  onWheel.current = (e) => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = rect.width / W;
+    const span = viewEnd - viewStart;
+    if (e.ctrlKey) {
+      const nextSpan = clampTo(Math.round(span * Math.exp(e.deltaY * 0.01)), MIN_SPAN, lastSlot);
+      e.preventDefault();
+      if (nextSpan === span) return;
+      const ratio = clampTo(
+        ((e.clientX - rect.left) / px - plotLeft) / (plotRight - plotLeft),
+        0,
+        1,
+      );
+      const anchorSlot = viewStart + ratio * span;
+      const start = clampTo(Math.round(anchorSlot - ratio * nextSpan), 0, lastSlot - nextSpan);
+      setView(start === 0 && nextSpan === lastSlot ? null : [start, start + nextSpan]);
+      return;
+    }
+    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey;
+    const dx = sideways ? e.deltaX || e.deltaY : 0;
+    const dy = sideways ? 0 : e.deltaY;
+    if (dx && span < lastSlot) {
+      panCarry.current += (dx / ((plotRight - plotLeft) * px)) * span;
+      const steps = Math.trunc(panCarry.current);
+      const start = clampTo(viewStart + steps, 0, lastSlot - span);
+      if (start !== viewStart || Math.abs(panCarry.current) < 1) e.preventDefault();
+      if (steps) {
+        panCarry.current -= steps;
+        setView([start, start + span]);
+      }
+    }
+    const height = domainHi - domainLo;
+    if (dy && height < cashExtent[1] - cashExtent[0]) {
+      // Swiping up (natural scrolling) moves to lower amounts, like scrolling down a page.
+      const cents = Math.round((dy / ((H - PAD.top - PAD.bottom) * px)) * height);
+      const lo = clampTo(domainLo - cents, cashExtent[0], cashExtent[1] - height);
+      if (lo === domainLo) return;
+      e.preventDefault();
+      setCashView([lo, lo + height]);
+    }
+  };
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => onWheel.current(e);
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, [wrapRef]);
+
   // Hover details for any drawn week (recorded or forecast); index is a slot on the x axis.
   const hovered =
     hover === null
@@ -203,7 +263,7 @@ export function WorkspaceChart(p: ChartProps) {
   return (
     <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
       <div className="flex min-w-0 items-start gap-2" data-testid="chart-scale">
-        <div ref={wrapRef} className="relative min-w-0 max-w-full flex-1">
+        <div ref={wrapRef} className="relative min-w-0 max-w-full flex-1 overscroll-contain">
           <svg
             id={`${clipId}-chart`}
             viewBox={`0 0 ${W} ${H}`}
@@ -803,7 +863,7 @@ function RangeBar({
           {dates[end] ? formatFullDate(dates[end]) : ""}
         </span>
         {full ? (
-          <span>Drag the handles to zoom</span>
+          <span>Swipe to scroll · drag the handles to zoom</span>
         ) : (
           <button
             type="button"

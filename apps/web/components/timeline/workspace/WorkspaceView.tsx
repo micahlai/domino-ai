@@ -175,7 +175,8 @@ export function WorkspaceView({
         forecast: read.value.forecast,
         color: colorFor(selection, id),
         // Drawn from the last week it still matches its anchor, so the branch leaves that line.
-        fromIndex: diverges < 0 ? null : Math.max(0, diverges - 1),
+        // A branch that differs from the first forecast week forks from the last recorded week (-1).
+        fromIndex: diverges < 0 ? null : diverges - 1,
         startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
         breaches: breachesOf(read.value),
       },
