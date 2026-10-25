@@ -17,6 +17,7 @@ describe("operating source panel", () => {
     expect(html).toContain("Cash-flow adjustment less balance increase; composition unknown");
     expect(html).toContain("not a reported bill ledger");
     expect(html).toContain("Future bill costs not allocated from closing payables");
+    expect(html).not.toContain("Deferred-liability scope adjustment");
   });
 
   it("labels a secondary company as fictional and omits the 2U AP bridge", () => {
@@ -26,6 +27,7 @@ describe("operating source panel", () => {
     expect(html).toContain("derived from reported");
     expect(html).toContain("Synthetic opening and closing receivables");
     expect(html).not.toContain("2U payables and accruals bridge");
+    expect(html).not.toContain("Deferred-liability scope adjustment");
   });
 
   it.each([
@@ -49,4 +51,15 @@ describe("operating source panel", () => {
       expect(context.currentLedger?.basis).toBe("reconstructed");
     },
   );
+
+  it("labels GitLab's rounded customer-advance scope adjustment without claiming cash or invoices", () => {
+    const context = operatingProvenance({ company: "gitlab-current", scenario: "baseline" });
+    const html = renderToStaticMarkup(<SourceContents context={context} />);
+    expect(context.accrualBridge.deferredRevenueAdjustmentCents).toBeGreaterThan(0);
+    expect(html).toContain(
+      "Deferred-liability scope adjustment (reconstructed from rounded disclosure)",
+    );
+    expect(html).toContain("Opening advances are unknown");
+    expect(html).toContain("does not represent an actual period cash receipt or a real invoice");
+  });
 });

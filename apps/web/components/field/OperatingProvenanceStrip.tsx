@@ -76,6 +76,10 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
   const r = context.reconciliation;
   const catalog = operatingDemoCatalog.find((item) => item.id === context.company);
   const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
+  const deferredLiabilityAdjustment =
+    "deferredRevenueAdjustmentCents" in context.accrualBridge
+      ? context.accrualBridge.deferredRevenueAdjustmentCents
+      : undefined;
   const cashLabel = "combined cash including restricted";
   const terms = [
     [`Opening ${cashLabel}`, r.openingCashCents],
@@ -183,6 +187,20 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
               </div>
             ))}
           </dl>
+        </div>
+      ) : null}
+      {typeof deferredLiabilityAdjustment === "number" ? (
+        <div>
+          <p className="font-medium">Deferred-liability scope adjustment</p>
+          <p className="mt-1 text-muted-foreground">
+            Reconstructed from a rounded disclosure of customer advances included in the closing
+            liability balance. Opening advances are unknown. This adjustment does not represent an
+            actual period cash receipt or a real invoice.
+          </p>
+          <p className="mt-2 tabular-nums">
+            Deferred-liability scope adjustment (reconstructed from rounded disclosure):{" "}
+            {formatCents(deferredLiabilityAdjustment)}
+          </p>
         </div>
       ) : null}
       {context.payablesBridge ? (
