@@ -3,7 +3,7 @@
 import type { Forecast, HistoryWeek, ScheduledItem } from "@domino/contracts";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
-import { useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { Segmented } from "../../ui/segmented";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
@@ -42,9 +42,11 @@ export type ChartProps = {
 };
 
 const DEFAULT_W = 880;
-type TimeWindow = "auto" | "all" | "recent" | "forecast";
 type CashRange = "fit" | "zero";
+/** Phones open on the last two months of history so the forecast gets most of the width. */
 const RECENT_WEEKS = 8;
+/** The narrowest window the range bar allows, in weeks. */
+const MIN_SPAN = 4;
 const DASHES = ["6 4", "2 4", "10 3 2 3"] as const;
 
 type Point = { x: number; y: number };
@@ -71,30 +73,35 @@ function useWidth() {
  */
 export function WorkspaceChart(p: ChartProps) {
   const titleId = useId();
+  const clipId = `${titleId.replace(/:/g, "")}-plot`;
   const [wrapRef, W] = useWidth();
   const compact = W < 560;
   const H = compact ? 280 : 340;
   const PAD = { right: compact ? 12 : 20, top: 30, bottom: 52 };
   const [hover, setHover] = useState<number | null>(null);
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>("auto");
+  const [chosenView, setView] = useState<[number, number] | null>(null);
   const [cashRange, setCashRange] = useState<CashRange>("fit");
-  // Phones default to the last two months of history so the forecast gets most of the width.
-  const shownWindow = timeWindow === "auto" ? (compact ? "recent" : "all") : timeWindow;
-  const history =
-    shownWindow === "forecast"
-      ? []
-      : shownWindow === "recent"
-        ? p.history.slice(-RECENT_WEEKS)
-        : p.history;
+  const history = p.history;
   const weeks = p.forecast.weeks;
   const comparisons = (p.comparisons ?? []).slice(0, 6);
   const mainLabel = p.forecastLabel ?? "This scenario";
   const slots = history.length + weeks.length;
+  const off = history.length;
+  const lastSlot = Math.max(slots - 1, 1);
+  // The visible window, in slots (recorded weeks then forecast weeks), set by the range bar.
+  const [viewStart, viewEnd] = chosenView ?? [
+    compact ? Math.max(0, off - RECENT_WEEKS) : 0,
+    lastSlot,
+  ];
+  const visible = (slot: number) => slot >= viewStart && slot <= viewEnd;
+  const forecastIn = (series: { usable: number }[]) =>
+    series.filter((_, i) => visible(off + i)).map((w) => w.usable);
   const values = [
-    ...history.map((h) => h.usable),
-    ...weeks.map((w) => w.usable),
-    ...(!p.comparisons ? (p.parent?.weeks.map((w) => w.usable) ?? []) : []),
-    ...comparisons.flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)),
+    // The cash axis fits only the weeks in view, so zooming in also zooms the cash scale.
+    ...history.filter((_, i) => visible(i)).map((h) => h.usable),
+    ...forecastIn(weeks),
+    ...(!p.comparisons ? forecastIn(p.parent?.weeks ?? []) : []),
+    ...comparisons.flatMap((entry) => forecastIn(entry.forecast.weeks)),
     ...p.limits.map((l) => l.cents),
     // "From $0" keeps the true size of a change visible; "Fit" zooms into the lines shown.
     ...(cashRange === "zero" ? [0] : []),
@@ -108,16 +115,20 @@ export function WorkspaceChart(p: ChartProps) {
   const left =
     18 + Math.max(44, ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 14));
   const dates = [...history.map((week) => week.weekStart), ...weeks.map((week) => week.weekStart)];
-  const timeTicks = dateTicks(dates, compact ? 4 : W < 820 ? 6 : 9);
+  const timeTicks = dateTicks(
+    dates.slice(viewStart, viewEnd + 1),
+    compact ? 4 : W < 820 ? 6 : 9,
+  ).map((tick) => ({ ...tick, index: tick.index + viewStart }));
   const x = scaleLinear()
-    .domain([0, Math.max(slots - 1, 1)])
+    .domain([viewStart, Math.max(viewEnd, viewStart + 1)])
     .range([left, W - PAD.right]);
+  const plotLeft = left;
+  const plotRight = W - PAD.right;
   const step = slots > 1 ? x(1) - x(0) : 28;
   const draw = line<Point>()
     .x((d) => d.x)
     .y((d) => d.y);
   const at = (i: number, cents: number): Point => ({ x: x(i), y: y(cents) });
-  const off = history.length;
   const past = history.map((h, i) => at(i, h.usable));
   const future = weeks.map((w, i) => at(off + i, w.usable));
   const parentLine = p.parent?.weeks.map((w, i) => at(off + i, w.usable)) ?? [];
@@ -128,7 +139,10 @@ export function WorkspaceChart(p: ChartProps) {
     if (entry.fromIndex === undefined) return lastPast ? [lastPast, ...points] : points;
     return entry.fromIndex === null ? [] : points.slice(entry.fromIndex);
   };
-  const todayX = off > 0 ? (x(off - 1) + x(off)) / 2 : x(0);
+  const rawToday = off > 0 ? (x(off - 1) + x(off)) / 2 : x(0);
+  // The recorded/forecast divider stays at the plot edge when it is scrolled out of view.
+  const todayX = Math.min(plotRight, Math.max(plotLeft, rawToday));
+  const todayInView = rawToday > plotLeft && rawToday < plotRight;
   const itemsByWeek = new Map<string, number>();
   for (const it of p.items) itemsByWeek.set(it.dueWeek, (itemsByWeek.get(it.dueWeek) ?? 0) + 1);
   const selectedIndex = weeks.findIndex((w) => w.weekStart === p.selectedWeek);
@@ -175,21 +189,6 @@ export function WorkspaceChart(p: ChartProps) {
     <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="chart-scale">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Time</span>
-          <Segmented
-            label="Time shown"
-            name={`${titleId}-time`}
-            value={shownWindow}
-            onChange={(v) => setTimeWindow(v)}
-            options={[
-              { value: "all", label: "All history" },
-              { value: "recent", label: `Last ${RECENT_WEEKS} weeks` },
-              { value: "forecast", label: "Forecast only" },
-            ]}
-            className="[&>label>span]:h-7 [&>label>span]:px-2 [&>label>span]:text-xs"
-          />
-        </div>
-        <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Cash</span>
           <Segmented
             label="Cash range"
@@ -206,6 +205,7 @@ export function WorkspaceChart(p: ChartProps) {
       </div>
       <div ref={wrapRef} className="relative min-w-0 max-w-full">
         <svg
+          id={`${clipId}-chart`}
           viewBox={`0 0 ${W} ${H}`}
           className="block h-auto w-full touch-pan-y select-none"
           role="img"
@@ -215,6 +215,17 @@ export function WorkspaceChart(p: ChartProps) {
           <title
             id={titleId}
           >{`Usable cash: ${history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatExactCents(low.usable)}.`}</title>
+          {/* Lines are drawn for every week and clipped to the plot, so panning stays smooth. */}
+          <defs>
+            <clipPath id={clipId}>
+              <rect
+                x={plotLeft - 6}
+                y={PAD.top - 10}
+                width={plotRight - plotLeft + 12}
+                height={H - PAD.bottom - PAD.top + 16}
+              />
+            </clipPath>
+          </defs>
           <rect
             x={todayX}
             y={PAD.top - 6}
@@ -297,7 +308,7 @@ export function WorkspaceChart(p: ChartProps) {
             ))}
           </g>
           <g pointerEvents="none" className="text-[11px]">
-            {off > 0 ? (
+            {off > 0 && todayX - plotLeft > 64 ? (
               <text
                 x={todayX - 8}
                 y={PAD.top - 12}
@@ -307,17 +318,21 @@ export function WorkspaceChart(p: ChartProps) {
                 Recorded
               </text>
             ) : null}
-            <text x={todayX + 8} y={PAD.top - 12} className="fill-foreground font-medium">
-              Next {weeks.length} weeks
-            </text>
-            <line
-              x1={todayX}
-              x2={todayX}
-              y1={PAD.top - 22}
-              y2={H - PAD.bottom}
-              className="stroke-muted-foreground/60"
-              strokeDasharray="3 3"
-            />
+            {plotRight - todayX > 96 ? (
+              <text x={todayX + 8} y={PAD.top - 12} className="fill-foreground font-medium">
+                Next {weeks.length} weeks
+              </text>
+            ) : null}
+            {todayInView ? (
+              <line
+                x1={todayX}
+                x2={todayX}
+                y1={PAD.top - 22}
+                y2={H - PAD.bottom}
+                className="stroke-muted-foreground/60"
+                strokeDasharray="3 3"
+              />
+            ) : null}
           </g>
           {p.limits.map((l) => (
             <g key={l.id} data-testid={`limit-${l.id}`} pointerEvents="none">
@@ -339,156 +354,159 @@ export function WorkspaceChart(p: ChartProps) {
               </text>
             </g>
           ))}
-          {past.length > 1 ? (
-            <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
-          ) : null}
-          {parentLine.length > 1 && !p.comparisons ? (
-            <path
-              d={draw(lastPast ? [lastPast, ...parentLine] : parentLine) ?? ""}
-              fill="none"
-              className="stroke-muted-foreground"
-              strokeWidth={1.5}
-              strokeDasharray={DASHES[0]}
-              data-testid="parent-line"
-            />
-          ) : null}
-          {comparisons.map((entry, index) => {
-            const points = comparisonPoints(entry);
-            if (points.length < 2) return null;
-            const fork =
-              entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
-            return (
-              <g
-                key={entry.runId}
-                pointerEvents="none"
-                data-testid={entry.parent ? "parent-line" : "comparison-line"}
-                data-run-id={entry.runId}
-              >
-                <path
-                  d={draw(points) ?? ""}
-                  fill="none"
-                  className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
-                  stroke={entry.color}
-                  strokeWidth={entry.color ? 2.25 : 1.5}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
-                />
-                {fork ? (
-                  <circle
-                    cx={fork.x}
-                    cy={fork.y}
-                    r={4}
-                    fill={entry.color}
-                    className="stroke-card"
-                    strokeWidth={2}
-                    data-testid="fork-point"
+          <g clipPath={`url(#${clipId})`}>
+            {past.length > 1 ? (
+              <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
+            ) : null}
+            {parentLine.length > 1 && !p.comparisons ? (
+              <path
+                d={draw(lastPast ? [lastPast, ...parentLine] : parentLine) ?? ""}
+                fill="none"
+                className="stroke-muted-foreground"
+                strokeWidth={1.5}
+                strokeDasharray={DASHES[0]}
+                data-testid="parent-line"
+              />
+            ) : null}
+            {comparisons.map((entry, index) => {
+              const points = comparisonPoints(entry);
+              if (points.length < 2) return null;
+              const fork =
+                entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
+              return (
+                <g
+                  key={entry.runId}
+                  pointerEvents="none"
+                  data-testid={entry.parent ? "parent-line" : "comparison-line"}
+                  data-run-id={entry.runId}
+                >
+                  <path
+                    d={draw(points) ?? ""}
+                    fill="none"
+                    className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
+                    stroke={entry.color}
+                    strokeWidth={entry.color ? 2.25 : 1.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
                   />
-                ) : null}
-              </g>
-            );
-          })}
-          <path
-            d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
-            fill="none"
-            className="stroke-primary"
-            data-testid="forecast-line"
-            strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
-          />
-          {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
-          <g pointerEvents="none">
-            {weeks.map((w, i) =>
-              itemsByWeek.get(w.weekStart) ? (
-                <circle
-                  key={w.weekStart}
-                  cx={(future[i] as Point).x}
-                  cy={H - PAD.bottom}
-                  r={2.5}
-                  className="fill-muted-foreground/70"
-                  data-testid={`item-mark-${w.weekStart}`}
-                />
-              ) : null,
-            )}
-          </g>
-          {selectedIndex >= 0 ? (
-            <line
-              x1={x(off + selectedIndex)}
-              x2={x(off + selectedIndex)}
-              y1={PAD.top}
-              y2={H - PAD.bottom}
-              className="stroke-foreground/50"
-              strokeDasharray="2 3"
-              pointerEvents="none"
+                  {fork ? (
+                    <circle
+                      cx={fork.x}
+                      cy={fork.y}
+                      r={4}
+                      fill={entry.color}
+                      className="stroke-card"
+                      strokeWidth={2}
+                      data-testid="fork-point"
+                    />
+                  ) : null}
+                </g>
+              );
+            })}
+            <path
+              d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
+              fill="none"
+              className="stroke-primary"
+              data-testid="forecast-line"
+              strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
             />
-          ) : null}
-          {hover !== null && hover !== off + selectedIndex ? (
-            <line
-              x1={x(hover)}
-              x2={x(hover)}
-              y1={PAD.top}
-              y2={H - PAD.bottom}
-              className="stroke-muted-foreground/40"
-              pointerEvents="none"
-            />
-          ) : null}
-          {weeks.map((w, i) => {
-            const pt = future[i] as Point;
-            const selected = i === selectedIndex;
-            const breached = breachedWeeks.has(w.weekStart);
-            return (
-              <circle
-                key={w.weekStart}
-                cx={pt.x}
-                cy={pt.y}
-                r={selected ? 5.5 : breached || i === lowIndex ? 4.5 : 2.5}
-                className={`${breached ? "fill-destructive" : "fill-primary"}${selected || breached ? " stroke-card" : ""}`}
-                strokeWidth={selected || breached ? 2 : undefined}
-                data-testid={`forecast-point-${w.weekStart}`}
-                data-breached={breached}
+            {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
+            <g pointerEvents="none">
+              {weeks.map((w, i) =>
+                itemsByWeek.get(w.weekStart) ? (
+                  <circle
+                    key={w.weekStart}
+                    cx={(future[i] as Point).x}
+                    cy={H - PAD.bottom}
+                    r={2.5}
+                    className="fill-muted-foreground/70"
+                    data-testid={`item-mark-${w.weekStart}`}
+                  />
+                ) : null,
+              )}
+            </g>
+            {selectedIndex >= 0 ? (
+              <line
+                x1={x(off + selectedIndex)}
+                x2={x(off + selectedIndex)}
+                y1={PAD.top}
+                y2={H - PAD.bottom}
+                className="stroke-foreground/50"
+                strokeDasharray="2 3"
                 pointerEvents="none"
               />
-            );
-          })}
-          {notes.map((n) => {
-            const flip = n.pt.x > W * 0.62;
-            return (
-              <g
-                key={`${n.weekStart}-${n.text}-${n.pt.y}`}
+            ) : null}
+            {hover !== null && hover !== off + selectedIndex ? (
+              <line
+                x1={x(hover)}
+                x2={x(hover)}
+                y1={PAD.top}
+                y2={H - PAD.bottom}
+                className="stroke-muted-foreground/40"
                 pointerEvents="none"
-                data-testid="breach-note"
-              >
-                {"dot" in n ? (
-                  <circle
-                    cx={n.pt.x}
-                    cy={n.pt.y}
-                    r={4.5}
-                    className="fill-destructive stroke-card"
-                    strokeWidth={2}
-                    data-breached="true"
-                  />
-                ) : null}
-                <line
-                  x1={n.pt.x}
-                  x2={n.pt.x}
-                  y1={n.pt.y + 7}
-                  y2={Math.min(H - PAD.bottom - 4, n.pt.y + 22)}
-                  className="stroke-destructive"
+              />
+            ) : null}
+            {weeks.map((w, i) => {
+              const pt = future[i] as Point;
+              const selected = i === selectedIndex;
+              const breached = breachedWeeks.has(w.weekStart);
+              return (
+                <circle
+                  key={w.weekStart}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={selected ? 5.5 : breached || i === lowIndex ? 4.5 : 2.5}
+                  className={`${breached ? "fill-destructive" : "fill-primary"}${selected || breached ? " stroke-card" : ""}`}
+                  strokeWidth={selected || breached ? 2 : undefined}
+                  data-testid={`forecast-point-${w.weekStart}`}
+                  data-breached={breached}
+                  pointerEvents="none"
                 />
-                <text
-                  x={n.pt.x + (flip ? -6 : 6)}
-                  y={Math.min(H - PAD.bottom - 6, n.pt.y + 22)}
-                  textAnchor={flip ? "end" : "start"}
-                  className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
+              );
+            })}
+            {notes.map((n) => {
+              const flip = n.pt.x > W * 0.62;
+              return (
+                <g
+                  key={`${n.weekStart}-${n.text}-${n.pt.y}`}
+                  pointerEvents="none"
+                  data-testid="breach-note"
                 >
-                  {compact && n.short ? n.short : n.text}
-                </text>
-              </g>
-            );
-          })}
+                  {"dot" in n ? (
+                    <circle
+                      cx={n.pt.x}
+                      cy={n.pt.y}
+                      r={4.5}
+                      className="fill-destructive stroke-card"
+                      strokeWidth={2}
+                      data-breached="true"
+                    />
+                  ) : null}
+                  <line
+                    x1={n.pt.x}
+                    x2={n.pt.x}
+                    y1={n.pt.y + 7}
+                    y2={Math.min(H - PAD.bottom - 4, n.pt.y + 22)}
+                    className="stroke-destructive"
+                  />
+                  <text
+                    x={n.pt.x + (flip ? -6 : 6)}
+                    y={Math.min(H - PAD.bottom - 6, n.pt.y + 22)}
+                    textAnchor={flip ? "end" : "start"}
+                    className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
+                  >
+                    {compact && n.short ? n.short : n.text}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
           {/* Wide hit areas: recorded weeks show details on hover; forecast weeks can be chosen.
               Keyboard users pick weeks with the range control below the chart. */}
           {dates.map((date, slot) => {
             const forecastIndex = slot - off;
+            if (!visible(slot)) return null;
             return (
               // biome-ignore lint/a11y/useKeyWithClickEvents: the week range control is the keyboard path
               <rect
@@ -570,6 +588,16 @@ export function WorkspaceChart(p: ChartProps) {
           </div>
         ) : null}
       </div>
+      <RangeBar
+        controls={`${clipId}-chart`}
+        dates={dates}
+        series={[...history.map((h) => h.usable), ...weeks.map((w) => w.usable)]}
+        split={off}
+        start={viewStart}
+        end={viewEnd}
+        onChange={(next) => setView(next[0] === 0 && next[1] === lastSlot ? null : next)}
+        onReset={() => setView([0, lastSlot])}
+      />
       <figcaption className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4 bg-clay" />
@@ -674,5 +702,194 @@ function Swatch({ dash, color }: { dash?: string; color?: string }) {
         strokeDasharray={dash}
       />
     </svg>
+  );
+}
+
+type Drag = { mode: "start" | "end" | "move"; x0: number; s0: number; e0: number };
+
+/**
+ * Two-handle time scroller under the chart, like an editing timeline: drag a handle to zoom,
+ * drag the window to pan, double-click to show everything. A faint overview line shows the
+ * whole series so the window's position is always clear. Arrow keys move handles one week;
+ * Shift moves four.
+ */
+function RangeBar({
+  controls,
+  dates,
+  series,
+  split,
+  start,
+  end,
+  onChange,
+  onReset,
+}: {
+  /** Id of the chart this scroller pans. */
+  controls: string;
+  dates: string[];
+  series: number[];
+  /** First forecast slot; earlier slots are recorded weeks. */
+  split: number;
+  start: number;
+  end: number;
+  onChange: (view: [number, number]) => void;
+  onReset: () => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<Drag | null>(null);
+  const last = Math.max(dates.length - 1, 1);
+  const minSpan = Math.min(MIN_SPAN, last);
+  const pct = (slot: number) => (slot / last) * 100;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const apply = (mode: Drag["mode"], s0: number, e0: number, delta: number) => {
+    if (mode === "start") onChange([clamp(s0 + delta, 0, e0 - minSpan), e0]);
+    else if (mode === "end") onChange([s0, clamp(e0 + delta, s0 + minSpan, last)]);
+    else {
+      const s = clamp(s0 + delta, 0, last - (e0 - s0));
+      onChange([s, s + (e0 - s0)]);
+    }
+  };
+  const begin = (mode: Drag["mode"]) => (e: PointerEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { mode, x0: e.clientX, s0: start, e0: end };
+  };
+  const move = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    const width = track.current?.clientWidth ?? 0;
+    if (!d || width <= 0) return;
+    apply(d.mode, d.s0, d.e0, Math.round(((e.clientX - d.x0) / width) * last));
+  };
+  const end_ = () => {
+    drag.current = null;
+  };
+  const keys = (mode: Drag["mode"]) => (e: KeyboardEvent<HTMLElement>) => {
+    const step = e.shiftKey ? 4 : 1;
+    const delta = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+    if (!delta) return;
+    e.preventDefault();
+    apply(mode, start, end, delta);
+  };
+  // Overview geometry in a 0..100 x 0..24 box.
+  const finite = series.filter(Number.isFinite);
+  const lo = finite.length ? Math.min(...finite) : 0;
+  const hi = finite.length ? Math.max(...finite) : 1;
+  const yOf = (v: number) => (hi === lo ? 12 : 21 - ((v - lo) / (hi - lo)) * 18);
+  const pts = (from: number, to: number) =>
+    series
+      .slice(from, to)
+      .map((v, i) => `${pct(from + i).toFixed(2)},${yOf(v).toFixed(2)}`)
+      .join(" ");
+  const full = start === 0 && end === last;
+  return (
+    <div className="space-y-1" data-testid="time-range">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>
+          Showing {dates[start] ? formatFullDate(dates[start]) : ""} to{" "}
+          {dates[end] ? formatFullDate(dates[end]) : ""}
+        </span>
+        {full ? (
+          <span>Drag the handles to zoom</span>
+        ) : (
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Show all weeks
+          </button>
+        )}
+      </div>
+      <div
+        ref={track}
+        className="relative h-8 touch-none select-none rounded-md border bg-muted/40"
+        onPointerMove={move}
+        onPointerUp={end_}
+        onPointerCancel={end_}
+        onDoubleClick={onReset}
+      >
+        <svg
+          viewBox="0 0 100 24"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full"
+        >
+          {split > 0 ? (
+            <polyline
+              points={pts(0, split + 1)}
+              fill="none"
+              className="stroke-clay"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          <polyline
+            points={pts(Math.max(0, split), series.length)}
+            fill="none"
+            className="stroke-primary"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+          {split > 0 ? (
+            <line
+              x1={pct(split - 0.5)}
+              x2={pct(split - 0.5)}
+              y1={0}
+              y2={24}
+              className="stroke-muted-foreground/50"
+              strokeDasharray="1.5 1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+        </svg>
+        {/* Dim what is outside the window. */}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 rounded-l-md bg-background/60"
+          style={{ width: `${pct(start)}%` }}
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 rounded-r-md bg-background/60"
+          style={{ width: `${100 - pct(end)}%` }}
+        />
+        <div
+          role="scrollbar"
+          aria-controls={controls}
+          aria-label="Pan the visible weeks"
+          aria-orientation="horizontal"
+          aria-valuemin={0}
+          aria-valuemax={Math.max(0, last - (end - start))}
+          aria-valuenow={start}
+          className="absolute inset-y-0 cursor-grab rounded-md border-2 border-primary/70 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          style={{ left: `${pct(start)}%`, width: `${pct(end) - pct(start)}%` }}
+          tabIndex={0}
+          onPointerDown={begin("move")}
+          onKeyDown={keys("move")}
+          data-testid="time-range-window"
+        >
+          {(["start", "end"] as const).map((mode) => (
+            <span
+              key={mode}
+              role="slider"
+              tabIndex={0}
+              aria-label={mode === "start" ? "First visible week" : "Last visible week"}
+              aria-valuemin={0}
+              aria-valuemax={last}
+              aria-valuenow={mode === "start" ? start : end}
+              aria-valuetext={
+                dates[mode === "start" ? start : end]
+                  ? formatFullDate(dates[mode === "start" ? start : end] ?? "")
+                  : undefined
+              }
+              className={`absolute inset-y-0 flex w-3 cursor-ew-resize items-center justify-center bg-primary/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${mode === "start" ? "-left-1.5 rounded-l-md" : "-right-1.5 rounded-r-md"}`}
+              onPointerDown={begin(mode)}
+              onKeyDown={keys(mode)}
+              data-testid={`time-range-${mode}`}
+            >
+              <span aria-hidden="true" className="h-3 w-px bg-primary-foreground/80" />
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
