@@ -218,6 +218,48 @@ function missingExpected(s: Snapshot): Draft[] {
   return out;
 }
 
+/** A newly ended plan this large a share of all recurring billing is escalated (basis points). */
+const ENDED_BILLING_HIGH_BPS = 400;
+
+/**
+ * Expected billing that stops: a plan that gains an end date since the last version (a customer
+ * gave notice) means its future invoices will be missing. A plan replaced by another plan for
+ * the same customer (an upgrade) is not lost billing. Only plans worth at least 4% of all
+ * recurring billing a year are reported (high): ordinary small churn is not an anomaly.
+ * Compared on integers only.
+ */
+function endedBilling(s: Snapshot, prev: Snapshot | null): Draft[] {
+  if (!prev) return [];
+  const plans = s.billingPlans ?? [];
+  const before = new Map((prev.billingPlans ?? []).map((p) => [p.id, p]));
+  const yearly = (p: (typeof plans)[number]) => (p.amount * 12) / p.everyMonths;
+  const active = plans.filter((p) => p.endDate === undefined || p.endDate > s.asOf);
+  const total = active.reduce((n, p) => n + yearly(p), 0);
+  const names = new Map(s.customers.map((c) => [c.id, c.name]));
+  const out: Draft[] = [];
+  for (const p of plans) {
+    const old = before.get(p.id);
+    if (!old || p.endDate === undefined || p.endDate < prev.asOf) continue;
+    if (old.endDate !== undefined && old.endDate <= p.endDate) continue;
+    const replaced = plans.some(
+      (q) =>
+        q.id !== p.id &&
+        q.customerId === p.customerId &&
+        (q.endDate === undefined || q.endDate > p.endDate!),
+    );
+    if (replaced) continue;
+    const cents = Math.round(yearly(p));
+    if (total <= 0 || cents * 10_000 < ENDED_BILLING_HIGH_BPS * total) continue;
+    out.push({
+      kind: "missing_expected",
+      severity: "high",
+      summary: `Billing for ${names.get(p.customerId) ?? p.customerId} now ends on ${p.endDate}: invoices worth ${money(cents)} a year that were expected after that will not be issued.`,
+      refs: [p.id, p.customerId],
+    });
+  }
+  return out;
+}
+
 const SEVERITY: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
 
 /** Stable id from kind and refs; repeated detections of the same issue share it. */
@@ -240,6 +282,7 @@ export function auditSnapshot({ snapshot, previous, detectedAt }: AuditInput): F
     ...unusualAmounts(current, fresh),
     ...unusualTiming(snapshot, current, previous, fresh),
     ...missingExpected(snapshot),
+    ...endedBilling(snapshot, previous),
   ].map((d) => ({ ...d, refs: d.refs.slice(0, 64), summary: d.summary.slice(0, 500) }));
   const taken = new Set<string>();
   return drafts

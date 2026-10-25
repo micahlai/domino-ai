@@ -9,7 +9,7 @@ import type {
 } from "@domino/contracts";
 import { WorldStateSchema } from "@domino/contracts";
 import { lastForecastSunday, nextOccurrence } from "../create.ts";
-import { TODAY0, WEEK0, WINDOW_START, addDays, todayOf } from "./basics.ts";
+import { TODAY0, WEEK0, WINDOW_START, addDays, daysBetween, todayOf } from "./basics.ts";
 import { lowestUsable } from "./metrics.ts";
 import { PROFILES, type ProfileId, type ProfileSpec, isProfileId } from "./profiles.ts";
 import { type Timeline, generateTimeline } from "./timeline.ts";
@@ -166,7 +166,12 @@ export function profileSpec(profile: ProfileId, seed: number): ProfileSpec {
 
 /** Full private timeline for a profile at a week; for tests and evaluation only. */
 export function profileTimeline(profile: ProfileId, seed: number, week = WEEK0): Timeline {
-  return generateTimeline(profileSpec(profile, seed), seed, endFor(todayOf(week)));
+  return profileTimelineOn(profile, seed, todayOf(week));
+}
+
+/** Full private timeline long enough to cut any day up to `today`'s 13-week horizon. */
+export function profileTimelineOn(profile: ProfileId, seed: number, today: string): Timeline {
+  return generateTimeline(profileSpec(profile, seed), seed, endFor(today));
 }
 
 /**
@@ -175,15 +180,26 @@ export function profileTimeline(profile: ProfileId, seed: number, week = WEEK0):
  * no runtime queue: the world at any week is a pure function of (profile, seed, week).
  */
 export function createProfileCompany(profile: ProfileId, seed: number, week = WEEK0): WorldState {
-  if (!Number.isSafeInteger(seed)) throw new Error("seed must be a safe integer");
   if (!Number.isInteger(week) || week < WEEK0) throw new Error(`week must be ${WEEK0} or later`);
-  const today = todayOf(week);
-  const snapshot = cut(profileTimeline(profile, seed, week), today);
+  return profileWorldOn(profile, seed, todayOf(week));
+}
+
+/**
+ * The driver-based world on any day from the creation date on, for the day-by-day clock.
+ * `week` counts whole weeks since the creation date, so week-aligned days match
+ * createProfileCompany exactly. Pure: the same (profile, seed, today) gives the same world.
+ */
+export function profileWorldOn(profile: ProfileId, seed: number, today: string): WorldState {
+  if (!Number.isSafeInteger(seed)) throw new Error("seed must be a safe integer");
+  const elapsed = daysBetween(TODAY0, today);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today) || !(elapsed >= 0))
+    throw new Error(`today must be ${TODAY0} or later`);
+  const snapshot = cut(profileTimelineOn(profile, seed, today), today);
   return WorldStateSchema.parse({
     companyId: profile,
     profile: "kestrel",
     seed,
-    week,
+    week: WEEK0 + Math.floor(elapsed / 7),
     today,
     snapshot,
     pendingEvents: [],
@@ -197,11 +213,17 @@ export function isProfileWorld(world: WorldState): boolean {
 
 /** Seven days later. Scenario changes are not supported on driver-based worlds. */
 export function advanceProfileWeek(world: WorldState, injected: unknown[] = []): WorldState {
-  if (!isProfileWorld(world) || !isProfileId(world.companyId))
-    throw new Error("advanceProfileWeek: not a driver-based profile world");
   if (injected.length > 0)
     throw new Error("advanceProfileWeek: injected changes are not supported on profile worlds");
-  return createProfileCompany(world.companyId, world.seed, world.week + 1);
+  return advanceProfileDays(world, 7);
+}
+
+/** `days` days later (default one): the simulated clock's step. */
+export function advanceProfileDays(world: WorldState, days = 1): WorldState {
+  if (!isProfileWorld(world) || !isProfileId(world.companyId))
+    throw new Error("advanceProfileDays: not a driver-based profile world");
+  if (!Number.isInteger(days) || days < 1) throw new Error("days must be a positive integer");
+  return profileWorldOn(world.companyId, world.seed, addDays(world.today, days));
 }
 
 /**
