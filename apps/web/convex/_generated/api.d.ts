@@ -10,6 +10,7 @@
 
 import type * as agents from "../agents.js";
 import type * as approvals from "../approvals.js";
+import type * as backtest from "../backtest.js";
 import type * as branches from "../branches.js";
 import type * as companies from "../companies.js";
 import type * as computed from "../computed.js";
@@ -47,6 +48,7 @@ import type * as fieldFeed from "../fieldFeed.js";
 import type * as fieldJobs from "../fieldJobs.js";
 import type * as fieldJudge from "../fieldJudge.js";
 import type * as fieldNessie from "../fieldNessie.js";
+import type * as fieldNotifications from "../fieldNotifications.js";
 import type * as fieldOperating from "../fieldOperating.js";
 import type * as fieldSourceDetail from "../fieldSourceDetail.js";
 import type * as fieldSources from "../fieldSources.js";
@@ -118,6 +120,7 @@ import type * as timeline_questions_receipt from "../timeline/questions/receipt.
 import type * as timeline_questions_resolve from "../timeline/questions/resolve.js";
 import type * as timeline_questions_table from "../timeline/questions/table.js";
 import type * as timeline_refs from "../timeline/refs.js";
+import type * as timeline_scenarioStart from "../timeline/scenarioStart.js";
 import type * as timeline_workspace from "../timeline/workspace.js";
 import type * as timeline_workspaceInput from "../timeline/workspaceInput.js";
 import type * as timeline_workspaceRefs from "../timeline/workspaceRefs.js";
@@ -133,6 +136,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   approvals: typeof approvals;
+  backtest: typeof backtest;
   branches: typeof branches;
   companies: typeof companies;
   computed: typeof computed;
@@ -170,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   fieldJobs: typeof fieldJobs;
   fieldJudge: typeof fieldJudge;
   fieldNessie: typeof fieldNessie;
+  fieldNotifications: typeof fieldNotifications;
   fieldOperating: typeof fieldOperating;
   fieldSourceDetail: typeof fieldSourceDetail;
   fieldSources: typeof fieldSources;
@@ -241,6 +246,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/questions/resolve": typeof timeline_questions_resolve;
   "timeline/questions/table": typeof timeline_questions_table;
   "timeline/refs": typeof timeline_refs;
+  "timeline/scenarioStart": typeof timeline_scenarioStart;
   "timeline/workspace": typeof timeline_workspace;
   "timeline/workspaceInput": typeof timeline_workspaceInput;
   "timeline/workspaceRefs": typeof timeline_workspaceRefs;

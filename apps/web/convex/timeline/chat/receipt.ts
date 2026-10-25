@@ -1,6 +1,6 @@
 import { canonicalJson } from "@domino/contracts";
 import { z } from "zod";
-import { QuestionProposalSchema } from "../questions/receipt";
+import { CitationSchema, QuestionProposalSchema } from "../questions/receipt";
 import { isCalendarDate, reject } from "../workspaceInput";
 
 export const CHAT_METHOD = "timeline_chat@1";
@@ -20,13 +20,15 @@ export const ChatTurnSchema = z
     text: z.string().min(1).max(2000),
     createdAt: Timestamp,
     choices: z.array(ChatChoiceSchema).min(1).max(MAX_CHOICES).optional(),
+    /** Saved records an answer comes from, as in Ask a question. */
+    citations: z.array(CitationSchema).min(1).max(12).optional(),
   })
   .strict()
   .superRefine((turn, ctx) => {
     if (turn.role === "user" && turn.text.length > 1000)
       ctx.addIssue({ code: "custom", message: "User messages are at most 1,000 characters" });
-    if (turn.role === "user" && turn.choices)
-      ctx.addIssue({ code: "custom", message: "Only assistant messages offer choices" });
+    if (turn.role === "user" && (turn.choices || turn.citations))
+      ctx.addIssue({ code: "custom", message: "Only assistant messages offer choices or sources" });
   });
 export const ChatReceiptSchema = z
   .object({

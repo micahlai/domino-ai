@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { type Transition, animate, motion, useReducedMotion } from "motion/react";
+import Link from "next/link";
 import {
   type CSSProperties,
   type ReactNode,
@@ -64,6 +65,7 @@ import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
 import { BrainMapIdle, useAgentsState } from "./agents";
 import { useSelectedCompanyName } from "./company";
+import { nodeResults, resolveMapNode } from "./cross-links";
 import { useFieldData } from "./data";
 import {
   type BrainGraph,
@@ -1275,6 +1277,24 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
   const toolbox = useMemo(() => toolboxGroups(fullGraph), [fullGraph]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Cross-links open the map on one node (?node=agent:audit). Applied once, when it exists.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (linked.current || typeof window === "undefined") return;
+    const param = new URLSearchParams(window.location.search).get("node");
+    if (!param) {
+      linked.current = true;
+      return;
+    }
+    const id = resolveMapNode(
+      param,
+      fullGraph.nodes.map((n) => n.id),
+    );
+    if (id) {
+      linked.current = true;
+      setSelected(id);
+    }
+  }, [fullGraph]);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const onToggle = useCallback(
     (clusterId: string) =>
@@ -2638,6 +2658,26 @@ function DetailPanel({
           <p className="text-muted-foreground">No links recorded yet.</p>
         )}
       </Section>
+
+      {!chip && nodeResults(node).length ? (
+        <Section title="See results">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {nodeResults(node).map((r) => (
+              <li key={r.href}>
+                <Link
+                  href={r.href}
+                  className={cn(
+                    "rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline",
+                    FOCUS,
+                  )}
+                >
+                  {r.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
 
       {io ? (
         <Section title={`Inputs and outputs (latest, ${timeAgo(io.at, now)})`}>

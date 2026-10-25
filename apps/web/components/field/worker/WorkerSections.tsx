@@ -35,6 +35,12 @@ export function WorkerSections({
   findings: FieldFinding[] | undefined;
   now: number;
 }) {
+  const fixScenarios = new Set(
+    suggestions.kind === "ready"
+      ? suggestions.list.flatMap((s) => (s.status === "open" && s.scenarioId ? [s.scenarioId] : []))
+      : [],
+  );
+  const riskIds = new Set(risks.map((r) => r.id));
   return (
     <div className="space-y-10">
       <SuggestionsSection
@@ -43,8 +49,14 @@ export function WorkerSections({
         onDecide={onDecide}
         onSimulate={onSimulate}
         companyId={companyId}
+        riskIds={riskIds}
       />
-      <RisksSection rows={risks} loading={risksLoading} action={timelineAction} />
+      <RisksSection
+        rows={risks}
+        loading={risksLoading}
+        action={timelineAction}
+        fixScenarios={fixScenarios}
+      />
       <FlagsSection findings={findings} now={now} />
     </div>
   );

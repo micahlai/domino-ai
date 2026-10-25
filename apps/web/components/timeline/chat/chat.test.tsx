@@ -215,7 +215,7 @@ describe("chat review rendering", () => {
     expect(markup).toContain('id="timeline-chat"');
     expect(markup).toContain("Expense amount");
     expect(markup).not.toContain("View source timeline and rules");
-    expect(markup).toContain("Saved scenarios");
+    expect(markup).toContain('aria-label="Scenarios"');
   });
   it("builds in-page conversation links preserving source and pinned selection", () => {
     const href = chatHref("a/b", "run?x", "chat#x", "2026-11-02", "invoice/a");
@@ -230,6 +230,40 @@ describe("chat review rendering", () => {
     });
   });
 
+  it("offers the composer before any message and shows an answer's sources", () => {
+    const empty = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: null,
+        history: { state: "ready", value: [] },
+        actions: { write: vi.fn(), beginNavigates: true },
+      }),
+    );
+    expect(empty).toContain("Ask Domino");
+    expect(empty).toContain("Ask or describe a what-if");
+    expect(empty).not.toContain(">Start new chat</button>");
+    const answered = {
+      ...fixtureChat,
+      turns: [
+        ...fixtureChat.turns.slice(0, -1),
+        {
+          ...fixtureChat.turns.at(-1)!,
+          citations: [{ ref: "forecast:low", label: "Lowest forecast week" }],
+        },
+      ],
+    };
+    const shown = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: { state: "ready", value: answered },
+        history: { state: "ready", value: [answered] },
+        actions: { write: vi.fn() },
+      }),
+    );
+    expect(shown).toContain("Where this comes from (1)");
+    expect(shown).toContain("forecast:low");
+  });
+
   function html(receipt: typeof fixtureChat | null) {
     return renderToStaticMarkup(
       createElement(ChatView, {
@@ -241,15 +275,24 @@ describe("chat review rendering", () => {
     );
   }
   it("never starts a conversation from a render", () => {
-    const markup = html(null);
-    expect(markup).toContain("Start new chat");
+    const write = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: null,
+        history: { state: "ready", value: [fixtureChat] },
+        actions: { write },
+      }),
+    );
+    expect(markup).toContain("Ask or describe a what-if");
     expect(markup).not.toContain("Calculate and save scenario");
+    expect(write).not.toHaveBeenCalled();
   });
-  it("shows the pending field, safe short reply hint and source context", () => {
+  it("shows the pending field and safe short reply hint", () => {
     const markup = html(fixtureChat);
     expect(markup).toContain("Expense amount");
     expect(markup).toContain("Short answers are welcome");
-    expect(markup).toContain("Saved source");
+    expect(markup).toContain("Ask Domino");
     expect(markup).not.toContain("revision 1");
   });
   it("renders exact amounts/date and the full rule set before disabled confirmation", () => {

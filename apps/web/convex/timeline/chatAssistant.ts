@@ -19,7 +19,14 @@ type TurnArgs = {
 };
 type Claim =
   | { kind: "accepted" | "running"; receipt: ChatReceipt }
-  | { kind: "claimed"; receipt: ChatReceipt; draft: Draft; run: WorkspaceRun; attempt: number };
+  | {
+      kind: "claimed";
+      receipt: ChatReceipt;
+      draft: Draft;
+      run: WorkspaceRun;
+      attempt: number;
+      floor: string | null;
+    };
 const refs = {
   claim: makeFunctionReference<"mutation", TurnArgs, Claim>("timeline/chat:claimAssistantTurn"),
   save: makeFunctionReference<
@@ -35,6 +42,8 @@ const refs = {
 const SYSTEM = `You read one request for Domino's saved 13-week cash forecast.
 Classify a one-time cash payment/receipt, late invoice, minimum usable cash, minimum runway or bill deadline rule.
 Call update_draft with at most four intents. Every *Text value must be copied exactly from the new message, or null if missing. Do not normalize spelling, amounts, dates or names. A selected item id may be used only for a reference to that selected item. Never infer values from company data or earlier messages.
+A question about the saved forecast (low point, a week, an item, the rules or the dominoes) is a question intent; local code answers it with its sources.
+When earliestAllowedStart is set, the open scenario starts then; copy dates as written and local code rejects earlier ones.
 Conditions, negation, ranges, recurring events, daily or upper limits are unsupported. Use unsupported or unclear rather than discarding these meanings.
 Do not answer financial questions or compute or narrate money. Local code validates your extraction and supplies every visible reply, number and proposal.
 End with JSON {"done":true}.`;
@@ -50,6 +59,7 @@ async function readIntents(
   run: WorkspaceRun,
   receipt: ChatReceipt,
   text: string,
+  floor: string | null,
 ): Promise<Intent[] | null> {
   let intents: Intent[] | null = null;
   const raw = await runStructured({
@@ -61,6 +71,8 @@ async function readIntents(
         content: JSON.stringify({
           selectedWeek: receipt.selectedWeek,
           selectedItemId: receipt.selectedItemId,
+          // This what-if branches off the open scenario; nothing may start before it does.
+          earliestAllowedStart: floor,
           newMessage: text,
         }),
       },
@@ -80,6 +92,7 @@ async function readIntents(
             receipt.conversationId,
             text,
             receipt.selectedItemId,
+            floor,
           );
           intents = parsed.intents;
           return { status: result.proposal ? "ready" : "needs_value", message: result.answer };
@@ -110,7 +123,7 @@ export const send = action({
       // Existing typed slots/corrections and unsupported qualifiers need no paid interpretation.
       const intents =
         assistantConfig() && !claim.draft.intents.length && !groundingIssue(args.text, [])
-          ? await readIntents(claim.run, claim.receipt, args.text)
+          ? await readIntents(claim.run, claim.receipt, args.text, claim.floor)
           : null;
       return await ctx.runMutation(refs.save, {
         ...turn,

@@ -8,11 +8,12 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
+import { mapNodeHref, recordSourceNode } from "../cross-links";
 import { useFieldData } from "../data";
 import { LARGE_CENTS, describeFinding, findingExplanation, relatedFlags } from "../finding-text";
 import { FINDING_LABEL, SEVERITY_BADGE, SEVERITY_LABEL, timeAgo } from "../parts";
 import type { Decision, FieldFinding } from "../types";
-import { DecidedDetails, EmptyCard, WorkerSection } from "./parts";
+import { DecidedDetails, EmptyCard, WorkerSection, linkClass } from "./parts";
 
 // "Flags to review": the audit agent's flag queue. Confirm a flag if it is a real problem,
 // dismiss it if it is fine. Claude's plain explanation shows under each flag when it exists.
@@ -128,6 +129,7 @@ function FindingCard({
     }
   }
   const shownError = error ?? (decideError?.findingId === finding.id ? decideError.message : null);
+  const recordNode = finding.refs.map(recordSourceNode).find((n) => n !== null) ?? null;
   const noteId = `note-${finding.id}`;
   const domId = flagDomId(finding.id);
   return (
@@ -212,6 +214,17 @@ function FindingCard({
           ))}
         </p>
       ) : null}
+
+      <p className="mt-1 flex flex-wrap gap-x-4">
+        {recordNode ? (
+          <a href={mapNodeHref(recordNode)} className={linkClass}>
+            See record
+          </a>
+        ) : null}
+        <a href={mapNodeHref("agent:audit")} className={linkClass}>
+          Found by Audit agent
+        </a>
+      </p>
 
       {finding.refs.length > 0 ? (
         <details className="group mt-2 text-[13px]">

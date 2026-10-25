@@ -32,7 +32,7 @@ export const CUTOFF = protocol.knowledgeCutoff;
 const DECISION = "A1";
 // The bridge applies restricted-cash-held-flat by method but lists only F02; record the assumption.
 const METHOD_ASSUMPTIONS = ["AS-RESTRICTED"];
-const ROLES = {
+export const ROLES = {
   knowledgeCutoff: CUTOFF,
   originBalanceDate: protocol.originBalanceDate,
   usableCashFactId: "F01",
@@ -79,7 +79,7 @@ const inCaseOrder = (ids: string[]) =>
   CASE.assumptions.map((a) => a.id).filter((id) => ids.includes(id));
 
 /** Frozen copy of everything the run read. Its hash is the run's inputHash. */
-function snapshotOf(inputs: HistoricalRun["inputs"]) {
+export function snapshotOf(inputs: HistoricalRun["inputs"]) {
   const pick = <T extends { id: string }>(items: T[], ids: string[]) =>
     items.filter((item) => ids.includes(item.id));
   return {
@@ -122,7 +122,7 @@ const rowHash = (row: Pick<Doc<"historicalRuns">, "run" | "snapshot" | "summary"
   hashInput({ run: row.run, snapshot: row.snapshot, summary: row.summary });
 
 const ids = (items: { id: string }[]) => items.map((item) => item.id);
-const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
+export const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
 
 /**
  * Load a saved run and check it against its own frozen snapshot, never the current CASE:
@@ -479,7 +479,7 @@ const revealHash = (r: RevealFields) =>
   });
 
 /** Reveal record for a run, checked against its hash and the run it belongs to. */
-async function loadReveal(ctx: QueryCtx, run: HistoricalRun) {
+export async function loadReveal(ctx: QueryCtx, run: HistoricalRun) {
   const r = await revealFor(ctx, run.id);
   if (!r) return null;
   const comparisons = r.comparisons as { runId: string }[];

@@ -7,6 +7,7 @@ import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
+import { NotificationToasts } from "./field/NotificationToasts";
 import { OperatingProvenanceStrip } from "./field/OperatingProvenanceStrip";
 import { SimClockBar } from "./field/SimClockBar";
 import {
@@ -63,6 +64,7 @@ const focusRing =
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const timelineWorkspace = /^\/c\/[^/]+\/timeline\/?$/.test(pathname);
   // The older demo sub-navigation stays on the legacy /c pages; Timeline pages have their own.
   const inDemo = pathname.startsWith("/c/") && !TIMELINE.test(pathname);
   const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
@@ -72,13 +74,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   }));
   // The agent canvas and the case workspace keep the same top bar, then fill the rest of the
   // window with their own (dark) layout.
-  if (isFullWindow(pathname)) {
+  if (isFullWindow(pathname) || timelineWorkspace) {
     return (
       <div className="flex h-dvh flex-col">
         <TopBar pathname={pathname} />
-        <main id="main" className="min-h-0 flex-1">
+        {timelineWorkspace && isOperatingProduct(pathname) ? (
+          // The filled Timeline keeps Field's exact source label and simulated clock.
+          <div className="shrink-0 px-3 pt-2 sm:px-4 [&>div]:mb-0 [&>div]:pb-2 md:[&>div]:mb-0">
+            <PageContext pathname={pathname} />
+          </div>
+        ) : null}
+        <main
+          id="main"
+          className={cn("min-h-0 flex-1", timelineWorkspace && "min-w-0 overflow-auto")}
+        >
           {children}
         </main>
+        <Notifications />
       </div>
     );
   }
@@ -126,9 +138,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <Notifications />
     </div>
   );
 }
+
+/** One toast stack for the whole app; it needs the backend to read events. */
+const Notifications = () => (process.env.NEXT_PUBLIC_CONVEX_URL ? <NotificationToasts /> : null);
 
 /** Saved trace and calculation pages show a recorded run, not the live feed. */
 const isRecordedPath = (pathname: string) =>
