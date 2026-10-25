@@ -7,6 +7,6 @@
 - **Notes:** no source/env/services/provider/TL5/main/push changes or delegation. Read review/ui-build/taste and task cards. Authors own repair. Lead runs connected desktop/mobile browser, including real confirmed simulation only on labelled synthetic TL5 data. Parallel files must not collide.
 
 ## Result
-- Done:
-- What changed: none; read-only review.
-- Watch out:
+- Done: chart source217b957 independently accepted58+3 tests; composer sourcecb7f094 reviewed by lead, combined15 focused tests and1963 full checks/build pass. See kb/features/timeline/TL7XC-review.md.
+- What changed: source review and feature-local evidence only; authors own scoped implementation. Combined on TL5-checkpoint196d154.
+- Watch out: actual connected browser/editor-save gate pending user reload after browser policy blocked stale connection-error tab. No visual success claim yet; source/data checks pass.

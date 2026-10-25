@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-25: timeline scales and inline scenario editor
+
+- Done: integrated scales217b957 and contextual editorcb7f094 on TL5-checkpoint (196d154). Existing3107/3240 runtime restarted, data retained. Source-reviewed UI uses selected week for new cash dates, retains entered/queued events when navigating/hiding, and confirms exact queued events before saving.
+- Checks: full1963 tests, five typechecks, lint391 and production build pass; lead15 focused tests pass. Original Atlas Legal backend output remains$2,609,000 low/$41,000 shortfall. [Acceptance](TL7XC-acceptance.md) records remaining live browser gate.
+- Pending: browser policy refuses observation of stale connection-error tab. User asked to reload now-running3107 page, then final actual desktop/phone/editor-save flow can finish. No workaround attempted. No main/Field/push or backend financial changes.
+
 ## 2026-10-25: user-authorized merge into TL5
 
 - Done: user explicitly requested merging TL6/TL7/sidebar into TL5 and launching its smoke test. TL7-checkpoint1ee3bdb merged into TL5-checkpoint at4ce834b. Existing3107/3240 services applied the additive analysis table/functions; saved TL5 data was retained.

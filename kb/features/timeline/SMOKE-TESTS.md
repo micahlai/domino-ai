@@ -66,3 +66,7 @@ This checkpoint intentionally rejects analysis on plans that already contain eve
 User authorized the TL7 merge into TL5. Use3107 for the merged UI and its existing data; earlier3108 links above remain isolated acceptance evidence. [Open saved expense/rule scenario](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2F4d9835e8174efa96ff9c5974380cb755e199ad14). Browse saved scenarios, toggle comparison curves and verify the original$41,000 shortfall persists.
 
 [Open baseline analysis review](http://127.0.0.1:3107/c/kestrel/timeline/analysis?runId=timeline%3Aworkspace%2Fedf763202b5cd8f444578c86fd944038008bec15). Review source/rules, check confirmation and Start analysis to test the bounded job. The expense scenario itself is intentionally ineligible because it already contains events. Financial output reads use saved data and start no job.
+
+## Timeline scales and inline scenario entry
+
+The merged3107 preview now shows horizontal date and vertical USD cash scales. Pick a forecast week, then **Add scenario** immediately below the chart. For money in/out, the new date starts at that week and remains editable. Invoice/bill timing follows the selected record. **Queue this event**, name the scenario, review exact queued events and **Run as a new scenario**. **Hide editor · keep draft** preserves dates/queue; **Discard draft** clears explicitly. There is no separate bottom event panel. Browser acceptance status: [TL7XC-acceptance.md](TL7XC-acceptance.md).
