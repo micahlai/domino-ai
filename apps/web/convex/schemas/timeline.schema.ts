@@ -11,6 +11,7 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { timelineAnalysesTable } from "../timeline/analysis/table";
+import { timelineChatRequestsTable, timelineChatsTable } from "../timeline/chat/table";
 import { companyId } from "./legacy.schema";
 
 export const timelineTables = {
@@ -169,4 +170,6 @@ export const timelineTables = {
     .index("by_company_and_requestId", ["companyId", "requestId"])
     .index("by_company_and_runId", ["companyId", "runId"]),
   timelineAnalyses: timelineAnalysesTable,
+  timelineChats: timelineChatsTable,
+  timelineChatRequests: timelineChatRequestsTable,
 } as const;
