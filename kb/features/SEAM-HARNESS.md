@@ -9,7 +9,9 @@ Boundary smoke tests for the frozen Field -> Timeline seam (`packages/contracts/
 | `/playground/field-seam` | Field | Exports the valid 2U TimelineSeedV1 as JSON text (view + download) and shows server-side recomputed hashes for all five P0-C fixtures. |
 | `/playground/timeline-seam` | Timeline | Imports seed JSON text (fixture buttons or paste), verifies it in the browser with Web Crypto, requires forecast-ready, then renders it through the unchanged `buildView` + `HistoricalReplay`. Blocked and mismatched seeds are rejected. |
 
-Both are static, provider-free and need no Convex backend.
+Both pages are provider-free. Each has a **Backend smoke** panel that runs ONE existing read-only public query against the lane's own local backend when `NEXT_PUBLIC_CONVEX_URL` is set: Field runs `investigationCatalog.list` for case `twou-2023-cash-v1`; Timeline runs `historical.getCase` for the same case. With the URL empty the panel says "Backend not configured" and the rest of the page still works. No mutation, seeding or provider call.
+
+P0-H evidence (2026-10-24, worktree domino-P0H): a NEW anonymous local backend on 3240/3241, dev server on 3107. Field got `0 saved investigation(s), isDone true`. Timeline got `2U, Inc., 7 facts, cutoff 2023-11-10T23:59:59-05:00, revealed false`. Codegen left tracked `_generated` byte-identical. Both processes were stopped afterwards.
 
 ## Isolated commands (Node 24, from the repo root)
 
@@ -21,6 +23,13 @@ pnpm install --frozen-lockfile            # once per checkout
 NEXT_PUBLIC_CONVEX_URL= pnpm --filter @domino/web dev:web --port 3107
 # open http://127.0.0.1:3107/playground/field-seam and /playground/timeline-seam
 
+# With a real, isolated local backend (two terminals, from apps/web). CONVEX_AGENT_MODE=anonymous
+# makes the CLI create a NEW anonymous local deployment for this checkout (state in the
+# git-ignored apps/web/.convex/ and .env.local). Never copy .env.local from another checkout.
+# convex 1.48.0 rejects --local; leaving it out with no deployment configured selects local.
+CONVEX_AGENT_MODE=anonymous npx convex dev --local-cloud-port 3240 --local-site-port 3241 --tail-logs disable
+pnpm dev:web --port 3107      # reads NEXT_PUBLIC_CONVEX_URL from the new .env.local
+
 # Checks
 pnpm --filter @domino/web exec vitest run lib/feature-boundary components/field/seam components/timeline/seam
 pnpm --filter @domino/web exec tsc --noEmit --incremental false
@@ -28,7 +37,9 @@ pnpm --filter @domino/web exec tsc --noEmit -p convex
 NEXT_PUBLIC_CONVEX_URL= pnpm --filter @domino/web build
 ```
 
-Pick any free port; never use 3102, 3210 or 3214 on Jayden's machine (preserved backends and servers). A lane's own real backend runs on its owner's machine with its own local deployment, for example `cd apps/web && npx convex dev --local --local-cloud-port <free> --local-site-port <free>` (not run by P0-H). Never point a branch at another person's or the preserved deployment, and never share a mutable development database.
+Check ports with `lsof -iTCP:<port> -sTCP:LISTEN` first and pick free ones. Never use 3102, 3210, 3214, 3230 or 3231 on Jayden's machine (preserved backends and servers). Never point a branch at another person's or the preserved deployment, and never share a mutable development database. Stop both processes when done.
+
+Build note: the default `pnpm --filter @domino/web build` (Turbopack) passes outside sandboxes (P0-H runs). Codex's sandbox blocks Turbopack's port binding, so a build failure there is an environment limit, not a code failure.
 
 ## Verifier contract (shared, frozen with P0)
 
@@ -53,15 +64,41 @@ Verified fixture hashes (recomputed, equal to `FEATURE_BOUNDARY_FIXTURE_HASHES`)
 
 | Lane | Owns (P0-H files in bold) | May import |
 | --- | --- | --- |
-| Field | `app/investigate/**`, `app/case/2u/page.tsx`, `app/case/2u/company/**`, `app/playground/agent-canvas/**`, **`app/playground/field-seam/**`**, `components/investigate/**`, `components/case-workspace/CompanyView.tsx`, **`components/field/**`** | contracts, engine, shared `lib/**` (incl. `lib/feature-boundary`), `components/ui/**`, its own folders |
-| Timeline | `app/historical/**`, `app/case/2u/simulations/**`, **`app/playground/timeline-seam/**`**, `components/historical/**`, `components/case-workspace/{SimulationList,SimulationDetail,Saved}.tsx` and `summary.ts`, **`components/timeline/**`** | contracts, engine, shared `lib/**`, `components/ui/**`, its own folders |
-| Shared, frozen | `lib/feature-boundary/**`, `components/ui/**`, `app/layout.tsx`, `AppShell`, global CSS/tokens, `app/playground/page.tsx` + `components/Playground.tsx` | contracts, engine only |
+| Field | `app/investigate/**`, `app/case/2u/page.tsx`, `app/case/2u/company/**`, `app/playground/agent-canvas/**`, **`app/playground/field-seam/**`**, `components/investigate/**`, `components/case-workspace/CompanyView.tsx`, **`components/field/**`**, `convex/investigation.ts` + `convex/tests/investigation.test.ts`, `convex/field/**`, `convex/schemas/field.schema.ts` | contracts, engine, shared files, its own folders |
+| Timeline | `app/historical/**`, `app/case/2u/simulations/**`, **`app/playground/timeline-seam/**`**, `components/historical/**`, `components/case-workspace/{SimulationList,SimulationDetail,Saved}.tsx`, `summary.ts`, `case-workspace.test.tsx`, **`components/timeline/**`**, `convex/historical.ts`, `convex/investigationCatalog.ts` (+ tests), `convex/timeline/**`, `convex/schemas/timeline.schema.ts` | contracts, engine, shared files, its own folders |
+| Shared, frozen | `lib/**` (incl. `lib/feature-boundary/**`), `components/ui/**`, `app/layout.tsx`, `AppShell`, global CSS/tokens, `app/playground/page.tsx`, `components/Playground.tsx`, `components/case-workspace/{CaseNav.tsx,links.ts}`, `convex/schema.ts`, `convex/lib/**`, `convex/_generated/**` | contracts, engine; existing imports stay as they are |
 
-Rules: Field files never import `components/timeline/**`, `components/historical/**` or `app/historical/**`; Timeline files never import `components/field/**`, `components/investigate/**` or `app/investigate/**`. Peer data crosses only as JSON text through `lib/feature-boundary/verify.ts`. Current state (checked with grep at P0-H): `components/field/seam` imports only `lib/feature-boundary/verify` and `components/ui/badge`; `components/timeline/seam` imports only `lib/feature-boundary/verify`, `components/historical/*` (Timeline-owned) and `components/ui/*`. The existing Playground preview (shared) still imports `components/historical/*` read-only.
+Rule for new code: NO new cross-lane imports. Peer data crosses only as JSON text through `lib/feature-boundary/verify.ts`. The P0-H harness files have zero cross-lane imports. `components/timeline/seam` imports only Timeline-owned `components/historical/*`, shared `lib/feature-boundary` and `components/ui`. `components/field/seam` imports only shared files and `convex/_generated/api`.
 
-Quick import audit:
+Reproduce the inventory (resolves relative `../` and `@/` imports; exits 1 if a harness file gains a cross-lane import):
 
 ```sh
-grep -rnE "components/(timeline|historical)|app/historical" apps/web/components/field apps/web/app/playground/field-seam
-grep -rnE "components/(field|investigate)|app/investigate" apps/web/components/timeline apps/web/app/playground/timeline-seam
+node apps/web/scripts/lane-imports.mjs
 ```
+
+### Frozen legacy exceptions (pre-existing at base 664ab45)
+
+18 cross-lane imports: 15 production, 3 test. Each is frozen. It may be deleted by its importing lane but never widened. The OWNER of the imported module must keep the listed exports and their signatures/props backward compatible until a coordinated checkpoint removes the edge.
+
+| Importer (lane) | Line | Imports | Owner keeping it stable |
+| --- | --- | --- | --- |
+| `components/case-workspace/CompanyView.tsx` (Field) | 5 | `formatReportDate` from `components/historical/format.ts` | Timeline |
+| `components/case-workspace/CompanyView.tsx` (Field) | 9 | `NeedsService`, `NoInvestigation`, `Pending`, type `Saved`, `useSaved` from `components/case-workspace/Saved.tsx` | Timeline |
+| `components/investigate/live/CompanyKnowledge.tsx` (Field) | 9 | `formatReportDate` from `components/historical/format.ts` | Timeline |
+| `components/investigate/live/CompanyKnowledge.tsx` (Field) | 10 | `CASE_ID` from `components/historical/live.ts` | Timeline |
+| `components/investigate/live/FinancialOutput.tsx` (Field) | 6 | `HistoricalReplay` (props `HistoricalReplayProps`/`HistoricalView`) from `components/historical/HistoricalReplay.tsx` | Timeline |
+| `components/investigate/live/FinancialOutput.tsx` (Field) | 7 | type `AlternativeData`, `AlternativeDataSchema`, `BaselineDataSchema`, `CASE_ID`, `CaseDataSchema`, `RevealDataSchema`, `alternativeIssue`, `buildView` from `components/historical/live.ts` | Timeline |
+| `convex/investigation.ts` (Field) | 31 | `CASE`, `CUTOFF`, `computeAlternativeIn`, `fail`, `loadRun`, `requireRequestId`, `revealIn`, `saveBaselineIn`, `visibleCase` from `convex/historical.ts` | Timeline |
+| `components/case-workspace/Saved.tsx` (Timeline) | 7 | `readConversation` from `components/investigate/live/InvestigateLive.tsx` | Field |
+| `components/case-workspace/Saved.tsx` (Timeline) | 8 | types `Adapted`, `Conversation`, `adaptConversation` from `components/investigate/live/adapt.ts` | Field |
+| `components/case-workspace/SimulationDetail.tsx` (Timeline) | 6 | `STATUS_LABEL` from `components/investigate/graph.ts` | Field |
+| `components/case-workspace/SimulationDetail.tsx` (Timeline) | 7 | `FinancialOutput` from `components/investigate/live/FinancialOutput.tsx` | Field |
+| `components/case-workspace/SimulationDetail.tsx` (Timeline) | 8 | `InvestigateLive` from `components/investigate/live/InvestigateLive.tsx` | Field |
+| `components/case-workspace/SimulationDetail.tsx` (Timeline) | 9 | types `Adapted`, `Conversation` from `components/investigate/live/adapt.ts` | Field |
+| `components/case-workspace/SimulationList.tsx` (Timeline) | 5 | type `Conversation` from `components/investigate/live/adapt.ts` | Field |
+| `components/case-workspace/summary.ts` (Timeline) | 1 | type `Conversation` from `components/investigate/live/adapt.ts` | Field |
+| test: `components/case-workspace/case-workspace.test.tsx` (Timeline) | 22 | type `Conversation`, `adaptConversation` from `components/investigate/live/adapt.ts` | Field |
+| test: `components/case-workspace/case-workspace.test.tsx` (Timeline) | 24 | `CompanyBody` from `components/case-workspace/CompanyView.tsx` | Field |
+| test: `convex/tests/investigation.test.ts` (Field) | 12 | `CASE`, `CUTOFF` from `convex/historical.ts` | Timeline |
+
+All paths are under `apps/web/`. The script counts `convex/investigation.ts:31` as production, which may explain a count of 15 versus an audit count of 14. Side-effect-only imports (`import "x"`) are not scanned. None cross lanes today.

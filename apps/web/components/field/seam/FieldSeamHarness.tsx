@@ -5,6 +5,10 @@ import {
   verifyFixtureText,
 } from "../../../lib/feature-boundary/verify";
 import { Badge } from "../../ui/badge";
+import { FieldBackendSmoke } from "./FieldBackendSmoke";
+
+/** Case of the peer fixture seed (P0-C 2U fixture); the backend smoke reads this case. */
+const PEER_SEED_CASE_ID = "twou-2023-cash-v1";
 
 /** Field seam smoke test: export the labelled peer fixture seed as JSON text, with verification. */
 export async function FieldSeamHarness() {
@@ -17,6 +21,7 @@ export async function FieldSeamHarness() {
   );
   return (
     <div className="space-y-6">
+      <FieldBackendSmoke caseId={PEER_SEED_CASE_ID} />
       <section className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-dashed text-clay">

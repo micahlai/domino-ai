@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { fixtureText, verifySeedText } from "../../../lib/feature-boundary/verify";
 import { HistoricalReplay } from "../../historical/HistoricalReplay";
+import { TimelineBackendSmoke } from "./TimelineBackendSmoke";
 import { PEER_FIXTURE_DISCLOSURE, seedView } from "./seedView";
 
 describe("timeline seam harness", () => {
@@ -18,5 +19,11 @@ describe("timeline seam harness", () => {
     for (const p of view.reported) expect(p.cash).toBe(facts.get(p.id));
     const html = renderToStaticMarkup(<HistoricalReplay view={view} />);
     expect(html).toContain("2U, Inc. (peer fixture seed)");
+  });
+
+  it("says the backend is not configured when no Convex URL is set", () => {
+    expect(process.env.NEXT_PUBLIC_CONVEX_URL ?? "").toBe("");
+    const html = renderToStaticMarkup(<TimelineBackendSmoke caseId="twou-2023-cash-v1" />);
+    expect(html).toContain("Backend not configured");
   });
 });
