@@ -64,6 +64,54 @@ export function newMoneyMentions(text: string, allowed: string): string[] {
   return (text.match(MONEY) ?? []).filter((m) => !known.has(normalizeMoney(m)));
 }
 
+/** `text` with every amount that is not in `allowed` replaced, so no invented figure is shown. */
+export function redactNewMoney(text: string, allowed: string): string {
+  const known = new Set((allowed.match(MONEY) ?? []).map(normalizeMoney));
+  // MONEY may end on the space before a word; keep that space.
+  return text.replace(MONEY, (m) =>
+    known.has(normalizeMoney(m)) ? m : `[amount removed]${/\s$/.test(m) ? " " : ""}`,
+  );
+}
+
+/** A validator's verdict: the accepted value, or short loggable reasons for the rejection. */
+export type Checked<T> = { ok: true; value: T } | { ok: false; issues: string[] };
+export const MAX_ISSUES = 6;
+
+/**
+ * Loggable text from model output: control characters, URLs and long key-like strings
+ * removed, whitespace collapsed, at most `max` characters.
+ */
+export function clipText(text: string, max = 60): string {
+  const clean = text
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[redacted]")
+    .replace(/\p{Cc}+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
+
+/** Zod issues as "path: message", at most MAX_ISSUES, each clipped. */
+export function zodIssues(error: z.ZodError): string[] {
+  return error.issues
+    .slice(0, MAX_ISSUES)
+    .map((i) => clipText(`${i.path.length > 0 ? i.path.join(".") : "(root)"}: ${i.message}`, 120));
+}
+
+const rejected = (...issues: string[]): { ok: false; issues: string[] } => ({
+  ok: false,
+  issues: issues.slice(0, MAX_ISSUES),
+});
+const acceptedValue = <T>(checked: Checked<T>): T | undefined =>
+  checked.ok ? checked.value : undefined;
+
+/**
+ * Shared rule for every CREAO field job: a repair run carries `repair` next to `data` with the
+ * reasons the previous reply was rejected. Part of each profile version.
+ */
+export const CREAO_REPAIR_RULE =
+  "If the job has a repair field, your previous reply (repair.previousOutput) was rejected for the reasons in repair.issues. Reply again with a corrected answer that fixes every issue, in the same format.";
+
 /**
  * One structured-output request: adaptive thinking (the model default), low effort, server-side
  * fallback on refusal. stop_reason is checked before any content is read.
@@ -200,10 +248,10 @@ export function buildExplainRequest(findings: FindingRecord[]) {
   return { system, user, schema };
 }
 
-export function acceptExplanations(
+export function checkExplanations(
   findings: FindingRecord[],
   json: unknown,
-): FindingExplanation[] | undefined {
+): Checked<FindingExplanation[]> {
   const ids = new Set(findings.map((f) => f.findingId));
   const parsed = z
     .object({
@@ -222,16 +270,29 @@ export function acceptExplanations(
     })
     .strict()
     .safeParse(json);
-  if (!parsed.success) return undefined;
+  if (!parsed.success) return rejected(...zodIssues(parsed.error));
   const seen = new Set<string>();
   const allowed = JSON.stringify(findings);
-  for (const e of parsed.data.explanations) {
-    if (!ids.has(e.findingId) || seen.has(e.findingId)) return undefined;
+  for (const [i, e] of parsed.data.explanations.entries()) {
+    if (!ids.has(e.findingId))
+      return rejected(`explanations.${i}.findingId: unknown id "${clipText(e.findingId, 40)}"`);
+    if (seen.has(e.findingId))
+      return rejected(`explanations.${i}.findingId: "${clipText(e.findingId, 40)}" repeats`);
     seen.add(e.findingId);
-    if (newMoneyMentions(`${e.explanation} ${e.suggestedCheck}`, allowed).length > 0)
-      return undefined;
+    const money = newMoneyMentions(`${e.explanation} ${e.suggestedCheck}`, allowed);
+    if (money.length > 0)
+      return rejected(
+        `explanations.${i}: amount ${clipText(money[0] ?? "", 20)} is not in the data`,
+      );
   }
-  return parsed.data.explanations;
+  return { ok: true, value: parsed.data.explanations };
+}
+
+export function acceptExplanations(
+  findings: FindingRecord[],
+  json: unknown,
+): FindingExplanation[] | undefined {
+  return acceptedValue(checkExplanations(findings, json));
 }
 
 /** One batched call for up to MAX_EXPLAINED_FINDINGS findings. */
@@ -315,10 +376,7 @@ const sentenceCount = (text: string) =>
     .map((s) => s.trim())
     .filter(Boolean).length;
 
-export function acceptAnalystSummary(
-  digest: AnalystDigest,
-  json: unknown,
-): AnalystSummary | undefined {
+export function checkAnalystSummary(digest: AnalystDigest, json: unknown): Checked<AnalystSummary> {
   const indexes = new Set(digest.scenarios.map((s) => s.index));
   const parsed = z
     .object({
@@ -328,13 +386,30 @@ export function acceptAnalystSummary(
     })
     .strict()
     .safeParse(json);
-  if (!parsed.success) return undefined;
+  if (!parsed.success) return rejected(...zodIssues(parsed.error));
   const { recommendation, rationale, citedScenarios } = parsed.data;
-  if (sentenceCount(recommendation) > 3) return undefined;
-  if (citedScenarios.some((i) => !indexes.has(i))) return undefined;
-  if (newMoneyMentions(`${recommendation} ${rationale}`, JSON.stringify(digest)).length > 0)
-    return undefined;
-  return { recommendation, rationale, citedScenarios: [...new Set(citedScenarios)] };
+  const issues: string[] = [];
+  if (sentenceCount(recommendation) > 3)
+    issues.push(`recommendation: ${sentenceCount(recommendation)} sentences, at most 3`);
+  const unknown = citedScenarios.filter((i) => !indexes.has(i));
+  if (unknown.length > 0)
+    issues.push(
+      `citedScenarios: unknown index ${unknown.join(", ")}; use data.scenarios[].index (${[...indexes].join(", ")})`,
+    );
+  const money = newMoneyMentions(`${recommendation} ${rationale}`, JSON.stringify(digest));
+  if (money.length > 0) issues.push(`amount ${clipText(money[0] ?? "", 20)} is not in the data`);
+  if (issues.length > 0) return rejected(...issues);
+  return {
+    ok: true,
+    value: { recommendation, rationale, citedScenarios: [...new Set(citedScenarios)] },
+  };
+}
+
+export function acceptAnalystSummary(
+  digest: AnalystDigest,
+  json: unknown,
+): AnalystSummary | undefined {
+  return acceptedValue(checkAnalystSummary(digest, json));
 }
 
 export function summarizeScenarios(send: SendMessage, digest: AnalystDigest) {
@@ -370,6 +445,7 @@ export const counterpartyRules = [
   "The company and its counterparties are simulated demo businesses. Do not search for or invent outside news about them; base each note only on the supplied facts, and say the risk is unknown when the facts do not support a view.",
   "Never calculate or write money amounts, percentages or large numbers.",
   "Task: write one short risk note per counterparty: how it could hurt the company's cash in the next 13 weeks (late payment, churn, a supplier demanding faster payment) and what to watch. note: at most 240 characters.",
+  CREAO_REPAIR_RULE,
 ];
 export const counterpartyOutputFormat = `Reply with one JSON object {"notes"} matching outputSchema, between a line containing only ${RESULT_START} and a line containing only ${RESULT_END}. Put exactly one such block in the reply. Do not use the memory summary as the answer.`;
 
@@ -419,10 +495,10 @@ export async function counterpartyProfileVersion(): Promise<string> {
   return `field_counterparty@creao-${hash.slice(0, 12)}`;
 }
 
-export function acceptCounterpartyNotes(
+export function checkCounterpartyNotes(
   job: CounterpartyJob,
   json: unknown,
-): CounterpartyNote[] | undefined {
+): Checked<CounterpartyNote[]> {
   const names = new Set(job.counterparties.map((c) => c.name));
   const parsed = z
     .object({
@@ -441,14 +517,25 @@ export function acceptCounterpartyNotes(
     })
     .strict()
     .safeParse(json);
-  if (!parsed.success) return undefined;
+  if (!parsed.success) return rejected(...zodIssues(parsed.error));
   const seen = new Set<string>();
-  for (const n of parsed.data.notes) {
-    if (!names.has(n.counterparty) || seen.has(n.counterparty)) return undefined;
+  for (const [i, n] of parsed.data.notes.entries()) {
+    if (!names.has(n.counterparty))
+      return rejected(`notes.${i}.counterparty: unknown name "${clipText(n.counterparty, 40)}"`);
+    if (seen.has(n.counterparty))
+      return rejected(`notes.${i}.counterparty: "${clipText(n.counterparty, 40)}" repeats`);
     seen.add(n.counterparty);
-    if (newMoneyMentions(n.note, "").length > 0) return undefined;
+    if (newMoneyMentions(n.note, "").length > 0)
+      return rejected(`notes.${i}.note: money amounts are not allowed`);
   }
-  return parsed.data.notes;
+  return { ok: true, value: parsed.data.notes };
+}
+
+export function acceptCounterpartyNotes(
+  job: CounterpartyJob,
+  json: unknown,
+): CounterpartyNote[] | undefined {
+  return acceptedValue(checkCounterpartyNotes(job, json));
 }
 
 export type CounterpartyCreaoOptions = CreaoOptions & {

@@ -7,7 +7,7 @@ import { counterpartyProfileVersion } from "../../../../packages/agents/src/fiel
 import { fieldCreaoProfileVersion } from "../../../../packages/agents/src/fieldCreao";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { AI_CALLS_PER_HOUR } from "../fieldAi";
+import { AI_CALLS_PER_HOUR, hourlyCap } from "../fieldAi";
 import schema from "../schema";
 
 const modules = import.meta.glob(["../**/*.ts", "../_generated/*.js", "!./**"]);
@@ -19,6 +19,7 @@ const ENV_KEYS = [
   "CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID",
   "CREAO_HISTORICAL_EVIDENCE_ANALYST_API_KEY",
   "DOMINO_CREAO_VERIFIED_PROFILES",
+  "FIELD_AI_HOURLY_CAP",
 ];
 const saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
 
@@ -311,6 +312,7 @@ type Job = {
   task: string;
   outputSchema: Record<string, unknown>;
   data: Record<string, unknown>;
+  repair?: unknown;
 };
 
 /** Answers a CREAO job from its own schema enums and data, the way the app's SKILL is told to. */
@@ -538,6 +540,16 @@ describe("CREAO-first field agents", () => {
       );
     }
     expect(rows.some((r) => r.agentKind === "claude")).toBe(false);
+    // research#1 itself runs on CREAO: no separate Domino hand-off helper.
+    const research = rows.filter((r) => r.agentId === "research#1" && r.agentKind === "creao");
+    expect(research.map((r) => r.status ?? r.tool)).toEqual(
+      expect.arrayContaining(["spawned", "working", "creao.counterpartyRisk", "done"]),
+    );
+    expect(research.find((r) => r.tool === "creao.counterpartyRisk")).toMatchObject({
+      parentAgentId: "analyst#1",
+      source: "creao",
+    });
+    expect(rows.some((r) => r.agentId === "counterparty-research#1")).toBe(false);
     const fromCoordinator = rows
       .filter((r) => r.event === "message" && r.fromAgentId === "coordinator#1")
       .map((r) => r.toAgentId);
@@ -634,17 +646,174 @@ describe("CREAO-first field agents", () => {
 
     expect(claudeCalls).toEqual([]);
     const latest = await t.query(api.fieldAnalyst.latest, { companyId });
-    expect(latest?.coordinator).toMatchObject({
-      status: "failed",
-      reason: "CREAO run failed (invalid_output)",
-    });
+    const why = /^actions\.0\.action: Invalid discriminator value/;
+    expect(latest?.coordinator?.status).toBe("failed");
+    expect(latest?.coordinator?.reason).toMatch(
+      /^CREAO run failed \(invalid_output: actions\.0\.action: Invalid discriminator value.*; repair run failed: invalid_output: actions\.0\.action: Invalid discriminator/,
+    );
     const rows = await logRows(t, companyId);
     expect(rows.some((r) => r.fromAgentId === "coordinator#1")).toBe(false);
-    expect(
-      rows.find((r) => r.agentId === "coordinator#1" && r.status === "failed")?.summary,
-    ).toMatch(/invalid_output/);
+    const coordinator = rows.filter((r) => r.agentId === "coordinator#1");
+    expect(coordinator.find((r) => r.status === "failed")?.summary).toMatch(
+      /^CREAO run failed \(invalid_output: actions\.0\.action: Invalid discriminator value.*\); no plan/,
+    );
+    expect(coordinator.map((r) => r.summary)).toContainEqual(
+      expect.stringMatching(
+        /^CREAO plan rejected \(invalid_output: actions\.0\.action: .*\); asking CREAO for a corrected plan \(one repair run\)$/,
+      ),
+    );
+    // The first run and the one repair run both failed, each with its precise reason.
+    const scope = `v${latest?.snapshotVersion}`;
+    const calls = (await t.run((ctx) => ctx.db.query("aiCalls").collect())).filter(
+      (c) => c.kind === "coordinator" && c.scope.split(":")[0] === scope,
+    );
+    expect(calls.map((c) => [c.scope.endsWith(":repair"), c.status])).toEqual([
+      [false, "failed"],
+      [true, "failed"],
+    ]);
+    for (const c of calls) expect(c.detail?.replace(/^invalid_output: /, "")).toMatch(why);
   }, 180_000);
 
+  it("repairs a rejected coordinator plan with one more CREAO run and executes it", async () => {
+    vi.useFakeTimers();
+    for (const k of ENV_KEYS) delete process.env[k];
+    await verifyAll();
+    const prompts: Job[] = [];
+    const { posts, claudeCalls } = stubProviders({
+      answer: (job) => {
+        if (job.task !== "fieldCoordinatorPlan") return creaoAnswer(job);
+        prompts.push(job);
+        const good = creaoAnswer(job) as { summary: string; actions: Record<string, unknown>[] };
+        if (job.repair) return good;
+        // 1-based scenario numbers instead of the index field, as a model might write them.
+        return {
+          ...good,
+          actions: good.actions.map((a) =>
+            a.action === "focus_scenario" ? { ...a, scenarioIndex: 99 } : a,
+          ),
+        };
+      },
+    });
+    const t = newBackend();
+    const companyId = await liveCompanyWithFindings(t);
+
+    expect(claudeCalls).toEqual([]);
+    expect(posts.filter((p) => p === "fieldCoordinatorPlan").length).toBeGreaterThanOrEqual(2);
+    const repair = prompts.find((p) => p.repair)?.repair as {
+      issues: string[];
+      previousOutput: { actions: { scenarioIndex?: number }[] };
+    };
+    expect(repair.issues[0]).toMatch(/scenarioIndex: unknown index 99; use one of \d/);
+    expect(repair.previousOutput.actions.some((a) => a.scenarioIndex === 99)).toBe(true);
+    const latest = await t.query(api.fieldAnalyst.latest, { companyId });
+    expect(latest?.coordinator).toMatchObject({
+      status: "done",
+      focus: { scenarioIndex: expect.any(Number) },
+    });
+    const rows = await logRows(t, companyId);
+    const mine = rows.filter((r) => r.agentId === "coordinator#1").map((r) => r.summary);
+    expect(mine).toContainEqual(
+      expect.stringMatching(
+        /^CREAO plan rejected \(invalid_output: actions\.\d\.scenarioIndex: unknown index 99; use one of [\d, ]+\); asking CREAO for a corrected plan/,
+      ),
+    );
+    expect(mine).toContainEqual(expect.stringMatching(/^Waiting for CREAO repair run run-\d+/));
+    expect(mine).toContainEqual(expect.stringMatching(/^CREAO run run-\d+ \(repaired\): /));
+    expect(rows.some((r) => r.fromAgentId === "coordinator#1")).toBe(true);
+    const calls = await t.run((ctx) => ctx.db.query("aiCalls").collect());
+    const v = `v${latest?.snapshotVersion}`;
+    const coordinatorCalls = calls
+      .filter((c) => c.kind === "coordinator" && c.scope.split(":")[0] === v)
+      .map((c) => [c.scope, c.status]);
+    expect(coordinatorCalls).toEqual([
+      [v, "failed"],
+      [`${v}:repair`, "ok"],
+    ]);
+    expect(calls.find((c) => c.kind === "coordinator" && c.status === "failed")?.detail).toMatch(
+      /^invalid_output: actions\.\d\.scenarioIndex: unknown index 99/,
+    );
+  }, 180_000);
+
+  it("skips the repair when its budget is used, and says so", async () => {
+    vi.useFakeTimers();
+    for (const k of ENV_KEYS) delete process.env[k];
+    await verifyAll();
+    stubProviders({
+      answer: (job) =>
+        job.task === "fieldCoordinatorPlan" ? { summary: "x", actions: [] } : creaoAnswer(job),
+    });
+    const t = newBackend();
+    const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
+    await drainLive(t, 20);
+    const version = (await t.query(api.fieldAnalyst.latest, { companyId }))?.snapshotVersion ?? 0;
+    // The next version's repair call is already spent.
+    await t.run((ctx) =>
+      ctx.db.insert("aiCalls", {
+        companyId,
+        kind: "coordinator",
+        provider: "creao",
+        scope: `v${version + 1}:repair`,
+        hour: Math.floor(Date.now() / 3_600_000),
+        at: new Date().toISOString(),
+        status: "ok",
+      }),
+    );
+    await t.mutation(api.field.advanceFeed, { companyId, advance: false, anomaly: "duplicate" });
+    await t.mutation(api.field.ingestNow, { companyId });
+    await drainLive(t, 20);
+    const latest = await t.query(api.fieldAnalyst.latest, { companyId });
+    expect(latest?.snapshotVersion).toBe(version + 1);
+    expect(latest?.coordinator?.reason).toBe(
+      `CREAO run failed (invalid_output: actions: Array must contain at least 1 element(s); repair skipped: already ran once for v${version + 1}:repair (one per ingest))`,
+    );
+  }, 180_000);
+
+  it("logs a repeated skip once per version, not on every analyst run", async () => {
+    vi.useFakeTimers();
+    for (const k of ENV_KEYS) delete process.env[k];
+    await verifyAll();
+    const { posts } = stubProviders();
+    const t = newBackend();
+    const companyId = await liveCompanyWithFindings(t);
+    const before = posts.length;
+    for (let i = 0; i < 4; i++) {
+      await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
+      await drainLive(t, 10);
+    }
+    expect(posts.length).toBe(before);
+    const rows = await logRows(t, companyId);
+    const count = (action: string) =>
+      rows.filter((r) => r.action === action && /already ran once/.test(r.summary ?? "")).length;
+    expect(count("analyst.coordinatorSkipped")).toBe(1);
+    expect(count("research.creaoSkipped")).toBe(1);
+    expect(count("analyst.aiSummarySkipped")).toBe(1);
+    expect(rows.filter((r) => r.action === "analyst.done").length).toBeGreaterThanOrEqual(5);
+  }, 240_000);
+
+  it("reads the hourly cap from FIELD_AI_HOURLY_CAP", async () => {
+    expect(hourlyCap({})).toBe(AI_CALLS_PER_HOUR);
+    expect(hourlyCap({ FIELD_AI_HOURLY_CAP: "200" })).toBe(200);
+    for (const bad of ["0", "-5", "abc", "2.5", "5000", ""])
+      expect(hourlyCap({ FIELD_AI_HOURLY_CAP: bad })).toBe(AI_CALLS_PER_HOUR);
+    process.env.FIELD_AI_HOURLY_CAP = "3";
+    const t = newBackend();
+    const companyId = await t.run((ctx) =>
+      ctx.db.insert("companies", {
+        name: "Cap test",
+        profile: "kestrel",
+        currentWeek: 1,
+        today: "2026-11-02",
+        status: "ready",
+      }),
+    );
+    const reserve = (scope: string) =>
+      t.mutation(internal.fieldAi.reserve, { companyId, kind: "audit", provider: "claude", scope });
+    for (const scope of ["v1", "v2", "v3"]) expect((await reserve(scope)).ok).toBe(true);
+    expect(await reserve("v4")).toMatchObject({
+      ok: false,
+      reason: "hourly cap of 3 model calls reached",
+    });
+  });
   it("waits for a late artifact and reposts once after a 429 with Retry-After", async () => {
     vi.useFakeTimers();
     for (const k of ENV_KEYS) delete process.env[k];

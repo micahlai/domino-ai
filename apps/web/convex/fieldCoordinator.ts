@@ -9,7 +9,10 @@
  *   focus_scenario         the summary leads with that scenario
  *   research_counterparty  research#1 runs the demo news check on that counterparty
  * Each action is logged as a coordinator -> sub-agent message. There is no Claude fallback and
- * no canned plan: without CREAO the agents keep their default order and the log says why.
+ * no canned plan: without CREAO the agents keep their default order and the log says why. A plan
+ * that fails validation is logged with its reasons and gets one repair run (fieldAi.runCreaoStep).
+ * It runs on every new snapshot version (one call per version); later runs on the same version
+ * skip it, and only the first of those logs the skip.
  */
 import { SnapshotSchema } from "@domino/contracts";
 import { v } from "convex/values";
@@ -18,7 +21,6 @@ import {
   type CoordinatorPlan,
   MAX_COORDINATOR_FLAGS,
   coordinatorCreaoJob,
-  runFieldCreaoJob,
 } from "../../../packages/agents/src/fieldCreao";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -27,9 +29,10 @@ import {
   AUDIT_AGENT,
   BUSY_TOO_LONG,
   type Reservation,
-  creaoFailure,
   creaoGate,
-  creaoRunOptions,
+  creaoHooks,
+  failureOf,
+  runCreaoStep,
 } from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
 import type { AgentRow } from "./lib/agentLog";
@@ -42,6 +45,8 @@ import { parse } from "./lib/parse";
 export const COORDINATOR = "coordinator#1";
 
 const SEVERITY = { high: 0, medium: 1, low: 2 } as const;
+/** A plan reason may be empty (tolerated); then the message has none. */
+const because = (reason: string) => (reason ? `: ${reason}` : "");
 
 /** What the coordinator sees for one running analyst run, or null when the run is over. */
 export const input = internalQuery({
@@ -143,6 +148,10 @@ export async function coordinate(
       ...(research !== undefined && { research }),
     });
   const analystNote = async (status: CoordinatorRecord["status"], reason: string) => {
+    // Skips repeat on every analyst loop tick on one version; log them once per version.
+    const quiet =
+      status !== "failed" && (await ctx.runQuery(internal.fieldAi.repeatRun, { runId }));
+    if (quiet) return { status, reason, at: at() };
     await write([
       {
         action: "analyst.coordinatorSkipped",
@@ -214,64 +223,46 @@ export async function coordinate(
 
   let plan: CoordinatorPlan;
   let remoteRunId: string;
-  const transport = creaoRunOptions((attempt) =>
+  let repaired: string | undefined;
+  const working = (summary: string, refs?: string[]) =>
     write([
       as({
         action: "agent.working",
         event: "status",
         status: "working",
         currentTask: task,
-        summary: `Waiting for CREAO result (retry ${attempt})`,
+        ...(refs && { refs }),
+        summary,
       }),
-    ]),
-  );
+    ]);
   try {
-    const run = await runFieldCreaoJob(process.env, coordinatorCreaoJob(data), {
-      ...transport.options,
-      onRunCreated: async ({ runId: remote, status }) => {
-        await ctx.runMutation(internal.fieldAi.settle, {
-          callId: reservation.callId,
-          remoteRunId: remote,
-        });
-        await write([
-          as({
-            action: "agent.working",
-            event: "status",
-            status: "working",
-            currentTask: task,
-            refs: [remote],
-            summary: `Waiting for CREAO run ${remote} (${status})`,
-          }),
-        ]);
+    const run = await runCreaoStep(
+      ctx,
+      {
+        companyId,
+        kind: "coordinator",
+        scope,
+        callId: reservation.callId,
+        job: coordinatorCreaoJob(data),
       },
-    });
+      creaoHooks(working, "plan"),
+    );
     plan = run.value;
     remoteRunId = run.runId;
+    repaired = run.repaired;
   } catch (error) {
-    const category = creaoFailure(error, transport.seen.stage);
-    await ctx.runMutation(internal.fieldAi.settle, {
-      callId: reservation.callId,
-      status: "failed",
-      detail: category,
-    });
+    const failure = failureOf(error);
     await write([
       as({
         action: "agent.failed",
         event: "status",
         status: "failed",
         currentTask: task,
-        summary: `CREAO run failed (${category}); no plan, agents keep their default order`,
+        summary: `CREAO run failed (${failure}); no plan, agents keep their default order`,
       }),
     ]);
-    return { status: "failed", reason: `CREAO run failed (${category})`, at: at() };
+    return { status: "failed", reason: `CREAO run failed (${failure})`, at: at() };
   }
-  await ctx.runMutation(internal.fieldAi.settle, {
-    callId: reservation.callId,
-    status: "ok",
-    model: "creao",
-    remoteRunId,
-    detail: `${plan.escalate.length} escalations, focus ${plan.focus ? plan.focus.scenarioIndex + 1 : "none"}, research ${plan.research ? 1 : 0}`,
-  });
   await write([
     as({
       action: "agent.tool",
@@ -282,7 +273,7 @@ export async function coordinate(
       source: "creao",
       currentTask: task,
       refs: [remoteRunId, ...plan.escalate.map((e) => e.findingId)],
-      summary: `CREAO run ${remoteRunId}: ${plan.summary}`,
+      summary: `CREAO run ${remoteRunId}${repaired ? " (repaired)" : ""}: ${plan.summary}`,
     }),
   ]);
 
@@ -296,7 +287,7 @@ export async function coordinate(
     });
     await write([
       ...plan.escalate.map((e, i) =>
-        say(AUDIT_AGENT, `Escalate ${e.findingId} first (priority ${i + 1}): ${e.reason}`, [
+        say(AUDIT_AGENT, `Escalate ${e.findingId} first (priority ${i + 1})${because(e.reason)}`, [
           e.findingId,
         ]),
       ),
@@ -320,7 +311,7 @@ export async function coordinate(
     await write([
       say(
         `forecaster#${scenarioIndex + 1}`,
-        `Scenario ${scenarioIndex + 1} is the focus: ${reason}`,
+        `Scenario ${scenarioIndex + 1} is the focus${because(reason)}`,
         [`scenario ${scenarioIndex + 1}`],
       ),
       say(SUMMARIZER, `Lead the summary with scenario ${scenarioIndex + 1} (${title})`, [
@@ -341,7 +332,7 @@ export async function coordinate(
     });
     await write(
       [
-        say(RESEARCH, `Research ${counterparty} next: ${reason}`, [counterparty]),
+        say(RESEARCH, `Research ${counterparty} next${because(reason)}`, [counterparty]),
         r({
           action: "agent.working",
           event: "status",
