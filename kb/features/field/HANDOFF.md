@@ -4,7 +4,10 @@
 - User authorized Codex as Field lead to finish and integrate this wave. Fresh integration checkout: `../domino-merge`, branch `merge/field-codex-20261025`, based on `field/main` at `8dbba79`. Main remains untouched.
 - Inspected all five worktrees: convex-depth clean and already merged; worker-page clean at `e9b2e0b`; swarms at `8857294` with unfinished backend changes; judge-simple and timeline-ux have unfinished changes based on `95d646d`.
 - Claude PID 78153 still owns running swarms and Timeline test commands. Leave those checkouts alone until the commands and worker activity finish. No active judge or worker-page process found.
-- Next: finish judge acceptance, review the worker-page backend contract, then accept swarms before merging worker-page, judge-simple, timeline-ux. Combined validation and live restart are still pending.
+- Active owners: Codex builder `swarms` finishes `field/swarms`; builder `timeline` reviews Claude commit `3753241` on `field/timeline-ux`; lead finishes judge and worker-page acceptance, integrations, docs, demo. Read-only safety reviewer audits swarm money/isolation/caps. User invoked orchestrator and requested five subagents; saved global Codex cap 5, current session still exposes three worker slots.
+- Judge: web/Convex tsc and changed-file Biome pass; full web Vitest 1,143 tests pass. Isolated backend3290/3291 and UI3130 ready. Browser verified three steps, map growth, engine At risk, unexpected bill ingest lowering cash, Play advancing days, Pause. Screenshot `/tmp/field-judge-smoke.png`. Fixed missing source requirements for surprises; focused rerun pending. Default build font fetch hit sandbox network; network-enabled rerun pending.
+- Worker page: fixed actual swarm API effect fields and company-scoped decision arguments; CREAO attribution now appears only with a saved CREAO recommendation. Focused23 tests, both tsc and Biome pass. Full web tests/build pending.
+- Next: accept swarms (including safety review), then merge worker-page, judge-simple, timeline-ux in that order into this integration branch. Combined validation and live fast-forward/push/restart remain pending.
 - Live listeners confirmed: Next 3114 PID 68925; Convex 3260/3261 PID 55917. Do not touch protected ports.
 
 ## State
