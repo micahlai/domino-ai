@@ -21,6 +21,12 @@ export {
   quarterAlternative,
   quarterBridge,
 } from "./period";
+/** One hypothetical quarterly outflow plus one costed response; engine-local, not in Engine. */
+export {
+  QUARTER_SCENARIO_METHOD,
+  type QuarterScenarioArgs,
+  quarterScenario,
+} from "./period-scenario";
 
 export const engine: Engine = {
   forecast,
