@@ -1,6 +1,8 @@
 /**
  * Connected tools (public). Mock sign-in only: connecting is a consent step, no credentials
- * are asked for or stored, and every vendor API is the in-process mock. Domino only reads.
+ * are asked for or stored, and every vendor API is the in-process mock except the bank, which
+ * is the Capital One Nessie sandbox (Domino's own accounts there, fieldNessie.ts). The
+ * simulated bank (Plaid mock) stays selectable and stands in when Nessie cannot be used.
  *
  * Queries
  *   connections.list({ companyId? })  latest live-feed company when omitted, null when none:
@@ -11,7 +13,7 @@
  *   connections.disconnect({ companyId?, tool })  stop reading the tool; counts are cleared.
  *   connections.syncNow({ companyId? })  read every connected tool again.
  *
- * field.setup connects all six tools. The field ingestion reads only connected tools through
+ * field.setup connects six tools (Capital One as the bank; the Plaid mock stays disconnected). The field ingestion reads only connected tools through
  * connectors.pullAll and updates these rows; the sync here re-reads them for the Connect page.
  */
 import { ConvexError, v } from "convex/values";
@@ -27,10 +29,11 @@ import {
   query,
 } from "./_generated/server";
 import { TOOLS, toolInfo, toolSummaries } from "./connectors/catalog";
-import { inProcessFetcher } from "./connectors/inProcess";
 import { pullAll } from "./connectors/pullAll";
 import { TOOL_IDS, type ToolId } from "./connectors/types";
-import { writeLog } from "./fieldJobs";
+import { bankFetcher, writeLog } from "./fieldJobs";
+import { prepareNessie } from "./fieldNessie";
+import { BANK_FALLBACK } from "./fieldSources";
 import { storeToolResults, toolArg, toolResult } from "./lib/connectionRows";
 
 const tool = toolArg;
@@ -88,21 +91,26 @@ function view(t: ToolId, row: Doc<"connections"> | null) {
   };
 }
 
-/** Setup: every tool starts connected (demo consent), so the first ingest reads all six. */
+/** The simulated bank is an alternative to Capital One, so it starts disconnected. */
+export const DEFAULT_OFF: ToolId[] = ["plaid"];
+
+/** Setup: every tool but the simulated bank starts connected (demo consent). */
 export async function connectAll(ctx: MutationCtx, companyId: Id<"companies">, name: string) {
   const by = await personName(ctx);
   const at = new Date().toISOString();
-  for (const t of TOOLS)
+  for (const t of TOOLS) {
+    const off = DEFAULT_OFF.includes(t.id);
     await ctx.db.insert("connections", {
       companyId,
       tool: t.id,
-      status: "connected",
+      status: off ? "disconnected" : "connected",
       account: `${name} (sandbox)`,
       scopes: t.reads,
-      connectedAt: at,
-      connectedBy: by,
+      connectedAt: off ? null : at,
+      connectedBy: off ? null : by,
       ...cleared,
     });
+  }
 }
 
 export const list = query({
@@ -217,13 +225,31 @@ export const sync = internalAction({
     const live = connections.filter((c) => c.status !== "disconnected");
     if (live.length === 0) return null;
     const snapshot = await ctx.runQuery(internal.fieldJobs.served, { companyId });
+    let tools = live.map((c) => c.tool);
+    const bank = tools.includes("nessie") ? await prepareNessie(ctx, companyId, snapshot) : null;
+    // Nessie cannot be used: read the simulated bank instead and say so on the Capital One card.
+    if (bank && !bank.ok)
+      tools = [...new Set([...tools.filter((t) => t !== "nessie"), "plaid" as const])];
     const r = await pullAll({
-      fetcher: inProcessFetcher(snapshot),
+      fetcher: bankFetcher(snapshot, bank),
       companyId: snapshot.companyId,
+      nessie: bank?.ok ? bank.plan : null,
       // An errored tool is retried on every sync.
-      connections: live.map((c) => ({ tool: c.tool, status: "connected" as const })),
+      connections: tools.map((tool) => ({ tool, status: "connected" as const })),
     });
     const results = toolSummaries(r);
+    if (bank && !bank.ok)
+      results.push({
+        tool: "nessie",
+        error: `${BANK_FALLBACK}: ${bank.reason}`.slice(0, 300),
+        cursor: null,
+        counts: {},
+        recordsIn: 0,
+        recordsOut: 0,
+        skipped: 0,
+        checksOk: 0,
+        checksTotal: 0,
+      });
     const ok = r.checks.filter((c) => c.ok).length;
     const total = (k: "recordsIn" | "recordsOut" | "skipped") =>
       results.reduce((t, x) => t + x[k], 0);

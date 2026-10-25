@@ -119,6 +119,8 @@ describe("field ingest", () => {
     const run = log.page.filter((r) => r.runId && r.runId === log.page[0]?.runId);
     expect(run.map((r) => r.action).reverse()).toEqual([
       "ingest.started",
+      // No Nessie key in tests: the simulated bank stands in, and the run says so.
+      "ingest.bankFallback",
       ...Array(6).fill("ingest.pulled"),
       "ingest.reconciled",
       "ingest.mapped",

@@ -16,6 +16,9 @@ import { TOOLS } from "./connectors/catalog";
 import { AUTO_INTERVAL_MS } from "./fieldJobs";
 
 const EMPTY_MODEL = { version: 0, customerDelayDays: {}, recurringSpend: [], rules: [] };
+const KINDS = [...new Set(TOOLS.map((t) => t.kind))];
+const kindOn = (kind: string, on: Set<string>) =>
+  TOOLS.some((t) => t.kind === kind && on.has(t.id));
 
 export const summary = query({
   args: { companyId: v.optional(v.id("companies")) },
@@ -69,11 +72,14 @@ export const summary = query({
       lastError: feed.lastError,
       auto: feed.auto,
       autoIntervalMs: AUTO_INTERVAL_MS,
-      // Tools the ingestion reads; a disconnected tool's data stays as of its last read.
+      // Tools the ingestion reads; a disconnected tool's data stays as of its last read. Counted
+      // per kind: Capital One and the simulated bank are two choices for the one bank.
       sources: {
-        total: TOOLS.length,
-        connected: on.size,
-        off: TOOLS.filter((t) => !on.has(t.id)).map((t) => t.name),
+        total: KINDS.length,
+        connected: KINDS.filter((k) => kindOn(k, on)).length,
+        off: KINDS.filter((k) => !kindOn(k, on)).map(
+          (k) => TOOLS.find((t) => t.kind === k)?.name ?? k,
+        ),
       },
       openFindings: open.length,
       openEscalations: open.filter((f) => f.escalated).length,

@@ -249,6 +249,7 @@ export const fieldTables = {
       v.literal("gusto"),
       v.literal("hubspot"),
       v.literal("plaid"),
+      v.literal("nessie"),
     ),
     status: v.union(v.literal("connected"), v.literal("disconnected"), v.literal("error")),
     account: v.string(),
@@ -266,6 +267,29 @@ export const fieldTables = {
     checksTotal: v.number(),
     lastError: v.union(v.string(), v.null()),
   }).index("by_companyId_and_tool", ["companyId", "tool"]),
+  // Capital One Nessie sandbox (fieldNessie.ts): Domino's own customer and accounts per company
+  // and every bank line posted to them. Only these stored ids are ever read or written; the
+  // key's other customers and accounts are never touched. One row per company.
+  nessieLinks: defineTable({
+    companyId,
+    label: v.string(),
+    customerId: v.union(v.string(), v.null()),
+    checkingId: v.union(v.string(), v.null()),
+    savingsId: v.union(v.string(), v.null()),
+    openingBalance: v.union(v.number(), v.null()),
+    posted: v.array(
+      v.object({
+        bankId: v.string(),
+        nessieId: v.string(),
+        kind: v.union(v.literal("deposit"), v.literal("withdrawal")),
+      }),
+    ),
+    postedThrough: v.union(v.string(), v.null()),
+    created: v.number(),
+    /** A sync holds the row until this time (ms) so two runs never post the same line. */
+    lockUntil: v.number(),
+    lastError: v.union(v.string(), v.null()),
+  }).index("by_companyId", ["companyId"]),
   // Investigations.
   // G2b: server-owned investigation conversations. One receipt per accepted requestId binds it
   // to its kind, payload hash and conversation, so retries return and key reuse conflicts.

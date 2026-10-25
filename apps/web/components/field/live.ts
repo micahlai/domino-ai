@@ -78,7 +78,7 @@ const AGENT_NAME: Record<string, string> = {
  * Source kinds in the log -> catalog source ids. Field ingest and the Connect page write
  * connector ids (stripe, hubspot, qbo, gusto, ramp, plaid); older logs carry mock server kinds
  * (crm, books, nessie). Both name the same vendor, so they land on one node. The bank is read
- * through Plaid; old Capital One Nessie rows keep their own node.
+ * from the Capital One Nessie sandbox ("nessie"); the simulated bank (Plaid mock) keeps its own.
  */
 const SOURCE_NAME: Record<string, string> = {
   stripe: "billing",
@@ -95,7 +95,7 @@ const SOURCE_NAME: Record<string, string> = {
 
 /**
  * Saved `sources` row kinds (convex/fieldSources.ts SOURCE_OF_TOOL) -> catalog source ids. The
- * connectors write the Plaid bank read to the old "nessie" row, so that row is Plaid here.
+ * bank read (Capital One Nessie, or the simulated bank standing in) writes the "nessie" row.
  */
 const SAVED_SOURCE: Record<string, string> = {
   stripe: "billing",
@@ -103,7 +103,7 @@ const SAVED_SOURCE: Record<string, string> = {
   ramp: "cards",
   books: "books",
   payroll: "payroll",
-  nessie: "plaid",
+  nessie: "bank",
 };
 
 /** "stripe.read" -> "stripe": a pull row that lost its source still names its connector. */

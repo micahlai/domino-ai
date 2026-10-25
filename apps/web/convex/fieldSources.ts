@@ -1,6 +1,7 @@
 import { type Snapshot, SnapshotSchema } from "@domino/contracts";
 import { CHECK_TOOLS, type ToolSummary, toolSummaries } from "./connectors/catalog";
-import { pullAll } from "./connectors/pullAll";
+import type { NessiePlan } from "./connectors/nessie";
+import { type PullAllResult, pullAll } from "./connectors/pullAll";
 import { type Fetcher, LIST_NAMES, type ListName, TOOL_IDS, type ToolId } from "./connectors/types";
 
 /**
@@ -21,7 +22,11 @@ export const SOURCE_OF_TOOL: Record<ToolId, SourceKind> = {
   qbo: "books",
   gusto: "payroll",
   plaid: "nessie",
+  nessie: "nessie",
 };
+
+/** Connect page and log wording when the Nessie sandbox cannot be used for a run. */
+export const BANK_FALLBACK = "Nessie unreachable, using simulated bank";
 
 export interface Pull {
   /** The connector that was read; also the log row's source. */
@@ -48,42 +53,67 @@ export interface Ingested {
   tieOut: TieOut;
   /** Per-tool receipts for the connections rows (Connect page). */
   results: ToolSummary[];
+  /** Why the Nessie bank was not used this run (the simulated bank was read instead), or null. */
+  bankFallback: string | null;
 }
 
-/** The tool that is the record for each list (connectors/pullAll.ts OWNERS, first entry). */
-const PRIMARY: Record<ListName, ToolId> = {
-  customers: "stripe",
-  invoices: "stripe",
-  bankTxns: "plaid",
-  bills: "qbo",
-  cardTxns: "ramp",
-  payroll: "gusto",
-  deals: "hubspot",
-  billingPlans: "stripe",
-  pendingPayouts: "stripe",
+/** The tools that can be the record for each list (connectors/pullAll.ts OWNERS). */
+const PRIMARY: Record<ListName, ToolId[]> = {
+  customers: ["stripe"],
+  invoices: ["stripe"],
+  bankTxns: ["nessie", "plaid"],
+  bills: ["qbo"],
+  cardTxns: ["ramp"],
+  payroll: ["gusto"],
+  deals: ["hubspot"],
+  billingPlans: ["stripe"],
+  pendingPayouts: ["stripe"],
 };
+
+const BANKS: ToolId[] = ["nessie", "plaid"];
 
 export async function ingestConnected(args: {
   fetcher: Fetcher;
   companyId: string;
   connected: ToolId[];
   previous: Snapshot | null;
+  /** Domino's own Nessie accounts, when they hold the whole served history. */
+  nessie?: NessiePlan | null;
+  /** Why Nessie cannot be used this run (not set up, unreachable, still posting). */
+  nessieDown?: string | null;
 }): Promise<Ingested> {
   const { fetcher, companyId, previous } = args;
   const on = new Set(args.connected);
   if (on.size === 0) throw new Error("No tools are connected: connect at least the bank or books");
-  const r = await pullAll({
-    fetcher,
-    companyId,
-    connections: TOOL_IDS.map((tool) => ({
-      tool,
-      status: on.has(tool) ? ("connected" as const) : ("disconnected" as const),
-    })),
-  });
+  const read = (tools: Set<ToolId>) =>
+    pullAll({
+      fetcher,
+      companyId,
+      nessie: args.nessie ?? null,
+      connections: TOOL_IDS.map((tool) => ({
+        tool,
+        status: tools.has(tool) ? ("connected" as const) : ("disconnected" as const),
+      })),
+    });
+  // The simulated bank (the Plaid mock) stands in for Nessie when the sandbox cannot be used.
+  const fallbackTo = (reason: string) => {
+    on.delete("nessie");
+    on.add("plaid");
+    return reason;
+  };
+  let bankFallback: string | null = null;
+  if (on.has("nessie") && (args.nessieDown || !args.nessie))
+    bankFallback = fallbackTo(args.nessieDown ?? "Nessie is not set up for this company yet");
+  let r: PullAllResult = await read(on);
+  const nessieError = r.log.find((l) => l.tool === "nessie")?.error;
+  if (nessieError) {
+    bankFallback = fallbackTo(nessieError);
+    r = await read(on);
+  }
   const failed = r.log.find((l) => l.error);
   if (failed) throw new Error(`${failed.tool} could not be read: ${failed.error}`);
 
-  const stale = LIST_NAMES.filter((list) => !on.has(PRIMARY[list]));
+  const stale = LIST_NAMES.filter((list) => !PRIMARY[list].some((t) => on.has(t)));
   const records = { ...r.records };
   for (const list of stale)
     (records[list] as unknown[]) = previous ? [...((previous[list] as unknown[]) ?? [])] : [];
@@ -125,15 +155,33 @@ export async function ingestConnected(args: {
       tiedOut: mine.every((c) => c.ok),
     };
   });
+  const bankRead = BANKS.some((t) => on.has(t));
+  const results = toolSummaries(r);
+  if (bankFallback)
+    results.push({
+      tool: "nessie",
+      error: `${BANK_FALLBACK}: ${bankFallback}`.slice(0, 300),
+      cursor: null,
+      counts: {},
+      recordsIn: 0,
+      recordsOut: 0,
+      skipped: 0,
+      checksOk: 0,
+      checksTotal: 0,
+    });
   return {
     snapshot: parsed.data,
     pulls,
-    skipped: TOOL_IDS.filter((t) => !on.has(t)),
+    // The other bank is an alternative, not a skipped source, once one bank was read.
+    skipped: TOOL_IDS.filter(
+      (t) => !on.has(t) && !(bankRead && BANKS.includes(t)) && !(bankFallback && t === "nessie"),
+    ),
     stale,
     tieOut: {
       checked: r.checks.length,
       mismatches: r.checks.filter((c) => !c.ok).map((c) => c.ref),
     },
-    results: toolSummaries(r),
+    results,
+    bankFallback,
   };
 }

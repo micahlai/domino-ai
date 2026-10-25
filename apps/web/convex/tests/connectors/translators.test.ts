@@ -6,7 +6,7 @@ import { fetchPlaid, translatePlaid } from "../../connectors/plaid";
 import { fetchQbo, translateQbo } from "../../connectors/qbo";
 import { fetchRamp, translateRamp } from "../../connectors/ramp";
 import { fetchStripe, translateStripe } from "../../connectors/stripe";
-import type { Fetcher, ToolId } from "../../connectors/types";
+import type { Fetcher, MockToolId } from "../../connectors/types";
 import { fixtureSnapshot as s } from "./fixture-snapshot.test-support";
 import { loadFixture, recorder, replay, saveFixture } from "./recording.test-support";
 
@@ -17,7 +17,7 @@ const RECORD = process.env.RECORD_CONNECTOR_FIXTURES === "1";
 const byId = <T extends { id: string }>(xs: T[] | undefined) =>
   [...(xs ?? [])].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-const FETCH: Record<ToolId, (f: Fetcher) => Promise<unknown>> = {
+const FETCH: Record<MockToolId, (f: Fetcher) => Promise<unknown>> = {
   stripe: fetchStripe,
   ramp: fetchRamp,
   qbo: (f) => fetchQbo(f, s.companyId),
@@ -27,7 +27,7 @@ const FETCH: Record<ToolId, (f: Fetcher) => Promise<unknown>> = {
 };
 
 /** Replays the committed recording; also proves the mock still serves exactly those pages. */
-async function recorded<T>(tool: ToolId): Promise<T> {
+async function recorded<T>(tool: MockToolId): Promise<T> {
   const live = recorder(inProcessFetcher(s));
   await FETCH[tool](live.fetcher);
   if (RECORD) saveFixture(tool, live.calls);

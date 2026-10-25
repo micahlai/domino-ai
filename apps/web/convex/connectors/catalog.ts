@@ -4,6 +4,7 @@ import type { ListName, ToolId } from "./types";
 /**
  * The tools a company can connect, in plain words, shared by the connect page and the
  * connections API. Domino only reads: every consent says so, and no mock route can move money.
+ * The Nessie sandbox is written only to Domino's own accounts, with the simulated history.
  */
 export interface ToolInfo {
   id: ToolId;
@@ -19,8 +20,17 @@ export interface ToolInfo {
 
 export const TOOLS: ToolInfo[] = [
   {
+    id: "nessie",
+    name: "Capital One (Nessie sandbox)",
+    initials: "C1",
+    kind: "Bank",
+    reads: ["Account balances", "Deposits", "Withdrawals"],
+    provides: "Cash balance and every deposit and payment, from the Capital One Nessie sandbox",
+    lists: ["bankTxns"],
+  },
+  {
     id: "plaid",
-    name: "Bank (via Plaid)",
+    name: "Simulated bank (via Plaid)",
     initials: "Pl",
     kind: "Bank",
     reads: ["Account balances", "Bank transactions"],
@@ -82,12 +92,12 @@ export const toolInfo = (id: ToolId): ToolInfo => {
 
 /** Which tools each tie-out compares, so a tool card can show its own checks. */
 export const CHECK_TOOLS: Record<string, ToolId[]> = {
-  "Stripe payout = bank deposit": ["stripe", "plaid"],
+  "Stripe payout = bank deposit": ["stripe", "plaid", "nessie"],
   "Stripe charge = invoice paid amount": ["stripe"],
-  "Gusto payroll = bank debit": ["gusto", "plaid"],
-  "QuickBooks bill payment = bank debit": ["qbo", "plaid"],
+  "Gusto payroll = bank debit": ["gusto", "plaid", "nessie"],
+  "QuickBooks bill payment = bank debit": ["qbo", "plaid", "nessie"],
   "Ramp bill payment = QuickBooks bill payment": ["ramp", "qbo"],
-  "Books cash = bank cash": ["qbo", "plaid"],
+  "Books cash = bank cash": ["qbo", "plaid", "nessie"],
 };
 
 export interface ToolSummary {
