@@ -9,3 +9,4 @@
 - Verified: 94 simulator tests including 21 new operating tests; simulator TypeScript and Biome pass. Tests cover all 12 combinations, source conversion, all history unchanged across scenarios, paid-record bank links, no future observation leaks, 13-week engine forecast conservation and 91-day advancement consistency.
 - Limits: Existing engine has three cash-flow sections and can group FX under other operating. Provenance retains the authoritative four filing-category totals. Source-shape connector round trips belong to integration/backend checks. No web suites, runtimes, provider calls or protected data accessed.
 - Handoff: `kb/features/field/TAKEOVER-OPERATING-SIM.md`.
+- Integration follow-up: Empty optional payout arrays omitted; GitLab derived quarter citations corrected to Q3 primary plus both filing URLs. Focused 22 operating tests and simulator TypeScript pass. Broader 2U anchor retention review continues separately.

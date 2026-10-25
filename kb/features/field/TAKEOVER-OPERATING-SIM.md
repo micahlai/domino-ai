@@ -13,3 +13,4 @@
 - Running processes: No app/backend/runtime started. No provider calls.
 - Next exact step: Integration owner merges this scoped commit, runs backend source-shape round trips and verifies shared snapshot parity in dashboard, clock and Timeline. Keep historical `/case/2u` separate.
 - Open questions: None blocking this API. Future statement UX should read reported totals from provenance and explicitly retain the FX reconciliation distinction.
+- Follow-up: Omit absent optional `pendingPayouts` instead of emitting an empty array, preserving exact connector round trips. Derived GitLab quarter anchors cite the Q3 filing as primary and retain both Q3 and Q2 URLs in derivation notes. The Asana residual also names both source filings. Focused operating suite now passes 22 tests; simulator TypeScript passes. Missing 2U balance-sheet/context anchors remain under review for a separate follow-up.
