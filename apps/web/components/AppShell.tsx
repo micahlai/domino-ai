@@ -77,6 +77,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex h-dvh flex-col">
         <TopBar pathname={pathname} />
+        {timelineWorkspace && isOperatingProduct(pathname) ? (
+          // The filled Timeline keeps Field's exact source label and simulated clock.
+          <div className="shrink-0 px-3 pt-2 sm:px-4 [&>div]:mb-0 [&>div]:pb-2 md:[&>div]:mb-0">
+            <PageContext pathname={pathname} />
+          </div>
+        ) : null}
         <main
           id="main"
           className={cn("min-h-0 flex-1", timelineWorkspace && "min-w-0 overflow-auto")}
