@@ -10,5 +10,6 @@ User request, 2026-10-25. Continues TL11 on `claude-timeline-chat`.
 - Existing saved-result links remain available. No financial calculations, shared contracts or backend behavior change.
 - Chat Send immediately displays the outgoing user bubble and clears the textbox. Pending/retry state preserves the exact command; validated transcript updates replace the optimistic bubble without duplication.
 - Breach labels use separate positions and bounded text near chart edges. Dense/mobile layouts must preserve full receipt wording without colliding labels.
+- Ask Domino is the sole named chat-sidebar toggle. It opens and collapses the same mounted panel, with visible text on phones, expanded state for assistive technology, and Escape focus return. No duplicate header or inner close buttons.
 
 Verification is recorded in the Timeline handoff.

@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-25 Micah: combine Ask Domino and sidebar controls into one named open/collapse toggle, with no redundant header or inner close icons. Keep the mounted draft and keyboard focus behavior.
+
 - 2026-10-25 Micah: accepted forecasts appear in the mounted Timeline rather than navigating to the saved child. Validated data triggers one reveal; Build on stays explicit. Chat sends use an optimistic user bubble and exact retry identity. Crowded labels retain full receipts in a disclosure. See features/timeline/TL12-in-place-reveal.md.
 - 2026-10-25 Micah: Worker suggestions offer Decline or Show on Timeline with an optional note. Showing opens the exact frozen risk/fix comparison and an inspectable Ask Domino context thread without accepting or invoking a provider. Keep this change on a separate worktree/branch. See features/field/WORKER-TIMELINE-CHAT.md.
 

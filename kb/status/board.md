@@ -144,3 +144,5 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | TL12 | In-place accepted forecast reveal | kb/tasks/TL12-in-place-forecast-reveal.md | TL11 | done | claude-timeline-chat | Accepted forecast appears without navigation; immediate chat bubble; bounded chart labels; full check and browser pass |
 | W1 | Worker suggestion to contextual Ask Domino | kb/tasks/W1-worker-timeline-chat-context.md | Latest Field release | done | codex/worker-timeline-context | Separate tree; Decline/Show on Timeline retain note and frozen context; full check and props browser pass |
+
+| TL13 | One Ask Domino sidebar toggle | kb/tasks/TL13-single-chat-toggle.md | TL12 | done | claude-timeline-chat | Sole named toggle opens/collapses chat; duplicate buttons removed; desktop/phone draft and Escape checks pass |
