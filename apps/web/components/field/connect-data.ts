@@ -16,6 +16,7 @@ import {
 import type { ToolId } from "../../convex/connectors/types";
 import { useSelectedCompany } from "./company";
 import demo from "./connect-demo.json";
+import type { ExcludedReport } from "./connect-excluded";
 
 // The connect page's one switch between the real connections.* backend and labelled demo
 // data. Demo numbers are recorded pullAll results over the same mock company (see
@@ -48,6 +49,11 @@ export type ConnectData = {
   connect: (tool: ToolId) => Promise<void>;
   disconnect: (tool: ToolId) => Promise<void>;
   syncNow: () => Promise<void>;
+  /**
+   * Why records were excluded, per tool, from the connector receipts. Null when this source
+   * only reports counts (the live connections rows store a count, not the reasons).
+   */
+  loadExcluded: () => Promise<ExcludedReport | null>;
 };
 
 export const CONNECT_API = {
@@ -73,6 +79,7 @@ const LOADING: ConnectData = {
   connect: noop,
   disconnect: noop,
   syncNow: noop,
+  loadExcluded: async () => null,
 };
 const Context = createContext<ConnectData>(LOADING);
 export const useConnectData = () => useContext(Context);
@@ -111,6 +118,7 @@ function Live({ children }: { children: ReactNode }) {
       syncNow: async () => {
         await syncNow({ companyId });
       },
+      loadExcluded: async () => null,
     }),
     [list, companyId, connect, disconnect, syncNow],
   );
@@ -210,6 +218,13 @@ export function DemoConnectData({ note, children }: { note: string; children: Re
         });
       },
       syncNow: async () => syncAll(),
+      // Loaded on demand so the page does not carry the connectors and the simulator.
+      loadExcluded: async () => {
+        const tools = (state?.synced ?? "").split(",").filter(Boolean) as ToolId[];
+        if (tools.length === 0) return [];
+        const { demoExcluded } = await import("./connect-receipts");
+        return demoExcluded(tools);
+      },
     };
   }, [state, note, syncAll]);
   return createElement(Context.Provider, { value }, children);

@@ -249,11 +249,15 @@ function StatusLine({ now, runner }: { now: number; runner: Runner }) {
   return (
     <section aria-label="Agent status" className="space-y-2">
       {status ? (
-        <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] leading-5 text-muted-foreground">
+        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] leading-5 text-muted-foreground sm:gap-x-2">
           {parts.map((part, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed order of status parts
             <span key={i} className="inline-flex items-center gap-2">
-              {i > 0 ? <span aria-hidden="true">·</span> : null}
+              {i > 0 ? (
+                <span aria-hidden="true" className="hidden sm:inline">
+                  ·
+                </span>
+              ) : null}
               {part}
             </span>
           ))}
@@ -489,14 +493,14 @@ function FindingCard({
           <h3 id={`${domId}-title`} className="text-[15px] font-semibold leading-6">
             {view.counterparty ?? FINDING_LABEL[finding.kind]}
           </h3>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <Badge variant={SEVERITY_BADGE[finding.severity]}>
               {SEVERITY_LABEL[finding.severity]}
             </Badge>
             {view.counterparty ? <span>{FINDING_LABEL[finding.kind]}</span> : null}
             <span>Found {timeAgo(finding.detectedAt, now)}</span>
             {finding.escalated ? <span>Escalated to you</span> : null}
-          </p>
+          </div>
         </div>
         {primary ? (
           <p className="shrink-0 text-right">
