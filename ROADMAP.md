@@ -26,7 +26,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog | Friend repairing round 1 | origin/S2-simulation-catalog bd7e880 | [Audit REJECT](kb/reviews/S2-bd7e880-codex-audit.md): one P2, pagination read bound not enforced before read (endCursor materialized 500 rows). All else passed. Repair prompt: prompts/shared/S2-friend-repair-1.md. Then re-audit -> integrate -> P0-S |
-| P0-C contracts / P0-S schema | P0-C: ACCEPT 56f4522 (option 1), Codex integrating onto preview. P0-S: planned, waits for S2 repair + integration | [Option-1 audit](kb/reviews/P0C-56f4522-codex-option1.md): 81,741 JSON-text calls 0 throws, 2,140 differential 0 gaps, fixtures unchanged | PREPARING THE SPLIT |
+| P0-C contracts / P0-S schema | P0-C: DONE, integrated 8c00374. P0-S: planned, waits for friend S2 repair + integration | [P0-C audit](kb/reviews/P0C-56f4522-codex-option1.md), [integration](kb/reviews/P0C-integration-8c00374.md): 1,507 uncached tests, 5 typechecks, lint 277 files; lead reran contracts 489 | PREPARING THE SPLIT |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
