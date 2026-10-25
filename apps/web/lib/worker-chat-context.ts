@@ -19,6 +19,11 @@ export const WorkerSourceSchema = z
     inputs: FieldTraceInputsSchema,
   })
   .strict();
+/**
+ * The context carries the pinned company model, which alone can pass 60 KB for a real company.
+ * Keep it well under the 900 KB chat row cap so turns and proposals still fit beside it.
+ */
+const MAX_CONTEXT_BYTES = 400_000;
 export const WorkerChatContextSchema = WorkerSourceSchema.extend({
   scenarioRunId: id,
   fixRunId: id,
@@ -27,7 +32,7 @@ export const WorkerChatContextSchema = WorkerSourceSchema.extend({
   .strict()
   .superRefine((context, ctx) => {
     try {
-      if (new TextEncoder().encode(canonicalJson(context)).length > 60_000)
+      if (new TextEncoder().encode(canonicalJson(context)).length > MAX_CONTEXT_BYTES)
         ctx.addIssue({ code: "custom", message: "Worker context exceeds the saved context limit" });
     } catch {
       ctx.addIssue({ code: "custom", message: "Worker context is not valid saved data" });
