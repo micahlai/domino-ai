@@ -58,11 +58,15 @@ export const simulate = action({
       savedInputs.provenanceLabel && savedInputs.periodStart && savedInputs.periodEnd
         ? ` ${savedInputs.provenanceLabel}: reconstructed ledger period ${savedInputs.periodStart} to ${savedInputs.periodEnd}${savedInputs.reportedAt ? `, public report ${savedInputs.reportedAt}` : ""}.`
         : "";
-    const note =
-      `${sourcePeriod ? `${sourcePeriod.trim()} ` : ""}${savedInputs.illustrative ? "Illustrative " : ""}Field books and rules pinned for this analyst run, snapshot version ${savedInputs.snapshotVersion}, as of ${savedInputs.asOf}. Review by choosing Simulate this option. The cash floor and any credit line are simulation assumptions, not a reported facility. Nothing is paid or moved.`.slice(
-        0,
-        2000,
-      );
+    const origin = `Field trace: /field/analysis?${new URLSearchParams({
+      companyId: args.companyId,
+      runId: args.runId,
+      scenarioId: args.scenarioId,
+      fixKind: args.fixKind,
+    })}`;
+    const description = `${sourcePeriod ? `${sourcePeriod.trim()} ` : ""}${savedInputs.illustrative ? "Illustrative " : ""}Field books and rules pinned for this analyst run, snapshot version ${savedInputs.snapshotVersion}, as of ${savedInputs.asOf}. Review by choosing Simulate this option. The cash floor and any credit line are simulation assumptions, not a reported facility. Nothing is paid or moved.`;
+    if (origin.length >= 2000) throw new Error("The saved suggestion identity is too long");
+    const note = `${description.slice(0, 1999 - origin.length)}\n${origin}`;
     const baselineKey = await hash({
       runId: args.runId,
       snapshotVersion: args.snapshotVersion,

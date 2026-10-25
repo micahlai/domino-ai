@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import { timelineCalculationHref } from "../../../lib/trace-links";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
@@ -188,6 +189,13 @@ export function ScenarioSidebar({
                       )}
                     </p>
                   ) : null}
+                  <Link
+                    href={timelineCalculationHref(run.companyId, entry.runId)}
+                    aria-label={`How we got here for ${name}`}
+                    className="inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    How we got here
+                  </Link>
                   {entries.filter((row) => row.label === entry.label).length > 1 ? (
                     <time
                       dateTime={entry.savedAt}

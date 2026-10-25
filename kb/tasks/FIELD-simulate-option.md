@@ -9,4 +9,4 @@
 - Edit: existing Timeline event/assumption editing, real run IDs, exact How links; no fake active agents.
 - Checks: stale identity and retry isolation, exact before/after engine results, focused UI/API tests, web/Convex tsc, browser after integration.
 - Rules: AGENTS, RUN-TRACES-CONTRACT, integer cents, no providers/secrets/heldout/main/servers/push.
-- Result: pending.
+- Result: exact pinned simulation bridge, saved-run calculation links and parent-vs-fix comparison implemented. Focused tests, Biome, web and Convex tsc pass. Browser integration remains with root; see TAKEOVER-TIMELINE-CALC-LINKS.md.

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ScenarioNav } from "./ScenarioNav";
 import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "./fixtures";
@@ -88,6 +89,7 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain("Saved curve unavailable; it is not drawn.");
     expect(html).toContain(">Clear</button>");
     expect(html).toContain("1 of 3 on chart");
+    expect(html).toContain("How we got here for Lender&#x27;s limit added");
     const longName = "scenario".repeat(40);
     const longHtml = renderToStaticMarkup(
       <ScenarioSidebar
@@ -114,6 +116,19 @@ describe("saved scenario comparisons", () => {
     );
     expect(duplicateHtml).toContain('dateTime="2026-10-24T15:01:00.000Z"');
     expect(duplicateHtml).toContain("Saved 2026-10-24 15:01:00 UTC");
+  });
+
+  it("gives each rail entry its own saved-run calculation link", () => {
+    const html = renderToStaticMarkup(
+      <ScenarioNav
+        run={fixtureScenario}
+        graph={{ state: "ready", value: fixtureGraph }}
+        hrefFor={(id) => `/open/${id}`}
+        catalogHref="/catalog"
+      />,
+    );
+    expect(html).toContain("How we got here for Acme pays 30 days late");
+    expect(html).toContain("/timeline/calculation?runId=");
   });
 
   it("draws at most three optional saved curves, with links and a compact legend", () => {

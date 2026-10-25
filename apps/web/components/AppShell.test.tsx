@@ -85,6 +85,24 @@ describe("AppShell navigation", () => {
     expect(currentHtml).toContain("Based on 2U public filings, with reconstructed operating data.");
   });
 
+  it("shows saved calculation routes without the live company picker, feed strip or clock", () => {
+    for (const at of [
+      "/field/analysis",
+      "/c/operating%2Fasana-current%2Fbaseline/timeline/calculation",
+      "/c/operating%2Fasana-inspired%2Fbaseline/timeline/calculation",
+      "/c/kestrel/timeline/calculation",
+    ]) {
+      const html = render(at);
+      expect(html).toContain("Recorded run");
+      expect(html).not.toContain('aria-label="Company"');
+      expect(html).not.toContain('aria-label="Scenario"');
+      expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+      expect(html).not.toContain("Simulated date");
+    }
+    const current = render("/c/operating%2Fasana-current%2Fbaseline/timeline/calculation");
+    expect(current).toContain('href="/c/operating%2Fasana-current%2Fbaseline/timeline"');
+  });
+
   it("keeps the Timeline sub-navigation inside the company routes", () => {
     const html = render("/c/kestrel/record");
     expect(current(html)).toEqual(["Timeline", "Decision record"]);
