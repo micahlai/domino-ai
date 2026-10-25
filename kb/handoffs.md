@@ -3,6 +3,16 @@
 Newest first. One short entry at the end of every task or work session.
 Format: `## YYYY-MM-DD HH:MM Name` then three lines: Done / Next / Watch out.
 
+## 2026-10-24 18:19 Micah (Codex, feature overview PDF)
+- Done: fetched origin/main (same 694ab2a), found status docs and cross-checked code. Created output/pdf/domino-feature-status-overview.pdf: seven pages covering screens, engine, sources/simulator, AI/backend, missing work and source index. Rendered and visually reviewed every page. pnpm check passes using cached test results; local company HTTP 200 and capabilities verified.
+- Next: use the PDF as a dated overview and follow the implementation/task-card sources for changing status. No feature code or external provider/bank calls were made.
+- Watch out: main has fixed-snapshot computed features but connect/week/AI actions and four product pages remain incomplete. Library grade/learn is built; the weekly app loop is not. Original favorable demo figures are illustrative. Preserved prior local runtime changes.
+
+## 2026-10-24 17:07 Micah (Codex, main local runtime)
+- Done: refreshed frozen workspace dependencies, configured this checkout's own local Convex on ports 3220/3221, loaded 25 settings from ignored root .env without printing values, deployed functions and idempotently seeded the computed company. Web runs at http://127.0.0.1:3000/c/kestrel; browser shows the live computed timeline. pnpm check passes.
+- Next: services are left running; use pnpm dev to restart from main. Reload root .env into Convex when server settings change. Cloud account linkage remains separate.
+- Watch out: older p1-web-shell backend on 3210 is preserved. This checkout uses ignored apps/web/.env.local for Convex URLs and the public computed demo ID. No live provider calls, source connectors, production deployment or data reset; Next week remains unavailable. Task: kb/tasks/S0-local-runtime.md.
+
 ## 2026-10-24 04:05 Codex brain (first computed prototype verified)
 - Done: Micah UI integrated; computed engine/actions deployed to dev. Browser event/sim actions complete successfully, previews work and approval confirmation remains intact. Standard /c/kestrel now resolves to the computed company through the public demo ID. C3/provider consumers and text repairs reviewed/merged. Main647 tests, typechecks, lint and fresh build pass.
 - Next: Claude E3c forward engine, E1b simulator and E2a mocks run in isolated worktrees; audit each, then retained generations and source/week wiring. Exact sessions in HANDOFF.md.

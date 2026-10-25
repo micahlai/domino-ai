@@ -45,7 +45,7 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | CREAO local setup complete: all five .env fields, three private agents, API mock runs and checks pass; other service access remains unverified |
+| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | Main runs at localhost:3000 with separate local Convex on 3220, 25 root .env settings loaded, computed company seeded, browser and pnpm check pass; cloud/provider access unverified |
 | P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
 | P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | done | codex/p2-convex | 14 tables/queries, 5 mutations; seed and live queries verified; 56 tests/check/build pass |
 | P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | done | codex/p3-multiverse | SVG fan, stable fix morph, selection and keyboard access; desktop/mobile verified |
@@ -76,3 +76,5 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E6e | `kb/tasks/E6e-text-artifacts.md` | E6d | done | E6e-text-artifacts |1bc9761 reviewed/merged,647tests, direct brief pass with intermittent format |
 
 | E2a | `kb/tasks/E2a-mock-sources.md` | C3 | doing | E2a-mock-sources | Claude authenticated source handler/server |
+
+| D1 | Feature completion overview PDF | User request | main fetched | done | main | Seven-page output/pdf/domino-feature-status-overview.pdf; code/status cross-check, source index, all pages visually reviewed; pnpm check passes |
