@@ -94,7 +94,7 @@ function breachesOf(r: WorkspaceRun) {
             ? {
                 weekStart: receipt.weekStart,
                 text: `Below ${receipt.label} · short ${formatCents(receipt.shortfall)}`,
-                short: `Short ${formatCents(receipt.shortfall)}`,
+                short: `${formatCents(receipt.shortfall)} under minimum`,
               }
             : { weekStart: receipt.weekStart, text: `Below ${receipt.label}` },
         ]
@@ -545,7 +545,7 @@ export function WorkspaceView({
                       delta={
                         floor
                           ? floor.status === "breached"
-                            ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
+                            ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `${formatCents(floor.shortfall)} under the minimum` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
                             : floor.status === "clear"
                               ? "Stays above in every week"
                               : "Could not be checked"
