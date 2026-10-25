@@ -15,7 +15,8 @@
  *     { _id, at, actor, action, refs, agent?, tool?, source?, runId?, summary? }
  *   field.findings({ companyId, status?: "open"|"approved"|"rejected", escalatedOnly? })
  *     up to 200, newest first: { findingId, kind, severity, summary, refs, detectedAt,
- *     version, escalated, status, decidedBy?, decidedAt?, note? }
+ *     version, escalated, status, decidedBy?, decidedAt?, note?,
+ *     explanation?: { text, suggestedCheck, model, at } }  (Claude, fieldAi.explainNewFindings)
  *   field.exportSeed({ companyId })   { seedId, contentHash, json } where json is
  *     WeeklySeedV1 text for the latest snapshot, already checked by parseWeeklySeedJson.
  *   field.companies()   picker companies in picker order (newest per profile, by name):
@@ -321,6 +322,7 @@ const publicFinding = (f: Doc<"findings">) => ({
   decidedBy: f.decidedBy,
   decidedAt: f.decidedAt,
   note: f.note,
+  explanation: f.explanation,
 });
 
 export const findings = query({

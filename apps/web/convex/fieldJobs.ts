@@ -23,7 +23,8 @@ import { computedRefs } from "./lib/refs";
  * Field ingestion agent (internal). One run: read every connected tool through the connectors
  * (connectors/pullAll over the in-process vendor mocks), map and validate, then commit a new immutable snapshot version, audit it, store
  * findings and recompute the forecast. Every step writes a `log` row naming the agent, tool
- * and data source. Deterministic code only: no model call, no money estimate, no real API.
+ * and data source. Deterministic code only: no money estimate, no real API. The one model call
+ * (Claude explaining new flags) runs separately in fieldAi.explainNewFindings.
  */
 
 /** Auto-ingest cadence and bound: one tick every 45 s, at most 120 ticks per enable. */
@@ -381,6 +382,13 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
         changed: result.changed,
       });
     if (!result.changed) return analyst().then(() => result);
+    // Claude explains the new rule-based flags in the background (budgeted, skipped without a key).
+    if (result.newFindings > 0)
+      await ctx.scheduler.runAfter(0, internal.fieldAi.explainNewFindings, {
+        companyId,
+        runId,
+        version: result.version,
+      });
     try {
       const r = await ctx.runMutation(computedRefs.recompute, { companyId });
       await step({

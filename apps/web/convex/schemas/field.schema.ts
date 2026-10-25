@@ -116,9 +116,42 @@ export const fieldTables = {
     finishedAt: v.optional(v.string()),
     summary: v.optional(v.string()),
     research: v.optional(v.any()),
+    // Claude's summary of the engine results (fieldAnalyst.summarize). Absent on older rows.
+    aiSummary: v.optional(
+      v.object({
+        status: v.union(v.literal("done"), v.literal("unavailable"), v.literal("skipped")),
+        reason: v.optional(v.string()),
+        recommendation: v.optional(v.string()),
+        rationale: v.optional(v.string()),
+        citedScenarios: v.optional(v.array(v.number())),
+        model: v.optional(v.string()),
+        inputTokens: v.optional(v.number()),
+        outputTokens: v.optional(v.number()),
+        at: v.string(),
+      }),
+    ),
   })
     .index("by_companyId", ["companyId"])
     .index("by_runId", ["runId"]),
+  // Model-call budget (fieldAi.ts): one row per Claude call or CREAO run. Per company at most one
+  // of each kind per snapshot version, and at most AI_CALLS_PER_HOUR rows per hour in total.
+  aiCalls: defineTable({
+    companyId,
+    kind: v.union(v.literal("audit"), v.literal("analyst"), v.literal("research")),
+    provider: v.union(v.literal("claude"), v.literal("creao")),
+    /** Snapshot version this call belongs to, as "v3". */
+    scope: v.string(),
+    hour: v.number(),
+    at: v.string(),
+    status: v.union(v.literal("reserved"), v.literal("ok"), v.literal("failed")),
+    detail: v.optional(v.string()),
+    model: v.optional(v.string()),
+    remoteRunId: v.optional(v.string()),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+  })
+    .index("by_hour", ["hour"])
+    .index("by_companyId_and_kind_and_scope", ["companyId", "kind", "scope"]),
   analystScenarios: defineTable({
     companyId,
     runId: v.string(),
@@ -193,6 +226,15 @@ export const fieldTables = {
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.string()),
     note: v.optional(v.string()),
+    // Claude's plain-English explanation of the rule-based finding (fieldAi.explainFindings).
+    explanation: v.optional(
+      v.object({
+        text: v.string(),
+        suggestedCheck: v.string(),
+        model: v.string(),
+        at: v.string(),
+      }),
+    ),
   })
     .index("by_companyId_and_findingId", ["companyId", "findingId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
