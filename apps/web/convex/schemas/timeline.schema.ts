@@ -112,4 +112,51 @@ export const timelineTables = {
     .index("by_company_and_runId", ["companyId", "runId"])
     .index("by_company_and_requestId", ["companyId", "requestId"])
     .index("by_company_and_seedId", ["companyId", "seedId"]),
+  // TL1C/TL2/TL4: append-only workspace runs on one saved baseline (timeline/workspace.ts).
+  // Each row freezes its complete rules, complete ordered changes and engine outputs; the seed
+  // stays on the baseline row. requestId binds the first accepted inputs (inputHash).
+  timelineRuns: defineTable({
+    runId: v.string(),
+    companyId: v.string(),
+    requestId: v.string(),
+    inputHash: v.string(),
+    baselineRunId: v.string(),
+    parentRunId: v.union(v.string(), v.null()),
+    kind: v.union(v.literal("baseline"), v.literal("rules"), v.literal("scenario")),
+    label: v.string(),
+    depth: v.number(),
+    seedId: v.string(),
+    seedHash: v.string(),
+    methodVersion: v.string(),
+    constraintVersion: v.string(),
+    constraintNote: v.string(),
+    constraints: v.any(),
+    ownChanges: v.any(),
+    changes: v.any(),
+    forecast: v.any(),
+    dominoes: v.any(),
+    receipts: v.any(),
+    comparison: v.any(),
+    lowPointCents: v.number(),
+    lowPointWeek: v.string(),
+    operation: v.any(),
+    savedAt: v.string(),
+  })
+    .index("by_company_and_runId", ["companyId", "runId"])
+    .index("by_company_and_requestId", ["companyId", "requestId"])
+    .index("by_company_and_baselineRunId", ["companyId", "baselineRunId"])
+    .index("by_company", ["companyId"]),
+  // TL3: one-shot question receipts. Written only by the questions worker's functions.
+  timelineQuestions: defineTable({
+    companyId: v.string(),
+    runId: v.string(),
+    requestId: v.string(),
+    inputHash: v.string(),
+    status: v.string(),
+    data: v.any(),
+    startedAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_company_and_requestId", ["companyId", "requestId"])
+    .index("by_company_and_runId", ["companyId", "runId"]),
 } as const;
