@@ -9,6 +9,7 @@ import {
   mutation,
   query,
 } from "../_generated/server";
+import { groundingIssue } from "./assistant/grounding";
 import {
   DraftSchema,
   GREETING,
@@ -466,11 +467,16 @@ export const saveAssistantTurn = internalMutation({
       intentsJson === null ? null : z.array(IntentSchema).max(4).parse(JSON.parse(intentsJson));
     // Existing supplied slots are changed only by the deterministic pending-field/correction
     // path. A model cannot silently replace them or pull values from an earlier reset draft.
-    const next =
-      draft.intents.length || intents === null
+    // Enforce the original wording even when no model ran or returned no usable intents.
+    // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
+    const sourceIssue = groundingIssue(args.text, []);
+    const next = sourceIssue
+      ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
+      : draft.intents.length || intents === null
         ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId)
         : evaluateIntents(run, intents, receipt.conversationId, args.text, receipt.selectedItemId);
     const unchangedReady =
+      !sourceIssue &&
       receipt.status === "ready" &&
       !next.draft.pending &&
       canonicalJson(next.draft.intents) === canonicalJson(draft.intents);

@@ -397,47 +397,52 @@ describe("timeline questions: provider", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("applies the same semantic guard to generated intents", async () => {
+  it("rejects an explicit upper limit before asking the provider", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reply({ intents: [{ kind: "min_cash_rule", amountText: "$3M" }] })),
+    const fetchSpy = vi.fn(async () =>
+      reply({ intents: [{ kind: "min_cash_rule", amountText: "$3M" }] }),
     );
+    vi.stubGlobal("fetch", fetchSpy);
     const r = await ask(setup(), "Could you enforce usable cash below $3M?");
     expect(r.status).toBe("clarification");
-    expect(r.answer).toContain("upper cash limit");
+    expect(r.answer).toMatch(/upper.*limits?/);
     expect(r.proposal).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it.each([
     [
       "Could you enforce usable cash above $3M every day?",
       { kind: "min_cash_rule", amountText: "$3M" },
-      /not day by day/,
+      /daily/,
+      0,
     ],
     [
       "Could the Northwind Health payment land 10 days behind schedule while we keep usable cash above $3M at all times?",
       { kind: "late_invoice", itemText: "Northwind Health", daysText: "10 days" },
       /not day by day/,
+      1,
     ],
     [
       "Could you enforce a headcount budget and keep usable cash above $3M?",
       { kind: "min_cash_rule", amountText: "$3M" },
       /Headcount/,
+      1,
     ],
     [
       "Could the Northwind Health payment land 10 days behind schedule with a hiring budget?",
       { kind: "late_invoice", itemText: "Northwind Health", daysText: "10 days" },
       /Headcount/,
+      1,
     ],
   ])(
     "does not let provider intents drop unsupported qualifiers from %s",
-    async (prompt, intent, message) => {
+    async (prompt, intent, message, expectedCalls) => {
       vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
       const fetchSpy = vi.fn(async () => reply({ intents: [intent] }));
       vi.stubGlobal("fetch", fetchSpy);
       const r = await ask(setup(), prompt);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(expectedCalls as number);
       expect(r.status).toBe("clarification");
       expect(r.answer).toMatch(message);
       expect(r.proposal).toBeNull();
@@ -457,6 +462,7 @@ describe("timeline questions: provider", () => {
           counterpartyText: "Atlas Legal",
         },
       ],
+      0,
     ],
     [
       "Could you arrange an $80000 payment to Atlas Legal dated 2026-11-17 and enforce usable cash above $3000000?",
@@ -470,6 +476,7 @@ describe("timeline questions: provider", () => {
         },
         { kind: "min_cash_rule", amountText: "$80000" },
       ],
+      1,
     ],
     [
       "Could you arrange an $80000 payment to Atlas Legal dated 2026-11-17 and a $10000 deposit from Acme dated 2026-11-18?",
@@ -489,15 +496,16 @@ describe("timeline questions: provider", () => {
           counterpartyText: "Acme",
         },
       ],
+      1,
     ],
   ])(
     "rejects dropped or cross-clause provider amounts and dates in %s",
-    async (prompt, intents) => {
+    async (prompt, intents, expectedCalls) => {
       vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
       const fetchSpy = vi.fn(async () => reply({ intents }));
       vi.stubGlobal("fetch", fetchSpy);
       const r = await ask(setup(), prompt);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(expectedCalls as number);
       expect(r.status).toBe("clarification");
       expect(r.proposal).toBeNull();
     },

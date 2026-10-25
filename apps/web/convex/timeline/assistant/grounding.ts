@@ -7,7 +7,7 @@ import { copiedFromPrompt } from "../questions/provider";
 export function groundingIssue(prompt: string, intents: Intent[], selected: string[] = []) {
   if (
     /\b(not|never|don['’]?t|doesn['’]?t|do not|avoid|cancel|instead of|rather than|if|unless|except|excluding|including|provided|conditional|contingent|before|after|between|through|without|only|across|accounts?|discount|tax|percent|daily|intraday|every|each|monthly|recurring|per month|per week|maximum|max|at most|less than|below|under|until|starting|ending|or|either)\b/i.test(
-      prompt.replace(/\bwhat if\b/gi, " "),
+      prompt.replace(/\s+/g, " ").replace(/\bwhat if\b/gi, " "),
     )
   )
     return "Negations, conditions, recurring events, ranges, daily or upper limits need clarification. State one unconditional event on an exact date, or a supported weekly minimum rule.";

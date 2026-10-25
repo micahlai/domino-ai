@@ -81,6 +81,22 @@ export function findDateText(text: string): string | null {
   return (ISO.exec(text) ?? MONTH_DAY.exec(text) ?? DAY_MONTH.exec(text))?.[0] ?? null;
 }
 
+/** Whole source phrases for provider provenance, including explicit or malformed years/signs.
+ * Unlike finding a date, this must not let "Nov 17" be copied out of "Nov 17, 2027". */
+export function dateTokens(text: string): string[] {
+  const phrases = new RegExp(
+    `(?:[-+]\\s*)?(?:${ISO.source}|${MONTH_DAY.source}|${DAY_MONTH.source})`,
+    "gi",
+  );
+  return [...text.matchAll(phrases)].map((match) => {
+    // Preserve an explicit suffix even if its spacing/year shape is not supported by the
+    // date parser. It must clarify rather than silently default to the forecast's year.
+    const tail = text.slice((match.index ?? 0) + match[0].length);
+    const extraYear = /^(?:,\s*|\s+)\d+\b/.exec(tail)?.[0] ?? "";
+    return match[0] + extraYear;
+  });
+}
+
 const pad = (n: number) => String(n).padStart(2, "0");
 function calendar(y: number, m: number, d: number): string | null {
   const t = Date.UTC(y, m - 1, d);

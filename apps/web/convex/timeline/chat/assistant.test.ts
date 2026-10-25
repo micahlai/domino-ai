@@ -419,6 +419,99 @@ describe("Claude Timeline chat safety", () => {
   });
 
   it.each([
+    ["configured", "test-key"],
+    ["no key", ""],
+  ])("enforces cash qualifiers at save even on the %s fallback", async (_mode, apiKey) => {
+    vi.stubEnv("ANTHROPIC_API_KEY", apiKey);
+    const t = setup();
+    const src = await source(t);
+    const spy = noNetwork();
+    for (const text of [
+      "pay $50,000 to Atlas Legal on 2026-11-17 daily",
+      "pay at most $50,000 to Atlas Legal on 2026-11-17",
+      "pay at   most $50,000 to Atlas Legal on 2026-11-17",
+    ]) {
+      const initial = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+      const ready = await t.mutation(chatRefs.send, turn(initial));
+      for (const r of [initial, ready]) {
+        // Use a fresh chat for the initially empty path; the ready path proves the old
+        // proposal cannot survive the rejection through unchangedReady.
+        const target =
+          r === initial ? await t.mutation(chatRefs.begin, { ...src, requestId: rid() }) : r;
+        const after = await t.action(assistantSend, turn(target, text));
+        expect(after.status).toBe("collecting");
+        expect(after.proposal).toBeNull();
+        expect(after.turns.at(-1)?.text).toMatch(/need clarification/);
+      }
+      const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
+      expect(question.status).toBe("clarification");
+      expect(question.proposal).toBeNull();
+    }
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("does not let fixed fallback parsing drop malformed explicit years or signs", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const t = setup();
+    const src = await source(t);
+    const spy = noNetwork();
+    for (const date of ["Nov 17,2027", "Nov 17, 27", "-2026-11-17"]) {
+      const text = `pay $50,000 to Atlas Legal on ${date}`;
+      const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+      expect((await t.action(assistantSend, turn(r, text))).proposal).toBeNull();
+      const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
+      expect(question.status).toBe("clarification");
+      expect(question.proposal).toBeNull();
+    }
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a truncated explicit year in both chat and question proposals", async () => {
+    const t = setup();
+    const src = await source(t);
+    const text = "pay $50,000 to Atlas Legal on Nov 17, 2027";
+    const shortened = { ...atlas, dateText: "Nov 17" };
+    classify([shortened]);
+    const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+    const chat = await t.action(assistantSend, turn(r, text));
+    expect(chat.proposal).toBeNull();
+    expect(chat.turns.at(-1)?.text).toMatch(/verify every suggested value/);
+    scriptClaude([
+      toolUse("check_request", { intents: [shortened] }),
+      final({ answer: "Checked" }),
+    ]);
+    const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
+    expect(question.status).toBe("clarification");
+    expect(question.proposal).toBeNull();
+    expect(question.answer).toMatch(/verify every suggested value/);
+  });
+
+  it("does not borrow a whole date from another cash clause to drop an explicit year", async () => {
+    const t = setup();
+    const src = await source(t);
+    const text = "pay $50,000 to Atlas Legal on Nov 17, 2027. Receive $10,000 from Acme on Nov 17";
+    const intents = [
+      { ...atlas, dateText: "Nov 17" },
+      {
+        ...atlas,
+        direction: "in",
+        amountText: "$10,000",
+        dateText: "Nov 17",
+        counterpartyText: "Acme",
+      },
+    ];
+    classify(intents);
+    const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+    const chat = await t.action(assistantSend, turn(r, text));
+    expect(chat.status).toBe("collecting");
+    expect(chat.proposal).toBeNull();
+    scriptClaude([toolUse("check_request", { intents }), final({ answer: "Checked" })]);
+    const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
+    expect(question.status).toBe("clarification");
+    expect(question.proposal).toBeNull();
+  });
+
+  it.each([
     { ...atlas, amountText: "$999M" },
     { ...atlas, dateText: "2026-11-24" },
     { ...atlas, counterpartyText: "Invented Vendor" },
@@ -457,6 +550,24 @@ describe("Claude question grounding", () => {
     expect(viaClaude.citations).toEqual(grammar.citations);
     expect(viaClaude.citations.length).toBeGreaterThan(0);
     expect(viaClaude.answer).not.toMatch(/999|no risk/);
+  });
+
+  it("requires a full explicit year for a question week", async () => {
+    const t = setup();
+    scriptClaude([
+      toolUse("check_request", {
+        intents: [{ kind: "question", topic: "week", weekText: "Nov 17", itemText: null }],
+      }),
+      final({ answer: "Checked" }),
+    ]);
+    const r = await t.action(ask, {
+      ...(await source(t)),
+      requestId: rid(),
+      prompt: "What happens in the week of Nov 17, 2027?",
+    });
+    expect(r.status).toBe("clarification");
+    expect(r.citations).toEqual([]);
+    expect(r.answer).toMatch(/verify every suggested value/);
   });
 
   it("does not accept unverified quantitative or qualitative financial narrative", async () => {

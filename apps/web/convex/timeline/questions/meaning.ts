@@ -2,6 +2,7 @@ import { CASH_WORD, DAILY, FLOOR_WORD, HEADCOUNT, IN, OUT, SCENARIO, clauses } f
 import type { Intent } from "./intent";
 import {
   countTokens,
+  dateTokens,
   findDateText,
   moneyTokens,
   parseDaysText,
@@ -11,6 +12,17 @@ import {
 
 /** Both intent readers pass this check. Unsupported qualifiers must never disappear. */
 export function meaningIssue(prompt: string, intents: Intent[]): string | null {
+  const dates = dateTokens(prompt);
+  for (const intent of intents) {
+    const date =
+      intent.kind === "cash_change"
+        ? intent.dateText
+        : intent.kind === "question"
+          ? intent.weekText
+          : null;
+    if (date !== null && dates.length && !dates.includes(date))
+      return "Give the complete date, including its year. I cannot drop part of a date or replace an explicit date with the selected week.";
+  }
   const proposals = intents.filter(
     (i) => i.kind !== "question" && i.kind !== "unsupported" && i.kind !== "unclear",
   );
@@ -46,8 +58,9 @@ export function meaningIssue(prompt: string, intents: Intent[]): string | null {
         if (!moneyTokens(part).includes(i.amountText ?? "")) return false;
         if (i.kind === "min_cash_rule")
           return /\busable\s+cash\b/i.test(part) && FLOOR_WORD.test(part);
-        return [i.dateText, i.counterpartyText].every(
-          (word) => word === null || part.includes(word),
+        return (
+          (i.dateText === null || dateTokens(part).includes(i.dateText)) &&
+          (i.counterpartyText === null || part.includes(i.counterpartyText))
         );
       });
       if (!scope || moneyTokens(scope).length !== 1)

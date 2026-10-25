@@ -5,6 +5,7 @@ import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 import { action } from "../_generated/server";
 import { ASSISTANT_TIMEOUT_MS, assistantConfig } from "./assistant/claude";
+import { groundingIssue } from "./assistant/grounding";
 import { ASSISTANT_QUESTIONS_VERSION, answerWithAssistant } from "./assistant/questions";
 import {
   type WorkspaceRun,
@@ -481,7 +482,14 @@ export const ask = action({
         selectedWeek: week,
         selectedItemId: item,
       };
-      if (assistantConfig()) {
+      const sourceIssue = groundingIssue(prompt, []);
+      if (sourceIssue) {
+        const fixed = grammar ? resolve(run, grammar, asked) : null;
+        outcome =
+          fixed?.status === "clarification"
+            ? fixed
+            : { status: "clarification", answer: sourceIssue, citations: [] };
+      } else if (assistantConfig()) {
         outcome = await answerWithAssistant(run, asked);
       } else {
         const read = grammar
