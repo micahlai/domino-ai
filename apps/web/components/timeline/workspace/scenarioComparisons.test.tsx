@@ -157,6 +157,38 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain('data-testid="forecast-line"');
   });
 
+  it("draws a hovered scenario and the ones it builds on in front, fading the rest", () => {
+    const line = (runId: string, ancestors: string[] = []) => ({
+      runId,
+      label: runId,
+      forecast: fixtureRules.forecast,
+      href: `/open/${runId}`,
+      color: SCENARIO_COLORS[0],
+      fromIndex: 3,
+      ancestors,
+    });
+    const html = renderToStaticMarkup(
+      <WorkspaceChart
+        history={fixtureRoot.baseline.history}
+        forecast={fixtureRoot.forecast}
+        forecastRunId="base"
+        comparisons={[line("parent"), line("other"), line("child", ["parent"])]}
+        highlightRunIds={["parent", "child"]}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+      />,
+    );
+    // SVG paints in document order: unrelated lines, then the base line, then the hovered path.
+    const order = [...html.matchAll(/data-testid="(?:comparison-line|forecast-line)"[^>]*/g)].map(
+      (m) => m[0].match(/data-run-id="([^"]+)"/)?.[1] ?? "base",
+    );
+    expect(order).toEqual(["other", "base", "parent", "child"]);
+    expect(html).toMatch(/data-run-id="other" data-highlighted="false" opacity="0.25"/);
+    expect(html).toMatch(/data-run-id="child" data-highlighted="true" opacity="1"/);
+  });
+
   it("offers two-handle time and cash scrollers, axis titles and gridlines", () => {
     const html = renderToStaticMarkup(
       <WorkspaceChart

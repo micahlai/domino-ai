@@ -53,7 +53,11 @@ export type ChartProps = {
     note?: string | null;
     /** This scenario's own saved breach notes, marked on its line. */
     breaches?: { weekStart: string; text: string; short?: string }[];
+    /** Scenarios this one builds on, so hovering it in the key lights up its whole path. */
+    ancestors?: string[];
   }[];
+  /** A scenario and the ones it builds on, drawn in front while it is hovered elsewhere. */
+  highlightRunIds?: string[] | null;
   items: ScheduledItem[];
   /** Saved minimum-cash limits, drawn as dashed lines. */
   limits: { id: string; label: string; cents: number }[];
@@ -78,6 +82,8 @@ const RECENT_WEEKS = 8;
 /** The narrowest window the range bar allows, in weeks. */
 const MIN_SPAN = 4;
 const DASHES = ["6 4", "2 4", "10 3 2 3"] as const;
+/** The chart key sits in the top-left corner, above the plot, so it covers no lines while closed. */
+const KEY_SPOT = { left: 4, top: 2 };
 
 type Point = FocusPoint;
 
@@ -106,12 +112,14 @@ function ScenarioStroke({
   d,
   color,
   dash,
+  lit = false,
   reveal,
   onReveal,
 }: {
   d: string;
   color?: string;
   dash?: string;
+  lit?: boolean;
   reveal: boolean;
   onReveal: () => void;
 }) {
@@ -125,7 +133,7 @@ function ScenarioStroke({
     fill: "none",
     className: color ? undefined : "stroke-muted-foreground opacity-80",
     stroke: color,
-    strokeWidth: color ? 2.25 : 1.5,
+    strokeWidth: (color ? 2.25 : 1.5) + (lit ? 1 : 0),
     strokeLinejoin: "round" as const,
     strokeLinecap: "round" as const,
     strokeDasharray: dash,
@@ -202,6 +210,7 @@ export function WorkspaceChart(p: ChartProps) {
     weekStart: string | null;
   } | null>(null);
   const [hover, setHover] = useState<number | null>(null);
+  const [keyHover, setKeyHover] = useState<string | null>(null);
   const reduced = useReducedMotion();
   const [chosenView, setView] = useState<[number, number] | null>(null);
   const [cashView, setCashView] = useState<[number, number] | null>(null);
@@ -290,6 +299,15 @@ export function WorkspaceChart(p: ChartProps) {
   for (const it of p.items) itemsByWeek.set(it.dueWeek, (itemsByWeek.get(it.dueWeek) ?? 0) + 1);
   const selectedIndex = weeks.findIndex((w) => w.weekStart === p.selectedWeek);
   const mainRunId = p.forecastRunId ?? "forecast";
+  // The base line is every scenario's root, so it stays lit; the rest of the path moves to the front.
+  const keyEntry = comparisons.find((entry) => entry.runId === keyHover);
+  const lineage = new Set(
+    keyHover
+      ? [keyHover, ...(keyEntry?.ancestors ?? [])]
+      : (p.highlightRunIds ?? []).filter((id) => id !== mainRunId),
+  );
+  const highlighting = Boolean(keyHover) || Boolean(p.highlightRunIds?.length);
+  const lit = (runId: string) => lineage.has(runId);
   const curves: FocusCurve[] = [
     { runId: mainRunId, label: mainLabel, points: lastPast ? [lastPast, ...future] : future },
     ...comparisons.map((entry) => ({
@@ -390,7 +408,7 @@ export function WorkspaceChart(p: ChartProps) {
       width: Math.max(1, plotRight - plotLeft - 8),
       height: Math.max(1, H - PAD.bottom - PAD.top - 12),
     },
-    p.fill ? [{ left: left + 8, top: PAD.top + 4, ...legendSize }] : [],
+    p.fill ? [{ ...KEY_SPOT, ...legendSize }] : [],
   );
 
   // The branch point of a proposal under review: the forecast week containing its start date.
@@ -490,13 +508,14 @@ export function WorkspaceChart(p: ChartProps) {
         ref={legendRef}
         className={
           p.fill
-            ? "absolute z-20 max-h-[70%] w-max max-w-[min(20rem,calc(100%_-_6rem))] overflow-y-auto rounded-md border bg-card/95 px-2 py-1 text-xs text-muted-foreground shadow-xs"
+            ? "absolute z-20 max-h-[70%] w-max max-w-[min(20rem,calc(100%_-_6rem))] overflow-y-auto rounded-md border bg-card/95 px-2 py-0.5 text-xs text-muted-foreground shadow-xs"
             : "shrink-0 text-xs text-muted-foreground"
         }
-        style={p.fill ? { left: left + 8, top: PAD.top + 4 } : undefined}
+        style={p.fill ? KEY_SPOT : undefined}
       >
+        {/* Closed, the key is a single line; cash minimum details open inside it. */}
         <details open={p.fill ? undefined : true}>
-          <summary className="min-h-6 cursor-pointer">
+          <summary className="min-h-6 cursor-pointer whitespace-nowrap">
             Chart key
             {comparisons.length
               ? ` · ${comparisons.length} ${comparisons.length === 1 ? "scenario" : "scenarios"}`
@@ -528,8 +547,10 @@ export function WorkspaceChart(p: ChartProps) {
             {comparisons.map((entry, index) => (
               <span
                 key={entry.runId}
-                className="inline-flex max-w-full flex-wrap items-center gap-1.5"
+                className={`inline-flex max-w-full flex-wrap items-center gap-1.5 transition-opacity${highlighting && !lit(entry.runId) ? " opacity-50" : ""}`}
                 data-testid="comparison-legend"
+                onPointerEnter={() => setKeyHover(entry.runId)}
+                onPointerLeave={() => setKeyHover(null)}
               >
                 <Swatch
                   dash={entry.color ? undefined : DASHES[index % DASHES.length]}
@@ -576,26 +597,26 @@ export function WorkspaceChart(p: ChartProps) {
               Scheduled items (original imported dates; scenario changes are in the cash line)
             </span>
           </div>
+          {notes.length || p.limits.length ? (
+            <details className="mt-1 max-h-32 overflow-y-auto text-xs">
+              <summary className="min-h-8 cursor-pointer py-1 text-destructive">
+                Cash minimum details ({notes.length + p.limits.length})
+              </summary>
+              <ul className="space-y-1 pl-2">
+                {p.limits.map((limit) => (
+                  <li key={limit.id}>
+                    {limit.label} · {formatCents(limit.cents)}
+                  </li>
+                ))}
+                {notes.map((note, index) => (
+                  <li key={`${index}:${note.weekStart}`}>
+                    {formatFullDate(note.weekStart)} · {note.text}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </details>
-        {notes.length || p.limits.length ? (
-          <details className="mt-1 max-h-32 overflow-y-auto text-xs">
-            <summary className="min-h-8 cursor-pointer py-1 text-destructive">
-              Cash minimum details ({notes.length + p.limits.length})
-            </summary>
-            <ul className="space-y-1 pl-2">
-              {p.limits.map((limit) => (
-                <li key={limit.id}>
-                  {limit.label} · {formatCents(limit.cents)}
-                </li>
-              ))}
-              {notes.map((note, index) => (
-                <li key={`${index}:${note.weekStart}`}>
-                  {formatFullDate(note.weekStart)} · {note.text}
-                </li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
       </figcaption>
       <div
         className={
@@ -773,7 +794,28 @@ export function WorkspaceChart(p: ChartProps) {
                   data-testid="parent-line"
                 />
               ) : null}
-              {comparisons.map((entry, index) => {
+              {/* One keyed list so a hovered path moves in front without redrawing its lines. */}
+              {[
+                ...comparisons
+                  .map((entry, index) => ({ entry, index }))
+                  .filter(({ entry }) => !lit(entry.runId)),
+                null,
+                ...comparisons
+                  .map((entry, index) => ({ entry, index }))
+                  .filter(({ entry }) => lit(entry.runId)),
+              ].map((drawn) => {
+                if (!drawn)
+                  return (
+                    <path
+                      key="forecast-line"
+                      d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
+                      fill="none"
+                      className="stroke-primary"
+                      data-testid="forecast-line"
+                      strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
+                    />
+                  );
+                const { entry, index } = drawn;
                 const points = comparisonPoints(entry);
                 if (points.length < 2)
                   return (
@@ -802,11 +844,15 @@ export function WorkspaceChart(p: ChartProps) {
                     pointerEvents="none"
                     data-testid={entry.parent ? "parent-line" : "comparison-line"}
                     data-run-id={entry.runId}
+                    data-highlighted={highlighting ? lit(entry.runId) : undefined}
+                    opacity={highlighting && !lit(entry.runId) ? 0.25 : 1}
+                    className="transition-opacity duration-150"
                   >
                     <ScenarioStroke
                       d={draw(points) ?? ""}
                       color={entry.color}
                       dash={entry.color ? undefined : DASHES[index % DASHES.length]}
+                      lit={highlighting && lit(entry.runId)}
                       reveal={Boolean(entry.reveal)}
                       onReveal={() => p.onReveal?.(entry.runId)}
                     />
@@ -824,13 +870,6 @@ export function WorkspaceChart(p: ChartProps) {
                   </g>
                 );
               })}
-              <path
-                d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
-                fill="none"
-                className="stroke-primary"
-                data-testid="forecast-line"
-                strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
-              />
               {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
               <g pointerEvents="none">
                 {weeks.map((w, i) =>

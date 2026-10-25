@@ -36,6 +36,7 @@ import { fieldOriginHref } from "./fieldOrigin";
 import type { Outcome } from "./requests";
 import {
   type ScenarioComparisons,
+  ancestorsOf,
   assignColors,
   branchStart,
   colorFor,
@@ -170,6 +171,11 @@ export function WorkspaceView({
   const selectedIds = comparisonIds(selection.ids, baseRunId ?? "");
   const entries = familyEntries(run, graph);
   const shownSet = new Set(selectedIds);
+  // Hovering a scenario in the left rail lights up its line and every line it builds on.
+  const [hoveredRunId, setHoveredRunId] = useState<string | null>(null);
+  const hoveredLineage = hoveredRunId
+    ? [...ancestorsOf(hoveredRunId, entries, baseRunId ?? ""), hoveredRunId]
+    : null;
   const base = run.baseline.forecast;
   const forecastOf = (id: string) => {
     if (id === baseRunId) return base;
@@ -198,6 +204,7 @@ export function WorkspaceView({
         startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
         note: catchUpNote(read.value, anchor, diverges),
         breaches: breachesOf(read.value),
+        ancestors: ancestorsOf(id, entries, baseRunId ?? ""),
       },
     ];
   });
@@ -380,6 +387,8 @@ export function WorkspaceView({
               hrefFor={actions.hrefFor}
               catalogHref={actions.catalogHref}
               wide={scenariosWide}
+              highlighted={hoveredLineage}
+              onHover={setHoveredRunId}
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -459,6 +468,7 @@ export function WorkspaceView({
                 forecastRunId={baseRunId ?? undefined}
                 initialFocusRunId={run.runId}
                 comparisons={curves}
+                highlightRunIds={hoveredLineage}
                 onReveal={selection.onReveal}
                 items={b.seed.scheduledItems}
                 limits={limits}
