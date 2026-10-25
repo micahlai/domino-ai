@@ -2,7 +2,7 @@
 
 ## 2026-10-25 Main release
 - Done: combined origin/main fe39898 with field/main af7977d in isolated release/main-20261025; preserved existing main commits and README cleanup. Retained passing Field Convex tsconfig at sole conflict. Combined web/Convex typechecks pass; application code identical to recorded Field tests/build.
-- Next: verify remote main after the authorized push. Live3114/3260 and the dirty original main checkout remain unchanged.
+- Published: release merge a607b97 pushed to origin/main successfully. Live3114/3260 and the dirty original main checkout remain unchanged. Next: separate LLM-chat implementation if requested.
 - Watch out: TL9 provides deterministic guided chat; real LLM chat is still missing.
 
 ## 2026-10-25 Field map stability fixed

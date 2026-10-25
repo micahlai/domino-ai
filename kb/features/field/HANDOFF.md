@@ -1,10 +1,10 @@
 # Field lane handoff, Oct 25
 
-## Main release authorized, Oct 25
+## Main release pushed, Oct 25
 - Release branch `release/main-20261025` combines remote main `fe39898` and verified Field `af7977d` in `/private/tmp/domino-main-release-20261025`; the dirty original main checkout and live3114 were left alone.
 - Retained Field Convex tsconfig at the sole conflict. Combined web and Convex typechecks pass; application code matches Field exactly, so recorded tests/build are reused. Prior README credential cleanup remains intact.
 - TL9 is merged as deterministic guided clarification; real LLM chat remains missing. Older main-freeze rules below are superseded only for this explicitly authorized release.
-- Next: verify the remote main push; no deployment or runtime restart is part of this release.
+- Release merge `a607b97` was pushed to origin/main successfully. No deployment or runtime restart was performed. Next work remains the Field queue and separately requested real LLM chat.
 
 ## Completed map stability fix
 - Branch `merge/field-map-stability-20261025` in `../domino-merge`, base `aac6de6`; current field/main was already pushed.

@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Four in-flight Field features | done | Merged in order,1,901 combined tests/checks/build passed, final hydration fix passed focused23/build. Pushed field/main; live3114/3260 verified. Current authority: `../features/field/HANDOFF.md`. |
 | Agent-map vertical shifting during updates | done | b07c8c5: reproduced24px activity reflow;80 update samples stable after fixed two-line summary.63 focused tests/tsc/lint/build and live3114 pass. |
-| Publish verified Field release to main | ready | Explicitly authorized Oct25; release/main-20261025 combines fe39898 + af7977d. Web/Convex tsc pass; same app source as recorded passing Field release. Remote verification follows push. |
+| Publish verified Field release to main | done | a607b97 pushed to origin/main with explicit authorization Oct25; preserves fe39898 + af7977d. Web/Convex tsc pass; same app source as recorded passing Field release. Live runtime unchanged. |
 
 Latest planning checkpoint: two full-stack features, Field/Knowledge for Jayden and Timeline/Simulations for friend. See ../spec/independent-feature-lanes.md. P0 shared setup is planned, not implemented; after audit each lane owns its UI/backend/queue on a long-lived branch. Current lead first verifies/checkpoints existing L1/S2; L1 57a1581 first review rejected (../reviews/L1-57a1581-codex-audit.md), repair state unverified here. Older ready/sole-UI/global-queue rows below are history where superseded. No new worker launched; main/monitor/runtimes unchanged.
 
