@@ -1,53 +1,50 @@
-# Field lane handoff (Claude lead -> Codex), Oct 25
-
-## Integrated candidate, Oct 25
-- All four feature branches merged in the required order on `merge/field-codex-20261025` in `../domino-merge`. Conflict resolutions preserve webhook registrations, both new swarm tables (46 total composed tables), and optimistic flag-decision errors in the moved FlagsSection.
-- Combined acceptance PASS at code `2a47ac9`: web1,187, engine385, agents329 tests (1,901 total); web/Convex/engine/agents tsc; root Biome636 files; `pnpm --filter @domino/web build --webpack`. Default Turbopack build was attempted and blocked by its internal worker port permission. Integration regressions46 tests also pass. Live fast-forward is next.
-- Isolated integration runtime: Convex3298/3299, Next3138. Real backend smoke passes: audit child lifecycle, engine advisor suggestions, stale decision refusal, saved decline, unchanged cash. Browser accepted a second suggestion with a note and showed it under Decided. Screenshot `/tmp/field-integrated-worker-smoke.png`.
-- One real synthetic CREAO advisor request passed validation on profile `field_advisor@creao-3e8215ca6876`; no credentials or provider text printed/saved. After source identity check and combined acceptance, append the configured app/profile pair to live3260 verified profiles in memory via stdin, preserving existing entries.
-- Next exact step: finish combined acceptance, commit final evidence, fast-forward `../domino-field` only, push `field/main`, enable tested advisor profile, restart only Next3114, verify live backend and pages, stop isolated test servers. Main and protected ports remain untouched.
-
-## Codex takeover, Oct 25
-- User authorized Codex as Field lead to finish and integrate this wave. Fresh integration checkout: `../domino-merge`, branch `merge/field-codex-20261025`, based on `field/main` at `8dbba79`. Main remains untouched.
-- Inspected all five worktrees: convex-depth clean and already merged; worker-page clean at `e9b2e0b`; swarms at `8857294` with unfinished backend changes; judge-simple and timeline-ux have unfinished changes based on `95d646d`.
-- Claude PID 78153 still owns running swarms and Timeline test commands. Leave those checkouts alone until the commands and worker activity finish. No active judge or worker-page process found.
-- Active owners: Codex builder `swarms` finishes `field/swarms`; builder `timeline` reviews Claude commit `3753241` on `field/timeline-ux`; lead finishes judge and worker-page acceptance, integrations, docs, demo. Read-only safety reviewer audits swarm money/isolation/caps. User invoked orchestrator and requested five subagents; saved global Codex cap 5, current session still exposes three worker slots.
-- Judge: web/Convex tsc and changed-file Biome pass; full web Vitest 1,143 tests pass. Isolated backend3290/3291 and UI3130 ready. Browser verified three steps, map growth, engine At risk, unexpected bill ingest lowering cash, Play advancing days, Pause. Screenshot `/tmp/field-judge-smoke.png`. Fixed missing source requirements for surprises; focused rerun pending. Default build font fetch hit sandbox network; network-enabled rerun pending.
-- Worker page: fixed actual swarm API effect fields and company-scoped decision arguments; CREAO attribution now appears only with a saved CREAO recommendation. Focused23 tests, both tsc and Biome pass. Full web tests/build pending.
-- Ready commits: worker-page `3c8ee04` plus final copy followups (cash/payment checks); judge-simple `7547fae`; timeline-ux `3753241` + `9088bec`. Judge21 focused tests and webpack build passed after its guard fix. Worker full1,160 tests and webpack build passed; final23 focused tests and tsc passed after version tokens.
-- Swarms safety review cleared repaired source: durable audit retry with exact inputs and serialized commits, run/snapshot guards on advisor writes/decisions, company/actor/URL website cache. Builder final full tests/build/commit are pending. New CREAO advisor profile remains unverified and gated; engine suggestions still work. Do not add a verified profile without testing it.
-- Next: wait for swarms final acceptance, then merge swarms, worker-page, judge-simple, timeline-ux in order. Combined validation and live fast-forward/push/restart remain pending.
-- Live listeners confirmed: Next 3114 PID 68925; Convex 3260/3261 PID 55917. Do not touch protected ports.
+# Field lane handoff, Oct 25
 
 ## State
-- Integrated product branch: `field/main` (pushed; worktree `../domino-field`). Includes Field (ingestion, connectors incl. real Nessie bank, audit, CREAO-first AI with Claude fallback, real Apify, sim clock, brain map, dashboard, judge v1, 2U rewind) + Timeline TL7/TL9 integrated (joint seam "Open in Timeline", TL6 dashboard data). Latest: 95d646d. Tests: web 1137, engine 376 pass; lint clean.
-- Live demo (keep running): Next dev `http://127.0.0.1:3114` and local Convex `3260/3261`, both started from `../domino-field/apps/web`. Env on that Convex: ANTHROPIC_API_KEY, CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID/_API_KEY, DOMINO_CREAO_VERIFIED_PROFILES (evidence_analyst + 4 field_* roles), NESSIE_API_KEY/BASE_URL, APIFY_TOKEN. Never print values. Never touch ports 3102/3210/3214 (other apps) or the friend's 3107/3240/3241.
-- Merge rule (learned the hard way): never merge into `../domino-field` directly. Merge in `../domino-merge` (new branch from field/main), run checks, then `git merge --ff-only` in `../domino-field`, push, then restart Next (`pkill -f "next dev --hostname 127.0.0.1 --port 3114"; rm -rf .next; npx next dev --hostname 127.0.0.1 --port 3114`) because Turbopack's watcher gets stuck after big merges (reload loop). If convex dev fails to load a new dependency, restart it from apps/web: `CONVEX_AGENT_MODE=anonymous npx convex dev --local-cloud-port 3260 --local-site-port 3261 --tail-logs disable`.
-- If CREAO job prompts change, profile versions change: add `<appId>/<role>@creao-<hash>` to DOMINO_CREAO_VERIFIED_PROFILES on 3260 (compose in-shell from the app id env var).
+- Lead: Codex, taking over from Claude under Jayden's explicit authorization. This wave is finished and pushed to `field/main` in `../domino-field`. Integration happened only in `../domino-merge`, branch `merge/field-codex-20261025`, starting from `8dbba79`. Main remains `694ab2a`.
+- Release code: `92ac4ac` includes all four feature merges and the final hydration fix. Documentation commits may follow it.
+- Live demo: `http://127.0.0.1:3114`, local Convex3260/3261, both from `../domino-field/apps/web`. Next PID30980, persistent terminal session16152, log `/tmp/domino-field-next-3114.log`. Original Convex PID55917 remains running. The initial detached Next launch exited before binding; the persistent launch is confirmed listening.
+- Next was restarted with a fresh `.next` after the large fast-forward. Live verification passed: `/field`, `/judge`, `/c/kestrel/timeline` HTTP200; suggestions and toolbox queries respond on3260. The live browser renders connected data; the hydration repair enables Open in timeline with no new console errors. Screenshot `/tmp/field-live-release.png`.
+- Isolated judge3130/3290/3291, Timeline3140/3294/3295, and integration3138/3298/3299 test servers were stopped. Their data was preserved. Never touch3102/3210/3214 or the friend's3107/3240/3241.
 
-## In flight (Claude workers; may stop when usage ends; finish from the worktree)
-| Branch / worktree | Scope | Status at handoff |
-|---|---|---|
-| field/timeline-ux `../domino-field-timeline-ux` | Timeline page cleanup: clear primary flow, calmer chart, chat sidebar fit, empty state "Bring in latest books" | in progress |
-| field/swarms `../domino-field-swarms` | Audit swarm (parallel checkers), forecasting swarm, advisor only on breach -> `fieldSuggestions.list/decide`, growing Apify toolbox (Store search -> tools table) | in progress |
-| field/judge-simple `../domino-field-judge-simple` | /judge 3 steps: pick company health -> pick sources -> watch map grow + Play + 3 surprise presets | in progress |
-| field/worker-page `../domino-field-worker-page` | /field: Suggestions (accept/decline, records only) -> Risks we're watching -> Flags to review | in progress |
-| field/convex-depth `../domino-field-convex` | Signed vendor webhooks via httpAction -> immediate ingestion; optimistic confirm/dismiss. Presence and Cmd-K were scrapped. | MERGED into field/main (dff349e) |
-Each brief's acceptance: tsc (web + `-p convex`), vitest, biome on changed files, `pnpm --filter @domino/web build`, isolated local Convex on free ports for smoke, screenshots in the Claude scratchpad. Commit with a Co-Authored-By trailer.
+## Completed worktrees and merge order
+| Branch / worktree | Result | Merge |
+| --- | --- | --- |
+| `field/convex-depth`, `../domino-field-convex` | Signed vendor webhooks and optimistic decisions were already merged before takeover | `dff349e` |
+| `field/swarms`, `../domino-field-swarms` | Parallel audit checks, bounded forecasters, engine advisors on cash breach, growing capped Apify toolbox; finished `e6747b9` | `b820883` |
+| `field/worker-page`, `../domino-field-worker-page` | Suggestions, risks, flags; real API adapter and versioned decision requests; final `d6a80be` | `e394c7f` |
+| `field/judge-simple`, `../domino-field-judge-simple` | Health, sources, live map; Play/Pause; three source-aware surprise presets; `7547fae` | `1f3b536` |
+| `field/timeline-ux`, `../domino-field-timeline-ux` | Clearer flow, calmer chart, mobile assistant and focus, latest-books empty state; `3753241` + `9088bec` | `d6e85b0` |
+- All five worktrees were inspected. Existing Claude-owned test commands were left alone until they ended. No worker is still assigned from this takeover.
+- Conflicts resolved: generated Convex API regenerated, composed schema46 tables, Timeline isolation count28 Field tables, optimistic error handling transferred into the moved FlagsSection. Webhook tests wait for the actual bounded analyst completion before asserting rejected deliveries write nothing.
+- Independent safety review cleared durable audit recovery, stale advisor writes/decisions, company/actor/URL cache isolation and record-only approvals. Advisor writes and decisions require the correct run/snapshot. A failed audit retains exact inputs and blocks a newer snapshot until audit/recompute complete.
 
-## Merge order after they finish
-(convex-depth done) swarms -> worker-page (consumes fieldSuggestions) -> judge-simple -> timeline-ux. Resolve schema table-count test, api.d.ts registrations (let convex dev regenerate), AppShell/nav.
+## Verification evidence
+- Combined release at `2a47ac9`: web1,187 tests, engine385, agents329 (1,901 total); web/Convex/engine/agents TypeScript checks; root Biome636 files; `pnpm --filter @domino/web build --webpack`. All passed. Integration regressions46 tests passed.
+- Default Turbopack production builds were attempted and failed on an internal worker port permission; webpack is the supported checked fallback. No dependency or font workaround was introduced.
+- The live browser found a new hydration mismatch that could leave Open in timeline disabled. Final `92ac4ac` adds a hydration guard. Web tsc, focused23 worker tests, changed-file Biome and the production webpack build passed after that fix; fresh live browser showed an enabled button and no new errors. Full suites were reused per Jayden's latest instruction.
+- Isolated integrated smoke: audit lifecycle recorded, three engine suggestions created, stale decision rejected, decline saved, projected cash unchanged, repeat decision rejected. Browser accepted a second suggestion and saved its note. `/tmp/field-integrated-smoke.log`, `/tmp/field-integrated-worker-smoke.png`.
+- Judge smoke: own cash-crunch company, map populated, real engine At risk verdict, unexpected bill re-ingested and lowered cash, Play advanced days, Pause stopped it. `/tmp/field-judge-smoke.png`.
+- Timeline smoke: latest-books empty state, real fixture comparison curve,390px no overflow, mobile question field focus. `/tmp/domino-timeline-ux-desktop-full.png`, `/tmp/domino-timeline-ux-mobile-full.png`, `/tmp/domino-timeline-ux-mobile-assistant.png`.
+- Detailed branch evidence: `TAKEOVER-SWARMS.md`, `TAKEOVER-WORKER.md`, `TAKEOVER-JUDGE.md`, `TAKEOVER-TIMELINE.md`. Logs remain in `/tmp/field-*`.
 
-## Next queue
-- Convex priority 2: Workpool for swarms (if not done), rate-limiter + action-cache components replacing hand-rolled AI budget/Apify cache; priority 3 Workflow component for the ingest pipeline.
-- Osprey storyline: start OK and flip to At risk on day 9 (user may want).
-- TL8 branch rejoin (friend's lane).
-- CRS: hold until Jayden says. Mana: Jayden makes the demo video.
-- Tracks: Hyphenate (primary), Convex, CREAO, Apify, Capital One (Nessie). Anthropic public-benefit and Coinbase skipped.
+## CREAO and credentials
+- Existing live env remains configured for Anthropic fallback, the CREAO evidence app, Nessie and Apify. Never print keys, token files, `.env.local`, or auth files.
+- One real synthetic advisor request validated supplied fix ID selection and sanitized rationale for `field_advisor@creao-3e8215ca6876`. Source identity matched the release.
+- Auto-review initially rejected enabling that new profile due future company-derived data sent to CREAO. Jayden explicitly approved the scenario summaries and precomputed fix effects going to the existing CREAO app. The exact tested app/profile pair is now enabled on3260; previous verified profiles were preserved. Credentials and existing profile values stayed in process memory and stdin, never logs/files/arguments.
+- Changed CREAO prompts change their profile version. Validate a new version before adding its configured app/profile pair; compose values in memory and pass env updates through stdin. Never silently verify an untested profile.
 
-## Rules
-Integer cents; engine pure; agents never compute money; a person approves every action; Domino never moves money; no secrets printed or committed; never touch main; no destructive git without asking Jayden.
+## Merge and runtime rules
+- Never merge feature branches directly in `../domino-field`, never touch main. Use a fresh integration branch in `../domino-merge`; check it; `git merge --ff-only` in `../domino-field`; push `field/main`.
+- After large code merges, restart only Next3114 from `apps/web`: stop its verified process, clear `.next`, then `npx next dev --hostname 127.0.0.1 --port 3114`. Keep the long-running terminal session alive. Preserve Convex data.
+- If Convex needs a dependency restart, from the live apps/web only: `CONVEX_AGENT_MODE=anonymous npx convex dev --local-cloud-port 3260 --local-site-port 3261 --tail-logs disable`.
+- Live Convex can regenerate `convex/_generated/api.d.ts`. Inspect it before fast-forwarding; commit meaningful generation through integration or restore only generated churn.
+- Reuse passing checks. Rerun full suites only when code changes or a new failure justify them. Documentation-only synchronization needs no suite/build restart.
+- Integer cents; pure engine; AI never computes money; a person approves actions; Domino never moves money. No secrets printed/committed, no destructive Git or data operations without asking Jayden.
 
-## Gotchas
-- The live convex dev regenerates apps/web/convex/_generated/api.d.ts (formatting differs from hand merges). Before `git merge --ff-only` in ../domino-field, commit or `git checkout --` that file.
-- Full vitest can time out a few convex tests while other workers run tests in parallel; rerun the failing files alone before treating them as real.
+## Next exact step and queue
+1. Reproduce Jayden's new agent-map bug at `/field/map`: the document shifts vertically as agents update. Measure document scroll position and map/container geometry during updates, then fix the smallest demonstrated cause. Do not claim this is fixed by the Timeline-button hydration repair. No map layout code changed for this new report.
+2. Convex priority2: Workpool for swarms, rate-limiter and action-cache components; priority3 Workflow for ingestion. Current swarms use bounded app scheduling, not those components.
+3. Osprey storyline: possible request to start OK and flip At risk on day9. TL8 rejoin stays the friend's lane.
+4. CRS stays on hold. Mana: Jayden makes the demo video. Tracks: Hyphenate, Convex, CREAO, Apify, Capital One Nessie; Anthropic public-benefit and Coinbase skipped.
+- User requested orchestrator mode. Global Codex subagent cap5 was saved in `~/.codex/config.toml`; the active session still exposed three worker slots. No Codex restart was performed.

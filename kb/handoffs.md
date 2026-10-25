@@ -2,7 +2,8 @@
 
 ## 2026-10-25 Codex Field integration
 - Done: took over five worktrees; convex-depth already merged. Finished and committed remaining work, independently reviewed swarm durability/version/caching fixes, merged the four branches in order in domino-merge. Isolated backend and browser decision smoke passed; one real synthetic CREAO advisor request validated.
-- Next: finish combined checks, fast-forward field/main only, push and restart Next3114; exact live state goes in features/field/HANDOFF.md.
+- Done: combined1,901 tests/typechecks/lint/build pass; field/main fast-forwarded/pushed; Next3114 restarted and live3260 APIs/pages verified. Final hydration guard passed focused23 tests/web tsc/lint/build and fresh browser. CREAO advisor enabled after explicit user approval.
+- Next: reproduce the newly reported map vertical shifting during updates; see features/field/HANDOFF.md.
 - Watch out: default Turbopack production build cannot bind its worker port here; supported webpack build is the checked fallback. No main or protected-port change.
 
 ## 2026-10-24 Independent full-feature ownership prepared
