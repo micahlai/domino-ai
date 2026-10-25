@@ -1,6 +1,7 @@
 import { ConstraintSchema } from "@domino/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { timelineCalculationHref } from "../../../lib/trace-links";
 import { AncestryPanel, CatalogList } from "./CatalogPanel";
 import { QuestionsPanel, mergeReceipts } from "./QuestionsPanel";
 import { ReceiptsPanel, WeekDetail } from "./RunPanels";
@@ -424,6 +425,42 @@ describe("workspace view", () => {
         actions={actions}
       />,
     );
+
+  it("links the exact selected run to its saved calculation", () => {
+    const html = render();
+    expect(html).toContain(
+      `href="${timelineCalculationHref(fixtureScenario.companyId, fixtureScenario.runId)}"`,
+    );
+    expect(html).toContain('data-testid="action-calculation"');
+  });
+
+  it("shows the saved risk and fix low points side by side with its original Field explanation", () => {
+    const fix = clone(fixtureScenario);
+    fix.runId = "timeline:workspace/field-fix";
+    fix.label = "With fix: Delay bill";
+    fix.parentRunId = fixtureScenario.runId;
+    fix.forecast = clone(fixtureRoot.forecast);
+    fix.baseline.assumptionNote +=
+      "\nField trace: /field/analysis?companyId=field-company&runId=analyst-old&scenarioId=risk-old&fixKind=delay_bill";
+    const risk = clone(fixtureScenario);
+    risk.label = "If: Acme pays 30 days late";
+    const html = renderToStaticMarkup(
+      <WorkspaceView
+        run={fix}
+        parent={{ state: "ready", value: risk }}
+        graph={{ state: "ready", value: fixtureGraph }}
+        questions={{ state: "ready", value: [] }}
+        resultRef={{ state: "missing" }}
+        actions={actions}
+      />,
+    );
+    expect(html).toContain('data-testid="field-fix-comparison"');
+    expect(html).toContain("Without this fix");
+    expect(html).toContain("With this fix");
+    expect(html).toContain('data-testid="field-origin-link"');
+    expect(html).toContain("Why that suggestion");
+    expect(html).toContain("runId=analyst-old&amp;scenarioId=risk-old&amp;fixKind=delay_bill");
+  });
 
   it("shows the saved low point, rule result, server difference and both lines", () => {
     const html = render();

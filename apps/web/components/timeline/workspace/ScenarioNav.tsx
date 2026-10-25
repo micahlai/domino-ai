@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import { timelineCalculationHref } from "../../../lib/trace-links";
 import { cn } from "../../../lib/utils";
 import { formatExactCents } from "../baseline/format";
 import { familyEntries } from "./ScenarioSidebar";
@@ -65,6 +66,14 @@ export function ScenarioNav({
                   {current && outcome ? `${outcome.text} · ` : ""}low{" "}
                   {formatExactCents(entry.lowPointCents)}
                 </span>
+              </Link>
+              <Link
+                href={timelineCalculationHref(run.companyId, entry.runId)}
+                aria-label={`How we got here for ${name}`}
+                className="relative ml-2.5 block w-fit rounded px-1 py-0.5 text-xs text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                style={{ marginLeft: `${10 + depth * 10}px` }}
+              >
+                How we got here
               </Link>
             </li>
           );

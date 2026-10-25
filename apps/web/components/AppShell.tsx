@@ -130,9 +130,34 @@ export function AppShell({ children }: { children: ReactNode }) {
 /** Logo, page links, then the company switcher. On small screens the page links drop to their
  * own scrollable row under the logo. Always the light style, even above the dark pages. */
 function TopBar({ pathname }: { pathname: string }) {
+  const savedFieldTrace = pathname === "/field/analysis" || pathname.startsWith("/field/analysis/");
+  const savedTimelineCalculation =
+    TIMELINE.test(pathname) && pathname.replace(/\/$/, "").endsWith("/calculation");
+  if (savedFieldTrace || savedTimelineCalculation) {
+    const timelineCompany = savedTimelineCalculation
+      ? (pathname.match(/^\/c\/(.+)\/timeline\/calculation\/?$/)?.[1] ??
+        "operating%2F2u%2Fbaseline")
+      : "operating%2F2u%2Fbaseline";
+    return <TopBarContent pathname={pathname} timelineCompany={timelineCompany} recorded />;
+  }
+  return <LiveTopBar pathname={pathname} />;
+}
+
+function LiveTopBar({ pathname }: { pathname: string }) {
   const selection = useOperatingSelection();
   const timelineCompany = encodeURIComponent(operatingWorldId(selection));
-  const savedFieldTrace = pathname === "/field/analysis" || pathname.startsWith("/field/analysis/");
+  return <TopBarContent pathname={pathname} timelineCompany={timelineCompany} recorded={false} />;
+}
+
+function TopBarContent({
+  pathname,
+  timelineCompany,
+  recorded,
+}: {
+  pathname: string;
+  timelineCompany: string;
+  recorded: boolean;
+}) {
   return (
     <>
       <Suspense fallback={null}>
@@ -186,16 +211,16 @@ function TopBar({ pathname }: { pathname: string }) {
             </ul>
           </nav>
           <div className="ml-auto flex shrink-0 items-center">
-            {savedFieldTrace ? (
+            {recorded ? (
               <span className="text-xs text-muted-foreground">Recorded run</span>
             ) : (
               <CompanySwitcher />
             )}
           </div>
         </div>
-        {isOperatingProduct(pathname) && !savedFieldTrace ? <OperatingProvenanceStrip /> : null}
+        {isOperatingProduct(pathname) && !recorded ? <OperatingProvenanceStrip /> : null}
         {/* Simulated time for the dashboard and Field pages (Field lane). */}
-        {!savedFieldTrace ? <SimClockBar pathname={pathname} /> : null}
+        {!recorded ? <SimClockBar pathname={pathname} /> : null}
       </header>
     </>
   );

@@ -4,6 +4,7 @@ import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
 import { ChevronRight, MessageCircle, ShieldAlert, SquarePlus } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
+import { timelineCalculationHref } from "../../../lib/trace-links";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { PageHeader, StatTile } from "../../ui/page";
@@ -28,6 +29,7 @@ import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
 import { eventFromItem, eventOptions } from "./drafts";
+import { fieldOriginHref } from "./fieldOrigin";
 import type { Outcome } from "./requests";
 import { type ScenarioComparisons, comparisonIds, readComparison } from "./scenarioComparisons";
 import { floorReceipt, runHeadline } from "./summary";
@@ -80,6 +82,7 @@ export function WorkspaceView({
   notice,
 }: WorkspaceViewProps) {
   const b = run.baseline;
+  const originHref = fieldOriginHref(b.assumptionNote);
   const low = run.forecast.lowPoint;
   const [assistantTab, setAssistantTab] = useState<AssistantTab>(
     chat && initialAssistant === "chat" ? "chat" : "ask",
@@ -214,6 +217,14 @@ export function WorkspaceView({
               </Button>
               <Button variant="outline" asChild>
                 <Link
+                  href={timelineCalculationHref(run.companyId, run.runId)}
+                  data-testid="action-calculation"
+                >
+                  How we got here
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link
                   href={risksHref ?? analysisHref(run.companyId, run.runId)}
                   data-testid="action-risks"
                 >
@@ -225,12 +236,52 @@ export function WorkspaceView({
           }
         />
         {notice}
+        {originHref ? (
+          <p className="text-sm text-muted-foreground" data-testid="field-origin-link">
+            Started from a saved Field suggestion.{" "}
+            <Link
+              href={originHref}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Why that suggestion
+            </Link>
+          </p>
+        ) : null}
         {parent && parent.state !== "ready" ? (
           <p className="text-xs text-muted-foreground" data-testid="parent-unavailable">
             {parent.state === "loading"
               ? "Reading the scenario it started from..."
               : "The scenario it started from could not be shown, so it is not drawn."}
           </p>
+        ) : null}
+
+        {run.label.startsWith("With fix:") &&
+        parent?.state === "ready" &&
+        parent.value.label.startsWith("If:") ? (
+          <section
+            className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2"
+            aria-label="Saved scenario and fix comparison"
+            data-testid="field-fix-comparison"
+          >
+            <div>
+              <p className="text-xs text-muted-foreground">Without this fix</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">
+                {formatExactCents(parent.value.forecast.lowPoint.usable)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Lowest cash, week of {formatFullDate(parent.value.forecast.lowPoint.weekStart)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">With this fix</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">
+                {formatExactCents(low.usable)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Lowest cash, week of {formatFullDate(low.weekStart)}
+              </p>
+            </div>
+          </section>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">

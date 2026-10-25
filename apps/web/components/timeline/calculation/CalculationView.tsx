@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { getBaselineRef, readBaseline } from "../baseline/api";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { type WorkspaceRun, getRunRef, readRun } from "../workspace/api";
+import { fieldOriginHref } from "../workspace/fieldOrigin";
 import { runHeadline } from "../workspace/summary";
 import { assumptionSummary } from "./assumptions";
 
@@ -99,6 +100,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
       />
     );
   const firstBreach = run.receipts.find((r) => r.status === "breached");
+  const originHref = fieldOriginHref(baseline.baseline.assumptionNote);
   return (
     <article className="mx-auto max-w-4xl space-y-8 pb-16">
       <Link
@@ -117,6 +119,17 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
           {run.label || (run.kind === "baseline" ? "Starting plan" : "Saved scenario")}
         </p>
       </header>
+      {originHref ? (
+        <p className="text-sm text-muted-foreground">
+          Started from a saved Field suggestion.{" "}
+          <Link
+            href={originHref}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Why that suggestion
+          </Link>
+        </p>
+      ) : null}
       <section className="rounded-lg border bg-card p-6">
         <h2 className="text-lg font-semibold">How we got here</h2>
         <ol className="mt-5 space-y-5">
