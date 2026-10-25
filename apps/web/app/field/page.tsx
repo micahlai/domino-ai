@@ -1,14 +1,7 @@
-import { PageStub } from "@/components/PageStub";
+import { WorkerPage } from "@/components/field/WorkerPage";
 
-export const metadata = { title: "Worker" };
+export const metadata = { title: "Review and actions" };
 
-// Placeholder until the Field lane replaces this page.
 export default function Page() {
-  return (
-    <PageStub
-      label="Placeholder"
-      title="Worker"
-      description="Review flagged items and decisions, start an analysis or try an event you pick. This page is not built yet."
-    />
-  );
+  return <WorkerPage />;
 }
