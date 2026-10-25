@@ -66,8 +66,8 @@ export function WorkspaceChart(p: ChartProps) {
   const breachedWeeks = new Set(p.breachedWeeks ?? []);
 
   return (
-    <figure className="space-y-3" data-testid="workspace-chart">
-      <div className="overflow-x-auto">
+    <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
+      <div className="min-w-0 max-w-full overflow-x-auto" data-testid="chart-scroll">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full min-w-[640px]"

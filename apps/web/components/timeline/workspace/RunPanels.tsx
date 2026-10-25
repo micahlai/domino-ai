@@ -22,7 +22,10 @@ export function Panel({
   testId,
 }: { title: string; children: ReactNode; testId?: string }) {
   return (
-    <section className="space-y-3 rounded-lg border p-4" data-testid={testId}>
+    <section
+      className="min-w-0 max-w-full space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:max-w-full [&_button]:whitespace-normal"
+      data-testid={testId}
+    >
       <h3 className="text-base font-medium">{title}</h3>
       {children}
     </section>
