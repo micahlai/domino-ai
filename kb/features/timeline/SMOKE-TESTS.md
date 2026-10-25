@@ -1,6 +1,6 @@
 # Timeline smoke-test checkpoints
 
-TL1–TL5 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. Uses labelled synthetic Kestrel peer data and explicitly reviewed assumptions. [Acceptance evidence](TL5-acceptance.md).
+TL1–TL7 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. Uses labelled synthetic Kestrel peer data and explicitly reviewed assumptions. [Acceptance evidence](TL5-acceptance.md).
 
 | Checkpoint | What you can test | Status |
 | --- | --- | --- |
@@ -10,8 +10,8 @@ TL1–TL5 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. U
 | TL3 questions | Evidence answers, natural-language event/rule proposals, confirmation, missing-input clarification and failure receipts | Ready locally |
 | TL4 saved sessions | Nested events, exact question/result links, paginated catalog and quiet reopen | Ready locally |
 | TL5 complete flow | Full journey below, desktop and phone | Accepted locally |
-| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL7-checkpoint,3108 |
-| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL7-checkpoint,3108 |
+| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL5-checkpoint,3107 |
+| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL5-checkpoint,3107 |
 | TL8 rejoin | Evidence-based financial-state branch rejoin | Follow-on |
 
 ## Try the complete flow
@@ -60,3 +60,9 @@ This checkpoint intentionally rejects analysis on plans that already contain eve
 4. **Browse all company scenarios** opens the existing paginated catalog. The sidebar covers this imported baseline only, capped at100 entries; it states when entries may be omitted.
 
 [Acceptance and screenshots](TL7S-acceptance.md). Comparison selection is local to the open page; saved financial results persist.
+
+## 2026-10-25: merged TL5 smoke launch
+
+User authorized the TL7 merge into TL5. Use3107 for the merged UI and its existing data; earlier3108 links above remain isolated acceptance evidence. [Open saved expense/rule scenario](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2F4d9835e8174efa96ff9c5974380cb755e199ad14). Browse saved scenarios, toggle comparison curves and verify the original$41,000 shortfall persists.
+
+[Open baseline analysis review](http://127.0.0.1:3107/c/kestrel/timeline/analysis?runId=timeline%3Aworkspace%2Fedf763202b5cd8f444578c86fd944038008bec15). Review source/rules, check confirmation and Start analysis to test the bounded job. The expense scenario itself is intentionally ineligible because it already contains events. Financial output reads use saved data and start no job.

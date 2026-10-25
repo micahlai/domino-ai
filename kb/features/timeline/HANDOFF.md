@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-25: user-authorized merge into TL5
+
+- Done: user explicitly requested merging TL6/TL7/sidebar into TL5 and launching its smoke test. TL7-checkpoint1ee3bdb merged into TL5-checkpoint at4ce834b. Existing3107/3240 services applied the additive analysis table/functions; saved TL5 data was retained.
+- Checks: full1948 tests/five typechecks/lint385, production build and separate Convex typecheck pass. Browser reload preserves the Atlas Legal low point$2,609,000 and$41,000 rule shortfall, and new saved comparison controls work. Actual output:get returns exact existing financial values/health; analysis:list reads successfully on3240. Baseline analysis review screen is open in a second3107 tab; no analysis was auto-started.
+- Authority: this supersedes older instructions below to hold TL5 at597fcc0. Main/lane-main and Field remain untouched; no push. The separate3108 sandbox remains available. New request: add horizontal date/vertical cash scales to chart on a checkpoint branch.
+
 ## 2026-10-24: saved scenario sidebar and chart comparisons
 
 - Done: user-requested saved-scenario sidebar, family search/current nesting, mobile picker and up to three optional real saved chart curves; open/compare controls are separate. Integrated only on TL7-checkpoint. [Acceptance](TL7S-acceptance.md) and screenshots record1948 tests, five typechecks, lint385, production build, independent49+5 probes and actual desktop/mobile flow.
