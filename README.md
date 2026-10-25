@@ -2,6 +2,14 @@
 
 **Domino investigates company cash, compares forecasts with later results, and tests costed alternatives.**
 
+## How we use Convex
+
+- HTTP actions verify signed vendor webhooks (`apps/web/convex/http.ts`).
+- Scheduled functions run the simulated clock and the audit, forecasting and advisor agent swarms (`fieldClock.ts`, `fieldAnalyst.ts`).
+- A composed schema with 43 tables and 69 indexes holds snapshots, findings, suggestions and timeline branches (`apps/web/convex/schemas/`).
+- Realtime `useQuery` keeps the dashboard, brain map, worker page and Timeline live with no refresh.
+- Full feature list, proof files and build log: [hackathon.md](hackathon.md).
+
 The current demo is a historical 2U case study. Its main screen is a grouped agent map beside a persistent conversation. Inspect frozen company evidence, save a quarterly forecast, reveal reported outcomes and explore hypothetical decisions. Some scenario and CREAO coordination features are still incomplete.
 
 Start with the [shared product plan, status and roadmap](kb/product/team-reset-2026-10-24.md), [team ownership](kb/coordination/historical/team-checkpoint.md), and [current/planned architecture diagrams](docs/architecture/README.md). The integration branch is preview/historical-overnight. Main remains unchanged.
