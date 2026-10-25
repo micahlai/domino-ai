@@ -15,7 +15,6 @@ import { groundingIssue } from "./assistant/grounding";
 import { resolveFieldSource } from "./chat/brain";
 import {
   TurnPlanSchema,
-  activeUserTurns,
   checkDraft,
   checkPlan,
   citationsFor,
@@ -650,12 +649,10 @@ export const saveAssistantTurn = internalMutation({
             : plan.draft === null
               ? null
               : checkDraft(run, plan.draft, {
-                  draft,
-                  userTurns: activeUserTurns(receipt, segmentStart, args.text),
                   selectedItemId: receipt.selectedItemId,
                   conversationId: receipt.conversationId,
                   floor,
-                }).result;
+                });
       const nextDraft = checked?.draft ?? draft;
       const proposal = checked ? checked.proposal : receipt.proposal;
       const now = new Date().toISOString();

@@ -157,6 +157,36 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain('data-testid="forecast-line"');
   });
 
+  it("puts the fork on the anchor's line in the first changed week", () => {
+    const changed = fixtureRoot.forecast.weeks[4]!;
+    const html = renderToStaticMarkup(
+      <WorkspaceChart
+        history={fixtureRoot.baseline.history}
+        forecast={fixtureRoot.forecast}
+        comparisons={[
+          {
+            runId: "lawsuit",
+            label: "Lawsuit",
+            forecast: fixtureRules.forecast,
+            href: "/open/lawsuit",
+            color: SCENARIO_COLORS[0],
+            fromIndex: 3,
+            forkCents: changed.usable,
+          },
+        ]}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+      />,
+    );
+    const cx = (tag: string) => new RegExp(`<circle[^>]*cx="([^"]+)"[^>]*${tag}`).exec(html)?.[1];
+    expect(cx('data-testid="fork-point"')).toBeDefined();
+    expect(cx('data-testid="fork-point"')).toBe(
+      cx(`data-testid="forecast-point-${changed.weekStart}"`),
+    );
+  });
+
   it("draws a hovered scenario and the ones it builds on in front, fading the rest", () => {
     const line = (runId: string, ancestors: string[] = []) => ({
       runId,
@@ -286,6 +316,38 @@ describe("saved scenario comparisons", () => {
     expect(chart).toContain('data-testid="branch-preview"');
     expect(chart).toContain("Branches here");
     expect(chart).toContain(`stroke="${SCENARIO_COLORS[2]}"`);
+  });
+
+  it("puts the branch marker on an already drawn parent line, not the base", () => {
+    const week = fixtureRoot.forecast.weeks[3]!.weekStart;
+    const render = (drawLine: boolean) =>
+      renderToStaticMarkup(
+        <WorkspaceChart
+          history={fixtureRoot.baseline.history}
+          forecast={fixtureRoot.forecast}
+          items={[]}
+          limits={[]}
+          selectedWeek={null}
+          onSelectWeek={() => undefined}
+          branchPreview={{
+            key: "k",
+            date: week,
+            color: SCENARIO_COLORS[2],
+            label: "Lawsuit",
+            forecast: fixtureScenario.forecast,
+            drawLine,
+          }}
+        />,
+      );
+    const marker = (html: string) =>
+      /data-testid="branch-preview"[\s\S]*<circle cx="([^"]+)" cy="([^"]+)" r="5"/
+        .exec(html)
+        ?.slice(1);
+    const drawn = render(true);
+    const shared = render(false);
+    expect(marker(shared)).toBeDefined();
+    expect(marker(shared)).toEqual(marker(drawn));
+    expect(shared).not.toContain('stroke-dasharray="5 4"');
   });
 
   it("omits a branch that never leaves the line it builds on", () => {

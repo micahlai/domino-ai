@@ -21,12 +21,22 @@ describe("question parsers", () => {
     ["$12.34", 1_234],
     ["5000 dollars", 500_000],
     ["$0.1k", 10_000],
+    ["80k", 8_000_000],
+    ["50m", 5_000_000_000],
+    ["2.5 million", 250_000_000],
   ])("reads %s as exact cents", (text, cents) => {
     expect(parseMoneyText(text)).toBe(cents);
   });
 
-  it.each(["$10.005", "$99999999999999999", "80k", "$"])("refuses %s", (text) => {
+  it.each(["$10.005", "$99999999999999999", "80", "$"])("refuses %s", (text) => {
     expect(parseMoneyText(text)).toBeNull();
+  });
+
+  it("reads amounts and dates typed without a currency sign or space", () => {
+    expect(moneyTokens("50m lawsuit what if")).toEqual(["50m"]);
+    expect(moneyTokens("runway is 28.2 months")).toEqual([]);
+    expect(parseDateText("nov2nd 2026", "2026-10-26")).toBe("2026-11-02");
+    expect(parseDateText("16nov", "2026-10-26")).toBe("2026-11-16");
   });
 
   it("finds the money phrase as written", () => {

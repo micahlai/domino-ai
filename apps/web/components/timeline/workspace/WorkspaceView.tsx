@@ -200,6 +200,7 @@ export function WorkspaceView({
         // Drawn from the last week it still matches its anchor, so the branch leaves that line.
         // A branch that differs from the first forecast week forks from the last recorded week (-1).
         fromIndex: diverges < 0 ? null : diverges - 1,
+        forkCents: diverges < 0 ? null : (anchor.weeks[diverges]?.usable ?? null),
         startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
         note: catchUpNote(read.value, anchor, diverges),
         breaches: breachesOf(read.value),
@@ -469,11 +470,10 @@ export function WorkspaceView({
                         date: branchPreview.date,
                         color: branchParent.color,
                         label: branchParent.label,
-                        // Draw the parent's line too while it flashes, even when it is not ticked.
-                        forecast:
-                          parentIsBase || selectedIds.includes(run.runId)
-                            ? undefined
-                            : run.forecast,
+                        // The marker sits on the open run's line. Draw that line too while it
+                        // flashes, unless it is the base or already ticked.
+                        forecast: run.forecast,
+                        drawLine: !(parentIsBase || selectedIds.includes(run.runId)),
                       }
                     : undefined
                 }

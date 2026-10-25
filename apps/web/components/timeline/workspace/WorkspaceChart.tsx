@@ -47,6 +47,8 @@ export type ChartProps = {
      * every line shares; null when it never leaves its anchor.
      */
     fromIndex?: number | null;
+    /** The anchor's cash in the first changed week. The line leaves the anchor there. */
+    forkCents?: number | null;
     /** First date the scenario's own changes act, shown in the legend. */
     startsOn?: string | null;
     /** Plain note for the focus line, e.g. why a timing-only line rejoins its parent. */
@@ -68,10 +70,18 @@ export type ChartProps = {
   selectedWeek: string | null;
   onSelectWeek: (weekStart: string) => void;
   /**
-   * Where a proposal under review would branch: flashed on the parent's line. `forecast` is
-   * the parent's line when it is not otherwise drawn; without it the main line is the parent.
+   * Where a proposal under review would branch: flashed on the parent's line. `forecast` is the
+   * parent's line (without it the main line is the parent); `drawLine: false` when that line is
+   * already drawn, so the marker still sits on it without drawing it twice.
    */
-  branchPreview?: { key: string; date: string; color: string; label: string; forecast?: Forecast };
+  branchPreview?: {
+    key: string;
+    date: string;
+    color: string;
+    label: string;
+    forecast?: Forecast;
+    drawLine?: boolean;
+  };
 };
 
 const DEFAULT_W = 880;
@@ -284,9 +294,15 @@ export function WorkspaceChart(p: ChartProps) {
   const future = weeks.map((w, i) => at(off + i, w.usable));
   const parentLine = p.parent?.weeks.map((w, i) => at(off + i, w.usable)) ?? [];
   const lastPast = past[past.length - 1];
-  // A forked line starts at its fork week; an unforked (legacy) line joins the last recorded week.
+  // A forked line leaves its anchor in the first changed week, so the fork sits on the week the
+  // change acts. Without the anchor's cash it starts at its last matching week; an unforked
+  // (legacy) line joins the last recorded week.
   const comparisonPoints = (entry: (typeof comparisons)[number]): Point[] => {
     const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
+    if (entry.fromIndex !== undefined && entry.fromIndex !== null && entry.forkCents != null) {
+      const first = entry.fromIndex + 1;
+      return [at(off + first, entry.forkCents), ...points.slice(first)];
+    }
     if (entry.fromIndex === undefined || entry.fromIndex === -1)
       return lastPast ? [lastPast, ...points] : points;
     return entry.fromIndex === null ? [] : points.slice(entry.fromIndex);
@@ -1004,7 +1020,7 @@ export function WorkspaceChart(p: ChartProps) {
               })}
               {preview && previewPoint ? (
                 <g key={preview.key} pointerEvents="none" data-testid="branch-preview">
-                  {preview.forecast ? (
+                  {preview.forecast && preview.drawLine !== false ? (
                     <path
                       d={draw(preview.forecast.weeks.map((w, i) => at(off + i, w.usable))) ?? ""}
                       fill="none"

@@ -438,17 +438,20 @@ describe("Claude Timeline chat safety", () => {
     },
   );
 
-  it("checks qualified draft tool calls against the person's actual words", async () => {
+  it("lets the parser reject a restatement with a condition a draft cannot keep", async () => {
     const t = setup();
     const src = await source(t);
-    for (const text of [
+    for (const request of [
       "pay $50,000 to Atlas Legal on 2026-11-17 daily",
       "pay at most $50,000 to Atlas Legal on 2026-11-17",
       "pay at   most $50,000 to Atlas Legal on 2026-11-17",
     ]) {
       const initial = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
-      const { spy } = classify([atlas]);
-      const after = await t.action(assistantSend, turn(initial, text));
+      const { spy } = scriptClaude([
+        toolUse("update_draft", { request, intents: [atlas] }),
+        done(),
+      ]);
+      const after = await t.action(assistantSend, turn(initial, request));
       expect(after.proposal).toBeNull();
       expect(after.status).toBe("collecting");
       expect(spy).toHaveBeenCalledTimes(2);
@@ -471,12 +474,12 @@ describe("Claude Timeline chat safety", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("rejects a truncated explicit year in both chat and question proposals", async () => {
+  it("rejects a date outside the forecast in chat and a truncated year in questions", async () => {
     const t = setup();
     const src = await source(t);
     const text = "pay $50,000 to Atlas Legal on Nov 17, 2027";
     const shortened = { ...atlas, dateText: "Nov 17" };
-    classify([shortened]);
+    classify([{ ...atlas, dateText: "2027-11-17" }]);
     const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
     const chat = await t.action(assistantSend, turn(r, text));
     expect(chat.proposal).toBeNull();
@@ -491,7 +494,7 @@ describe("Claude Timeline chat safety", () => {
     expect(question.answer).toMatch(/verify every suggested value/);
   });
 
-  it("rejects a missing model date when the original chat already specifies a year", async () => {
+  it("asks for a date the model left out instead of drafting without one", async () => {
     const t = setup();
     classify([{ ...atlas, dateText: null }]);
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
@@ -500,11 +503,11 @@ describe("Claude Timeline chat safety", () => {
       turn(r, "pay $50,000 to Atlas Legal on Nov 17, 2027"),
     );
     expect(after.proposal).toBeNull();
-    expect(after.pendingField).toBeNull();
+    expect(after.pendingField).toBe("date");
     expect(after.turns.at(-1)?.text).toBe("Let’s review the request together.");
   });
 
-  it("does not borrow a whole date from another cash clause to drop an explicit year", async () => {
+  it("does not let a question borrow a date from another clause to drop an explicit year", async () => {
     const t = setup();
     const src = await source(t);
     const text = "pay $50,000 to Atlas Legal on Nov 17, 2027. Receive $10,000 from Acme on Nov 17";
@@ -518,11 +521,6 @@ describe("Claude Timeline chat safety", () => {
         counterpartyText: "Acme",
       },
     ];
-    classify(intents);
-    const r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
-    const chat = await t.action(assistantSend, turn(r, text));
-    expect(chat.status).toBe("collecting");
-    expect(chat.proposal).toBeNull();
     scriptClaude([toolUse("check_request", { intents }), final({ answer: "Checked" })]);
     const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
     expect(question.status).toBe("clarification");
@@ -530,10 +528,11 @@ describe("Claude Timeline chat safety", () => {
   });
 
   it.each([
-    { ...atlas, amountText: "$999M" },
-    { ...atlas, dateText: "2026-11-24" },
-    { ...atlas, counterpartyText: "Invented Vendor" },
-  ])("rejects invented model slots: %j", async (intent) => {
+    { ...atlas, amountText: "$10.005" },
+    { ...atlas, amountText: "fifty" },
+    { ...atlas, dateText: "2027-03-01" },
+    { ...atlas, dateText: "someday" },
+  ])("rejects values the parser cannot accept: %j", async (intent) => {
     const t = setup();
     classify([intent]);
     const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
@@ -628,17 +627,68 @@ describe("conversational context and required LLM", () => {
     expect(r.proposal?.changes[0]).toMatchObject({ amount: 5_000_000 });
   });
 
-  it("will not ignore a newly supplied amount in favor of an older draft", async () => {
-    const t = setup();
-    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
-    classify([atlas]);
-    r = await t.action(assistantSend, turn(r));
-    classify([atlas]);
-    r = await t.action(assistantSend, turn(r, "Make that $80,000"));
-    expect(r.proposal).toBeNull();
+  describe("drafts from the model's reading of the conversation", () => {
+    const read = (amount: string, date: string) =>
+      scriptClaude([
+        toolUse("update_draft", {
+          request: `pay ${amount} to Atlas Legal on ${date}`,
+          intents: [{ ...atlas, amountText: amount, dateText: date }],
+        }),
+        done(),
+      ]);
+    const twoTurns = async (first: string, second: string) => {
+      const t = setup();
+      let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+      scriptClaude([final({ reply: "Is that a payment, and when?" })]);
+      r = await t.action(assistantSend, turn(r, first));
+      return { t, second: turn(r, second) };
+    };
+
+    it("drafts from shorthand spread across messages", async () => {
+      const { t, second } = await twoTurns(
+        "50m to Atlas Legal what if",
+        "it goes out nov17th 2026",
+      );
+      read("$50,000,000", "2026-11-17");
+      const r = await t.action(assistantSend, second);
+      expect(r.status).toBe("ready");
+      expect(r.proposal?.changes).toEqual([
+        expect.objectContaining({ amount: 5_000_000_000, date: "2026-11-17" }),
+      ]);
+    });
+
+    it("drafts wording only the model can read, for the person to review", async () => {
+      const { t, second } = await twoTurns("fifty million to Atlas Legal", "the tuesday before");
+      read("$50,000,000", "2026-11-17");
+      expect((await t.action(assistantSend, second)).status).toBe("ready");
+    });
+
+    it("expands repeated payments into separate one-time changes", async () => {
+      const { t, second } = await twoTurns(
+        "40 million loan from Generic Bank arriving dec 7th",
+        "repay 15 million each week after that, three times",
+      );
+      const loan = { ...atlas, counterpartyText: "Generic Bank" };
+      scriptClaude([
+        toolUse("update_draft", {
+          request:
+            "receive $40,000,000 from Generic Bank on 2026-12-07; pay $15,000,000 to Generic Bank on 2026-12-14; pay $15,000,000 to Generic Bank on 2026-12-21; pay $15,000,000 to Generic Bank on 2026-12-28",
+          intents: [
+            { ...loan, direction: "in", amountText: "$40,000,000", dateText: "2026-12-07" },
+            { ...loan, amountText: "$15,000,000", dateText: "2026-12-14" },
+            { ...loan, amountText: "$15,000,000", dateText: "2026-12-21" },
+            { ...loan, amountText: "$15,000,000", dateText: "2026-12-28" },
+          ],
+        }),
+        done(),
+      ]);
+      const r = await t.action(assistantSend, second);
+      expect(r.status).toBe("ready");
+      expect(r.proposal?.changes).toHaveLength(4);
+    });
   });
 
-  it("keeps old turns for discussion after reset but cannot reuse their draft values", async () => {
+  it("keeps old turns for discussion after reset and marks where the active request starts", async () => {
     const t = setup();
     let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
     classify([atlas]);
@@ -650,7 +700,6 @@ describe("conversational context and required LLM", () => {
     });
     const { bodies } = classify([atlas]);
     r = await t.action(assistantSend, turn(r, "Use the old one"));
-    expect(r.proposal).toBeNull();
     expect(JSON.stringify(bodies[0]?.messages)).toContain(exactText);
     const context = JSON.parse((bodies[0]?.messages as { content: string }[])[0]!.content);
     expect(context.activeUserMessages).toEqual([

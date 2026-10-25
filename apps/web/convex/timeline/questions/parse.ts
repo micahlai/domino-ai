@@ -6,9 +6,12 @@ const MONEY =
   /^\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(billion|million|thousand|bn|mm|k|m|b))?$/i;
 const MONEY_WORD =
   /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(billion|million|thousand|bn|mm|k|m|b)?\s*(?:dollars|usd)$/i;
+// "50m" or "2 million" with no currency sign. A bare number needs a scale to read as money.
+const MONEY_SCALED =
+  /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(billion|million|thousand)|(bn|mm|k|m|b))$/i;
 // Read the entire numeric token, including malformed grouping/signs, before validation.
 const MONEY_TOKEN =
-  /(?:[-+]\s*)?\$\s*[-+]?\s*\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?|[-+]?\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?\s+(?:dollars|usd)\b/gi;
+  /(?:[-+]\s*)?\$\s*[-+]?\s*\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?|[-+]?\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?\s+(?:dollars|usd)\b|(?<![\w$.,])[-+]?\d[\d.,]*(?:\s*(?:billion|million|thousand)|(?:bn|mm|k|m|b))\b/gi;
 export const moneyTokens = (text: string): string[] =>
   [...text.matchAll(MONEY_TOKEN)].map((m) =>
     // A single sentence delimiter is not part of the number. Internal/broken grouping stays intact.
@@ -36,12 +39,13 @@ export function findMoneyText(text: string): string | null {
  * safe integer. "$1.2M" -> 120_000_000; "$10.005" -> null.
  */
 export function parseMoneyText(text: string): number | null {
-  const m = MONEY.exec(text.trim()) ?? MONEY_WORD.exec(text.trim());
+  const m =
+    MONEY.exec(text.trim()) ?? MONEY_WORD.exec(text.trim()) ?? MONEY_SCALED.exec(text.trim());
   if (!m || m.index !== 0 || m[0].length !== text.trim().length) return null;
   const whole = (m[1] ?? "").replaceAll(",", "");
   const frac = m[2] ?? "";
   if (frac.length > 12) return null;
-  const scale = SCALE[(m[3] ?? "").toLowerCase()] ?? 1n;
+  const scale = SCALE[(m[3] ?? m[4] ?? "").toLowerCase()] ?? 1n;
   const numerator = BigInt(whole + frac) * scale * 100n;
   const denominator = 10n ** BigInt(frac.length);
   if (numerator % denominator !== 0n) return null;
@@ -67,11 +71,11 @@ const MONTH_RE =
   "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const ISO = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const MONTH_DAY = new RegExp(
-  `\\b${MONTH_RE}\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,
+  `\\b${MONTH_RE}\\.?\\s*(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,
   "i",
 );
 const DAY_MONTH = new RegExp(
-  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTH_RE}\\.?(?:,?\\s+(\\d{4}))?\\b`,
+  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:of\\s+)?${MONTH_RE}\\.?(?:,?\\s+(\\d{4}))?\\b`,
   "i",
 );
 export const MONTH_WORD = new RegExp(`^${MONTH_RE}\\.?$`, "i");
