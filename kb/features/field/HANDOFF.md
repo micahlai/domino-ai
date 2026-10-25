@@ -1,5 +1,11 @@
 # Field lane handoff, Oct 25
 
+## Active map stability fix
+- Branch `merge/field-map-stability-20261025` in `../domino-merge`, base `aac6de6`; current field/main was already pushed.
+- Reproduced with existing scripted agent updates in frontend-only preview3138: latest summary24/48/24px causes map top326/350/326px. scrollY remains0; map height478px and camera unchanged. Trace `/tmp/field-map-before.json`.
+- Implemented only in BrainMap.tsx: reserve two activity lines, clamp longer summaries, retain full text in DOM and hover title. Browser regression now passes80 samples/7 messages at map top350px, summary48px, scrollY0. Independent read-only review found no blocker.63 focused map tests, web tsc, changed-file Biome and production webpack build pass. No full-suite rerun.
+- Next: fast-forward and push field/main, verify the live map, stop frontend-only preview3138. Live3114/3260 remain running. Evidence: `/tmp/field-map-before.json`, `/tmp/field-map-after.json`, `/tmp/field-map-assert.cjs`, `/tmp/field-map-fixed-preview.png`.
+
 ## State
 - Lead: Codex, taking over from Claude under Jayden's explicit authorization. This wave is finished and pushed to `field/main` in `../domino-field`. Integration happened only in `../domino-merge`, branch `merge/field-codex-20261025`, starting from `8dbba79`. Main remains `694ab2a`.
 - Release code: `92ac4ac` includes all four feature merges and the final hydration fix. Documentation commits may follow it.

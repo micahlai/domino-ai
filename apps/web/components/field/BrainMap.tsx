@@ -1703,6 +1703,9 @@ export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
   const latest = operations?.length
     ? operations.reduce((a, b) => (byTime(a, b) <= 0 ? b : a))
     : undefined;
+  const latestWork = latest
+    ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
+    : "Work appears here as soon as it is recorded.";
   const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   const roleName = (n: BrainNode) => (n.role ?? n.title).replace(/[-_]+/g, " ").toLowerCase();
   const headline =
@@ -1778,9 +1781,10 @@ export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
           }
           title={headline}
           description={
-            latest
-              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
-              : "Work appears here as soon as it is recorded."
+            // Activity messages wrap differently; keep the canvas in the same place as they change.
+            <span className="line-clamp-2 h-12" title={latestWork}>
+              {latestWork}
+            </span>
           }
         />
       )}
