@@ -764,3 +764,183 @@ describe("post-reveal fixture", () => {
     ).toEqual(["reveal cutoff differs from the seed cutoff"]);
   });
 });
+
+describe("audit: engine interval rules for quarterly_cash_bridge@0.1.0", () => {
+  const ytdStart = (start: string) => (s: TimelineSeedV1) => {
+    for (const f of s.snapshot.case.facts)
+      if (f.id === "F05" || f.id === "F06")
+        f.period = { kind: "duration", start, end: "2023-09-30" };
+  };
+  const startFrom = (id: string, date: string) => (s: TimelineSeedV1) => {
+    s.snapshot.case.assumptions.find((a) => a.id === id)!.effectiveFrom = date;
+  };
+
+  it("rejects a YTD flow that does not start on a month start", () => {
+    expect(mutated(S, seed, ytdStart("2023-01-02"))).toEqual([
+      "YTD flow must start on a month start",
+      "YTD flow must start on a month start",
+    ]);
+  });
+
+  it("rejects a YTD flow longer than a fiscal year (21 months)", () => {
+    expect(mutated(S, seed, ytdStart("2022-01-01"))).toEqual([
+      "YTD flow must cover 3, 6, 9 or 12 whole months",
+      "YTD flow must cover 3, 6, 9 or 12 whole months",
+    ]);
+  });
+
+  it("rejects a YTD flow that is not whole quarters, and accepts six months", () => {
+    expect(mutated(S, seed, ytdStart("2023-02-01"))).toHaveLength(2);
+    expect(mutated(S, seed, ytdStart("2023-04-01"))).toEqual([]);
+  });
+
+  it("rejects financing that starts after the target", () => {
+    expect(mutated(S, seed, startFrom("AS-FIN0", "2024-01-01"))).toEqual([
+      "financing/FX assumption must apply from the day after the origin",
+    ]);
+  });
+
+  it("rejects FX that starts after the target", () => {
+    expect(mutated(S, seed, startFrom("AS-FX0", "2024-01-01"))).toEqual([
+      "financing/FX assumption must apply from the day after the origin",
+    ]);
+  });
+
+  it("rejects financing or FX starting inside the quarter, and accepts the origin itself", () => {
+    expect(mutated(S, seed, startFrom("AS-FIN0", "2023-10-02"))).toHaveLength(1);
+    expect(mutated(S, seed, startFrom("AS-FX0", "2023-09-30"))).toEqual([]);
+  });
+
+  it("rejects total below usable and contradictory origin restricted cash", () => {
+    const cents = (id: string, delta: number) => (s: TimelineSeedV1) => {
+      s.snapshot.case.facts.find((f) => f.id === id)!.cents += delta;
+    };
+    expect(mutated(S, seed, cents("F02", 1))).toEqual([
+      "restricted cash contradicts total minus usable at the origin",
+    ]);
+    expect(
+      mutated(S, seed, (s) => {
+        const usable = s.snapshot.case.facts.find((f) => f.id === "F01")!;
+        s.snapshot.case.facts.find((f) => f.id === "F03")!.cents = usable.cents - 1;
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "total cash is below usable cash",
+        "restricted cash contradicts total minus usable at the origin",
+      ]),
+    );
+  });
+
+  it("keeps the blocked fixture valid under the same rules", () => {
+    expect(check(S, blocked)).toEqual([]);
+  });
+});
+
+describe("audit: safe integers", () => {
+  const UNSAFE = 2 ** 53;
+
+  it("rejects 2^53 in an assumption benefitLagDays", () => {
+    expect(
+      mutated(S, seed, (s) => {
+        s.snapshot.case.assumptions.find((a) => a.id === "A1")!.benefitLagDays = UNSAFE;
+      }),
+    ).toEqual(["number must be a safe integer"]);
+  });
+
+  it("rejects 2^53 in a learned rule version, and accepts a safe one", () => {
+    const withRule = (version: number) => (s: TimelineSeedV1) => {
+      s.snapshot.rules.push({
+        id: "rule-v",
+        ruleId: "rule",
+        version,
+        feedbackId: "fb",
+        scope: {
+          kind: "company",
+          cik: s.snapshot.cik,
+          schemaVersion: 1,
+          sourceSignature: s.snapshot.sourceSignature,
+        },
+        action: { kind: "method_selection", methodId: "quarterly_cash_bridge", version: "0.1.0" },
+        rationale: "pin the bridge",
+        evidenceRefs: ["F01"],
+        status: "accepted",
+        validatorVersion: "1.0.0",
+        recordedAt: "2023-11-01T00:00:00-05:00",
+        effectiveFrom: "2023-11-01T00:00:00-05:00",
+      });
+    };
+    expect(mutated(S, seed, withRule(1))).toEqual([]);
+    const paths = (
+      S.safeParse(
+        (() => {
+          const v = clone(seed);
+          withRule(UNSAFE)(v);
+          return v;
+        })(),
+      ).error?.issues ?? []
+    ).map((i) => `${i.path.join(".")}: ${i.message}`);
+    expect(paths).toEqual(["snapshot.rules.0.version: number must be a safe integer"]);
+  });
+
+  it("rejects unsafe numbers in every boundary record", () => {
+    expect(
+      mutated(TimelineRevealV1Schema, reveal, (r) => {
+        r.disclosures.facts[0]!.cents = UNSAFE;
+      }),
+    ).toHaveLength(1);
+  });
+});
+
+describe("audit: operation summary bounds", () => {
+  const op: OperationSummaryV1 = {
+    schemaVersion: 1,
+    id: "field:operation/read-facts",
+    ownerDomain: "field",
+    status: "queued",
+    title: "Read facts",
+    dependencies: [],
+    evidenceRefs: [
+      { kind: "case_item", snapshotId: "field:snapshot/twou-2023q3-v1", item: "fact", id: "F01" },
+    ],
+    outputRefs: [],
+    createdAt: "2026-10-24T12:00:00Z",
+    updatedAt: "2026-10-24T12:00:00Z",
+  };
+  const O = OperationSummaryV1Schema;
+  const caseId = (id: string) => (o: OperationSummaryV1) => {
+    const r = o.evidenceRefs[0]!;
+    if (r.kind === "case_item") r.id = id;
+  };
+  const domainRef = (id: string) => (o: OperationSummaryV1) => {
+    o.evidenceRefs = [{ kind: "domain", id }];
+  };
+
+  it("caps case-item ids at 128 characters", () => {
+    expect(mutated(O, op, caseId("x".repeat(128)))).toEqual([]);
+    expect(mutated(O, op, caseId("x".repeat(129)))).toHaveLength(1);
+    expect(mutated(O, op, caseId("x".repeat(1_000_000)))).toHaveLength(1);
+  });
+
+  it("caps domain id kinds at 32 characters", () => {
+    expect(mutated(O, op, domainRef(`field:${"k".repeat(32)}/x`))).toEqual([]);
+    expect(mutated(O, op, domainRef(`field:${"k".repeat(33)}/x`))).toHaveLength(1);
+    expect(mutated(O, op, domainRef(`field:${"k".repeat(1_000_000)}/x`))).toHaveLength(1);
+    expect(mutated(O, op, domainRef(`field:k/${"n".repeat(129)}`))).toHaveLength(1);
+  });
+
+  it("caps evidence, dependency and output arrays", () => {
+    expect(
+      mutated(O, op, (o) => {
+        o.evidenceRefs = Array.from({ length: 257 }, (_, i) => ({
+          kind: "domain" as const,
+          id: `field:fact/f${i}`,
+        }));
+      }),
+    ).toHaveLength(1);
+    expect(
+      mutated(O, op, (o) => {
+        o.dependencies = Array.from({ length: 65 }, (_, i) => `field:operation/d${i}`);
+      }),
+    ).toHaveLength(1);
+  });
+});

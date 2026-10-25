@@ -135,7 +135,21 @@ function driftPaths(raw: unknown, parsed: unknown, path: Path = []): Path[] {
   return out;
 }
 
-/** Parse, then require the input to be exactly its parse, so the hashed bytes are the contract. */
+/**
+ * Every number in a boundary record is an integer (cents, days, versions). Reused legacy
+ * shapes check .int() only, which admits 2^53 and beyond, where integers stop being exact.
+ */
+function unsafeNumberPaths(value: unknown, path: Path = []): Path[] {
+  if (typeof value === "number") return Number.isSafeInteger(value) ? [] : [path];
+  if (Array.isArray(value)) return value.flatMap((v, i) => unsafeNumberPaths(v, [...path, i]));
+  if (!isPlain(value)) return [];
+  return Object.keys(value).flatMap((k) => unsafeNumberPaths(value[k], [...path, k]));
+}
+
+/**
+ * Parse, then require the input to be exactly its parse (so the hashed bytes are the
+ * contract) and every number to be a safe integer.
+ */
 function exact<T extends z.ZodTypeAny>(schema: T) {
   return z.unknown().transform((raw, ctx): z.output<T> => {
     const r = schema.safeParse(raw);
@@ -143,6 +157,9 @@ function exact<T extends z.ZodTypeAny>(schema: T) {
       for (const i of r.error.issues) ctx.addIssue(i);
       return z.NEVER;
     }
+    const unsafe = unsafeNumberPaths(raw);
+    for (const path of unsafe) issuer(ctx)(path, "number must be a safe integer");
+    if (unsafe.length) return z.NEVER;
     let same: boolean;
     try {
       same = canonicalJson(raw) === canonicalJson(r.data);
@@ -167,11 +184,12 @@ export type FeatureDomain = z.infer<typeof FeatureDomainSchema>;
 /**
  * "<owner>:<kind>/<name>", for example "field:seed/twou-2023q3-v1". The owner names the
  * feature that created the record. A Convex document id has no colon, so it never parses.
+ * Bounded: kind at most 32 characters, name at most 128.
  */
 export const DomainIdSchema = z
   .string()
   .regex(
-    /^(field|timeline):[a-z][a-z0-9_]*\/[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/,
+    /^(field|timeline):[a-z][a-z0-9_]{0,31}\/[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/,
     "expected a domain id like field:seed/name; a Convex document id is not cross-feature identity",
   );
 
@@ -201,8 +219,8 @@ export type BridgeFactRole = z.infer<typeof BridgeFactRoleSchema>;
 
 /**
  * Frozen method registry. A seed or result may pin only these. Must equal the engine's
- * QUARTER_BRIDGE_METHOD; the engine imports contracts, so that equality is checked by a
- * consumer test, not here.
+ * QUARTER_BRIDGE_METHOD. Contracts must not import the engine, so P0-H owns the equality
+ * test. The seed checks below mirror that engine version's input rules; keep them in step.
  */
 export const TIMELINE_METHODS = [
   { id: "quarterly_cash_bridge", version: "0.1.0", requiredRoles: BRIDGE_FACT_ROLES },
@@ -238,6 +256,10 @@ const nextQuarterEnd = (date: string): string | undefined => {
   if (i < 0) return undefined;
   return i === 3 ? `${year + 1}-03-31` : `${year}-${QUARTER_ENDS[i + 1]}`;
 };
+const monthIndex = (date: string): number =>
+  Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7));
+const dayAfter = (date: string): string =>
+  new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 // ---------- TimelineSeedV1 ----------
 
@@ -362,10 +384,13 @@ const SeedObjectSchema = z
       ]),
     ];
     const seen = new Set<string>();
-    for (const [path, id] of selected) {
+    for (const [n, [path, id]] of selected.entries()) {
       const a = assumptions.get(id);
       if (!a) issue(path, "selected assumption not in the snapshot case");
       else if (a.value.unit !== "cents") issue(path, "selected assumption is not in cents");
+      // Engine: a financing/FX rate covers the whole modeled interval (no partial-quarter timing).
+      else if (n < 2 && a.effectiveFrom > dayAfter(origin))
+        issue(path, "financing/FX assumption must apply from the day after the origin");
       if (seen.has(id)) issue(path, "assumption selected twice");
       seen.add(id);
     }
@@ -399,13 +424,45 @@ const SeedObjectSchema = z
       )
         issue(path, "role fact does not end at the origin balance date");
     }
-    const ytd = (["operating_ytd", "investing_ytd"] as const).map((r) => {
+    const roleFact = (r: BridgeFactRole) => {
       const id = qb.roleFacts[r];
-      const f = id === undefined ? undefined : facts.get(id);
-      return f?.period.kind === "duration" ? f.period.start : undefined;
+      return id === undefined ? undefined : facts.get(id);
+    };
+    // Engine: YTD flows start on a month start and cover 3, 6, 9 or 12 whole months.
+    const ytd = (["operating_ytd", "investing_ytd"] as const).map((r) => {
+      const f = roleFact(r);
+      if (f?.period.kind !== "duration" || f.period.end !== origin) return undefined;
+      const { start } = f.period;
+      const months = monthIndex(origin) - monthIndex(start) + 1;
+      if (!start.endsWith("-01"))
+        issue(["quarterBridge", "roleFacts", r], "YTD flow must start on a month start");
+      else if (months % 3 !== 0 || months > 12)
+        issue(["quarterBridge", "roleFacts", r], "YTD flow must cover 3, 6, 9 or 12 whole months");
+      return start;
     });
     if (ytd[0] !== undefined && ytd[1] !== undefined && ytd[0] !== ytd[1])
       issue(["quarterBridge", "roleFacts", "investing_ytd"], "YTD flows have different starts");
+    // Engine: total covers usable, and any reported origin restricted cash is the difference.
+    const usable = roleFact("usable_cash");
+    const total = roleFact("total_cash");
+    if (
+      usable?.metric === "cash_and_equivalents" &&
+      total?.metric === "cash_including_restricted"
+    ) {
+      if (total.cents < usable.cents)
+        issue(["quarterBridge", "roleFacts", "total_cash"], "total cash is below usable cash");
+      for (const [i, f] of c.facts.entries())
+        if (
+          f.metric === "restricted_cash" &&
+          f.period.kind === "instant" &&
+          f.period.date === origin &&
+          BigInt(f.cents) !== BigInt(total.cents) - BigInt(usable.cents)
+        )
+          issue(
+            ["snapshot", "case", "facts", i, "cents"],
+            "restricted cash contradicts total minus usable at the origin",
+          );
+    }
     const declared = seed.readiness.status === "blocked" ? seed.readiness.blockedRoles : [];
     if (declared.join() !== blocked.join())
       issue(
@@ -527,7 +584,8 @@ export const OperationEvidenceRefSchema = z.discriminatedUnion("kind", [
       kind: z.literal("case_item"),
       snapshotId: ownedId("field", "snapshot"),
       item: z.enum(["source", "fact", "assumption"]),
-      id: IdSchema,
+      /** Case-local id, bounded like a domain id name. */
+      id: IdSchema.max(128),
     })
     .strict(),
 ]);
