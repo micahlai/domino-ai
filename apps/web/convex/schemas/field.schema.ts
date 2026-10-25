@@ -136,6 +136,34 @@ export const fieldTables = {
   })
     .index("by_companyId_and_findingId", ["companyId", "findingId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
+  // Connected tools (connections.ts): mock sign-in per tool, sync position and last counts.
+  // No credentials are stored: the vendor APIs are in-process mocks.
+  connections: defineTable({
+    companyId,
+    tool: v.union(
+      v.literal("stripe"),
+      v.literal("ramp"),
+      v.literal("qbo"),
+      v.literal("gusto"),
+      v.literal("hubspot"),
+      v.literal("plaid"),
+    ),
+    status: v.union(v.literal("connected"), v.literal("disconnected"), v.literal("error")),
+    account: v.string(),
+    scopes: v.array(v.string()),
+    connectedAt: v.union(v.string(), v.null()),
+    connectedBy: v.union(v.string(), v.null()),
+    cursor: v.union(v.string(), v.null()),
+    lastSyncAt: v.union(v.string(), v.null()),
+    /** Canonical records per Snapshot list from the last sync, after dedupe. */
+    counts: v.record(v.string(), v.number()),
+    recordsIn: v.number(),
+    recordsOut: v.number(),
+    skipped: v.number(),
+    checksOk: v.number(),
+    checksTotal: v.number(),
+    lastError: v.union(v.string(), v.null()),
+  }).index("by_companyId_and_tool", ["companyId", "tool"]),
   // Investigations.
   // G2b: server-owned investigation conversations. One receipt per accepted requestId binds it
   // to its kind, payload hash and conversation, so retries return and key reuse conflicts.
