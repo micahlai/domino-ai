@@ -2,6 +2,7 @@ import { type Snapshot, SnapshotSchema } from "@domino/contracts";
 import { DOCUMENTS } from "./docs";
 import { type SourceName, openapi } from "./openapi";
 import * as src from "./sources";
+import { isVendorPath, routeVendor } from "./vendors";
 
 /**
  * Mock source APIs as one Fetch handler: native Request in, Response out, so the Node server
@@ -258,6 +259,10 @@ async function route(path: string, url: URL, load: () => Promise<Snapshot>): Pro
   if (source && (SOURCES as string[]).includes(source))
     return json(200, openapi(source as SourceName));
 
+  if (isVendorPath(path)) {
+    const vendor = routeVendor(path, url, await load());
+    if (vendor) return vendor;
+  }
   const collection = COLLECTIONS[path];
   if (collection) return listPage(collection, collection.items(await load()), path, url);
 
