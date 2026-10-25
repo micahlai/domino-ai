@@ -2,7 +2,7 @@
 
 ## Integrated candidate, Oct 25
 - All four feature branches merged in the required order on `merge/field-codex-20261025` in `../domino-merge`. Conflict resolutions preserve webhook registrations, both new swarm tables (46 total composed tables), and optimistic flag-decision errors in the moved FlagsSection.
-- Combined web/Convex/engine/agents TypeScript checks pass. Full combined Vitest, root Biome and production webpack build are running; no live fast-forward yet.
+- Combined acceptance PASS at code `2a47ac9`: web1,187, engine385, agents329 tests (1,901 total); web/Convex/engine/agents tsc; root Biome636 files; `pnpm --filter @domino/web build --webpack`. Default Turbopack build was attempted and blocked by its internal worker port permission. Integration regressions46 tests also pass. Live fast-forward is next.
 - Isolated integration runtime: Convex3298/3299, Next3138. Real backend smoke passes: audit child lifecycle, engine advisor suggestions, stale decision refusal, saved decline, unchanged cash. Browser accepted a second suggestion with a note and showed it under Decided. Screenshot `/tmp/field-integrated-worker-smoke.png`.
 - One real synthetic CREAO advisor request passed validation on profile `field_advisor@creao-3e8215ca6876`; no credentials or provider text printed/saved. After source identity check and combined acceptance, append the configured app/profile pair to live3260 verified profiles in memory via stdin, preserving existing entries.
 - Next exact step: finish combined acceptance, commit final evidence, fast-forward `../domino-field` only, push `field/main`, enable tested advisor profile, restart only Next3114, verify live backend and pages, stop isolated test servers. Main and protected ports remain untouched.
