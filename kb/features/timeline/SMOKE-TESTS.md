@@ -49,3 +49,14 @@ Keep TL5 on3107. [Open saved TL7 analysis](http://127.0.0.1:3108/c/kestrel/timel
 6. Inspect the weighted scenario index scope: it is not a survival probability and applies no responses. Use the props playground at http://127.0.0.1:3108/playground/timeline-analysis for controlled failed/partial/retry states.
 
 This checkpoint intentionally rejects analysis on plans that already contain events. Field dashboard adoption and TL8 remain separate. [Detailed acceptance](TL7-acceptance.md).
+
+## Saved scenarios sidebar and chart comparisons (3108 only)
+
+[Open the updated timeline](http://127.0.0.1:3108/c/kestrel/timeline?runId=timeline%3Aworkspace%2F34e274c86109c6f434eeff7114d415336e07e802). TL5 stays unchanged on3107.
+
+1. In **Saved scenarios**, the current run is highlighted. On narrow screens, open **Browse saved scenarios**. Search by name; duplicate names include save times.
+2. Check **Compare on timeline** for a risk and response. The current scenario stays highlighted, with at most three muted comparison curves and linked legends. Other comparison boxes disable at the limit.
+3. Open a scenario name or chart legend to inspect that exact saved run. **Clear comparisons** removes optional curves without changing the current forecast.
+4. **Browse all company scenarios** opens the existing paginated catalog. The sidebar covers this imported baseline only, capped at100 entries; it states when entries may be omitted.
+
+[Acceptance and screenshots](TL7S-acceptance.md). Comparison selection is local to the open page; saved financial results persist.

@@ -34,3 +34,7 @@ Analysis starts only from baseline/rule-only runs with no cumulative events beca
 Weighted scenario index covers overlapping scenarios and frozen minimum-cash/payment-deadline rules, with no responses applied; it excludes runway/unknown results and is not a survival probability. With no applicable rules even negative cash may count as surviving, disclosed beside the index. Any incomplete financial stage withholds the index. Unknown rules are not passing. Fees and vendor/customer consent remain unmodeled. TL8 rejoin, real Field ingestion/export/adoption, production authorization and financial action execution are outside this acceptance.
 
 All decisions and status stay feature-local under the independent lane ownership. See [fixed wire](TL6-TL7-interface.md), [smoke guide](SMOKE-TESTS.md) and [handoff](HANDOFF.md).
+
+## Subsequent user-requested UI follow-up
+
+The saved-scenario sidebar and bounded chart comparison controls are accepted separately in [TL7S-acceptance.md](TL7S-acceptance.md). Latest combined checks are1,948 tests, five typechecks and lint385; production build and live desktop/mobile navigation/selection pass after the documented subscription repair. TL5 remains unchanged.

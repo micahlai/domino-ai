@@ -7,6 +7,6 @@
 - **Notes:** review/ui-build/taste and apps/web/AGENTS apply. No edits/commits/services/env/provider/TL5/main/push. Lead handles browser and full checks after integration. User authorizes parallel Timeline work; Codex only. No delegation.
 
 ## Result
-- Done:
-- What changed: none; read-only audit.
-- Watch out:
+- Done: accepted repair34053b7;49 focused tests and5 independent scratch probes pass. Lead live desktop/mobile selection, navigation, keyboard and clear flow pass; full1948 tests/build pass after integration.
+- What changed: none by reviewer; audit copied to kb/features/timeline/TL7S-review.md. Lead acceptance/screenshots in TL7S-acceptance.md.
+- Watch out: initial53ea673 source acceptance was withdrawn after live browser found unstable subscriptions. Primitive-ID memo repair is now verified in the actual connected screen. TL5 stays597fcc0; no merge authorized.
