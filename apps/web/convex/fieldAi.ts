@@ -9,7 +9,8 @@
  * and providers (FIELD_AI_HOURLY_CAP, default AI_CALLS_PER_HOUR).
  * Auto loops go through the same reservation, so re-running the analyst every minute on the
  * same version makes no new model call. A call that fails still counts, so failures never turn
- * into retry storms.
+ * into retry storms. Versions the simulated clock marked routine (simClocks.quietScopes: new
+ * entries but no scripted event, new flag or verdict change) get no model call at all.
  *
  * Provider order (runAiStep): CREAO first, on the app named by the evidence analyst env vars and
  * only when the role's profile is listed in DOMINO_CREAO_VERIFIED_PROFILES. Claude runs only
@@ -101,6 +102,16 @@ export async function reserveCall(
   },
 ): Promise<Reservation> {
   const { companyId, kind, provider, scope } = args;
+  // A routine simulated day (fieldClock.ts): new entries, but no event, flag or verdict change.
+  const clock = await ctx.db
+    .query("simClocks")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .unique();
+  if (clock?.quietScopes.includes(scope))
+    return {
+      ok: false,
+      reason: `${scope} is a routine simulated day (nothing meaningful changed)`,
+    };
   const used = await ctx.db
     .query("aiCalls")
     .withIndex("by_companyId_and_kind_and_scope", (q) =>

@@ -150,6 +150,50 @@ describe("auditSnapshot", () => {
   });
 });
 
+describe("auditSnapshot ended billing", () => {
+  const plan = (id: string, customerId: string, amount: number, endDate?: string) => ({
+    id,
+    customerId,
+    amount,
+    anchorDate: "2026-01-01",
+    nextInvoiceDate: "2026-11-01",
+    everyMonths: 1 as const,
+    paymentTermsDays: 30,
+    ...(endDate && { endDate }),
+  });
+  const withPlans = (big?: string, small?: string): Snapshot => {
+    const s = base();
+    const customers = s.customers.slice(0, 2);
+    s.billingPlans = [
+      plan("plan_big", customers[0]!.id, 1_000_000, big),
+      plan("plan_small", customers[1]!.id, 10_000, small),
+    ];
+    return s;
+  };
+
+  it("escalates a large plan that gains an end date and ignores a small one", () => {
+    const prev = withPlans();
+    const found = run(withPlans("2026-11-15", "2026-11-15"), prev).filter((f) =>
+      f.refs[0]?.startsWith("plan_"),
+    );
+    expect(found.map((f) => [f.kind, f.severity, f.refs[0]])).toEqual([
+      ["missing_expected", "high", "plan_big"],
+    ]);
+    for (const f of found) expect(FindingSchema.safeParse(f).success).toBe(true);
+  });
+
+  it("ignores the first ingest, unchanged ends and plans replaced for the same customer", () => {
+    expect(run(withPlans("2026-11-15")).some((f) => f.refs[0] === "plan_big")).toBe(false);
+    const ended = withPlans("2026-11-15");
+    expect(run(withPlans("2026-11-15"), ended).some((f) => f.refs[0] === "plan_big")).toBe(false);
+    const upgraded = withPlans("2026-11-15");
+    upgraded.billingPlans!.push(
+      plan("plan_big_2", upgraded.billingPlans![0]!.customerId, 1_200_000),
+    );
+    expect(run(upgraded, withPlans()).some((f) => f.refs[0] === "plan_big")).toBe(false);
+  });
+});
+
 describe("scheduledItems", () => {
   it("schedules open invoices, unpaid bills and future payroll inside 13 weeks", () => {
     const items = scheduledItems(base());

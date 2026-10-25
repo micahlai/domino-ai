@@ -7,6 +7,7 @@ import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
+import { SimClockBar } from "./field/SimClockBar";
 
 // Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
 // harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
@@ -173,6 +174,8 @@ function TopBar({ pathname }: { pathname: string }) {
             <CompanySwitcher />
           </div>
         </div>
+        {/* Simulated time for the dashboard and Field pages (Field lane). */}
+        <SimClockBar pathname={pathname} />
       </header>
     </>
   );

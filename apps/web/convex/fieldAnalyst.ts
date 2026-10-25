@@ -96,6 +96,7 @@ import {
   searchReport,
   searchSignals,
 } from "./fieldApify";
+import { wantsCatchUp } from "./fieldClock";
 import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
@@ -1265,10 +1266,15 @@ export const finish = internalMutation({
       refs: failing.map((r) => r.scenarioId),
       summary: `Analyst done: ${summary}`,
     });
-    // Every new snapshot version gets a run (and so a coordinator plan): a version ingested
-    // while this run was busy was skipped by startRun, so pick up the newest one now.
+    // Every meaningful new snapshot version gets a run (and so a coordinator plan): a version
+    // ingested while this run was busy was skipped by startRun, so pick up the newest one now.
+    // The simulated clock's routine days and its own queued run are left to the clock.
     const feed = await requireFeed(ctx, run.companyId);
-    if (feed.snapshotVersion > run.snapshotVersion && feed.lastSnapshotId)
+    if (
+      feed.snapshotVersion > run.snapshotVersion &&
+      feed.lastSnapshotId &&
+      (await wantsCatchUp(ctx, run.companyId, run.snapshotVersion, feed.snapshotVersion))
+    )
       await startRun(ctx, run.companyId, "catch-up", DEFAULT_PACE_MS);
     return null;
   },
