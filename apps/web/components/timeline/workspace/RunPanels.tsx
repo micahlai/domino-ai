@@ -20,13 +20,14 @@ export function Panel({
   title,
   children,
   testId,
-}: { title: string; children: ReactNode; testId?: string }) {
+  bare = false,
+}: { title: string; children: ReactNode; testId?: string; bare?: boolean }) {
   return (
     <section
-      className="min-w-0 max-w-full space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:max-w-full [&_button]:whitespace-normal"
+      className={`min-w-0 max-w-full space-y-3 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11 ${bare ? "" : "rounded-lg border bg-card p-4 text-card-foreground shadow-xs"}`}
       data-testid={testId}
     >
-      <h3 className="text-base font-medium">{title}</h3>
+      <h3 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h3>
       {children}
     </section>
   );
@@ -187,11 +188,14 @@ function measure(unit: RuleReceipt["unit"], v: number): string {
 export function ReceiptsPanel({ run }: { run: WorkspaceRun }) {
   return (
     <Panel title="Cash rules" testId="receipts">
-      <p className="text-xs text-muted-foreground">
-        Cash minimums use Sunday closing usable cash. Runway uses the forecast’s average monthly
-        cash use. Bill rules check the allowed payment deadline. These checks cover the saved
-        13-week forecast; they do not establish daily cash compliance.
-      </p>
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer">How rules are checked</summary>
+        <p className="mt-1">
+          Cash minimums use Sunday closing usable cash. Runway uses the forecast’s average monthly
+          cash use. Bill rules check the allowed payment deadline. These checks cover the saved
+          13-week forecast; they do not establish daily cash compliance.
+        </p>
+      </details>
       {run.receipts.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No cash rules are set for this scenario. No rule check has been made.
@@ -210,13 +214,8 @@ export function ReceiptsPanel({ run }: { run: WorkspaceRun }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{r.label}</span>
                   <Badge
-                    variant="outline"
-                    className={
-                      s.tone === "bad"
-                        ? "border-[#D991A8] text-[#E6A5B9]"
-                        : s.tone === "ok"
-                          ? "border-safe text-safe"
-                          : undefined
+                    variant={
+                      s.tone === "bad" ? "destructive" : s.tone === "ok" ? "success" : "secondary"
                     }
                   >
                     {s.text}

@@ -66,11 +66,12 @@ describe("timeline scale guides", () => {
       />,
     );
     expect(html).toContain('data-testid="cash-axis"');
-    expect(html).toContain("Usable cash · USD");
+    expect(html).toContain("Next 13 weeks");
+    expect(html).toContain("Recorded");
     expect(html).toContain('data-testid="date-axis"');
     expect(html).toContain("2026");
     expect(html).toContain("2027");
-    expect(html).toMatch(/<figcaption[^>]*><span>Forecast starts/);
+    expect(html).toMatch(/<figcaption[^>]*>.*Recorded cash.*This scenario.*Cash minimum/);
     expect(html.match(/data-testid="chart-week-/g)).toHaveLength(13);
     expect(html).toContain('data-testid="week-range"');
     expect(html).toContain("Lender&#x27;s limit $3,150,000.00");

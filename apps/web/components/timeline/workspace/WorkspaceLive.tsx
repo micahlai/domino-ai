@@ -5,9 +5,13 @@ import { useAction, useMutation, useQueries } from "convex/react";
 import { ConvexError } from "convex/values";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, Suspense, useMemo, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { OPEN_IN_TIMELINE_NOTE, OpenInTimeline } from "../../field/OpenInTimeline";
+import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import { PageHeader } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
+import { analysisHref } from "../analysis/links";
 import { baselineHref } from "../baseline/api";
 import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
@@ -18,6 +22,7 @@ import {
   type QuestionReceipt,
   type Read,
   RunResultSchema,
+  allScenariosHref,
   askRef,
   catalogRef,
   getRunRef,
@@ -37,6 +42,7 @@ import {
   workspaceHref,
   workspaceLinkFromSearch,
 } from "./api";
+import { NewerBooksNotice, fieldCompanyOf, useLatestImport } from "./books";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
 import { comparisonIds, readComparison } from "./scenarioComparisons";
@@ -57,7 +63,7 @@ function useLedger() {
 }
 
 /** Saved scenarios, one bounded page at a time. Each page is its own read; nothing recalculates. */
-function CatalogLive({ companyId }: { companyId: string }) {
+function CatalogLive({ companyId, hideEmpty }: { companyId: string; hideEmpty?: boolean }) {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const queries = useMemo(
     () =>
@@ -74,6 +80,7 @@ function CatalogLive({ companyId }: { companyId: string }) {
   );
   const raw = useQueries(queries) as Record<string, unknown>;
   const pages = cursors.map((_, i) => readCatalogPage(raw[`p${i}`], companyId));
+  if (hideEmpty && !pages.some((p) => p.state === "ready" && p.value.entries.length)) return null;
   return (
     <CatalogList
       pages={pages}
@@ -125,7 +132,7 @@ function Bootstrap({ companyId, baselineRunId }: { companyId: string; baselineRu
         </Link>
       </div>
       {error ? (
-        <p role="alert" className="text-sm text-[#E6A5B9]">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -152,7 +159,7 @@ function RunLive({ companyId, runId }: { companyId: string; runId: string }) {
     <div className="space-y-4">
       <ReadNotice read={read} what="saved scenario" />
       <Link
-        href={workspaceHref(companyId)}
+        href={allScenariosHref(companyId)}
         className="text-sm text-primary underline-offset-4 hover:underline"
       >
         All saved scenarios
@@ -277,8 +284,9 @@ function RunReady({
     }
   }
 
+  const latest = useLatestImport(companyId);
   const actions: WorkspaceActions = {
-    catalogHref: workspaceHref(companyId),
+    catalogHref: allScenariosHref(companyId),
     hrefFor: (id) => workspaceHref(companyId, { runId: id }),
     simulate: (label, changes) => runScenario(label, changes, null, null, true),
     reviseRules: (constraints, note) => {
@@ -358,18 +366,103 @@ function RunReady({
         selectedItemId: params.get("selectedItemId") ?? undefined,
       }}
       chat={(context) => <ChatSidebarLive run={run} {...context} />}
+      initialAssistant={params.get("conversationId") ? "chat" : undefined}
+      risksHref={
+        latest.state === "ready" && latest.runId === run.runId && latest.analysisId
+          ? analysisHref(companyId, run.runId, latest.analysisId)
+          : undefined
+      }
+      notice={<NewerBooksNotice companyId={companyId} />}
     />
   );
 }
 
-function Connected({ companyId }: { companyId: string }) {
-  const link = workspaceLinkFromSearch(useSearchParams().toString());
+/** Company name and the simulated-data label, shared by every Timeline page state. */
+function CompanyEyebrow({ companyId }: { companyId: string }) {
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <span className="font-medium text-foreground">
+        {fieldCompanyOf(companyId)?.name ?? companyId}
+      </span>
+      <Badge variant="secondary">Simulated company</Badge>
+    </span>
+  );
+}
+
+function CatalogPage({ companyId }: { companyId: string }) {
+  const latest = useLatestImport(companyId);
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={<CompanyEyebrow companyId={companyId} />}
+        title="Saved scenarios"
+        description="Every saved forecast and what-if for this company, newest first. Opening one only reads it; saved results never change."
+        actions={
+          latest.state === "ready" ? (
+            <Button variant="outline" asChild>
+              <Link href={latest.route}>Open the latest timeline</Link>
+            </Button>
+          ) : null
+        }
+      />
+      <CatalogLive companyId={companyId} />
+    </div>
+  );
+}
+
+/**
+ * The bare timeline address: open the selected company's latest imported books, or explain how
+ * to bring them in. Importing is never started from a page load.
+ */
+function CompanyHome({ companyId }: { companyId: string }) {
+  const latest = useLatestImport(companyId);
+  const router = useRouter();
+  const route = latest.state === "ready" ? latest.route : null;
+  useEffect(() => {
+    if (route) router.replace(route);
+  }, [route, router]);
+  if (latest.state === "not_field") return <CatalogPage companyId={companyId} />;
+  if (latest.state !== "none")
+    return (
+      <div className="space-y-3" aria-busy="true">
+        <output className="block text-sm text-muted-foreground">
+          Opening the latest timeline...
+        </output>
+        <Skeleton className="h-10 w-2/3" />
+        <Skeleton className="h-80 w-full" />
+      </div>
+    );
+  const name = fieldCompanyOf(companyId)?.name ?? companyId;
+  return (
+    <div className="space-y-6" data-testid="timeline-empty">
+      <PageHeader
+        eyebrow={<CompanyEyebrow companyId={companyId} />}
+        title={`No timeline for ${name} yet`}
+        description="Bring in the latest books to see the next 13 weeks of cash, the lowest point and whether it stays above the lender's minimum."
+      />
+      <section className="max-w-2xl space-y-4 rounded-lg border bg-card p-5 shadow-xs">
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>Usable cash for the next 13 weeks, next to recent history</li>
+          <li>The lowest point and the lender&rsquo;s minimum on one chart</li>
+          <li>Ask questions, try events and see saved risks</li>
+        </ul>
+        <OpenInTimeline label="Bring in latest books" />
+        <p className="text-xs text-muted-foreground">{OPEN_IN_TIMELINE_NOTE}</p>
+      </section>
+      <CatalogLive companyId={companyId} hideEmpty />
+    </div>
+  );
+}
+
+function Connected({ companyId, landing }: { companyId: string; landing: "latest" | "catalog" }) {
+  const search = useSearchParams();
+  const link = workspaceLinkFromSearch(search.toString());
   if (link.kind === "conflict")
     return (
       <Notice title="This link names two starting points">
         A workspace link opens either a saved scenario or a saved baseline, not both.{" "}
         <Link
-          href={workspaceHref(companyId)}
+          href={allScenariosHref(companyId)}
           className="text-primary underline-offset-4 hover:underline"
         >
           See all saved scenarios
@@ -379,11 +472,20 @@ function Connected({ companyId }: { companyId: string }) {
   if (link.kind === "run") return <RunLive companyId={companyId} runId={link.runId} />;
   if (link.kind === "bootstrap")
     return <Bootstrap companyId={companyId} baselineRunId={link.baselineRunId} />;
-  return <CatalogLive companyId={companyId} />;
+  if (landing === "catalog") return <CatalogLive companyId={companyId} />;
+  if (search.get("view") === "all") return <CatalogPage companyId={companyId} />;
+  return <CompanyHome companyId={companyId} />;
 }
 
 /** Timeline workspace route body. A missing service connection stays visible, never faked. */
-export function WorkspaceLive({ companyId }: { companyId: string }) {
+export function WorkspaceLive({
+  companyId,
+  landing = "catalog",
+}: {
+  companyId: string;
+  /** "latest": the bare address opens the latest imported books (the Timeline page). */
+  landing?: "latest" | "catalog";
+}) {
   return (
     <Suspense
       fallback={
@@ -396,7 +498,7 @@ export function WorkspaceLive({ companyId }: { companyId: string }) {
       }
     >
       {process.env.NEXT_PUBLIC_CONVEX_URL ? (
-        <Connected companyId={companyId} />
+        <Connected companyId={companyId} landing={landing} />
       ) : (
         <Notice title="Cannot open saved scenarios here">
           This page is not connected to the forecast service, so saved scenarios cannot be opened or

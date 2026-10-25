@@ -150,7 +150,7 @@ export function RuleEditor({ constraints, bills, onSave, disabled }: RuleEditorP
         />
       </label>
       {!built.ok ? (
-        <ul className="space-y-0.5 text-xs text-[#E6A5B9]" data-testid="rule-errors">
+        <ul className="space-y-0.5 text-xs text-destructive" data-testid="rule-errors">
           {built.errors.map((e) => (
             <li key={e}>{e}</li>
           ))}
@@ -178,7 +178,7 @@ export function RuleEditor({ constraints, bills, onSave, disabled }: RuleEditorP
       </Button>
       {disabled ? <p className="text-xs text-muted-foreground">{disabled}</p> : null}
       {error ? (
-        <p role="alert" className="text-sm text-[#E6A5B9]">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

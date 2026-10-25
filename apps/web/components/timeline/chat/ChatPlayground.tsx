@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Button } from "../../ui/button";
 import { WorkspaceView } from "../workspace/WorkspaceView";
 import { workspaceHref } from "../workspace/api";
-import { fixtureGraph } from "../workspace/fixtures";
+import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "../workspace/fixtures";
 import { ChatView } from "./ChatView";
 import { fixtureChat, fixtureChatRun, fixtureReady, fixtureSaved } from "./fixtures";
 export function ChatPlayground() {
   const [mode, setMode] = useState<"new" | "clarify" | "ready" | "saved" | "error">("clarify");
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const receipt = mode === "ready" ? fixtureReady : mode === "saved" ? fixtureSaved : fixtureChat;
   return (
     <div className="space-y-4">
@@ -33,6 +34,15 @@ export function ChatPlayground() {
         graph={{ state: "ready", value: fixtureGraph }}
         questions={{ state: "ready", value: [] }}
         resultRef={{ state: "missing" }}
+        comparisons={{
+          ids: comparisonIds,
+          reads: {
+            [fixtureRoot.runId]: { state: "ready", value: fixtureRoot },
+            [fixtureRules.runId]: { state: "ready", value: fixtureRules },
+            [fixtureScenario.runId]: { state: "ready", value: fixtureScenario },
+          },
+          onChange: setComparisonIds,
+        }}
         actions={{
           catalogHref: "#",
           hrefFor: (runId) => workspaceHref(fixtureChatRun.companyId, { runId }),

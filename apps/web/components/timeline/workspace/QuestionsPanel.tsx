@@ -171,7 +171,7 @@ function ProposalCard({ q, actions }: { q: QuestionReceipt; actions: QuestionAct
         </>
       )}
       {error ? (
-        <p role="alert" className="text-sm text-[#E6A5B9]">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -267,6 +267,8 @@ export type QuestionsPanelProps = {
   onClearContext: () => void;
   actions: QuestionActions;
   disabled?: string;
+  /** Inside the assistant panel: no card border of its own. */
+  bare?: boolean;
 };
 
 /** One-shot questions about the saved scenario. Suggestions run only after confirmation. */
@@ -292,11 +294,10 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
   const all = mergeReceipts(saved, latest);
 
   return (
-    <Panel title="Ask about this scenario" testId="questions">
-      <p className="text-xs text-muted-foreground">
-        For example: &ldquo;What if Acme pays 30 days late?&rdquo; or &ldquo;Keep at least
-        $3,000,000 of usable cash.&rdquo; Answers come from the saved forecast. Suggested changes
-        run only after you confirm them.
+    <Panel title="Ask about this forecast" testId="questions" bare={p.bare}>
+      <p className="text-sm text-muted-foreground">
+        For example: &ldquo;Why did cash drop this week?&rdquo; or &ldquo;What if Acme pays 30 days
+        late?&rdquo; Answers come from the saved forecast. A what-if runs only after you confirm it.
       </p>
       {p.selectedWeek || p.selectedItemId ? (
         <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="question-context">
@@ -312,9 +313,10 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
           </Button>
         </div>
       ) : null}
-      <label className="block space-y-1 text-xs">
-        <span>Your question</span>
+      <label className="block space-y-1 text-sm">
+        <span className="font-medium">Your question</span>
         <textarea
+          id="question-prompt"
           className={`${inputClass} h-20`}
           maxLength={2000}
           value={prompt}
@@ -329,11 +331,11 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
         disabled={pending || !prompt.trim() || Boolean(p.disabled)}
         data-testid="question-ask"
       >
-        {pending ? "Asking..." : "Ask"}
+        {pending ? "Thinking..." : "Ask"}
       </Button>
       {p.disabled ? <p className="text-xs text-muted-foreground">{p.disabled}</p> : null}
       {error ? (
-        <p role="alert" className="text-sm text-[#E6A5B9]" data-testid="question-error">
+        <p role="alert" className="text-sm text-destructive" data-testid="question-error">
           {error}
         </p>
       ) : null}

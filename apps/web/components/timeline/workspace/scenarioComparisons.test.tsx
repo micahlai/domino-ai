@@ -59,7 +59,10 @@ describe("saved scenario comparisons", () => {
         catalogHref="/catalog"
       />,
     );
-    expect(html).toContain("Acme pays 30 days late · Open now");
+    expect(html).toMatch(/Acme pays 30 days late<\/span><div[^>]*>Open now/);
+    // The open run's own saved receipt gives the exact breach week and shortfall.
+    expect(html).toContain('data-outcome="below"');
+    expect(html).toContain("short $33,000.00");
     expect(html).toContain('aria-current="page"');
     expect(html).toContain("first 100 saved scenarios");
     expect(html).toContain('href="/catalog"');
@@ -81,9 +84,10 @@ describe("saved scenario comparisons", () => {
     );
     expect(html).toContain('aria-label="Open Lender&#x27;s limit added"');
     expect(html).toContain('aria-label="Compare Lender&#x27;s limit added"');
-    expect(html).toContain("Different saved rules");
+    expect(html).toContain("Checked against different rules");
     expect(html).toContain("Saved curve unavailable; it is not drawn.");
-    expect(html).toContain("Clear comparisons");
+    expect(html).toContain(">Clear</button>");
+    expect(html).toContain("1 of 3 on chart");
     const longName = "scenario".repeat(40);
     const longHtml = renderToStaticMarkup(
       <ScenarioSidebar

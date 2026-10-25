@@ -215,7 +215,7 @@ describe("chat review rendering", () => {
     expect(markup).toContain('id="timeline-chat"');
     expect(markup).toContain("Expense amount");
     expect(markup).not.toContain("View source timeline and rules");
-    expect(markup).toContain("Browse saved scenarios");
+    expect(markup).toContain("Saved scenarios");
   });
   it("builds in-page conversation links preserving source and pinned selection", () => {
     const href = chatHref("a/b", "run?x", "chat#x", "2026-11-02", "invoice/a");

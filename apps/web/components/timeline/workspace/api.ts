@@ -431,6 +431,11 @@ export function workspaceHref(
 }
 
 /** runId reopens a saved node; baselineRunId offers to start from a saved baseline. Never both. */
+/** The full saved-scenario list. The bare timeline address opens the latest imported books. */
+export function allScenariosHref(companyId: string): string {
+  return `${workspaceHref(companyId)}?view=all`;
+}
+
 export function workspaceLinkFromSearch(search: string): WorkspaceLink {
   const params = new URLSearchParams(search);
   const runId = params.get("runId") ?? "";
