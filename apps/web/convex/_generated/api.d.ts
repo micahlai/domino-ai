@@ -10,6 +10,7 @@
 
 import type * as agents from "../agents.js";
 import type * as approvals from "../approvals.js";
+import type * as backtest from "../backtest.js";
 import type * as branches from "../branches.js";
 import type * as companies from "../companies.js";
 import type * as computed from "../computed.js";
@@ -35,6 +36,7 @@ import type * as events from "../events.js";
 import type * as explanations from "../explanations.js";
 import type * as field from "../field.js";
 import type * as fieldAdvisor from "../fieldAdvisor.js";
+import type * as fieldAgents from "../fieldAgents.js";
 import type * as fieldAi from "../fieldAi.js";
 import type * as fieldAnalyst from "../fieldAnalyst.js";
 import type * as fieldApify from "../fieldApify.js";
@@ -133,6 +135,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   approvals: typeof approvals;
+  backtest: typeof backtest;
   branches: typeof branches;
   companies: typeof companies;
   computed: typeof computed;
@@ -158,6 +161,7 @@ declare const fullApi: ApiFromModules<{
   explanations: typeof explanations;
   field: typeof field;
   fieldAdvisor: typeof fieldAdvisor;
+  fieldAgents: typeof fieldAgents;
   fieldAi: typeof fieldAi;
   fieldAnalyst: typeof fieldAnalyst;
   fieldApify: typeof fieldApify;

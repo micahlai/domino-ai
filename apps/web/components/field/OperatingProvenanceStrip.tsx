@@ -3,10 +3,25 @@
 import { type OperatingProvenance, operatingDemoCatalog } from "@domino/sim";
 import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import Link from "next/link";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "../ui/sheet";
 import { useOperatingSelection, useSelectedCompany } from "./company";
 import { formatCents } from "./dashboard/money";
+import {
+  type CatalogLike,
+  companyDisplay,
+  provenanceDates,
+  provenanceSummary,
+} from "./header-text";
 
 const CONTEXT = makeFunctionReference<
   "query",
@@ -15,32 +30,72 @@ const CONTEXT = makeFunctionReference<
 >("fieldOperating:context");
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
+/** One quiet line: what the books are and their date. Full filing dates sit behind "Sources". */
 export function OperatingProvenanceStrip() {
   const selection = useOperatingSelection();
   const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
-  const label = catalog?.label ?? "Filing-backed reconstruction";
-  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
+  const summary = provenanceSummary(catalog);
   return (
-    <div className="relative border-t bg-muted/35 px-4 py-2 text-xs md:px-6">
-      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground">
-          {catalog
-            ? `${catalog.referenceCompany} period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}. Starting reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical ledger date). 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case" : ""}.`
-            : "Records reconstructed."}{" "}
-          Future scenarios and forecasts illustrative.
-        </span>
-        {CONVEX_URL ? (
-          <LiveSources />
-        ) : (
-          <span className="text-muted-foreground">Source anchors need the backend.</span>
-        )}
-        {selection.company === "2u" ? (
-          <Link href="/case/2u" className="ml-auto text-primary underline-offset-2 hover:underline">
-            Separate 2U historical case
-          </Link>
-        ) : null}
-      </div>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5">
+      <Badge variant="secondary">{summary.badge}</Badge>
+      {/* Phones: badge and Sources share the first row, the line takes the second. */}
+      <span className="text-muted-foreground max-sm:order-last max-sm:basis-full">
+        {summary.line}
+      </span>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button
+            variant="link"
+            size="sm"
+            aria-label="Sources and cash bridge"
+            className="px-1 text-[13px] max-sm:-my-2 max-sm:ml-auto"
+          >
+            Sources
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="w-full overflow-y-auto text-sm sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Sources</SheetTitle>
+            <SheetDescription>
+              {catalog
+                ? `Where ${companyDisplay(catalog).name}'s simulated books come from.`
+                : "Where the simulated books come from."}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-5 space-y-5">
+            {catalog ? <ProvenanceDates catalog={catalog} /> : null}
+            {CONVEX_URL ? (
+              <LiveSources />
+            ) : (
+              <p className="text-muted-foreground">Source anchors need the backend.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+/** Each filing date once, labelled, then the notes that only apply to this company. */
+export function ProvenanceDates({ catalog }: { catalog: CatalogLike }) {
+  return (
+    <div className="space-y-2">
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+        <dt className="text-muted-foreground">Based on</dt>
+        <dd>{catalog.referenceCompany} public filings</dd>
+        {provenanceDates(catalog).map(([name, value]) => (
+          <div key={name} className="col-span-2 grid grid-cols-subgrid">
+            <dt className="text-muted-foreground">{name}</dt>
+            <dd className="tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-muted-foreground">
+        {catalog.id === "2u"
+          ? "2U inputs use public reports released by Nov 9, 2023; later actuals are in the separate historical case. "
+          : ""}
+        Records are reconstructed; future scenarios and forecasts are illustrative.
+      </p>
     </div>
   );
 }
@@ -50,29 +105,27 @@ function LiveSources() {
   const context = useQuery(CONTEXT, companyId ? { companyId } : "skip");
   if (error)
     return (
-      <span role="alert" className="text-destructive">
+      <p role="alert" className="text-destructive">
         {error}
-      </span>
+      </p>
     );
-  return (
-    <details>
-      <summary className="cursor-pointer font-medium text-primary underline-offset-2 hover:underline">
-        Sources and cash bridge
-      </summary>
-      <div className="absolute right-4 top-full z-50 mt-2 max-h-[min(70vh,38rem)] w-[min(37rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-card p-4 text-foreground shadow-lg">
-        {context === undefined ? (
-          <p className="text-muted-foreground">Reading the selected company's source anchors...</p>
-        ) : context === null ? (
-          <p className="text-destructive">No source context was returned for this company.</p>
-        ) : (
-          <SourceContents context={context} />
-        )}
-      </div>
-    </details>
+  return context === undefined ? (
+    <p className="text-muted-foreground">Reading the selected company's source anchors...</p>
+  ) : context === null ? (
+    <p className="text-destructive">No source context was returned for this company.</p>
+  ) : (
+    <SourceContents context={context} showIntro={false} />
   );
 }
 
-export function SourceContents({ context }: { context: OperatingProvenance }) {
+export function SourceContents({
+  context,
+  showIntro = true,
+}: {
+  context: OperatingProvenance;
+  /** False when the Sources sheet already lists the filing dates above. */
+  showIntro?: boolean;
+}) {
   const r = context.reconciliation;
   const catalog = operatingDemoCatalog.find((item) => item.id === context.company);
   const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
@@ -94,20 +147,22 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
   ] as const;
   return (
     <div className="space-y-4">
-      <div>
-        <p className="font-semibold">Reported anchors and reconstructed books</p>
-        <p className="mt-1 text-muted-foreground">
-          {catalog?.referenceCompany ?? "Public company"} reported period {context.periodStart} to{" "}
-          {context.periodEnd}. Published {context.reportedAt}
-          {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Starting
-          reconstructed books as of {catalog?.simulationAsOf ?? context.periodEnd}
-          {context.company === "2u" ? " (historical ledger date)" : ""}. The report publication and
-          starting books carry separate dates.
-          {context.company === "2u"
-            ? " 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case."
-            : ""}
-        </p>
-      </div>
+      {showIntro ? (
+        <div>
+          <p className="font-semibold">Reported anchors and reconstructed books</p>
+          <p className="mt-1 text-muted-foreground">
+            {catalog?.referenceCompany ?? "Public company"} reported period {context.periodStart} to{" "}
+            {context.periodEnd}. Published {context.reportedAt}
+            {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Starting
+            reconstructed books as of {catalog?.simulationAsOf ?? context.periodEnd}
+            {context.company === "2u" ? " (historical ledger date)" : ""}. The report publication
+            and starting books carry separate dates.
+            {context.company === "2u"
+              ? " 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case."
+              : ""}
+          </p>
+        </div>
+      ) : null}
       <details>
         <summary className="cursor-pointer font-medium text-primary">
           Reported and derived anchors ({context.reported.length})

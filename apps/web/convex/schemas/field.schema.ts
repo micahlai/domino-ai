@@ -45,6 +45,9 @@ export const fieldTables = {
     judge: v.optional(v.boolean()),
     judgeNumber: v.optional(v.number()),
     judgeArchivedAt: v.optional(v.string()),
+    // Agents (fieldAgents.ts, optional): when a person pressed Start agents. New operating and
+    // judge companies start idle; an older row with any snapshot counts as started.
+    agentsStartedAt: v.optional(v.string()),
     operatingDemo: v.optional(
       v.object({
         company: v.union(

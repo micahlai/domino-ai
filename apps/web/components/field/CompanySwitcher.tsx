@@ -1,12 +1,13 @@
 "use client";
 
+import { Check, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { cn } from "../../lib/utils";
 import {
   OPERATING_COMPANIES,
   OPERATING_SCENARIOS,
-  type OperatingCompanyId,
-  type OperatingScenarioId,
   type OperatingSelection,
   isLegacyOperatingTimelinePath,
   operatingWorldId,
@@ -14,15 +15,22 @@ import {
   useOperatingSelection,
   useSelectedCompany,
 } from "./company";
+import { companyDisplay, menuKey } from "./header-text";
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+const fallbackLink = cn(
+  "flex h-9 items-center rounded-md border border-input bg-card px-3 text-[13px] font-medium shadow-xs transition-colors hover:bg-accent max-sm:h-11",
+  focusRing,
+);
 
 /** One company and one scenario choose the same reconstructed feed on every product page. */
 export function CompanySwitcher() {
   const pathname = usePathname() ?? "";
   if (pathname === "/case/2u" || pathname.startsWith("/case/2u/"))
     return (
-      <Link href="/" className="rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent">
+      <Link href="/" className={fallbackLink}>
         2U historical case · Open operating demos
       </Link>
     );
@@ -33,13 +41,13 @@ export function CompanySwitcher() {
     pathname.startsWith("/c/kestrel")
   )
     return (
-      <Link href="/" className="rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent">
+      <Link href="/" className={fallbackLink}>
         Sandbox · Open operating demos
       </Link>
     );
   if (isLegacyOperatingTimelinePath(pathname))
     return (
-      <Link href="/" className="rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent">
+      <Link href="/" className={fallbackLink}>
         Legacy operating demo · Open current demos
       </Link>
     );
@@ -72,60 +80,226 @@ function Picker({ selectedName, error }: { selectedName?: string; error?: string
   );
 }
 
-/** Props-only selector for the Field playground. No backend or financial fixture is needed. */
+/** Props-only selector for the Field playground. No backend or financial fixture is needed.
+ * One button names the company and scenario; it opens a menu with both choices. */
 export function OperatingSelectorControls({
   selection,
   onChange,
   selectedName,
   error,
+  defaultOpen = false,
 }: {
   selection: OperatingSelection;
   onChange: (selection: OperatingSelection) => void;
   selectedName?: string;
   error?: string | null;
+  /** Render the menu open (tests and the playground). */
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const items = useRef<(HTMLButtonElement | null)[]>([]);
+  const focusOnOpen = useRef<"selected" | "last">("selected");
+  const menuId = useId();
+  const company = OPERATING_COMPANIES.find((c) => c.id === selection.company);
+  const scenario = OPERATING_SCENARIOS.find((s) => s.id === selection.scenario);
+  const shown = company ? companyDisplay(company) : null;
+  const count = OPERATING_COMPANIES.length + OPERATING_SCENARIOS.length;
+
+  useEffect(() => {
+    if (!open) return;
+    const start =
+      focusOnOpen.current === "last"
+        ? count - 1
+        : Math.max(
+            0,
+            OPERATING_COMPANIES.findIndex((c) => c.id === selection.company),
+          );
+    items.current[start]?.focus();
+    const outside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [open, count, selection.company]);
+
+  const close = (returnFocus: boolean) => {
+    setOpen(false);
+    if (returnFocus) trigger.current?.focus();
+  };
+  const choose = (next: OperatingSelection) => {
+    close(true);
+    if (next.company !== selection.company || next.scenario !== selection.scenario) onChange(next);
+  };
+  const onTriggerKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    focusOnOpen.current = event.key === "ArrowUp" ? "last" : "selected";
+    setOpen(true);
+  };
+  const onMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const index = items.current.findIndex((el) => el === document.activeElement);
+    const action = menuKey(event.key, index, count);
+    if (!action) return;
+    if (action.type === "move") {
+      event.preventDefault();
+      items.current[action.index]?.focus();
+    } else {
+      if (action.returnFocus) event.preventDefault();
+      close(action.returnFocus);
+    }
+  };
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Operating demo selection">
-      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="sr-only sm:not-sr-only">Company</span>
-        <select
-          aria-label="Company"
-          value={selection.company}
-          onChange={(event) =>
-            onChange({ ...selection, company: event.target.value as OperatingCompanyId })
-          }
-          className="h-9 max-w-[11rem] rounded-md border bg-card px-2 text-sm font-medium text-foreground sm:max-w-[14rem]"
-          title={selectedName ?? "Choose a filing-backed demo"}
-        >
-          {OPERATING_COMPANIES.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="sr-only sm:not-sr-only">Scenario</span>
-        <select
-          aria-label="Scenario"
-          value={selection.scenario}
-          onChange={(event) =>
-            onChange({ ...selection, scenario: event.target.value as OperatingScenarioId })
-          }
-          className="h-9 max-w-[10rem] rounded-md border bg-card px-2 text-sm font-medium text-foreground sm:max-w-[12rem]"
-        >
-          {OPERATING_SCENARIOS.map((scenario) => (
-            <option key={scenario.id} value={scenario.id}>
-              {scenario.name}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div ref={root} className="relative flex items-center gap-2">
       {error ? (
-        <span role="alert" className="max-w-48 text-xs text-destructive">
+        <span role="alert" className="max-w-40 text-xs leading-4 text-destructive max-sm:hidden">
           {error}
         </span>
       ) : null}
+      <button
+        ref={trigger}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        title={selectedName}
+        onClick={() => {
+          focusOnOpen.current = "selected";
+          setOpen((v) => !v);
+        }}
+        onKeyDown={onTriggerKey}
+        className={cn(
+          "flex h-10 items-center gap-2.5 rounded-md border border-input bg-card pl-1.5 pr-2 text-left shadow-xs transition-colors duration-150 hover:bg-accent max-sm:h-11",
+          open && "bg-accent",
+          focusRing,
+        )}
+      >
+        <CompanyMark initial={shown?.initial ?? "?"} />
+        <span className="flex flex-col whitespace-nowrap">
+          <span className="sr-only">Company and scenario: </span>
+          <span className="text-[13px] font-medium leading-4">
+            {shown?.name ?? "Choose a demo"}
+          </span>
+          <span className="text-[11px] leading-4 text-muted-foreground">
+            <span className="max-sm:hidden">{shown?.subtitle} · </span>
+            {scenario?.name}
+          </span>
+        </span>
+        <ChevronsUpDown aria-hidden="true" className="size-4 text-muted-foreground" />
+      </button>
+      {open ? (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label="Company and scenario"
+          onKeyDown={onMenuKey}
+          className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg"
+        >
+          <MenuGroup label="Company">
+            {OPERATING_COMPANIES.map((c, i) => {
+              const d = companyDisplay(c);
+              const checked = c.id === selection.company;
+              return (
+                <MenuItem
+                  key={c.id}
+                  ref={(el) => {
+                    items.current[i] = el;
+                  }}
+                  checked={checked}
+                  onSelect={() => choose({ ...selection, company: c.id })}
+                >
+                  <CompanyMark initial={d.initial} />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-[13px] font-medium leading-5">{d.name}</span>
+                    <span className="text-xs leading-4 text-muted-foreground">{d.subtitle}</span>
+                  </span>
+                </MenuItem>
+              );
+            })}
+          </MenuGroup>
+          <hr className="-mx-1.5 my-1.5 border-border" />
+          <MenuGroup label="Scenario">
+            {OPERATING_SCENARIOS.map((s, j) => (
+              <MenuItem
+                key={s.id}
+                ref={(el) => {
+                  items.current[OPERATING_COMPANIES.length + j] = el;
+                }}
+                checked={s.id === selection.scenario}
+                onSelect={() => choose({ ...selection, scenario: s.id })}
+              >
+                <span className="flex-1 text-[13px] leading-5">{s.name}</span>
+              </MenuItem>
+            ))}
+          </MenuGroup>
+          <div className="-mx-1.5 mt-1.5 border-t px-3 pb-1 pt-2.5 text-xs leading-5 text-muted-foreground">
+            Real 2U results after the filing are in the{" "}
+            <Link
+              href="/case/2u"
+              onClick={() => setOpen(false)}
+              className="rounded-sm text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              2U historical case
+            </Link>
+            .
+          </div>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function CompanyMark({ initial }: { initial: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-[11px] font-semibold text-foreground"
+    >
+      {initial}
+    </span>
+  );
+}
+
+function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a menu groups items with role="group", not a fieldset.
+    <div role="group" aria-labelledby={id}>
+      <p id={id} className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function MenuItem({
+  ref,
+  checked,
+  onSelect,
+  children,
+}: {
+  ref: (el: HTMLButtonElement | null) => void;
+  checked: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      role="menuitemradio"
+      aria-checked={checked}
+      tabIndex={-1}
+      onClick={onSelect}
+      className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring max-sm:min-h-11"
+    >
+      {children}
+      <Check
+        aria-hidden="true"
+        className={cn("size-4 shrink-0 text-foreground", checked ? "opacity-100" : "opacity-0")}
+      />
+    </button>
   );
 }

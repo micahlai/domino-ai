@@ -21,6 +21,7 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import { agentsStarted } from "./fieldAgents";
 import { AGENT, requireFeed, runIngest, writeLog } from "./fieldJobs";
 import {
   type OutgoingEvent,
@@ -116,6 +117,9 @@ export const receive = internalMutation({
   handler: async (ctx, args) => {
     const { companyId, vendor, eventId, transport } = args;
     await requireFeed(ctx, companyId);
+    // Before Start agents nothing reads the tools, so the event is neither stored nor queued.
+    if (!(await agentsStarted(ctx, companyId)))
+      return { duplicate: false, status: "agents_idle" as const };
     const seen = await ctx.db
       .query("vendorWebhookEvents")
       .withIndex("by_companyId_and_eventId", (q) =>

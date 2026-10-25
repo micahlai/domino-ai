@@ -1,4 +1,7 @@
-/** Selected filing-backed operating feeds. Each selection has one durable mock world. */
+/**
+ * Selected filing-backed operating feeds. Each selection has one durable mock world. A new feed
+ * starts idle (no ingest, analyst or clock work) until fieldAgents.start.
+ */
 import { OPERATING_COMPANY_IDS, OPERATING_SCENARIO_IDS, operatingProvenance } from "@domino/sim";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
@@ -30,7 +33,9 @@ export const ensure = mutation({
       )
       .unique();
     if (existing) return { companyId: existing._id, name: existing.name, created: false };
-    const companyId = await createFeedCompany(ctx, 1, undefined, undefined, selection);
+    const companyId = await createFeedCompany(ctx, 1, undefined, undefined, selection, {
+      idle: true,
+    });
     const created = (await ctx.db.get("companies", companyId))!;
     return { companyId, name: created.name, created: true };
   },

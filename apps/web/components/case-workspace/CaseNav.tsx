@@ -19,6 +19,7 @@ export function CaseNav() {
       href: caseHref.simulations(id),
       on: pathname.startsWith(`${CASE_BASE}/simulations`),
     },
+    { label: "Backtest", href: caseHref.backtest(), on: pathname === `${CASE_BASE}/backtest` },
   ];
   return (
     <header className="flex shrink-0 min-h-12 flex-wrap items-center gap-x-6 gap-y-1 border-b px-4 py-1">

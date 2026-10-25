@@ -1,3 +1,4 @@
+import { TimelineAgentsGate } from "@/components/field/TimelineAgentsGate";
 import { WorkspaceLive } from "@/components/timeline/workspace/WorkspaceLive";
 import { SyncCompany } from "@/components/timeline/workspace/books";
 import { decodeTimelineCompanyId } from "@/lib/timeline-route";
@@ -15,7 +16,9 @@ export default async function Page({ params }: { params: Promise<{ companyId: st
   return (
     <div className="h-full min-h-0 min-w-0">
       <SyncCompany companyId={companyId} />
-      <WorkspaceLive key={companyId} companyId={companyId} landing="latest" />
+      <TimelineAgentsGate companyId={companyId}>
+        <WorkspaceLive key={companyId} companyId={companyId} landing="latest" />
+      </TimelineAgentsGate>
     </div>
   );
 }

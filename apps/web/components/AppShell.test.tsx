@@ -37,13 +37,16 @@ describe("AppShell navigation", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
     expect(html).toContain("Main navigation");
-    expect(html).toContain('aria-label="Company"');
-    expect(html).toContain('aria-label="Scenario"');
-    expect(html).toContain("Based on 2U public filings, with reconstructed operating data.");
-    expect(html).toContain(
-      "Starting reconstructed books as of 2023-09-30 (historical ledger date)",
-    );
-    expect(html).toContain("public reports released by 2023-11-09");
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain("Company and scenario");
+    expect(html).toContain("2U (historical)");
+    expect(html).toContain("Simulated books");
+    expect(html).toContain("based on 2U, Inc. filings · as of Sep 30, 2023");
+    // Full dates live in the Sources sheet; the row never repeats the long filing sentence.
+    expect(html).toContain('aria-label="Sources and cash bridge"');
+    expect(html).not.toContain("Starting reconstructed books as of");
+    expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+    expect(html).not.toContain("<select");
     for (const gone of [
       "/playground",
       'href="/connect"',
@@ -80,11 +83,11 @@ describe("AppShell navigation", () => {
     const html = render("/c/operating%2Fasana-inspired%2Fbaseline/timeline");
     expect(current(html)).toEqual(["Timeline"]);
     expect(html).toContain("Legacy operating demo");
-    expect(html).not.toContain('aria-label="Company"');
-    expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+    expect(html).not.toContain('aria-haspopup="menu"');
+    expect(html).not.toContain("Simulated books");
     const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
-    expect(currentHtml).toContain('aria-label="Company"');
-    expect(currentHtml).toContain("Based on 2U public filings, with reconstructed operating data.");
+    expect(currentHtml).toContain('aria-haspopup="menu"');
+    expect(currentHtml).toContain("Simulated books");
   });
 
   it("shows saved calculation routes without the live company picker, feed strip or clock", () => {
@@ -96,9 +99,8 @@ describe("AppShell navigation", () => {
     ]) {
       const html = render(at);
       expect(html).toContain("Recorded run");
-      expect(html).not.toContain('aria-label="Company"');
-      expect(html).not.toContain('aria-label="Scenario"');
-      expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+      expect(html).not.toContain('aria-haspopup="menu"');
+      expect(html).not.toContain("Simulated books");
       expect(html).not.toContain("Simulated date");
     }
     const current = render("/c/operating%2Fasana-current%2Fbaseline/timeline/calculation");

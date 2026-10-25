@@ -1,3 +1,8 @@
+## Claude lead resumed, Oct 25 ~04:40
+- Lead: Claude (took over from Codex at field/main 3c2402b). Live 3114/3260 untouched.
+- Five workers (worktrees ../domino-w-*): tl-friend (merge friend origin/claude-timeline-chat b9f25bb..bae9a8e + remove superseded Timeline UI), how-got-here (visual 4-step story + contributing-node mini map, money/label formatting), start-agents (companies start idle; Brain map Start agents; empty states; existing started companies incl. 2U 91-day baseline preserved), header-ui (combined company/scenario control, one-line provenance, clock in header, plain status line), backtest (2U Nov 2023: frozen forecast -> suggestion then -> reveal -> labelled counterfactual).
+- Merge order planned: tl-friend -> how-got-here -> header-ui -> start-agents -> backtest, each in a fresh branch in ../domino-merge, then ff ../domino-field, push, restart 3114.
+
 # Field lane handoff, Oct 25
 
 ## Live release verified, Oct25
@@ -115,3 +120,9 @@
 2. Osprey storyline: possible request to start OK and flip At risk on day9. TL8 rejoin stays the friend's lane.
 3. CRS stays on hold. Mana: Jayden makes the demo video. Tracks: Hyphenate, Convex, CREAO, Apify, Capital One Nessie; Anthropic public-benefit and Coinbase skipped.
 - User requested orchestrator mode. Global Codex subagent cap5 was saved in `~/.codex/config.toml`; the active session still exposed three worker slots. No Codex restart was performed.
+
+## Next wave (Jayden, Oct 25 ~04:50), after current five merge
+1. Judge robustness pass: real judge-style sessions (existing company via Ask Domino + event form; Try it company), custom amounts/dates/vague/impossible inputs, rapid clicks, cold start; measure time-to-result and agent/CREAO latency; sanity of outputs; fix breakages; report numbers.
+2. Plain wording sweep: short verb+object action buttons ("See how", "Try this fix", "Compare"), remove jargon/duplicate badges/filler.
+3. Notifications: bottom-right toasts from reactive Convex events (new simulation saved, new suggestion, high flag, verdict change, agents finished) with "Open" link; rate-limited, dismissible, no routine noise.
+4. Cross-links: failing simulation -> "See fixes"; suggestion -> "See the risk"/"Try this fix"; result -> "See how" (agent snapshot); flag -> record/agent; map node -> results it produced.
