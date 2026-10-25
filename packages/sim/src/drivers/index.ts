@@ -6,6 +6,7 @@ export {
   isProfileId,
 } from "./profiles.ts";
 export {
+  advanceProfileDays,
   advanceProfileWeek,
   createProfileCompany,
   cut,
@@ -13,6 +14,8 @@ export {
   profileOpeningCash,
   profileSpec,
   profileTimeline,
+  profileTimelineOn,
+  profileWorldOn,
 } from "./snapshot.ts";
 export { type CompanyMetrics, companyMetrics, lowestUsable } from "./metrics.ts";
 export type { Timeline } from "./timeline.ts";

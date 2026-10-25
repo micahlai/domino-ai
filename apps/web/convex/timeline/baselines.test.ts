@@ -288,8 +288,8 @@ describe("timeline baselines", () => {
         out[name] = (await ctx.db.query(name).collect()).length;
       return out;
     });
-    // 22 Field tables after the TL7 joint integration (Field lane growth + timelineLinks).
-    expect(Object.keys(counts)).toHaveLength(22);
+    // Every Field table after the TL7 joint integration, counted from the composed schema.
+    expect(Object.keys(counts)).toHaveLength(23);
     expect(Object.values(counts).every((n) => n === 0)).toBe(true);
     // The stored seed is canonical text, so its hash preimage is reproducible.
     const [row] = await rows(t);

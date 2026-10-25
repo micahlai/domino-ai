@@ -4,10 +4,13 @@
  *
  * Budget (table aiCalls): per company at most one call of each kind per provider per snapshot
  * version (one ingest that changed the books), so a CREAO run that fails may fall back to one
- * Claude call, and at most AI_CALLS_PER_HOUR calls in total across companies and providers.
+ * Claude call, plus at most one CREAO repair run per kind per version (scope "v3:repair") when
+ * the first answer failed validation; and at most hourlyCap() calls in total across companies
+ * and providers (FIELD_AI_HOURLY_CAP, default AI_CALLS_PER_HOUR).
  * Auto loops go through the same reservation, so re-running the analyst every minute on the
  * same version makes no new model call. A call that fails still counts, so failures never turn
- * into retry storms.
+ * into retry storms. Versions the simulated clock marked routine (simClocks.quietScopes: new
+ * entries but no scripted event, new flag or verdict change) get no model call at all.
  *
  * Provider order (runAiStep): CREAO first, on the app named by the evidence analyst env vars and
  * only when the role's profile is listed in DOMINO_CREAO_VERIFIED_PROFILES. Claude runs only
@@ -33,6 +36,7 @@ import {
 } from "../../../packages/agents/src/fieldAi";
 import {
   type FieldCreaoJob,
+  FieldCreaoRejected,
   type FieldCreaoRole,
   explainCreaoJob,
   fieldCreaoEnv,
@@ -44,13 +48,25 @@ import type { Id } from "./_generated/dataModel";
 import {
   type ActionCtx,
   type MutationCtx,
+  type QueryCtx,
   internalAction,
   internalMutation,
   internalQuery,
 } from "./_generated/server";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 
-export const AI_CALLS_PER_HOUR = 60;
+/** Default hourly cap on model calls, all companies and providers together. */
+export const AI_CALLS_PER_HOUR = 120;
+const MAX_HOURLY_CAP = 1_000;
+
+/** FIELD_AI_HOURLY_CAP when it is a whole number from 1 to 1000, else AI_CALLS_PER_HOUR. */
+export function hourlyCap(env: Record<string, string | undefined> = process.env): number {
+  const raw = env.FIELD_AI_HOURLY_CAP?.trim();
+  const n = raw && /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  return n >= 1 && n <= MAX_HOURLY_CAP ? n : AI_CALLS_PER_HOUR;
+}
+/** Reservation reason for a second call of one kind on one version; skips with it are quiet. */
+export const ALREADY_RAN = "already ran once";
 export const EXPLAINER = "flag-explainer#1";
 export const AUDIT_AGENT = "field.audit";
 const HOUR_MS = 3_600_000;
@@ -74,7 +90,7 @@ export const CREAO_MAX_WAITS = Math.ceil(CREAO_IN_FLIGHT_MS / CREAO_WAIT_MS);
 
 export type Reservation =
   | { ok: true; callId: Id<"aiCalls"> }
-  | { ok: false; reason: string; busy?: true };
+  | { ok: false; reason: string; busy?: true; duplicate?: true };
 
 export async function reserveCall(
   ctx: Pick<MutationCtx, "db">,
@@ -86,6 +102,16 @@ export async function reserveCall(
   },
 ): Promise<Reservation> {
   const { companyId, kind, provider, scope } = args;
+  // A routine simulated day (fieldClock.ts): new entries, but no event, flag or verdict change.
+  const clock = await ctx.db
+    .query("simClocks")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .unique();
+  if (clock?.quietScopes.includes(scope))
+    return {
+      ok: false,
+      reason: `${scope} is a routine simulated day (nothing meaningful changed)`,
+    };
   const used = await ctx.db
     .query("aiCalls")
     .withIndex("by_companyId_and_kind_and_scope", (q) =>
@@ -93,20 +119,21 @@ export async function reserveCall(
     )
     .take(4);
   if (used.some((c) => c.provider === provider))
-    return { ok: false, reason: `already ran once for ${scope} (one per ingest)` };
+    return { ok: false, duplicate: true, reason: `${ALREADY_RAN} for ${scope} (one per ingest)` };
+  const cap = hourlyCap();
   const now = Date.now();
   const hour = Math.floor(now / HOUR_MS);
   const thisHour = await ctx.db
     .query("aiCalls")
     .withIndex("by_hour", (q) => q.eq("hour", hour))
-    .take(AI_CALLS_PER_HOUR);
+    .take(cap);
   // One CREAO run at a time per company: parallel runs drew HTTP errors from CREAO. The check
   // and the insert share this transaction, so two steps cannot both pass it.
   if (provider === "creao") {
     const lastHour = await ctx.db
       .query("aiCalls")
       .withIndex("by_hour", (q) => q.eq("hour", hour - 1))
-      .take(AI_CALLS_PER_HOUR);
+      .take(cap);
     const inFlight = [...lastHour, ...thisHour].some(
       (c) =>
         c.companyId === companyId &&
@@ -117,8 +144,8 @@ export async function reserveCall(
     if (inFlight)
       return { ok: false, busy: true, reason: "another CREAO run is in progress for this company" };
   }
-  if (thisHour.length >= AI_CALLS_PER_HOUR)
-    return { ok: false, reason: `hourly cap of ${AI_CALLS_PER_HOUR} model calls reached` };
+  if (thisHour.length >= cap)
+    return { ok: false, reason: `hourly cap of ${cap} model calls reached` };
   const callId = await ctx.db.insert("aiCalls", {
     ...args,
     hour,
@@ -158,6 +185,33 @@ export const logRows = internalMutation({
     for (const row of rows) await agentLog(ctx, companyId, runId, row as AgentRow);
     return null;
   },
+});
+
+/**
+ * True for the third and later analyst run on one snapshot version. Their CREAO steps only
+ * repeat "skipped" or "unavailable" notes the earlier runs already logged, so they stay quiet:
+ * a skip is logged once per version, not on every analyst loop tick.
+ */
+export async function isRepeatRun(ctx: Pick<QueryCtx, "db">, runId: string): Promise<boolean> {
+  const run = await ctx.db
+    .query("analystRuns")
+    .withIndex("by_runId", (q) => q.eq("runId", runId))
+    .unique();
+  if (!run) return false;
+  const recent = await ctx.db
+    .query("analystRuns")
+    .withIndex("by_companyId", (q) => q.eq("companyId", run.companyId))
+    .order("desc")
+    .take(30);
+  return (
+    recent.filter((r) => r.snapshotVersion === run.snapshotVersion && r.startedAt < run.startedAt)
+      .length >= 2
+  );
+}
+
+export const repeatRun = internalQuery({
+  args: { runId: v.string() },
+  handler: (ctx, { runId }) => isRepeatRun(ctx, runId),
 });
 
 /** Open findings of one snapshot version that have no explanation yet. */
@@ -247,6 +301,92 @@ export function creaoRunOptions(onRetry: (attempt: number) => Promise<unknown>) 
   };
 }
 
+/** A CREAO step that did not produce a value; `failure` is the loggable reason. */
+export class CreaoRunFailed extends Error {
+  constructor(public readonly failure: string) {
+    super(`CREAO run failed (${failure})`);
+    this.name = "CreaoRunFailed";
+  }
+}
+
+export const repairScope = (scope: string) => `${scope}:repair`;
+
+/** Callbacks of one CREAO step; `repair` is true for the repair run. */
+export type CreaoHooks = {
+  created: (run: { runId: string; status: string; repair: boolean }) => Promise<unknown>;
+  retry: (attempt: number, repair: boolean) => Promise<unknown>;
+  /** The first answer was rejected; `next` says whether a repair run follows, or why not. */
+  rejected: (
+    failure: string,
+    next: { repair: true } | { repair: false; why: string },
+  ) => Promise<unknown>;
+};
+
+/**
+ * One budgeted CREAO step with at most one repair round. Runs the job on the reserved call;
+ * when the answer fails validation, settles that call failed with the precise reasons, reserves
+ * one more call (scope "<scope>:repair", counts against the hourly cap) and sends the job again
+ * with the reasons and the rejected answer. No repair when the budget or the lock refuses it.
+ * Throws CreaoRunFailed with the loggable reason; never retries anything else.
+ */
+export async function runCreaoStep<T>(
+  ctx: ActionCtx,
+  args: {
+    companyId: Id<"companies">;
+    kind: Kind;
+    scope: string;
+    callId: Id<"aiCalls">;
+    job: FieldCreaoJob<T>;
+  },
+  hooks: CreaoHooks,
+): Promise<{ value: T; runId: string; repaired?: string }> {
+  const attempt = async (callId: Id<"aiCalls">, repair?: FieldCreaoRejected) => {
+    const transport = creaoRunOptions((n) => hooks.retry(n, repair !== undefined));
+    try {
+      const run = await runFieldCreaoJob(process.env, args.job, {
+        ...transport.options,
+        ...(repair && { repair: { issues: repair.issues, previousOutput: repair.output } }),
+        onRunCreated: async ({ runId, status }) => {
+          await ctx.runMutation(internal.fieldAi.settle, { callId, remoteRunId: runId });
+          await hooks.created({ runId, status, repair: repair !== undefined });
+        },
+      });
+      await ctx.runMutation(internal.fieldAi.settle, {
+        callId,
+        status: "ok",
+        model: "creao",
+        remoteRunId: run.runId,
+        ...(repair && { detail: `repaired: ${repair.detail ?? ""}` }),
+      });
+      return { ok: true as const, run };
+    } catch (error) {
+      const failure = creaoFailure(error, transport.seen.stage);
+      await ctx.runMutation(internal.fieldAi.settle, { callId, status: "failed", detail: failure });
+      return { ok: false as const, error, failure };
+    }
+  };
+
+  const first = await attempt(args.callId);
+  if (first.ok) return first.run;
+  if (!(first.error instanceof FieldCreaoRejected)) throw new CreaoRunFailed(first.failure);
+  const rejection = first.error;
+  const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
+    companyId: args.companyId,
+    kind: args.kind,
+    provider: "creao",
+    scope: repairScope(args.scope),
+  });
+  if (!reservation.ok) {
+    const why = `repair skipped: ${reservation.reason}`;
+    await hooks.rejected(first.failure, { repair: false, why });
+    throw new CreaoRunFailed(`${first.failure}; ${why}`);
+  }
+  await hooks.rejected(first.failure, { repair: true });
+  const second = await attempt(reservation.callId, rejection);
+  if (second.ok) return { ...second.run, repaired: first.failure };
+  throw new CreaoRunFailed(`${first.failure}; repair run failed: ${second.failure}`);
+}
+
 export const tokens = (u: Usage) => `${u.inputTokens} in / ${u.outputTokens} out tokens`;
 
 /**
@@ -265,6 +405,29 @@ export async function creaoGate(
   if (!verified.includes(`${appId}/${version}`))
     return { ok: false, reason: `profile ${version} not verified` };
   return { ok: true };
+}
+
+/** Loggable reason of a failed runCreaoStep (or anything it let through). */
+export const failureOf = (error: unknown) =>
+  error instanceof CreaoRunFailed ? error.failure : creaoFailure(error);
+
+/** The usual working rows of a CREAO step: run created, result retry, answer rejected. */
+export function creaoHooks(
+  working: (summary: string, refs?: string[]) => Promise<unknown>,
+  what = "answer",
+): CreaoHooks {
+  return {
+    created: ({ runId, status, repair }) =>
+      working(`Waiting for CREAO ${repair ? "repair run" : "run"} ${runId} (${status})`, [runId]),
+    retry: (attempt, repair) =>
+      working(`Waiting for CREAO ${repair ? "repair " : ""}result (retry ${attempt})`),
+    rejected: (failure, next) =>
+      working(
+        next.repair
+          ? `CREAO ${what} rejected (${failure}); asking CREAO for a corrected ${what} (one repair run)`
+          : `CREAO ${what} rejected (${failure}); ${next.why}`,
+      ),
+  };
 }
 
 type RowBody = Omit<AgentRow, "agentId" | "agentKind" | "parentAgentId">;
@@ -391,48 +554,28 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
       };
     await log(opening("creao", "CREAO"));
     const row = as("creao");
-    const waiting = (attempt: number) =>
+    const working = (summary: string, refs?: string[]) =>
       log([
         row({
           action: "agent.working",
           event: "status",
           status: "working",
           currentTask: step.task,
-          summary: `Waiting for CREAO result (retry ${attempt})`,
+          ...(refs && { refs }),
+          summary,
         }),
       ]);
-    const transport = creaoRunOptions(waiting);
     try {
-      const run = await runFieldCreaoJob(process.env, step.creao.job, {
-        ...transport.options,
-        onRunCreated: async ({ runId, status }) => {
-          await ctx.runMutation(internal.fieldAi.settle, {
-            callId: reservation.callId,
-            remoteRunId: runId,
-          });
-          await log([
-            row({
-              action: "agent.working",
-              event: "status",
-              status: "working",
-              currentTask: step.task,
-              refs: [runId],
-              summary: `Waiting for CREAO run ${runId} (${status})`,
-            }),
-          ]);
-        },
-      });
-      await ctx.runMutation(internal.fieldAi.settle, {
-        callId: reservation.callId,
-        status: "ok",
-        model: "creao",
-        remoteRunId: run.runId,
-      });
+      const run = await runCreaoStep(
+        ctx,
+        { companyId, kind, scope, callId: reservation.callId, job: step.creao.job },
+        creaoHooks(working),
+      );
       await log(
         closing(
           "creao",
           run.value,
-          `CREAO run ${run.runId}`,
+          `CREAO run ${run.runId}${run.repaired ? " (repaired)" : ""}`,
           step.creao.tool,
           step.creao.toolLabel,
         ),
@@ -445,13 +588,7 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
         remoteRunId: run.runId,
       };
     } catch (error) {
-      const category = creaoFailure(error, transport.seen.stage);
-      await ctx.runMutation(internal.fieldAi.settle, {
-        callId: reservation.callId,
-        status: "failed",
-        detail: category,
-      });
-      creaoMiss = `CREAO run failed (${category})`;
+      creaoMiss = `CREAO run failed (${failureOf(error)})`;
       await log([
         row({
           action: "agent.failed",

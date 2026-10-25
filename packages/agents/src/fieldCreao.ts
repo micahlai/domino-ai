@@ -1,17 +1,28 @@
 import { z } from "zod";
 import { type CreaoOptions, creaoBounds, runCreaoApp, withCreaoDiagnostics } from "./creao";
-import { failer } from "./errors";
+import { ProviderError, failer } from "./errors";
 import { type Candidate, selectDistinct } from "./extract";
 import {
   type AnalystDigest,
+  CREAO_REPAIR_RULE,
+  type Checked,
+  type CounterpartyJob,
   FIELD_CREAO_RETRY,
   type FindingRecord,
-  acceptAnalystSummary,
-  acceptExplanations,
+  MAX_COUNTERPARTIES,
+  MAX_ISSUES,
   buildAnalystRequest,
   buildExplainRequest,
+  checkAnalystSummary,
+  checkCounterpartyNotes,
+  checkExplanations,
+  clipText,
   counterpartyCreaoEnv,
-  newMoneyMentions,
+  counterpartyOutputFormat,
+  counterpartyOutputSchema,
+  counterpartyRules,
+  redactNewMoney,
+  zodIssues,
 } from "./fieldAi";
 import { hashInput } from "./hash";
 import { runtimeFrom } from "./http";
@@ -20,22 +31,26 @@ import type { JsonSchema } from "./schemas";
 
 /**
  * Field roles that run on the CREAO app first: flag explanations, the analyst's scenario
- * summary and the coordinator plan. Each job is self-contained (task, rules, outputFormat,
- * outputSchema, data) because the app's SKILL follows the job's own rules. Every answer is
- * validated here; nothing a run returns is trusted until it passes the role's acceptor.
+ * summary, the coordinator plan and the research agent's counterparty notes. Each job is
+ * self-contained (task, rules, outputFormat, outputSchema, data) because the app's SKILL follows
+ * the job's own rules. Every answer is validated here; nothing a run returns is trusted until it
+ * passes the role's check. A rejected answer carries its reasons (FieldCreaoRejected) so the
+ * caller can log them and send one repair run (`repair` next to `data`).
  */
 
-export type FieldCreaoRole = "explain" | "summary" | "coordinator";
+export type FieldCreaoRole = "explain" | "summary" | "coordinator" | "research";
 
 const PROFILE_NAME: Record<FieldCreaoRole, string> = {
   explain: "field_explain",
   summary: "field_summary",
   coordinator: "field_coordinator",
+  research: "field_counterparty",
 };
 const TASK: Record<FieldCreaoRole, string> = {
   explain: "fieldExplainFlags",
   summary: "fieldScenarioSummary",
   coordinator: "fieldCoordinatorPlan",
+  research: "fieldCounterpartyRisk",
 };
 
 const CREAO_SHARED_RULES = [
@@ -44,6 +59,7 @@ const CREAO_SHARED_RULES = [
   "The company and its counterparties are simulated demo businesses. Do not search the web or use outside facts; base the answer only on the data.",
   "Never calculate, estimate or invent money amounts. You may repeat an amount only exactly as it appears in the data. The engine computes every figure.",
   "Plain words for a busy finance lead. No jargon such as covenant; say lender's limit.",
+  CREAO_REPAIR_RULE,
 ];
 
 export const fieldCreaoRules: Record<FieldCreaoRole, readonly string[]> = {
@@ -61,9 +77,12 @@ export const fieldCreaoRules: Record<FieldCreaoRole, readonly string[]> = {
   coordinator: [
     ...CREAO_SHARED_RULES,
     "Task: you are the coordinator of Domino's agents. Read the snapshot summary, the open audit flags, the engine's scenario results and the counterparty list in data, then return a prioritized plan as a list of actions.",
-    "Allowed actions only: escalate_flag (an open flag a person should review first; at most 3, most urgent first), focus_scenario (exactly one scenario index the analyst should look at first), research_counterparty (at most one counterparty to research next).",
-    "Reference only finding ids, scenario indexes and counterparty names that appear in data. reason: at most 200 characters. summary: one sentence, at most 240 characters.",
+    "Allowed actions only: escalate_flag (an open flag a person should review first; at most 3, most urgent first), focus_scenario (exactly one scenario index the analyst should look at first), research_counterparty (at most one counterparty to research next). No other action names.",
+    "Reference only the ids listed in outputSchema: findingId from data.flags, scenarioIndex is the index field of data.scenarios (not the scenario's position or title), counterparty exactly as named in data.counterparties.",
+    "The plan references ids only: write no money amounts in summary or reason. Any amount in the plan is removed before anyone sees it.",
+    "Follow the shape of outputSchema.examples[0] but choose your own actions and reasons. reason: at most 200 characters. summary: one sentence, at most 240 characters.",
   ],
+  research: counterpartyRules,
 };
 
 const outputFormat = (keys: string) =>
@@ -73,6 +92,7 @@ export const fieldCreaoOutputFormat: Record<FieldCreaoRole, string> = {
   explain: outputFormat('"explanations"'),
   summary: outputFormat('"recommendation", "rationale", "citedScenarios"'),
   coordinator: outputFormat('"summary", "actions"'),
+  research: counterpartyOutputFormat,
 };
 
 /**
@@ -88,37 +108,71 @@ export async function fieldCreaoProfileVersion(role: FieldCreaoRole): Promise<st
   return `${PROFILE_NAME[role]}@creao-${hash.slice(0, 12)}`;
 }
 
-/** One self-contained CREAO job. `accept` returns undefined for anything invalid. */
+/** One self-contained CREAO job. `check` explains why an answer is rejected. */
 export type FieldCreaoJob<T> = {
   role: FieldCreaoRole;
   outputSchema: JsonSchema;
   data: unknown;
-  accept: (json: unknown) => T | undefined;
+  check: (json: unknown) => Checked<T>;
 };
 
-/** The exact inputs.prompt sent to the CREAO app. */
-export function buildFieldCreaoPrompt(job: FieldCreaoJob<unknown>): string {
+/** Sent with a repair run: why the previous reply was rejected, and that reply. */
+export type FieldCreaoRepair = { issues: string[]; previousOutput: unknown };
+const MAX_REPAIR_OUTPUT_CHARS = 6_000;
+
+/** The exact inputs.prompt sent to the CREAO app; a repair run adds `repair` after `data`. */
+export function buildFieldCreaoPrompt(
+  job: FieldCreaoJob<unknown>,
+  repair?: FieldCreaoRepair,
+): string {
   const head = JSON.stringify({
     task: TASK[job.role],
     rules: fieldCreaoRules[job.role],
     outputFormat: fieldCreaoOutputFormat[job.role],
     outputSchema: job.outputSchema,
   });
-  return `${head.slice(0, -1)},"data":${encodeData(job.data)}}`;
+  const body = `${head.slice(0, -1)},"data":${encodeData(job.data)}`;
+  if (!repair) return `${body}}`;
+  const previous = JSON.stringify(repair.previousOutput) ?? "null";
+  const previousOutput =
+    previous.length > MAX_REPAIR_OUTPUT_CHARS ? "(too large to repeat)" : repair.previousOutput;
+  return `${body},"repair":${encodeData({ issues: repair.issues, previousOutput })}}`;
 }
 
 export type FieldCreaoOptions = CreaoOptions & {
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
   onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
+  /** Makes this run a repair of a rejected answer. */
+  repair?: FieldCreaoRepair;
 };
+
+/**
+ * invalid_output with the reasons: `detail` (and so the logged failure text) lists the issues
+ * of the first rejected answer; `output` is that answer, for one repair run. `issues` and
+ * `detail` are clipped model text, never secrets.
+ */
+export class FieldCreaoRejected extends ProviderError {
+  constructor(
+    public readonly issues: string[],
+    public readonly output: unknown,
+    public readonly runId: string | undefined,
+  ) {
+    super("creao", "historicalSpecialist", "invalid_output", undefined, rejectionDetail(issues));
+    this.name = "FieldCreaoRejected";
+  }
+}
+
+export function rejectionDetail(issues: string[]): string {
+  return clipText(issues.join("; ") || "no valid answer", 240);
+}
 
 /** CREAO app credentials: the same app and key as the counterparty research job. */
 export const fieldCreaoEnv = counterpartyCreaoEnv;
 
 /**
  * One run on the CREAO app through the bounded, app-scoped transport: one create, bounded
- * polls, one delimited answer validated by the role's acceptor. No retry and no fallback
- * result here; the caller decides what happens on failure.
+ * polls, one delimited answer validated by the role's check. No retry and no fallback result
+ * here; the caller decides what happens on failure (and whether to send one repair run).
  */
 export function runFieldCreaoJob<T>(
   env: Record<string, string | undefined>,
@@ -130,23 +184,49 @@ export function runFieldCreaoJob<T>(
     const appId = env[fieldCreaoEnv.appId]?.trim();
     const apiKey = env[fieldCreaoEnv.apiKey]?.trim();
     if (!appId || !apiKey) throw fail("config");
+    let firstRejection: { issues: string[]; output: unknown } | undefined;
+    let createdRunId: string | undefined;
     const accept = (candidate: Candidate) => {
-      if (!("json" in candidate)) return undefined;
-      const value = job.accept(candidate.json);
-      return value === undefined ? undefined : { value };
+      if (!("json" in candidate)) {
+        firstRejection ??= {
+          issues: ["the result block is not a JSON object"],
+          output: clipText(candidate.text, 400),
+        };
+        return undefined;
+      }
+      const checked = job.check(candidate.json);
+      if (checked.ok) return { value: checked.value };
+      firstRejection ??= { issues: checked.issues, output: candidate.json };
+      return undefined;
     };
-    const run = await runCreaoApp(runtimeFrom(options), creaoBounds(options), diag, {
-      fail,
-      appId,
-      apiKey,
-      prompt: buildFieldCreaoPrompt(job),
-      select: (candidates) => selectDistinct(candidates, accept),
-      strict: true,
-      onRunCreated: options.onRunCreated,
-      ...FIELD_CREAO_RETRY,
-      onResultRetry: options.onResultRetry,
-    });
-    return { value: run.value as T, runId: run.runId };
+    try {
+      const run = await runCreaoApp(runtimeFrom(options), creaoBounds(options), diag, {
+        fail,
+        appId,
+        apiKey,
+        prompt: buildFieldCreaoPrompt(job, options.repair),
+        select: (candidates) => selectDistinct(candidates, accept),
+        strict: true,
+        // Same timing as the caller's callback: the transport races it against the deadline.
+        onRunCreated: options.onRunCreated
+          ? (created) => {
+              createdRunId = created.runId;
+              return options.onRunCreated?.(created);
+            }
+          : undefined,
+        ...FIELD_CREAO_RETRY,
+        onResultRetry: options.onResultRetry,
+      });
+      return { value: run.value as T, runId: run.runId };
+    } catch (error) {
+      if (error instanceof ProviderError && error.category === "invalid_output")
+        throw new FieldCreaoRejected(
+          firstRejection?.issues ?? ["no valid answer"],
+          firstRejection?.output,
+          createdRunId,
+        );
+      throw error;
+    }
   });
 }
 
@@ -158,7 +238,7 @@ export function explainCreaoJob(findings: FindingRecord[]) {
     role: "explain",
     outputSchema: buildExplainRequest(findings).schema,
     data: { findings },
-    accept: (json: unknown) => acceptExplanations(findings, json),
+    check: (json: unknown) => checkExplanations(findings, json),
   } satisfies FieldCreaoJob<unknown>;
 }
 
@@ -168,7 +248,22 @@ export function summaryCreaoJob(digest: AnalystDigest) {
     role: "summary",
     outputSchema: buildAnalystRequest(digest).schema,
     data: digest,
-    accept: (json: unknown) => acceptAnalystSummary(digest, json),
+    check: (json: unknown) => checkAnalystSummary(digest, json),
+  } satisfies FieldCreaoJob<unknown>;
+}
+
+/**
+ * The research agent's counterparty notes as a CREAO job. The prompt equals
+ * buildCounterpartyCreaoPrompt, and the profile version equals counterpartyProfileVersion.
+ */
+export function counterpartyCreaoJob(job: CounterpartyJob) {
+  if (job.counterparties.length === 0 || job.counterparties.length > MAX_COUNTERPARTIES)
+    throw new Error("A counterparty job needs 1 to 6 counterparties");
+  return {
+    role: "research",
+    outputSchema: counterpartyOutputSchema(job),
+    data: job,
+    check: (json: unknown) => checkCounterpartyNotes(job, json),
   } satisfies FieldCreaoJob<unknown>;
 }
 
@@ -212,116 +307,200 @@ export type CoordinatorPlan = {
   research: { counterparty: string; reason: string } | null;
 };
 
+/** A plan of the right shape built from the input's own first ids, shown as an example. */
+function examplePlan(input: CoordinatorInput) {
+  const flag = input.flags.find((f) => !f.escalated) ?? input.flags[0];
+  const scenario = input.scenarios.find((s) => !s.survives) ?? input.scenarios[0];
+  const counterparty = input.counterparties[0];
+  return {
+    summary: "One sentence on what to look at first and why, without amounts.",
+    actions: [
+      ...(flag
+        ? [
+            {
+              action: "escalate_flag",
+              findingId: flag.findingId,
+              reason: "Why a person should review this flag first.",
+            },
+          ]
+        : []),
+      ...(scenario
+        ? [
+            {
+              action: "focus_scenario",
+              scenarioIndex: scenario.index,
+              reason: "Why the analyst should look at this scenario first.",
+            },
+          ]
+        : []),
+      ...(counterparty
+        ? [
+            {
+              action: "research_counterparty",
+              counterparty: counterparty.name,
+              reason: "Why this counterparty matters next.",
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
 export function coordinatorOutputSchema(input: CoordinatorInput): JsonSchema {
-  const reason = { type: "string" };
+  const reason = { type: "string", description: "At most 200 characters, no money amounts" };
   const one = (action: string, key: string, value: JsonSchema): JsonSchema => ({
     type: "object",
     properties: { action: { type: "string", enum: [action] }, [key]: value, reason },
     required: ["action", key, "reason"],
     additionalProperties: false,
   });
+  const findingIds = input.flags.map((f) => f.findingId);
+  const scenarioIndexes = input.scenarios.map((s) => s.index);
+  const names = input.counterparties.map((c) => c.name);
   const options: JsonSchema[] = [];
-  if (input.flags.length > 0)
+  if (findingIds.length > 0)
     options.push(
       one("escalate_flag", "findingId", {
         type: "string",
-        enum: input.flags.map((f) => f.findingId),
+        enum: findingIds,
+        description: "One of data.flags[].findingId",
       }),
     );
-  if (input.scenarios.length > 0)
+  if (scenarioIndexes.length > 0)
     options.push(
       one("focus_scenario", "scenarioIndex", {
         type: "integer",
-        enum: input.scenarios.map((s) => s.index),
+        enum: scenarioIndexes,
+        description: "One of data.scenarios[].index",
       }),
     );
-  if (input.counterparties.length > 0)
+  if (names.length > 0)
     options.push(
       one("research_counterparty", "counterparty", {
         type: "string",
-        enum: input.counterparties.map((c) => c.name),
+        enum: names,
+        description: "One of data.counterparties[].name, exactly as written",
       }),
     );
   return {
     type: "object",
+    description: `Allowed ids. findingId: ${findingIds.join(", ") || "none"}. scenarioIndex: ${scenarioIndexes.join(", ") || "none"}. counterparty: ${names.join(", ") || "none"}. At most 3 escalate_flag, 1 focus_scenario, 1 research_counterparty.`,
     properties: {
-      summary: { type: "string" },
-      actions: { type: "array", items: { anyOf: options } },
+      summary: {
+        type: "string",
+        description: "One sentence, at most 240 characters, no money amounts",
+      },
+      actions: { type: "array", minItems: 1, items: { anyOf: options } },
     },
     required: ["summary", "actions"],
     additionalProperties: false,
+    examples: [examplePlan(input)],
   };
 }
 
-const reasonText = z.string().trim().min(1).max(300);
+const MAX_REASON = 200;
+const MAX_SUMMARY = 240;
+const clip = (text: string, max: number) =>
+  text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+/** "2" is the integer 2; anything else is left for the schema to reject. */
+const intLike = z.preprocess(
+  (v) => (typeof v === "string" && /^\s*\d+\s*$/.test(v) ? Number(v) : v),
+  z.number().int(),
+);
+const reasonText = z.string().trim().max(2_000).optional().default("");
+// Unknown keys (an amount, a priority, a note) are stripped; unknown action names are not.
 const actionSchema = z.discriminatedUnion("action", [
-  z
-    .object({ action: z.literal("escalate_flag"), findingId: z.string(), reason: reasonText })
-    .strict(),
-  z
-    .object({
-      action: z.literal("focus_scenario"),
-      scenarioIndex: z.number().int(),
-      reason: reasonText,
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("research_counterparty"),
-      counterparty: z.string(),
-      reason: reasonText,
-    })
-    .strict(),
+  z.object({
+    action: z.literal("escalate_flag"),
+    findingId: z.string().trim(),
+    reason: reasonText,
+  }),
+  z.object({ action: z.literal("focus_scenario"), scenarioIndex: intLike, reason: reasonText }),
+  z.object({
+    action: z.literal("research_counterparty"),
+    counterparty: z.string().trim(),
+    reason: reasonText,
+  }),
 ]);
-const planSchema = z
-  .object({
-    summary: z.string().trim().min(1).max(400),
-    actions: z
-      .array(actionSchema)
-      .min(1)
-      .max(MAX_ESCALATIONS + 2),
-  })
-  .strict();
+const planSchema = z.object({
+  summary: z.string().trim().min(1).max(2_000),
+  actions: z.array(actionSchema).min(1).max(12),
+});
+
+/** {"result": plan} or {"plan": plan} is the plan; anything else is read as is. */
+function unwrapPlan(json: unknown): unknown {
+  if (!json || typeof json !== "object" || Array.isArray(json) || "actions" in json) return json;
+  const o = json as Record<string, unknown>;
+  const inner = o.result ?? o.plan;
+  return inner && typeof inner === "object" ? inner : json;
+}
 
 /**
- * Validates a coordinator reply. The whole plan is rejected (undefined) when any action is
- * not allowlisted, references an id, index or name that is not in the input, repeats, exceeds
- * its count, carries an extra field such as an amount, or any text mentions a money amount
- * that is not in the input.
+ * Validates a coordinator reply. The plan is rejected, with reasons, when an action is not
+ * allowlisted, references an id, index or name that is not in the input, or picks two
+ * different focus scenarios or research targets. Harmless slips are tolerated: unknown keys are
+ * stripped, "2" reads as 2, a repeated escalation counts once, escalations beyond three are
+ * dropped, long text is shortened. The plan carries ids only: any amount in its text that is not
+ * in the input is removed rather than validated, and nothing in the plan is a money figure.
  */
-export function acceptCoordinatorPlan(
+export function checkCoordinatorPlan(
   input: CoordinatorInput,
   json: unknown,
-): CoordinatorPlan | undefined {
-  const parsed = planSchema.safeParse(json);
-  if (!parsed.success) return undefined;
+): Checked<CoordinatorPlan> {
+  const parsed = planSchema.safeParse(unwrapPlan(json));
+  if (!parsed.success) return { ok: false, issues: zodIssues(parsed.error) };
   const flags = new Set(input.flags.map((f) => f.findingId));
   const scenarios = new Set(input.scenarios.map((s) => s.index));
   const names = new Set(input.counterparties.map((c) => c.name));
+  const allowed = JSON.stringify(input);
+  const text = (t: string, max: number) => clip(redactNewMoney(t, allowed), max);
   const plan: CoordinatorPlan = {
-    summary: parsed.data.summary,
+    summary: text(parsed.data.summary, MAX_SUMMARY),
     escalate: [],
     focus: null,
     research: null,
   };
-  const texts = [plan.summary];
-  for (const a of parsed.data.actions) {
-    texts.push(a.reason);
+  const issues: string[] = [];
+  for (const [i, a] of parsed.data.actions.entries()) {
+    const reason = text(a.reason, MAX_REASON);
     if (a.action === "escalate_flag") {
-      if (!flags.has(a.findingId) || plan.escalate.some((e) => e.findingId === a.findingId))
-        return undefined;
-      plan.escalate.push({ findingId: a.findingId, reason: a.reason });
+      if (!flags.has(a.findingId))
+        issues.push(
+          `actions.${i}.findingId: unknown id "${clipText(a.findingId, 40)}"; use one of ${[...flags].join(", ")}`,
+        );
+      else if (
+        plan.escalate.length < MAX_ESCALATIONS &&
+        !plan.escalate.some((e) => e.findingId === a.findingId)
+      )
+        plan.escalate.push({ findingId: a.findingId, reason });
     } else if (a.action === "focus_scenario") {
-      if (!scenarios.has(a.scenarioIndex) || plan.focus) return undefined;
-      plan.focus = { scenarioIndex: a.scenarioIndex, reason: a.reason };
+      if (!scenarios.has(a.scenarioIndex))
+        issues.push(
+          `actions.${i}.scenarioIndex: unknown index ${a.scenarioIndex}; use one of ${[...scenarios].join(", ")}`,
+        );
+      else if (plan.focus && plan.focus.scenarioIndex !== a.scenarioIndex)
+        issues.push(`actions.${i}: a second focus_scenario; pick exactly one`);
+      else plan.focus ??= { scenarioIndex: a.scenarioIndex, reason };
     } else {
-      if (!names.has(a.counterparty) || plan.research) return undefined;
-      plan.research = { counterparty: a.counterparty, reason: a.reason };
+      if (!names.has(a.counterparty))
+        issues.push(
+          `actions.${i}.counterparty: unknown name "${clipText(a.counterparty, 40)}"; use a data.counterparties name`,
+        );
+      else if (plan.research && plan.research.counterparty !== a.counterparty)
+        issues.push(`actions.${i}: a second research_counterparty; pick at most one`);
+      else plan.research ??= { counterparty: a.counterparty, reason };
     }
   }
-  if (plan.escalate.length > MAX_ESCALATIONS) return undefined;
-  if (newMoneyMentions(texts.join(" "), JSON.stringify(input)).length > 0) return undefined;
-  return plan;
+  if (issues.length > 0) return { ok: false, issues: issues.slice(0, MAX_ISSUES) };
+  return { ok: true, value: plan };
+}
+
+export function acceptCoordinatorPlan(
+  input: CoordinatorInput,
+  json: unknown,
+): CoordinatorPlan | undefined {
+  const checked = checkCoordinatorPlan(input, json);
+  return checked.ok ? checked.value : undefined;
 }
 
 export function coordinatorCreaoJob(input: CoordinatorInput) {
@@ -329,6 +508,6 @@ export function coordinatorCreaoJob(input: CoordinatorInput) {
     role: "coordinator",
     outputSchema: coordinatorOutputSchema(input),
     data: input,
-    accept: (json: unknown) => acceptCoordinatorPlan(input, json),
+    check: (json: unknown) => checkCoordinatorPlan(input, json),
   } satisfies FieldCreaoJob<unknown>;
 }
