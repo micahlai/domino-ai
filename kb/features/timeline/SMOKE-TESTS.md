@@ -1,0 +1,74 @@
+# Timeline smoke-test checkpoints
+
+TL1–TL7 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. Uses labelled synthetic Kestrel peer data and explicitly reviewed assumptions. [Acceptance evidence](TL5-acceptance.md).
+
+| Checkpoint | What you can test | Status |
+| --- | --- | --- |
+| TL1 saved baseline | Verify/import weekly seed, save 13-week forecast, reopen; tampered seed rejects | Ready locally |
+| TL1C constraints | Add/edit/remove cash minimum, months of runway or a targeted bill deadline; older runs retain original rules | Ready locally |
+| TL2 events | Delay an invoice, add future money in/out or move a bill; compare parent and rule outcomes | Ready locally |
+| TL3 questions | Evidence answers, natural-language event/rule proposals, confirmation, missing-input clarification and failure receipts | Ready locally |
+| TL4 saved sessions | Nested events, exact question/result links, paginated catalog and quiet reopen | Ready locally |
+| TL5 complete flow | Full journey below, desktop and phone | Accepted locally |
+| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL5-checkpoint,3107 |
+| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL5-checkpoint,3107 |
+| TL8 rejoin | Evidence-based financial-state branch rejoin | Follow-on |
+
+## Try the complete flow
+
+1. [Open the saved weekly baseline](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2Fedf763202b5cd8f444578c86fd944038008bec15). It has 26 observed weeks and 13 forecast weeks. Its low point is $2,689,000 in the week of Nov 16, 2026.
+2. Move **Choose a forecast week** to Nov 2, 2026 (the slider supports Home and arrow keys). Ask **Why did cash drop this week?** The answer names $62,000 rent on Nov 5 and $600,000 payroll on Nov 6. Expand **Where this comes from** for record references.
+3. Ask **What if we spend $80,000 to Atlas Legal on 2026-11-17? Keep usable cash above $2,650,000.** Review the separate expense and rule, check confirmation, then **Run this scenario** and **Open it**. Nothing runs before confirmation.
+4. Inspect **Cash rules**: new breach, projected $2,609,000 versus the $2,650,000 minimum, $41,000 short on Sunday Nov 22. **Show proof** explains the rule source and weekly-close evaluation.
+5. In **Add an event**, choose Acme's open invoice and 14 days late. Add the event, name the scenario, review and run. The nested result retains the $80,000 expense once and moves Acme's $240,000 receipt from Nov 25 to Dec 9. The earlier breach is labelled pre-existing in this child.
+6. Try a rule-only prompt, **Keep usable cash above $2,500,000.** Confirm and open its result. Only rules change; cash is identical. The proposed full set retains prior rules. To replace/remove a rule, use **Cash rules to check**, write a note, review and save a new revision.
+7. Try **What if we spend $80000?** or **Keep usable cash above $3,000,000 every day.** These ask for details/explain unsupported daily checks and produce no financial result. Complex ambiguous amounts/delays also clarify.
+8. Open **All saved scenarios**, use **Show older scenarios**, reopen your result and reload. Values, rules, ancestry and saved questions remain unchanged. Reopening does not rerun the engine or language provider.
+
+[Open the accepted expense/rule example](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2F4d9835e8174efa96ff9c5974380cb755e199ad14) or [its nested payment-delay scenario](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2F4652fa087fda2846167ffddd3d46688ba511a582).
+
+## Fresh import and optional language reader
+
+At http://127.0.0.1:3107/playground/timeline-seam, load Kestrel weekly seed, review neutral assumptions, save forecast and follow its workspace link. Load the tampered copy to see hash rejection. The playground also includes Timeline workspace previews.
+
+Fixed supported wording uses the bounded grammar. Other wording can use the optional one-shot language reader; **How this was read** identifies the method. For example, **Please identify the cash trough for this saved forecast.** was verified through the configured provider. Financial answers still come from code and saved outputs. Provider errors, refusal, malformed/truncated replies and expired jobs are saved failures; no financial result is created. Those failure modes are covered with controlled test responses, without disrupting the live provider.
+
+Cash floors check Sunday closing usable cash within these 13 weeks. Runway uses the engine's forecast cash-use method; an unavailable value remains unknown. Bill rules use allowed late days after the targeted bill's due date. Daily floors, category budgets and headcount constraints remain unsupported. Imported schedule markers keep their original dates and do not add cash; scenario effects appear in the saved financial values.
+
+The shared Timeline navigation opens the older `/c/kestrel` prototype. Use the saved weekly links above for this checkpoint. Real Field exchange and dashboard integration remain separate gates.
+
+## TL6–TL7 separate preview
+
+Keep TL5 on3107. [Open saved TL7 analysis](http://127.0.0.1:3108/c/kestrel/timeline/analysis?runId=timeline%3Aworkspace%2F34e274c86109c6f434eeff7114d415336e07e802&analysisId=timeline%3Aanalysis%2F10be46715ec93bb3e2ea52f5c7a3a3f5120891d8abbfd0f63fb121554dee46f8).
+
+1. Inspect the Acme risk, its25% assumption and existing$11,000 cash-rule shortfall.
+2. Select **Preview: Offer 2% for early payment of inv_nw_q4**. Low point becomes$2,760,000 week Dec28,2026; gain$71,000. Read the discount terms and resolved rule receipt.
+3. Open the saved response timeline; reload. Same forecast and rule versions return.
+4. **Read financial output JSON** shows saved health/chart/scenario data, with no calculation. Unknown runway remains null.
+5. To test a fresh job, review source/rules, check confirmation and **Start analysis**. Progress ends in a saved receipt; prior attempts remain in history. Opening the page alone starts nothing.
+6. Inspect the weighted scenario index scope: it is not a survival probability and applies no responses. Use the props playground at http://127.0.0.1:3108/playground/timeline-analysis for controlled failed/partial/retry states.
+
+This checkpoint intentionally rejects analysis on plans that already contain events. Field dashboard adoption and TL8 remain separate. [Detailed acceptance](TL7-acceptance.md).
+
+## Saved scenarios sidebar and chart comparisons (3108 only)
+
+[Open the updated timeline](http://127.0.0.1:3108/c/kestrel/timeline?runId=timeline%3Aworkspace%2F34e274c86109c6f434eeff7114d415336e07e802). TL5 stays unchanged on3107.
+
+1. In **Saved scenarios**, the current run is highlighted. On narrow screens, open **Browse saved scenarios**. Search by name; duplicate names include save times.
+2. Check **Compare on timeline** for a risk and response. The current scenario stays highlighted, with at most three muted comparison curves and linked legends. Other comparison boxes disable at the limit.
+3. Open a scenario name or chart legend to inspect that exact saved run. **Clear comparisons** removes optional curves without changing the current forecast.
+4. **Browse all company scenarios** opens the existing paginated catalog. The sidebar covers this imported baseline only, capped at100 entries; it states when entries may be omitted.
+
+[Acceptance and screenshots](TL7S-acceptance.md). Comparison selection is local to the open page; saved financial results persist.
+
+## 2026-10-25: merged TL5 smoke launch
+
+User authorized the TL7 merge into TL5. Use3107 for the merged UI and its existing data; earlier3108 links above remain isolated acceptance evidence. [Open saved expense/rule scenario](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2F4d9835e8174efa96ff9c5974380cb755e199ad14). Browse saved scenarios, toggle comparison curves and verify the original$41,000 shortfall persists.
+
+[Open baseline analysis review](http://127.0.0.1:3107/c/kestrel/timeline/analysis?runId=timeline%3Aworkspace%2Fedf763202b5cd8f444578c86fd944038008bec15). Review source/rules, check confirmation and Start analysis to test the bounded job. The expense scenario itself is intentionally ineligible because it already contains events. Financial output reads use saved data and start no job.
+
+## Timeline scales and inline scenario entry
+
+The merged3107 preview now shows horizontal date and vertical USD cash scales. Pick a forecast week, then **Add scenario** immediately below the chart. For money in/out, the new date starts at that week and remains editable. Invoice/bill timing follows the selected record. **Queue this event**, name the scenario, review exact queued events and **Run as a new scenario**. **Hide editor · keep draft** preserves dates/queue; **Discard draft** clears explicitly. There is no separate bottom event panel. Browser acceptance status: [TL7XC-acceptance.md](TL7XC-acceptance.md).
+
+Live browser gate complete: [saved inline smoke expense](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2Faca904d0ddd1a388af53fb1a99a09af81b79fd98) shows the exact$100 planned Dec23 expense added to Atlas Legal scenario once. Original remains unchanged. Desktop/phone evidence is in TL7XC-acceptance.md.

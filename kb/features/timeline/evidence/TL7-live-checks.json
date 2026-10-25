@@ -1,0 +1,28 @@
+{
+  "backend": "http://127.0.0.1:3250",
+  "passed": 22,
+  "checks": [
+    "unreviewed launch rejects",
+    "start retry returns exact saved attempt",
+    "scheduled job reaches succeeded",
+    "bounded generated risk and costed response saved",
+    "risk failure explanation exists",
+    "risk child forecast and pinned rules match saved result",
+    "response applies risk once and preserves rules",
+    "cost terms and computed gain retained",
+    "a tested response clears the original broken rules",
+    "rule-set and individual rule versions differ",
+    "weighted index is scoped and bounded",
+    "handoff chart exactly matches selected saved run",
+    "handoff health points to actual rule failure",
+    "handoff risk scenario points to saved direct child",
+    "successful response handoff health is clear",
+    "wrong-company analysis read returns none",
+    "wrong-company output read returns none",
+    "event ancestry analysis rejects",
+    "conflicting request payload rejects",
+    "reopen returns same frozen analysis",
+    "source root unchanged",
+    "saved history recovers attempt"
+  ]
+}
