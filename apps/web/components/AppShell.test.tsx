@@ -40,6 +40,10 @@ describe("AppShell navigation", () => {
     expect(html).toContain('aria-label="Company"');
     expect(html).toContain('aria-label="Scenario"');
     expect(html).toContain("Based on 2U public filings, with reconstructed operating data.");
+    expect(html).toContain(
+      "Starting reconstructed books as of 2023-09-30 (historical ledger date)",
+    );
+    expect(html).toContain("public reports released by 2023-11-09");
     for (const gone of [
       "/playground",
       'href="/connect"',
@@ -68,6 +72,17 @@ describe("AppShell navigation", () => {
     expect(current(html)).toEqual(["Timeline"]);
     expect(html).not.toContain("/c/kestrel-crunch/learning");
     expect(current(render("/c/kestrel-crunch/timeline/analysis"))).toEqual(["Timeline"]);
+  });
+
+  it("keeps legacy operating Timeline books out of the current picker and source banner", () => {
+    const html = render("/c/operating%2Fasana-inspired%2Fbaseline/timeline");
+    expect(current(html)).toEqual(["Timeline"]);
+    expect(html).toContain("Legacy operating demo");
+    expect(html).not.toContain('aria-label="Company"');
+    expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+    const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
+    expect(currentHtml).toContain('aria-label="Company"');
+    expect(currentHtml).toContain("Based on 2U public filings, with reconstructed operating data.");
   });
 
   it("keeps the Timeline sub-navigation inside the company routes", () => {

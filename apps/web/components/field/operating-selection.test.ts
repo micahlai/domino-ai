@@ -1,8 +1,15 @@
-import { operatingDemoCatalog, operatingScenarioCatalog } from "@domino/sim";
+import {
+  OPERATING_COMPANY_IDS,
+  OPERATING_PRIMARY_COMPANY_IDS,
+  operatingScenarioCatalog,
+} from "@domino/sim";
 import { describe, expect, it } from "vitest";
 import {
+  OPERATING_COMPANIES,
   OPERATING_DEMO_LABEL,
   adoptExplicitOperatingSelection,
+  isLegacyOperatingTimelinePath,
+  isPrimaryOperatingTimelinePath,
   operatingSelectionFromWorldId,
   operatingWorldId,
   resolveOperatingSelection,
@@ -11,7 +18,11 @@ import {
 
 describe("filing-backed operating selection", () => {
   it("starts with the required primary company and four separate scenarios", () => {
-    expect(operatingDemoCatalog[0].id).toBe("2u");
+    expect(OPERATING_PRIMARY_COMPANY_IDS).toEqual(["2u", "asana-current", "gitlab-current"]);
+    expect(OPERATING_COMPANIES.map((item) => item.id)).toEqual(OPERATING_PRIMARY_COMPANY_IDS);
+    expect([...OPERATING_COMPANY_IDS].sort()).toEqual(
+      ["2u", "asana-inspired", "gitlab-inspired", "asana-current", "gitlab-current"].sort(),
+    );
     expect(operatingScenarioCatalog.map((item) => item.id)).toEqual([
       "baseline",
       "late-payments",
@@ -21,23 +32,23 @@ describe("filing-backed operating selection", () => {
     expect(OPERATING_DEMO_LABEL).toBe(
       "Based on 2U public filings, with reconstructed operating data.",
     );
-    expect(operatingDemoCatalog[1].name).toContain("inspired by Asana");
-    expect(operatingDemoCatalog[2].name).toContain("inspired by GitLab");
+    expect(OPERATING_COMPANIES[1]?.name).toContain("Asana");
+    expect(OPERATING_COMPANIES[2]?.name).toContain("GitLab");
   });
 
   it("does not choose a different company or scenario when the requested feed is missing", () => {
     const records = [
       { company: "2u" as const, scenario: "baseline" as const, companyId: "first" },
-      { company: "gitlab-inspired" as const, scenario: "baseline" as const, companyId: "second" },
+      { company: "gitlab-current" as const, scenario: "baseline" as const, companyId: "second" },
     ];
     expect(
       selectedOperatingRecord(records, { company: "2u", scenario: "late-payments" }),
     ).toBeNull();
     expect(
-      selectedOperatingRecord(records, { company: "asana-inspired", scenario: "baseline" }),
+      selectedOperatingRecord(records, { company: "asana-current", scenario: "baseline" }),
     ).toBeNull();
     expect(
-      selectedOperatingRecord(records, { company: "gitlab-inspired", scenario: "baseline" })
+      selectedOperatingRecord(records, { company: "gitlab-current", scenario: "baseline" })
         ?.companyId,
     ).toBe("second");
   });
@@ -49,11 +60,18 @@ describe("filing-backed operating selection", () => {
     expect(operatingSelectionFromWorldId(world)).toEqual(selection);
     expect(operatingSelectionFromWorldId("kestrel")).toBeNull();
     expect(operatingSelectionFromWorldId("operating/2u/baseline/extra")).toBeNull();
+    expect(operatingSelectionFromWorldId("operating/asana-inspired/baseline")).toBeNull();
+    expect(isPrimaryOperatingTimelinePath("/c/operating%2Fasana-current%2Fbaseline/timeline")).toBe(
+      true,
+    );
+    expect(isLegacyOperatingTimelinePath("/c/operating%2Fasana-inspired%2Fbaseline/timeline")).toBe(
+      true,
+    );
   });
 
   it("adopts an explicit deep link so queryless navigation keeps the requested feed", () => {
     const values = new Map([
-      ["domino.field.operating.company", "asana-inspired"],
+      ["domino.field.operating.company", "asana-current"],
       ["domino.field.operating.scenario", "late-payments"],
     ]);
     const storage = {
@@ -91,12 +109,26 @@ describe("filing-backed operating selection", () => {
     expect(values.get("domino.field.operating.company")).toBe("asana-inspired");
     expect(
       adoptExplicitOperatingSelection(
-        "/c/operating%2Fgitlab-inspired%2Fcustomer-loss/timeline",
+        "/c/operating%2Fgitlab-current%2Fcustomer-loss/timeline",
         "",
         storage,
       ),
-    ).toEqual({ company: "gitlab-inspired", scenario: "customer-loss" });
-    expect(values.get("domino.field.operating.company")).toBe("gitlab-inspired");
+    ).toEqual({ company: "gitlab-current", scenario: "customer-loss" });
+    expect(values.get("domino.field.operating.company")).toBe("gitlab-current");
     expect(values.get("domino.field.operating.scenario")).toBe("customer-loss");
+    expect(resolveOperatingSelection("/", "", "asana-inspired", "late-payments").selection).toEqual(
+      {
+        company: "2u",
+        scenario: "baseline",
+      },
+    );
+    expect(
+      adoptExplicitOperatingSelection(
+        "/c/operating%2Fasana-inspired%2Fbaseline/timeline",
+        "",
+        storage,
+      ),
+    ).toBeNull();
+    expect(values.get("domino.field.operating.company")).toBe("gitlab-current");
   });
 });

@@ -17,15 +17,18 @@ const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export function OperatingProvenanceStrip() {
   const selection = useOperatingSelection();
-  const label =
-    operatingDemoCatalog.find((item) => item.id === selection.company)?.label ??
-    "Filing-backed reconstruction";
+  const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
+  const label = catalog?.label ?? "Filing-backed reconstruction";
+  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
   return (
     <div className="relative border-t bg-muted/35 px-4 py-2 text-xs md:px-6">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-1">
         <span className="font-medium">{label}</span>
         <span className="text-muted-foreground">
-          Records reconstructed. Future scenarios and forecasts illustrative.
+          {catalog
+            ? `${catalog.referenceCompany} period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}. Starting reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical ledger date). 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case" : ""}.`
+            : "Records reconstructed."}{" "}
+          Future scenarios and forecasts illustrative.
         </span>
         {CONVEX_URL ? (
           <LiveSources />
@@ -71,8 +74,13 @@ function LiveSources() {
 
 export function SourceContents({ context }: { context: OperatingProvenance }) {
   const r = context.reconciliation;
-  const cashLabel =
-    context.company === "2u" ? "combined cash including restricted" : "cash and equivalents";
+  const catalog = operatingDemoCatalog.find((item) => item.id === context.company);
+  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
+  const deferredLiabilityAdjustment =
+    "deferredRevenueAdjustmentCents" in context.accrualBridge
+      ? context.accrualBridge.deferredRevenueAdjustmentCents
+      : undefined;
+  const cashLabel = "combined cash including restricted";
   const terms = [
     [`Opening ${cashLabel}`, r.openingCashCents],
     ["Operating cash flow", r.operatingCashFlowCents],
@@ -89,8 +97,15 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
       <div>
         <p className="font-semibold">Reported anchors and reconstructed books</p>
         <p className="mt-1 text-muted-foreground">
-          Ledger period {context.periodStart} to {context.periodEnd}. Filing published{" "}
-          {context.reportedAt}. The ledger date and publication date are separate.
+          {catalog?.referenceCompany ?? "Public company"} reported period {context.periodStart} to{" "}
+          {context.periodEnd}. Published {context.reportedAt}
+          {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Starting
+          reconstructed books as of {catalog?.simulationAsOf ?? context.periodEnd}
+          {context.company === "2u" ? " (historical ledger date)" : ""}. The report publication and
+          starting books carry separate dates.
+          {context.company === "2u"
+            ? " 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case."
+            : ""}
         </p>
       </div>
       <details>
@@ -129,7 +144,10 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
         </ul>
       </details>
       <div>
-        <p className="font-medium">Cash bridge from backend</p>
+        <p className="font-medium">Reported-period cash bridge from backend</p>
+        <p className="mt-1 text-muted-foreground">
+          These cash flows belong to {context.periodStart} through {context.periodEnd}.
+        </p>
         <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">
           {terms.map(([name, cents]) => (
             <div key={name} className="col-span-2 grid grid-cols-subgrid">
@@ -143,6 +161,51 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
           {context.aggregateBasis.cash} Usable cash is shown on the dashboard.
         </p>
       </div>
+      {context.currentLedger ? (
+        <div>
+          <p className="font-medium">Starting reconstructed books roll-forward</p>
+          <p className="mt-1 text-muted-foreground">
+            From the reported {context.currentLedger.reportedPeriodEnd} cash balance to starting
+            reconstructed books as of {context.currentLedger.asOf}. This fixed source bridge does
+            not advance with the demo clock and is not a reported balance.
+          </p>
+          <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">
+            {(
+              [
+                ["Reported ending combined cash", context.currentLedger.reportedEndingCashCents],
+                [
+                  "Reconstructed change after report date",
+                  context.currentLedger.reconstructedCashChangeCents,
+                ],
+                ["Starting reconstructed cash on hand", context.currentLedger.cashOnHandCents],
+                [
+                  "Starting reconstructed restricted cash, shown separately",
+                  context.currentLedger.restrictedCashCents,
+                ],
+              ] as const
+            ).map(([name, cents]) => (
+              <div key={name} className="col-span-2 grid grid-cols-subgrid">
+                <dt>{name}</dt>
+                <dd>{formatCents(cents)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
+      {typeof deferredLiabilityAdjustment === "number" ? (
+        <div>
+          <p className="font-medium">Deferred-liability scope adjustment</p>
+          <p className="mt-1 text-muted-foreground">
+            Reconstructed from a rounded disclosure of customer advances included in the closing
+            liability balance. Opening advances are unknown. This adjustment does not represent an
+            actual period cash receipt or a real invoice.
+          </p>
+          <p className="mt-2 tabular-nums">
+            Deferred-liability scope adjustment (reconstructed from rounded disclosure):{" "}
+            {formatCents(deferredLiabilityAdjustment)}
+          </p>
+        </div>
+      ) : null}
       {context.payablesBridge ? (
         <div>
           <p className="font-medium">2U payables and accruals bridge</p>

@@ -9,7 +9,11 @@ import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
 import { OperatingProvenanceStrip } from "./field/OperatingProvenanceStrip";
 import { SimClockBar } from "./field/SimClockBar";
-import { operatingWorldId, useOperatingSelection } from "./field/company";
+import {
+  isPrimaryOperatingTimelinePath,
+  operatingWorldId,
+  useOperatingSelection,
+} from "./field/company";
 
 // Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
 // harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
@@ -45,7 +49,7 @@ const primaryLinks = (profile: string) => [
 /** Routes that own the whole window under the top bar and pin the Original dark tokens. */
 export const isFullWindow = (p: string) => under(p, "/investigate") || under(p, "/case/2u");
 const isOperatingProduct = (p: string) =>
-  p === "/" || under(p, "/field") || under(p, "/simulations") || p.startsWith("/c/operating");
+  p === "/" || under(p, "/field") || under(p, "/simulations") || isPrimaryOperatingTimelinePath(p);
 
 // The old Kestrel demo pages keep their sub-navigation inside the Timeline routes.
 const demoLinks = [

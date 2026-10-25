@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  OPERATING_COMPANY_IDS,
   OPERATING_DEMO_LABEL,
+  OPERATING_PRIMARY_COMPANY_IDS,
   type OperatingCompanyId,
   type OperatingScenarioId,
   type OperatingSelection,
@@ -28,7 +30,9 @@ import {
 } from "../../convex/lib/fieldCompanies";
 
 export { FIELD_COMPANIES, type FieldCompanyProfile };
-export const OPERATING_COMPANIES = operatingDemoCatalog;
+export const OPERATING_COMPANIES = operatingDemoCatalog.filter((item) =>
+  OPERATING_PRIMARY_COMPANY_IDS.some((id) => id === item.id),
+);
 export const OPERATING_SCENARIOS = operatingScenarioCatalog;
 export { OPERATING_DEMO_LABEL };
 export type { OperatingCompanyId, OperatingScenarioId, OperatingSelection };
@@ -50,6 +54,37 @@ export function operatingSelectionFromWorldId(value: string): OperatingSelection
   return { company: company as OperatingCompanyId, scenario: scenario as OperatingScenarioId };
 }
 
+function timelineWorldIdFromPath(path: string): string | null {
+  const segment =
+    path.match(/^\/c\/([^/]+)\/timeline(?:\/|$)/)?.[1] ??
+    path.match(/^\/c\/(operating\/[^/]+\/[^/]+)\/timeline(?:\/|$)/)?.[1];
+  if (!segment) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+/** Old operating worlds keep their original Timeline books without becoming a current choice. */
+export function isLegacyOperatingTimelinePath(path: string): boolean {
+  const worldId = timelineWorldIdFromPath(path);
+  if (!worldId) return false;
+  const [prefix, company, scenario, extra] = worldId.split("/");
+  return (
+    prefix === "operating" &&
+    extra === undefined &&
+    OPERATING_COMPANY_IDS.some((id) => id === company) &&
+    !OPERATING_PRIMARY_COMPANY_IDS.some((id) => id === company) &&
+    OPERATING_SCENARIOS.some((item) => item.id === scenario)
+  );
+}
+
+export function isPrimaryOperatingTimelinePath(path: string): boolean {
+  const worldId = timelineWorldIdFromPath(path);
+  return worldId !== null && operatingSelectionFromWorldId(worldId) !== null;
+}
+
 const COMPANY_KEY = "domino.field.operating.company";
 const SCENARIO_KEY = "domino.field.operating.scenario";
 const EVENT = "domino:operating-selection";
@@ -67,27 +102,24 @@ export function resolveOperatingSelection(
   storedScenario: string | null,
 ): { selection: OperatingSelection; explicit: boolean } {
   const query = new URLSearchParams(search);
-  const routePart =
-    path.match(/^\/c\/([^/]+)\/timeline(?:\/|$)/)?.[1] ??
-    path.match(/^\/c\/(operating\/[^/]+\/[^/]+)\/timeline(?:\/|$)/)?.[1];
-  let route: OperatingSelection | null = null;
-  try {
-    route = routePart ? operatingSelectionFromWorldId(decodeURIComponent(routePart)) : null;
-  } catch {
-    // Malformed address cannot override the stored or default selection.
-  }
+  const routeWorldId = timelineWorldIdFromPath(path);
+  const route = routeWorldId ? operatingSelectionFromWorldId(routeWorldId) : null;
+  const storedCompanyIsPrimary = validCompany(storedCompany);
   const company = query.get("company");
   const scenario = query.get("scenario");
   return {
     selection: {
       company: validCompany(company)
         ? company
-        : (route?.company ?? (validCompany(storedCompany) ? storedCompany : "2u")),
+        : (route?.company ?? (storedCompanyIsPrimary ? storedCompany : "2u")),
       scenario: validScenario(scenario)
         ? scenario
-        : (route?.scenario ?? (validScenario(storedScenario) ? storedScenario : "baseline")),
+        : (route?.scenario ??
+          (storedCompanyIsPrimary && validScenario(storedScenario) ? storedScenario : "baseline")),
     },
-    explicit: validCompany(company) || validScenario(scenario) || route !== null,
+    explicit:
+      !isLegacyOperatingTimelinePath(path) &&
+      (validCompany(company) || validScenario(scenario) || route !== null),
   };
 }
 

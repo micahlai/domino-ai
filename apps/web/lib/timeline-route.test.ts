@@ -20,6 +20,12 @@ describe("Timeline route company id", () => {
 
   it("leaves legacy and malformed ids intact", () => {
     expect(decodeTimelineCompanyId("kestrel")).toBe("kestrel");
+    expect(decodeTimelineCompanyId("operating%2Fasana-inspired%2Fbaseline")).toBe(
+      "operating/asana-inspired/baseline",
+    );
+    expect(decodeTimelineCompanyId("operating%2Fgitlab-current%2Fbaseline")).toBe(
+      "operating/gitlab-current/baseline",
+    );
     expect(decodeTimelineCompanyId("bad%ZZ")).toBe("bad%ZZ");
   });
 });

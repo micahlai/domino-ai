@@ -2,7 +2,11 @@
 // @vitest-environment edge-runtime
 
 import { parseWeeklySeedJson } from "@domino/contracts";
-import { operatingProvenance } from "@domino/sim";
+import {
+  OPERATING_PRIMARY_COMPANY_IDS,
+  OPERATING_SCENARIO_IDS,
+  operatingProvenance,
+} from "@domino/sim";
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -13,6 +17,32 @@ const modules = import.meta.glob(["../**/*.ts", "../_generated/*.js", "!./**", "
 afterEach(() => vi.useRealTimers());
 
 describe("fieldOperating", { timeout: 60_000 }, () => {
+  it("ensures all twelve primary worlds without replacing the two legacy worlds", async () => {
+    const t = convexTest(schema, modules);
+    const choices = [
+      ...OPERATING_PRIMARY_COMPANY_IDS.flatMap((company) =>
+        OPERATING_SCENARIO_IDS.map((scenario) => ({ company, scenario })),
+      ),
+      { company: "asana-inspired" as const, scenario: "baseline" as const },
+      { company: "gitlab-inspired" as const, scenario: "baseline" as const },
+    ];
+    const ids = new Set<string>();
+    for (const selection of choices) {
+      const created = await t.mutation(api.fieldOperating.ensure, selection);
+      expect(created.created).toBe(true);
+      expect(ids.has(created.companyId)).toBe(false);
+      ids.add(created.companyId);
+      expect(await t.query(api.fieldOperating.context, { companyId: created.companyId })).toEqual(
+        operatingProvenance(selection),
+      );
+      expect(await t.mutation(api.fieldOperating.ensure, selection)).toEqual({
+        ...created,
+        created: false,
+      });
+    }
+    expect(await t.query(api.fieldOperating.list, {})).toHaveLength(choices.length);
+  });
+
   it("creates only the selected scenario, returns the same feed, and exposes its provenance", async () => {
     const t = convexTest(schema, modules);
     const legacy = await t.mutation(api.field.setup, { profile: "kestrel" });
