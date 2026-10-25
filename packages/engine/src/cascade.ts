@@ -11,6 +11,12 @@ import { addDays, daysBetween, horizonEnd } from "./dates";
 import { money } from "./dominoes";
 import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
 import { type OutOfCash, outOfCash } from "./out-of-cash";
+import {
+  type PredictionKind,
+  type PredictionParamName,
+  buildPredictions,
+  predictionCatalog,
+} from "./predictions";
 import { evaluateOnSchedule, weeklyBreach } from "./rules";
 import { bucketOf } from "./schedule";
 
@@ -32,7 +38,8 @@ export type TriggerKind =
   | "customer_shock"
   | "vendor_stretch"
   | "credit_draw"
-  | "windfall";
+  | "windfall"
+  | "growth";
 
 export type CascadeTrigger = {
   kind: TriggerKind;
@@ -121,6 +128,7 @@ const STRETCH_DAYS = 30;
 const PEER_DELAY_DAYS = 7;
 const HIRE_PAUSE_BPS = 500n; // planned hires ~5% of monthly payroll
 const HIRE_PULL_BPS = 1_000n; // pulled-forward hiring ~10% of the windfall per month
+const SUPPORT_HIRE_BPS = 3_000n; // hiring to support growth ~30% of the added monthly receipts
 const DRAW_ROUND = 5_000_000; // draws in $50K steps
 const MAX_BILLS = 8;
 export const DRAW_LABEL = /credit line|revolver|line draw/i;
@@ -209,7 +217,7 @@ export type ReactionCatalogEntry = {
   reason: string;
   /** Outside the fixed rules: market and reputation effects, offered to an estimator only */
   external: boolean;
-  param: { name: "days" | "percent"; min: number; max: number; default: number } | null;
+  param: { name: "days" | "percent" | "count"; min: number; max: number; default: number } | null;
 };
 /** One alternative branch: 1-3 catalog reactions that happen together. */
 export type ReactionChoice = {
@@ -469,7 +477,7 @@ type External = {
   option: Option;
   external: true;
   param: {
-    bounds: { name: "days" | "percent"; min: number; max: number; default: number };
+    bounds: { name: "days" | "percent" | "count"; min: number; max: number; default: number };
     build: (value: number) => Option;
   };
 };
@@ -537,6 +545,10 @@ function externalReactions(ctx: Ctx, level: Level, f: Found): External[] {
       param: { bounds: { name: "percent", min: 5, max: 30, default: 10 }, build },
     });
   }
+  if (f.key === "windfall" || f.key === "growth") {
+    out.push(...predicted(ctx, level, from, "hiring_wave", "headcount", "Growth hiring"));
+    out.push(...predicted(ctx, level, from, "new_customers", "count", "Word of mouth"));
+  }
   if (f.key === "windfall" && hasPlans) {
     const build = (pct: number): Option => ({
       event: `Positive press: new business grows billing ${pct}%`,
@@ -561,6 +573,60 @@ function externalReactions(ctx: Ctx, level: Level, f: Found): External[] {
     });
   }
   return out;
+}
+
+/**
+ * A predicted consequence (the shared prediction catalog) as an estimator-only reaction with its
+ * main count parameter; the other parameters keep the company-sized defaults.
+ */
+function predicted(
+  ctx: Ctx,
+  level: Level,
+  from: ISODate,
+  kind: PredictionKind,
+  param: PredictionParamName,
+  branchLabel: string,
+): External[] {
+  const { snapshot, model } = ctx.input;
+  const entry = predictionCatalog(snapshot, model, level.all).find((e) => e.kind === kind);
+  const bound = entry?.params.find((p) => p.name === param);
+  if (!entry || !bound) return [];
+  const defaults = Object.fromEntries(entry.params.map((p) => [p.name, p.default]));
+  const build = (value: number): Option => {
+    const [made] = buildPredictions(
+      snapshot,
+      model,
+      level.all,
+      [
+        {
+          kind,
+          params: { ...defaults, [param]: value },
+          startInDays: 0,
+          probability: 1,
+          reason: entry.meaning,
+        },
+      ],
+      from,
+      null,
+    );
+    return {
+      event: made?.effect ?? entry.title,
+      branchLabel,
+      reason: `Estimated follow-on: ${entry.meaning}. Sized from the company's own books.`,
+      likelihood: "Possible",
+      changes: made?.changes ?? [],
+    };
+  };
+  return [
+    {
+      option: build(bound.default),
+      external: true,
+      param: {
+        bounds: { name: "count", min: bound.min, max: bound.max, default: bound.default },
+        build,
+      },
+    },
+  ];
 }
 
 // ---------- Triggers, in priority order ----------
@@ -605,6 +671,8 @@ function triggers(ctx: Ctx, level: Level): Found[] {
   if (draw) out.push(draw);
   const windfall = windfallOf(ctx, level, prior);
   if (windfall) out.push(windfall);
+  const growth = growthOf(ctx, level, prior);
+  if (growth) out.push(growth);
   return out.filter((f) => f.options.length > 0);
 }
 
@@ -1063,6 +1131,53 @@ function windfallOf(ctx: Ctx, level: Level, prior: Forecast): Found | null {
     });
   }
   return { key: "windfall", trigger, options };
+}
+
+/** Own new recurring receipts or billing growth: the company hires to support it. */
+function growthOf(ctx: Ctx, level: Level, prior: Forecast): Found | null {
+  const { snapshot } = ctx.input;
+  const own = level.own.filter(
+    (c) =>
+      (c.kind === "recurring_cash" && c.direction === "in") ||
+      (c.kind === "scale_recurring" && c.flows === "billing" && c.percent > 0),
+  );
+  if (own.length === 0) return null;
+  const gain =
+    level.forecast.weeks.reduce((a, w) => a + w.inflow, 0) -
+    prior.weeks.reduce((a, w) => a + w.inflow, 0);
+  if (gain <= 0) return null;
+  const date = startOf(own, snapshot) ?? (ctx.weeks[0] as ISODate);
+  const week = bucketOf(date, ctx.weeks) ?? 0;
+  const trigger: CascadeTrigger = {
+    kind: "growth",
+    label: `Expected receipts grow by ${money(gain)} over the forecast from ${date}`,
+    week,
+    weekStart: ctx.weeks[week] as ISODate,
+    date,
+    amount: gain,
+  };
+  const months = Math.max(1, daysBetween(date, ctx.end) / 30.4);
+  const perMonth = Number((BigInt(Math.round(gain / months)) * SUPPORT_HIRE_BPS) / 10_000n);
+  const from = addDays(date, 30);
+  const options: Option[] = [];
+  if (perMonth > 0 && from <= ctx.end)
+    options.push({
+      event: "The company hires to support the growth",
+      branchLabel: "Hire for growth",
+      reason: `More customers need more support and delivery staff. Assumed new payroll of about 30% of the added monthly receipts (${money(perMonth)}/month) from a month later.`,
+      likelihood: "Likely",
+      changes: [
+        {
+          kind: "recurring_cash",
+          label: unique(level.all, "Hiring to support growth"),
+          direction: "out",
+          amount: perMonth,
+          fromDate: from,
+          everyDays: 30,
+        },
+      ],
+    });
+  return { key: "growth", trigger, options };
 }
 
 // ---------- Helpers ----------

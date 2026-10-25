@@ -1,5 +1,6 @@
 import { canonicalJson } from "@domino/contracts";
 import { ConvexError } from "convex/values";
+import { withoutParts } from "../../../convex/timeline/chat/predicted";
 import type { WorkspaceRun } from "../workspace/api";
 import { type RequestLedger, describeWriteError } from "../workspace/requests";
 import {
@@ -13,7 +14,9 @@ import {
 export type ChatCommand =
   | { kind: "begin"; selectedWeek?: string; selectedItemId?: string }
   | { kind: "send"; receipt: ChatReceipt; text: string }
-  | { kind: "reset" | "confirm"; receipt: ChatReceipt };
+  | { kind: "reset"; receipt: ChatReceipt }
+  /** `drop`: proposal parts the person unticked */
+  | { kind: "confirm"; receipt: ChatReceipt; drop?: number[] };
 export type ChatOutcome =
   | { ok: true; receipt: ChatReceipt }
   | { ok: false; message: string; uncertain?: boolean };
@@ -68,7 +71,11 @@ export async function requestChat(
         command.kind === "send"
           ? await calls.send({ ...args, text: command.text })
           : command.kind === "confirm"
-            ? await calls.confirm({ ...args, reviewed: true })
+            ? await calls.confirm({
+                ...args,
+                reviewed: true,
+                ...(command.drop?.length ? { drop: command.drop } : {}),
+              })
             : await calls.reset(args);
     }
     const p = readChat(
@@ -93,7 +100,9 @@ export async function requestChat(
         (p.value.status !== "collecting" || p.value.proposal !== null)) ||
       (command.kind === "confirm" &&
         (p.value.status !== "saved" ||
-          canonicalJson(p.value.proposal) !== canonicalJson(command.receipt.proposal)))
+          !command.receipt.proposal ||
+          canonicalJson(p.value.proposal) !==
+            canonicalJson(withoutParts(command.receipt.proposal, command.drop ?? []))))
     )
       return {
         ok: false,

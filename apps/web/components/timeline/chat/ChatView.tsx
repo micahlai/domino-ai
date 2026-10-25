@@ -43,14 +43,77 @@ export function ReviewProposal({
   receipt,
   sourceRules,
   snapshot,
-}: { receipt: ChatReceipt; sourceRules: Constraint[]; snapshot?: Snapshot }) {
+  dropped = [],
+  onToggle,
+}: {
+  receipt: ChatReceipt;
+  sourceRules: Constraint[];
+  snapshot?: Snapshot;
+  /** Parts the person unticked; they are left out when saving */
+  dropped?: number[];
+  /** Present while the proposal can still be edited */
+  onToggle?: (part: number) => void;
+}) {
   const proposal = receipt.proposal;
   if (!proposal) return null;
   const rules = proposal.constraints ?? sourceRules;
+  const parts = proposal.parts ?? [];
+  const grouped =
+    parts.length > 0 && parts.reduce((s, p) => s + p.changes, 0) === proposal.changes.length;
+  let at = 0;
   return (
     <div className="space-y-3 text-sm" data-testid="chat-review">
       <p className="font-medium">{friendlyLabel(proposal.label, snapshot)}</p>
-      {proposal.changes.length ? (
+      {grouped ? (
+        <div>
+          <p className="text-muted-foreground">
+            Parts to add{onToggle ? ". Untick any you do not want saved." : ""}
+          </p>
+          <ul className="space-y-2">
+            {parts.map((part, i) => {
+              const own = proposal.changes.slice(at, at + part.changes);
+              at += part.changes;
+              const off = dropped.includes(i);
+              return (
+                <li key={`${part.label}-${i}`} className={off ? "opacity-50" : undefined}>
+                  <div className="flex items-start gap-2">
+                    {onToggle && part.changes > 0 ? (
+                      <input
+                        className="mt-1 size-4 shrink-0 accent-primary"
+                        type="checkbox"
+                        checked={!off}
+                        onChange={() => onToggle(i)}
+                        aria-label={`Keep ${part.label}`}
+                      />
+                    ) : null}
+                    <span>
+                      <span className="font-medium">{friendlyLabel(part.label, snapshot)}</span>
+                      {part.prediction ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {part.prediction.source === "ai"
+                            ? "AI prediction"
+                            : "Rule-based prediction"}{" "}
+                          {Math.round(part.prediction.choice.probability * 100)}%:{" "}
+                          {part.prediction.choice.reason}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  {own.length ? (
+                    <ul className="mt-1 list-disc space-y-1 pl-10">
+                      {own.map((change, k) => (
+                        <li key={`${change.kind}-${k}`}>
+                          {changeText(change, formatExactCents, snapshot)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : proposal.changes.length ? (
         <div>
           <p className="text-muted-foreground">Events to add</p>
           <ul className="list-disc space-y-1 pl-5">
@@ -198,6 +261,26 @@ export function ChatView({
   const receipt = displayedReceipt(latest, queryReceipt, actions.beginNavigates === true);
   const token = receipt ? `${receipt.conversationId}:${receipt.revision}` : null;
   const reviewed = token !== null && reviewedFor === token;
+  // Unticked proposal parts, for this exact revision only.
+  const [dropFor, setDropFor] = useState<{ token: string; parts: number[] } | null>(null);
+  const dropped = token !== null && dropFor?.token === token ? dropFor.parts : [];
+  const toggle = (part: number) => {
+    if (token === null) return;
+    setDropFor({
+      token,
+      parts: dropped.includes(part) ? dropped.filter((p) => p !== part) : [...dropped, part],
+    });
+  };
+  const keptChanges = (() => {
+    const proposal = receipt?.proposal;
+    if (!proposal || !dropped.length) return proposal?.changes ?? [];
+    let at = 0;
+    return (proposal.parts ?? []).flatMap((part, i) => {
+      const own = proposal.changes.slice(at, at + part.changes);
+      at += part.changes;
+      return dropped.includes(i) ? [] : own;
+    });
+  })();
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
   const lastTurn = receipt?.turns.at(-1);
   const optimisticTurn = visibleMessage(optimistic, receipt);
@@ -459,11 +542,13 @@ export function ChatView({
     receipt?.status === "ready" ? (
       <motion.div {...enter} className="space-y-4 rounded-lg border p-4">
         <h4 className="text-sm font-medium">Review before calculating</h4>
-        <BranchNote changes={receipt.proposal?.changes ?? []} />
+        <BranchNote changes={keptChanges} />
         <ReviewProposal
           receipt={receipt}
           sourceRules={run.constraints}
           snapshot={run.baseline.seed.snapshot}
+          dropped={dropped}
+          onToggle={pending || blocked ? undefined : toggle}
         />
         <p className="text-xs text-muted-foreground">
           These events apply to the source scenario. Saving calculates a new timeline and checks its
@@ -480,8 +565,15 @@ export function ChatView({
           I reviewed these events, dates, amounts and the full rule set.
         </label>
         <Button
-          disabled={!reviewed || pending || blocked}
-          onClick={() => write({ kind: "confirm", receipt })}
+          disabled={
+            !reviewed ||
+            pending ||
+            blocked ||
+            (dropped.length > 0 && keptChanges.length === 0 && !receipt.proposal?.constraints)
+          }
+          onClick={() =>
+            write({ kind: "confirm", receipt, ...(dropped.length ? { drop: dropped } : {}) })
+          }
         >
           Calculate and save scenario
         </Button>

@@ -14,8 +14,8 @@ export type ClaudeTool = {
   name: string;
   description: string;
   input_schema: Anthropic.Beta.BetaTool.InputSchema;
-  /** Runs locally; the returned JSON goes back to Claude as the tool result. */
-  run: (input: unknown) => unknown;
+  /** Runs locally (may await, for example a bounded estimate); the JSON goes back to Claude. */
+  run: (input: unknown) => unknown | Promise<unknown>;
 };
 
 export class AssistantUnavailable extends Error {}
@@ -31,8 +31,8 @@ export function assistantConfig(): { client: Anthropic; model: string } | null {
 }
 
 /**
- * Manual tool loop that ends in one structured JSON reply. Tools run synchronously against
- * the saved run; Claude never sees anything outside the context and tool results we pass.
+ * Manual tool loop that ends in one structured JSON reply. Tools run in order against the
+ * saved run; Claude never sees anything outside the context and tool results we pass.
  */
 export async function runStructured(opts: {
   system: string;
@@ -98,7 +98,7 @@ export async function runStructured(opts: {
           let isError = false;
           try {
             if (!tool) throw new Error(`Unknown tool ${block.name}`);
-            content = JSON.stringify(tool.run(block.input));
+            content = JSON.stringify(await tool.run(block.input));
           } catch (error) {
             isError = true;
             content = error instanceof Error ? error.message : "Tool failed";

@@ -1,6 +1,7 @@
 import { ChangeSchema, ConstraintSchema, canonicalJson } from "@domino/contracts";
 import { makeFunctionReference } from "convex/server";
 import { z } from "zod";
+import { MAX_PROPOSAL_PARTS, ProposalPartSchema } from "../../../convex/timeline/chat/predicted";
 import { WorkerChatContextSchema } from "../../../lib/worker-chat-context";
 import type { Read, RunKey, WorkspaceRun } from "../workspace/api";
 
@@ -16,9 +17,10 @@ export const CalendarDate = z
 const Proposal = z
   .object({
     label: z.string().min(1).max(200),
-    changes: z.array(ChangeSchema).max(16),
+    changes: z.array(ChangeSchema).max(64),
     constraints: z.array(ConstraintSchema).max(32).nullable(),
     constraintNote: z.string().max(500).nullable(),
+    parts: z.array(ProposalPartSchema).max(MAX_PROPOSAL_PARTS).optional(),
   })
   .strict();
 const Receipt = z
@@ -210,7 +212,7 @@ export type TurnArgs = {
   expectedRevision: number;
 };
 export type SendArgs = TurnArgs & { text: string };
-export type ConfirmArgs = TurnArgs & { reviewed: true };
+export type ConfirmArgs = TurnArgs & { reviewed: true; drop?: number[] };
 export const beginRef = makeFunctionReference<"mutation", BeginArgs, unknown>(
   "timeline/chat:begin",
 );

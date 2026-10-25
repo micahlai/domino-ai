@@ -34,6 +34,7 @@ import {
   plannedChange,
   validateProposal,
 } from "./chat/draft";
+import { MAX_PROPOSAL_PARTS, withoutParts } from "./chat/predicted";
 import {
   CHAT_METHOD,
   type ChatChoice,
@@ -429,15 +430,24 @@ export const reset = mutation({
   },
 });
 export const confirm = mutation({
-  args: { ...writeArgs, reviewed: v.boolean() },
+  args: { ...writeArgs, reviewed: v.boolean(), drop: v.optional(v.array(v.number())) },
   handler: async (ctx, raw): Promise<ChatReceipt> => {
-    const args = parse(WriteSchema.extend({ reviewed: z.literal(true) }).strict(), raw);
+    const args = parse(
+      WriteSchema.extend({
+        reviewed: z.literal(true),
+        /** Proposal parts the person unticked; the rest is saved */
+        drop: z.array(z.number().int().min(0)).max(MAX_PROPOSAL_PARTS).optional(),
+      }).strict(),
+      raw,
+    );
     const prior = await request(ctx, "confirm", args);
     if (prior.receipt) return prior.receipt;
     const { row, receipt, draft, run, segmentStart } = await current(ctx, args);
-    const proposal = receipt.proposal;
-    if (receipt.status !== "ready" || !proposal)
+    if (receipt.status !== "ready" || !receipt.proposal)
       reject("CHAT_NOT_READY", "Answer the missing details before reviewing and saving.");
+    const proposal = withoutParts(receipt.proposal, args.drop ?? []);
+    if (!proposal)
+      reject("CHAT_INVALID_DROP", "Keep at least one part with events, or Start over.");
     if (receipt.turns.length >= 42)
       reject("CHAT_LIMIT", "This chat has reached 42 messages. Start a new chat to continue.");
     validateProposal(run, proposal);
@@ -477,6 +487,7 @@ export const confirm = mutation({
     const updated = append(
       {
         ...receipt,
+        proposal,
         status: "saved",
         linkedRunId: saved.runId,
         revision: receipt.revision + 1,
@@ -674,12 +685,19 @@ export const saveAssistantTurn = internalMutation({
         receipt.status === "saved"
           ? null
           : plan.planItems
-            ? checkCompound(run, plan.planItems, floor, plan.macro ?? null, {
-                conversationId: receipt.conversationId,
-                selectedItemId: receipt.selectedItemId,
-                userTexts,
-                referenceText: receipt.workerContext?.note ?? null,
-              })
+            ? checkCompound(
+                run,
+                plan.planItems,
+                floor,
+                plan.macro ?? null,
+                {
+                  conversationId: receipt.conversationId,
+                  selectedItemId: receipt.selectedItemId,
+                  userTexts,
+                  referenceText: receipt.workerContext?.note ?? null,
+                },
+                new Map((plan.predictions ?? []).map((p) => [p.item, p])),
+              )
             : plan.draft === null
               ? null
               : checkDraft(run, plan.draft, {

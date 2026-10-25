@@ -5,6 +5,7 @@ import {
   canonicalJson,
 } from "@domino/contracts";
 import { z } from "zod";
+import { MAX_PROPOSAL_PARTS, ProposalPartSchema } from "../chat/predicted";
 
 /** QuestionReceipt from kb/features/timeline/TL2-TL5-interface.md, strict. */
 export const CitationSchema = z
@@ -17,6 +18,8 @@ export const QuestionProposalSchema = z
     changes: z.array(ChangeSchema).max(64),
     constraints: z.array(ConstraintSchema).max(32).nullable(),
     constraintNote: z.string().max(500).nullable(),
+    /** Droppable parts of a compound or predicted plan, covering `changes` in order */
+    parts: z.array(ProposalPartSchema).max(MAX_PROPOSAL_PARTS).optional(),
   })
   .strict();
 
