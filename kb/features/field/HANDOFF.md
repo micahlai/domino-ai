@@ -25,6 +25,12 @@
 - Rebuilt production browser opens the actual2U saved Timeline and completed risk analysis under the decoded company ID. Isolated2U late-payment clock advanced to day4 and paused, with new invoices ingested. The baseline stays day0.
 - Known limits: records and monthly/daily allocations are synthetic; forecasts and cash-buffer rules illustrative. Filing history remains separate at /case/2u. Engine three-category historical classification has no separateFX bucket, while source provenance retains the exact four-category bridge. Secondary datasets use explicitly labeled customer cohorts and synthetic AR/deferred/restricted assumptions. No new real provider acceptance was claimed.
 
+## Main release pushed, Oct 25
+- Release branch `release/main-20261025` combines remote main `fe39898` and verified Field `af7977d` in `/private/tmp/domino-main-release-20261025`; the dirty original main checkout and live3114 were left alone.
+- Retained Field Convex tsconfig at the sole conflict. Combined web and Convex typechecks pass; application code matches Field exactly, so recorded tests/build are reused. Prior README credential cleanup remains intact.
+- TL9 is merged as deterministic guided clarification; real LLM chat remains missing. Older main-freeze rules below are superseded only for this explicitly authorized release.
+- Release merge `a607b97` was pushed to origin/main successfully. No deployment or runtime restart was performed. Next work remains the Field queue and separately requested real LLM chat.
+
 ## Completed map stability fix
 - Branch `merge/field-map-stability-20261025` in `../domino-merge`, base `aac6de6`; current field/main was already pushed.
 - Reproduced with existing scripted agent updates in frontend-only preview3138: latest summary24/48/24px causes map top326/350/326px. scrollY remains0; map height478px and camera unchanged. Trace `/tmp/field-map-before.json`.

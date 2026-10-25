@@ -1,8 +1,12 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { type Constraint, canonicalJson } from "@domino/contracts";
 import { type GenericDatabaseReader, makeFunctionReference } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 import { action } from "../_generated/server";
+import { ASSISTANT_TIMEOUT_MS, assistantConfig } from "./assistant/claude";
+import { groundingIssue } from "./assistant/grounding";
+import { ASSISTANT_QUESTIONS_VERSION, answerWithAssistant } from "./assistant/questions";
 import {
   type WorkspaceRun,
   namedIn,
@@ -44,8 +48,10 @@ import {
 //   a week, an item, rules, dominoes; "what if <customer> pays N days late"; "pay $X to <Name>
 //   on <date>"; "receive $X from <Name> on <date>"; "keep usable cash above $X"; "keep N months
 //   of runway"; "pay <vendor> on time / within N days". No paid call.
-// - Otherwise, if ANTHROPIC_API_KEY is set, one structured-output request classifies the
-//   wording (questions/provider.ts). Without a key the question is saved as failed.
+// - With ANTHROPIC_API_KEY set, Claude reads every question first with the company's saved
+//   run as context (assistant/questions.ts). It extracts original user spans; answer text,
+//   status, citations and proposals come only from the fixed resolver. Without a key the fixed grammar
+//   answers, and a question it cannot read is saved as failed.
 // Neither method computes money or writes the answer: answers and citations come from the
 // run's saved forecast, receipts, dominoes and seed records; proposals change nothing until
 // the person confirms them through workspace simulate/reviseConstraints.
@@ -57,7 +63,7 @@ const MAX_PROMPT = 1_000;
 const MAX_ITEM_ID = 128;
 const MAX_PROVIDER_NAMES = 200;
 /** A running ask older than this is abandoned and saved as failed. */
-export const LEASE_MS = 2 * PROVIDER_TIMEOUT_MS + 30_000;
+export const LEASE_MS = 2 * Math.max(PROVIDER_TIMEOUT_MS, ASSISTANT_TIMEOUT_MS) + 30_000;
 
 type Method = RowData["method"];
 
@@ -401,6 +407,14 @@ async function interpret(
   );
 }
 
+function failureCode(error: unknown): string {
+  if (error instanceof Anthropic.APIConnectionTimeoutError) return "PROVIDER_TIMEOUT";
+  if (error instanceof Anthropic.APIError) return "PROVIDER_ERROR";
+  if (error instanceof SyntaxError || error instanceof z.ZodError) return "PROVIDER_MALFORMED";
+  if (error instanceof Error && error.message in FAILURES) return error.message;
+  return "INTERNAL";
+}
+
 /** One pinned question about one saved run. Returns its saved receipt. */
 export const ask = action({
   args: {
@@ -438,6 +452,7 @@ export const ask = action({
         method: QUESTIONS_METHOD,
         grammar: GRAMMAR_VERSION,
         provider: PROVIDER_VERSION,
+        assistant: assistantConfig() ? ASSISTANT_QUESTIONS_VERSION : null,
         companyId: args.companyId,
         runId: args.runId,
         runInputHash: run.inputHash,
@@ -454,27 +469,39 @@ export const ask = action({
       prompt,
       selectedWeek: week,
       selectedItemId: item,
-      method: grammar ? "grammar" : "provider",
+      method: grammar && !assistantConfig() ? "grammar" : "provider",
       parentConstraintsJson: JSON.stringify(run.constraints),
     });
     if (!claimed.claimed) return claimed.receipt;
 
     let outcome: SavedOutcome;
     try {
-      const read = grammar
-        ? { ok: true as const, intents: grammar }
-        : await interpret(run, prompt, week, item);
-      outcome = read.ok
-        ? resolve(run, read.intents, {
-            questionId: claimed.receipt.id,
-            prompt,
-            selectedWeek: week,
-            selectedItemId: item,
-          })
-        : { status: "failed", errorCode: read.code };
-    } catch {
+      const asked = {
+        questionId: claimed.receipt.id,
+        prompt,
+        selectedWeek: week,
+        selectedItemId: item,
+      };
+      const sourceIssue = groundingIssue(prompt, []);
+      if (sourceIssue) {
+        const fixed = grammar ? resolve(run, grammar, asked) : null;
+        outcome =
+          fixed?.status === "clarification"
+            ? fixed
+            : { status: "clarification", answer: sourceIssue, citations: [] };
+      } else if (assistantConfig()) {
+        outcome = await answerWithAssistant(run, asked);
+      } else {
+        const read = grammar
+          ? { ok: true as const, intents: grammar }
+          : await interpret(run, prompt, week, item);
+        outcome = read.ok
+          ? resolve(run, read.intents, asked)
+          : { status: "failed", errorCode: read.code };
+      }
+    } catch (error) {
       // Raw errors may carry provider text; only a code is saved.
-      outcome = { status: "failed", errorCode: "INTERNAL" };
+      outcome = { status: "failed", errorCode: failureCode(error) };
     }
     return ctx.runMutation(refs.finalize, {
       companyId: args.companyId,

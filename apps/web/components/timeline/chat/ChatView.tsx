@@ -1,7 +1,8 @@
 "use client";
 import type { Constraint } from "@domino/contracts";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
@@ -10,6 +11,7 @@ import { inputClass } from "../workspace/RuleEditor";
 import { Panel, WhenDate } from "../workspace/RunPanels";
 import { WorkspaceChart } from "../workspace/WorkspaceChart";
 import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
+import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
 import { type ChatReceipt, chatHref, displayedReceipt, newerReceipt } from "./api";
 import { type ChatCommand, type ChatOutcome, ChatWriteGuard } from "./requests";
@@ -87,6 +89,63 @@ export function ReviewProposal({
     </div>
   );
 }
+type Choice = { label: string; value: string };
+/** Claude's offered replies: buttons for a few, a dropdown for longer lists like invoices. */
+function Choices({
+  choices,
+  disabled,
+  onPick,
+}: { choices: Choice[]; disabled: boolean; onPick: (value: string) => void }) {
+  const [picked, setPicked] = useState("");
+  const reduced = useReducedMotion();
+  const enter = useEnter();
+  if (choices.length <= 5)
+    return (
+      <div className="flex flex-wrap gap-2" data-testid="chat-choices">
+        {choices.map((c, i) => (
+          <motion.div
+            key={c.value}
+            {...enter}
+            transition={reduced ? undefined : { ...enter.transition, delay: 0.05 * i }}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => onPick(c.value)}
+            >
+              {c.label}
+            </Button>
+          </motion.div>
+        ))}
+      </div>
+    );
+  return (
+    <motion.div {...enter} className="flex flex-wrap items-center gap-2" data-testid="chat-choices">
+      <label className="sr-only" htmlFor="chat-choice">
+        Choose an option
+      </label>
+      <select
+        id="chat-choice"
+        className={`${inputClass} min-w-0 flex-1`}
+        value={picked}
+        disabled={disabled}
+        onChange={(e) => setPicked(e.target.value)}
+      >
+        <option value="">Choose an option…</option>
+        {choices.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+      <Button type="button" disabled={disabled || !picked} onClick={() => onPick(picked)}>
+        Use this
+      </Button>
+    </motion.div>
+  );
+}
 export function ChatView({
   run,
   selected,
@@ -96,7 +155,6 @@ export function ChatView({
   selectedItemId,
   sidebar = false,
 }: ChatViewProps) {
-  const transcript = useRef<HTMLOListElement>(null);
   const [writeGuard] = useState(() => new ChatWriteGuard());
   const blocked = writeGuard.pending !== null;
   const [previewWeek, setPreviewWeek] = useState<string | null>(null);
@@ -106,6 +164,7 @@ export function ChatView({
   const busy = useRef(false);
   const [error, setError] = useState<string>();
   const [reviewedFor, setReviewedFor] = useState<string | null>(null);
+  const enter = useEnter();
   const queryReceipt = selected?.state === "ready" ? selected.value : null;
   const opening = actions.beginNavigates === true && latest !== null && queryReceipt === null;
   const pending = writing || opening;
@@ -113,11 +172,7 @@ export function ChatView({
   const token = receipt ? `${receipt.conversationId}:${receipt.revision}` : null;
   const reviewed = token !== null && reviewedFor === token;
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
-  const lastTurn = receipt?.turns.at(-1)?.id;
-  useEffect(() => {
-    if (sidebar && lastTurn && transcript.current)
-      transcript.current.scrollTop = transcript.current.scrollHeight;
-  }, [sidebar, lastTurn]);
+  const lastTurn = receipt?.turns.at(-1);
   async function write(command: ChatCommand) {
     if (busy.current || !writeGuard.allows(command)) return;
     busy.current = true;
@@ -146,366 +201,420 @@ export function ChatView({
     }
   }
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? run.baseline.seed.asOf;
+
+  const intro = (
+    <p className="text-sm text-muted-foreground">
+      {sidebar
+        ? "Say it in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing, one question at a time."
+        : "Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill deadline rule. I’ll ask for missing details one at a time. This chat uses supported wording; other requests may need Start over."}
+    </p>
+  );
+  const start =
+    !receipt && !selected ? (
+      <div className="space-y-3">
+        <p className="text-sm">
+          Nothing is calculated until you review and save. The timeline stays as it is until you
+          open the saved result.
+        </p>
+        {selectedWeek ? (
+          <p className="text-xs text-muted-foreground">
+            Chosen week: <WhenDate iso={selectedWeek} />
+            {selectedItemId ? ` · selected item ${selectedItemId}` : ""}.
+          </p>
+        ) : null}
+        <Button
+          disabled={pending || blocked}
+          onClick={() =>
+            write({
+              kind: "begin",
+              ...(selectedWeek ? { selectedWeek } : {}),
+              ...(selectedItemId ? { selectedItemId } : {}),
+            })
+          }
+        >
+          Start new chat
+        </Button>
+      </div>
+    ) : null;
+  const notice =
+    !receipt && selected && selected.state !== "ready" ? (
+      <ReadNotice read={selected} what="conversation" />
+    ) : null;
+  const status = receipt ? (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge
+          variant={
+            receipt.status === "saved"
+              ? "success"
+              : receipt.status === "ready"
+                ? "default"
+                : receipt.pendingField
+                  ? "warning"
+                  : "outline"
+          }
+          data-testid="chat-status"
+        >
+          {pending
+            ? "Thinking…"
+            : receipt.status === "saved"
+              ? "Saved as a scenario"
+              : receipt.status === "ready"
+                ? "Ready to review"
+                : receipt.pendingField
+                  ? "Needs one more detail"
+                  : "Listening"}
+        </Badge>
+        <span className="text-xs text-muted-foreground">{turns} of 20 messages</span>
+      </div>
+      {receipt.selectedWeek ? (
+        <p className="text-xs text-muted-foreground">
+          Pinned week: <WhenDate iso={receipt.selectedWeek} />
+          {receipt.selectedItemId ? ` · item ${receipt.selectedItemId}` : ""}.
+        </p>
+      ) : null}
+    </>
+  ) : null;
+  const transcript = receipt ? (
+    <ol
+      aria-label="Conversation"
+      aria-live="polite"
+      aria-relevant="additions"
+      className="space-y-4 py-3"
+    >
+      <AnimatePresence initial={false}>
+        {receipt.turns.map((turn) => (
+          <motion.li
+            key={turn.id}
+            {...enter}
+            className={`max-w-[95%] origin-bottom rounded-lg px-4 py-3 text-sm ${turn.role === "user" ? "ml-auto origin-bottom-right bg-muted" : "mr-auto origin-bottom-left border"}`}
+          >
+            <p className="mb-1 text-xs font-medium text-muted-foreground">
+              {turn.role === "user" ? "You" : "Domino"}
+            </p>
+            <p className="whitespace-pre-wrap">{turn.text}</p>
+          </motion.li>
+        ))}
+      </AnimatePresence>
+    </ol>
+  ) : null;
+  const choices =
+    receipt && receipt.status !== "saved" && lastTurn?.choices ? (
+      <Choices
+        key={lastTurn.id}
+        choices={lastTurn.choices}
+        disabled={pending || blocked || turns >= 20}
+        onPick={(value) => void write({ kind: "send", receipt, text: value })}
+      />
+    ) : null;
+  const composer =
+    receipt && receipt.status !== "saved" ? (
+      <form
+        className="space-y-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (text.trim() && turns < 20 && !pending && !blocked)
+            void write({ kind: "send", receipt, text: text.trim() });
+        }}
+      >
+        <label htmlFor="chat-reply" className="block text-sm font-medium">
+          {receipt.pendingField
+            ? `Your reply · ${receipt.pendingField}`
+            : receipt.status === "ready"
+              ? "Correct your draft"
+              : "Describe your change"}
+        </label>
+        <textarea
+          id="chat-reply"
+          rows={sidebar ? 2 : 3}
+          maxLength={1000}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={submitOnEnter}
+          disabled={pending || blocked || turns >= 20}
+          className={`${inputClass} ${sidebar ? "min-h-16" : "min-h-24"} w-full resize-y`}
+          placeholder={
+            receipt.pendingField
+              ? "Type your answer…"
+              : receipt.status === "ready"
+                ? "For example: change amount to $80,000"
+                : `For example: What if we pay $50,000 to Atlas Legal on ${firstWeek}?`
+          }
+          aria-describedby="chat-hint"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p id="chat-hint" className="text-xs text-muted-foreground">
+            Short answers are welcome. Enter sends, Shift+Enter adds a line. {text.length}/1,000
+          </p>
+          <Button type="submit" disabled={pending || blocked || !text.trim() || turns >= 20}>
+            Send reply
+          </Button>
+        </div>
+        {turns >= 20 ? (
+          <output className="block text-sm">
+            This conversation has reached its 20-message limit. Start a new chat to continue.
+          </output>
+        ) : null}
+      </form>
+    ) : null;
+  const review =
+    receipt?.status === "ready" ? (
+      <motion.div {...enter} className="space-y-4 rounded-lg border p-4">
+        <h4 className="text-sm font-medium">Review before calculating</h4>
+        <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
+        <p className="text-xs text-muted-foreground">
+          These events apply to the source scenario. Saving calculates a new timeline and checks its
+          rules.
+        </p>
+        <label className="flex min-h-11 items-start gap-3 text-sm">
+          <input
+            className="mt-1 size-4 shrink-0 accent-primary"
+            type="checkbox"
+            checked={reviewed}
+            disabled={pending || blocked}
+            onChange={(e) => setReviewedFor(e.target.checked ? token : null)}
+          />
+          I reviewed these events, dates, amounts and the full rule set.
+        </label>
+        <Button
+          disabled={!reviewed || pending || blocked}
+          onClick={() => write({ kind: "confirm", receipt })}
+        >
+          Calculate and save scenario
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          To correct a detail, reply “change amount to $80,000” or “change date to 2026-11-17”. Use
+          Start over for a different request. The transcript stays saved.
+        </p>
+      </motion.div>
+    ) : null;
+  const saved =
+    receipt?.status === "saved" && receipt.linkedRunId ? (
+      <motion.div {...enter} className="space-y-3 rounded-lg border border-safe/30 bg-safe/5 p-4">
+        <p className="text-sm font-medium">Your scenario is saved.</p>
+        <Link
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/85 sm:min-h-9"
+          href={workspaceHref(run.companyId, { runId: receipt.linkedRunId })}
+          data-testid="chat-open-saved"
+        >
+          Open saved timeline
+        </Link>
+        <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
+      </motion.div>
+    ) : null;
+  const restart = receipt ? (
+    <div className="flex flex-wrap gap-3">
+      {receipt.status !== "saved" ? (
+        <Button
+          variant="outline"
+          disabled={pending || blocked}
+          onClick={() => write({ kind: "reset", receipt })}
+        >
+          Start over
+        </Button>
+      ) : null}
+      <Link
+        className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
+        href={chatHref(run.companyId, run.runId)}
+      >
+        Start new chat
+      </Link>
+    </div>
+  ) : null;
+  const working = pending ? (
+    sidebar ? (
+      <TypingDots />
+    ) : (
+      <output className="block text-sm text-muted-foreground" aria-live="polite">
+        Thinking…
+      </output>
+    )
+  ) : null;
+  const status2 = (
+    <>
+      {opening && latest ? (
+        <Link
+          className="block text-sm text-primary hover:underline"
+          href={chatHref(
+            run.companyId,
+            run.runId,
+            latest.conversationId,
+            latest.selectedWeek ?? undefined,
+            latest.selectedItemId ?? undefined,
+          )}
+        >
+          Open the saved conversation
+        </Link>
+      ) : null}
+      {blocked ? (
+        <div className="space-y-2 rounded-lg border p-3 text-sm">
+          <p>
+            A reply is still unconfirmed. Retry that exact reply before sending another, or reload
+            this conversation to read its saved state.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                if (writeGuard.pending) void write(writeGuard.pending);
+              }}
+            >
+              Retry unconfirmed reply
+            </Button>
+            <Button variant="outline" disabled={pending} onClick={() => window.location.reload()}>
+              Reload saved conversation
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </>
+  );
+  const recent = (
+    <details className="min-w-0 rounded-lg border p-4">
+      <summary className="cursor-pointer text-sm font-medium">Recent conversations</summary>
+      <div className="mt-3 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Up to 20 saved conversations for this source timeline. Reopening only reads saved data.
+        </p>
+        {history.state !== "ready" ? (
+          <ReadNotice read={history} what="conversation list" />
+        ) : history.value.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No conversations yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {history.value.map((r) => (
+              <li key={r.conversationId} className="space-y-1 border-t pt-3 text-sm">
+                <Link
+                  aria-current={r.conversationId === receipt?.conversationId ? "page" : undefined}
+                  className="block min-h-11 text-primary hover:underline"
+                  href={chatHref(
+                    run.companyId,
+                    run.runId,
+                    r.conversationId,
+                    r.selectedWeek ?? undefined,
+                    r.selectedItemId ?? undefined,
+                  )}
+                >
+                  {r.proposal?.label ||
+                    r.turns.find((t) => t.role === "user")?.text ||
+                    "New conversation"}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {r.status === "saved"
+                    ? "Saved"
+                    : r.status === "ready"
+                      ? "Ready to review"
+                      : "In progress"}{" "}
+                  · {formatSavedAt(r.updatedAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+
+  if (sidebar)
+    return (
+      <article
+        className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere]"
+        data-testid="timeline-chat"
+      >
+        <ChatScrollFrame
+          label="What-if conversation"
+          followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
+          composer={composer}
+        >
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Describe a what-if</h3>
+          {intro}
+          {notice}
+          {start}
+          {status}
+          {transcript}
+          {working}
+          {choices}
+          {review}
+          {saved}
+          {restart}
+          {status2}
+          {recent}
+        </ChatScrollFrame>
+      </article>
+    );
   return (
     <article
       className="min-w-0 max-w-full space-y-4 [overflow-wrap:anywhere]"
       data-testid="timeline-chat"
     >
-      {!sidebar ? (
-        <>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Link
-              className="text-primary hover:underline"
-              href={workspaceHref(run.companyId, { runId: run.runId })}
-            >
-              Back to source timeline
-            </Link>
-            <Badge variant="outline">Saved source · read only</Badge>
-            <span className="text-xs text-muted-foreground">
-              {run.label || "Baseline"} · saved {formatSavedAt(run.savedAt)}
-            </span>
-          </div>
-          <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              View source timeline and rules
-            </summary>
-            <div className="mt-4 space-y-3">
-              <WorkspaceChart
-                history={run.baseline.history}
-                forecast={run.forecast}
-                items={run.baseline.seed.scheduledItems}
-                limits={run.constraints
-                  .filter((c) => c.kind === "min_cash")
-                  .map((c) => ({ id: c.id, label: c.label, cents: c.limit }))}
-                selectedWeek={previewWeek}
-                onSelectWeek={setPreviewWeek}
-              />
-              <p className="text-sm">
-                Lowest usable cash: {formatExactCents(run.forecast.lowPoint.usable)}, week of{" "}
-                <WhenDate iso={run.forecast.lowPoint.weekStart} />.
-              </p>
-              <ul className="list-disc pl-5 text-sm">
-                {run.constraints.map((c) => (
-                  <li key={c.id}>
-                    {c.label}:{" "}
-                    {c.kind === "min_cash"
-                      ? formatExactCents(c.limit)
-                      : `${c.limit} ${c.kind === "min_runway_months" ? "months" : "days late"}`}
-                  </li>
-                ))}
-              </ul>
-              {run.constraints.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No source rules.</p>
-              ) : null}
-            </div>
-          </details>
-        </>
-      ) : null}
-      <div
-        className={
-          sidebar ? "min-w-0 space-y-4" : "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]"
-        }
-      >
-        <Panel
-          title={sidebar ? "Describe a what-if" : "Describe a rule or a possible event"}
-          bare={sidebar}
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <Link
+          className="text-primary hover:underline"
+          href={workspaceHref(run.companyId, { runId: run.runId })}
         >
-          <p className="text-sm text-muted-foreground">
-            {sidebar
-              ? "Say it in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing, one question at a time."
-              : "Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill deadline rule. I’ll ask for missing details one at a time. This chat uses supported wording; other requests may need Start over."}
+          Back to source timeline
+        </Link>
+        <Badge variant="outline">Saved source · read only</Badge>
+        <span className="text-xs text-muted-foreground">
+          {run.label || "Baseline"} · saved {formatSavedAt(run.savedAt)}
+        </span>
+      </div>
+      <details className="rounded-lg border p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          View source timeline and rules
+        </summary>
+        <div className="mt-4 space-y-3">
+          <WorkspaceChart
+            history={run.baseline.history}
+            forecast={run.forecast}
+            items={run.baseline.seed.scheduledItems}
+            limits={run.constraints
+              .filter((c) => c.kind === "min_cash")
+              .map((c) => ({ id: c.id, label: c.label, cents: c.limit }))}
+            selectedWeek={previewWeek}
+            onSelectWeek={setPreviewWeek}
+          />
+          <p className="text-sm">
+            Lowest usable cash: {formatExactCents(run.forecast.lowPoint.usable)}, week of{" "}
+            <WhenDate iso={run.forecast.lowPoint.weekStart} />.
           </p>
-          {!receipt && selected && selected.state !== "ready" ? (
-            <ReadNotice read={selected} what="conversation" />
+          <ul className="list-disc pl-5 text-sm">
+            {run.constraints.map((c) => (
+              <li key={c.id}>
+                {c.label}:{" "}
+                {c.kind === "min_cash"
+                  ? formatExactCents(c.limit)
+                  : `${c.limit} ${c.kind === "min_runway_months" ? "months" : "days late"}`}
+              </li>
+            ))}
+          </ul>
+          {run.constraints.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No source rules.</p>
           ) : null}
-          {!receipt && !selected ? (
-            <div className="space-y-3">
-              <p className="text-sm">
-                Nothing is calculated until you review and save. The timeline stays as it is until
-                you open the saved result.
-              </p>
-              {selectedWeek ? (
-                <p className="text-xs text-muted-foreground">
-                  Chosen week: <WhenDate iso={selectedWeek} />
-                  {selectedItemId ? ` · selected item ${selectedItemId}` : ""}.
-                </p>
-              ) : null}
-              <Button
-                disabled={pending || blocked}
-                onClick={() =>
-                  write({
-                    kind: "begin",
-                    ...(selectedWeek ? { selectedWeek } : {}),
-                    ...(selectedItemId ? { selectedItemId } : {}),
-                  })
-                }
-              >
-                Start new chat
-              </Button>
-            </div>
-          ) : null}
-          {receipt ? (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Badge
-                  variant={
-                    receipt.status === "saved"
-                      ? "success"
-                      : receipt.status === "ready"
-                        ? "default"
-                        : receipt.pendingField
-                          ? "warning"
-                          : "outline"
-                  }
-                  data-testid="chat-status"
-                >
-                  {pending
-                    ? "Thinking…"
-                    : receipt.status === "saved"
-                      ? "Saved as a scenario"
-                      : receipt.status === "ready"
-                        ? "Ready to review"
-                        : receipt.pendingField
-                          ? "Needs one more detail"
-                          : "Listening"}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{turns} of 20 messages</span>
-              </div>
-              {receipt.selectedWeek ? (
-                <p className="text-xs text-muted-foreground">
-                  Pinned week: <WhenDate iso={receipt.selectedWeek} />
-                  {receipt.selectedItemId ? ` · item ${receipt.selectedItemId}` : ""}.
-                </p>
-              ) : null}
-              <ol
-                ref={transcript}
-                aria-label="Conversation"
-                aria-live="polite"
-                aria-relevant="additions"
-                className={`space-y-4 py-3 ${sidebar ? "max-h-[40dvh] overflow-y-auto overscroll-contain pr-1" : ""}`}
-              >
-                {receipt.turns.map((turn) => (
-                  <li
-                    key={turn.id}
-                    className={`max-w-[95%] rounded-lg px-4 py-3 text-sm ${turn.role === "user" ? "ml-auto bg-muted" : "mr-auto border"}`}
-                  >
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">
-                      {turn.role === "user" ? "You" : "Domino"}
-                    </p>
-                    <p className="whitespace-pre-wrap">{turn.text}</p>
-                  </li>
-                ))}
-              </ol>
-              {receipt.status !== "saved" ? (
-                <form
-                  className="space-y-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (text.trim() && turns < 20)
-                      void write({ kind: "send", receipt, text: text.trim() });
-                  }}
-                >
-                  <label htmlFor="chat-reply" className="block text-sm font-medium">
-                    {receipt.pendingField
-                      ? `Your reply · ${receipt.pendingField}`
-                      : receipt.status === "ready"
-                        ? "Correct your draft"
-                        : "Describe your change"}
-                  </label>
-                  <textarea
-                    id="chat-reply"
-                    rows={3}
-                    maxLength={1000}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    disabled={pending || blocked || turns >= 20}
-                    className={`${inputClass} min-h-24 w-full resize-y`}
-                    placeholder={
-                      receipt.pendingField
-                        ? "Type your answer…"
-                        : receipt.status === "ready"
-                          ? "For example: change amount to $80,000"
-                          : `For example: What if we pay $50,000 to Atlas Legal on ${firstWeek}?`
-                    }
-                    aria-describedby="chat-hint"
-                  />
-                  <p id="chat-hint" className="text-xs text-muted-foreground">
-                    Short answers are welcome. Shift+Enter makes a new line. Use Send reply to
-                    submit. {text.length}/1,000 characters.
-                  </p>
-                  <Button
-                    type="submit"
-                    disabled={pending || blocked || !text.trim() || turns >= 20}
-                  >
-                    Send reply
-                  </Button>
-                  {turns >= 20 ? (
-                    <output className="block text-sm">
-                      This conversation has reached its 20-message limit. Start a new chat to
-                      continue.
-                    </output>
-                  ) : null}
-                </form>
-              ) : null}
-              {receipt.status === "ready" ? (
-                <div className="space-y-4 rounded-lg border p-4">
-                  <h4 className="text-sm font-medium">Review before calculating</h4>
-                  <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
-                  <p className="text-xs text-muted-foreground">
-                    These events apply to the source scenario. Saving calculates a new timeline and
-                    checks its rules.
-                  </p>
-                  <label className="flex min-h-11 items-start gap-3 text-sm">
-                    <input
-                      className="mt-1 size-4 shrink-0 accent-primary"
-                      type="checkbox"
-                      checked={reviewed}
-                      disabled={pending || blocked}
-                      onChange={(e) => setReviewedFor(e.target.checked ? token : null)}
-                    />
-                    I reviewed these events, dates, amounts and the full rule set.
-                  </label>
-                  <Button
-                    disabled={!reviewed || pending || blocked}
-                    onClick={() => write({ kind: "confirm", receipt })}
-                  >
-                    Calculate and save scenario
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    To correct a detail, reply “change amount to $80,000” or “change date to
-                    2026-11-17”. Use Start over for a different request. The transcript stays saved.
-                  </p>
-                </div>
-              ) : null}
-              {receipt.status === "saved" && receipt.linkedRunId ? (
-                <div className="space-y-3 rounded-lg border border-safe/30 bg-safe/5 p-4">
-                  <p className="text-sm font-medium">Your scenario is saved.</p>
-                  <Link
-                    className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/85 sm:min-h-9"
-                    href={workspaceHref(run.companyId, { runId: receipt.linkedRunId })}
-                    data-testid="chat-open-saved"
-                  >
-                    Open saved timeline
-                  </Link>
-                  <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-3">
-                {receipt.status !== "saved" ? (
-                  <Button
-                    variant="outline"
-                    disabled={pending || blocked}
-                    onClick={() => write({ kind: "reset", receipt })}
-                  >
-                    Start over
-                  </Button>
-                ) : null}
-                <Link
-                  className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
-                  href={chatHref(run.companyId, run.runId)}
-                >
-                  Start new chat
-                </Link>
-              </div>
-            </>
-          ) : null}
-          {pending ? (
-            <output className="block text-sm text-muted-foreground" aria-live="polite">
-              Thinking…
-            </output>
-          ) : null}
-          {opening && latest ? (
-            <Link
-              className="block text-sm text-primary hover:underline"
-              href={chatHref(
-                run.companyId,
-                run.runId,
-                latest.conversationId,
-                latest.selectedWeek ?? undefined,
-                latest.selectedItemId ?? undefined,
-              )}
-            >
-              Open the saved conversation
-            </Link>
-          ) : null}
-          {blocked ? (
-            <div className="space-y-2 rounded-lg border p-3 text-sm">
-              <p>
-                A reply is still unconfirmed. Retry that exact reply before sending another, or
-                reload this conversation to read its saved state.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => {
-                    if (writeGuard.pending) void write(writeGuard.pending);
-                  }}
-                >
-                  Retry unconfirmed reply
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => window.location.reload()}
-                >
-                  Reload saved conversation
-                </Button>
-              </div>
-            </div>
-          ) : null}
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+        </div>
+      </details>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <Panel title="Describe a rule or a possible event">
+          {intro}
+          {notice}
+          {start}
+          {status}
+          {transcript}
+          {choices}
+          {composer}
+          {review}
+          {saved}
+          {restart}
+          {working}
+          {status2}
         </Panel>
-        <details className="min-w-0 rounded-lg border p-4">
-          <summary className="cursor-pointer text-sm font-medium">Recent conversations</summary>
-          <div className="mt-3 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Up to 20 saved conversations for this source timeline. Reopening only reads saved
-              data.
-            </p>
-            {history.state !== "ready" ? (
-              <ReadNotice read={history} what="conversation list" />
-            ) : history.value.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No conversations yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {history.value.map((r) => (
-                  <li key={r.conversationId} className="space-y-1 border-t pt-3 text-sm">
-                    <Link
-                      aria-current={
-                        r.conversationId === receipt?.conversationId ? "page" : undefined
-                      }
-                      className="block min-h-11 text-primary hover:underline"
-                      href={chatHref(
-                        run.companyId,
-                        run.runId,
-                        r.conversationId,
-                        r.selectedWeek ?? undefined,
-                        r.selectedItemId ?? undefined,
-                      )}
-                    >
-                      {r.proposal?.label ||
-                        r.turns.find((t) => t.role === "user")?.text ||
-                        "New conversation"}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {r.status === "saved"
-                        ? "Saved"
-                        : r.status === "ready"
-                          ? "Ready to review"
-                          : "In progress"}{" "}
-                      · {formatSavedAt(r.updatedAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </details>
+        {recent}
       </div>
     </article>
   );

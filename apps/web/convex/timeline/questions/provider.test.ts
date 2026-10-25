@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type ProviderContext, readWithProvider } from "./provider";
+import { type ProviderContext, copiedFromPrompt, readWithProvider } from "./provider";
 
 const ctx: ProviderContext = {
   prompt: "Keep usable cash above $3M",
@@ -163,5 +163,68 @@ describe("question provider adapter", () => {
         },
       ),
     ).toEqual({ ok: false, code: "PROVIDER_MALFORMED" });
+  });
+  it.each([
+    ["Nov 17, 2027", "Nov 17"],
+    ["17 Nov 2027", "17 Nov"],
+    ["Nov 17,2027", "Nov 17"],
+    ["Nov 17, 27", "Nov 17"],
+    ["-2026-11-17", "2026-11-17"],
+  ])("rejects partial cash and week dates from %s", async (date, partial) => {
+    for (const intent of [
+      {
+        kind: "cash_change",
+        direction: "out",
+        amountText: "$50,000",
+        dateText: partial,
+        counterpartyText: "Atlas Legal",
+      },
+      { kind: "question", topic: "week", weekText: partial, itemText: null },
+    ])
+      expect(
+        await readWithProvider(
+          { ...ctx, prompt: `pay $50,000 to Atlas Legal on ${date}` },
+          {
+            apiKey: "k",
+            model: "model",
+            timeoutMs: 1_000,
+            fetch: async () => ok({ intents: [intent] }),
+          },
+        ),
+      ).toEqual({ ok: false, code: "PROVIDER_MALFORMED" });
+  });
+
+  it("accepts whole date phrases and selection only when no explicit date overrides it", () => {
+    const date = "Nov 17, 2027";
+    const question = {
+      kind: "question" as const,
+      topic: "week" as const,
+      weekText: date,
+      itemText: null,
+    };
+    expect(copiedFromPrompt([question], `What happens on ${date}?`, [])).toBe(true);
+    expect(
+      copiedFromPrompt([{ ...question, weekText: "2026-11-16" }], "What happens this week?", [
+        "2026-11-16",
+      ]),
+    ).toBe(true);
+    expect(
+      copiedFromPrompt([{ ...question, weekText: "2026-11-16" }], `What happens on ${date}?`, [
+        "2026-11-16",
+      ]),
+    ).toBe(false);
+  });
+
+  it("cannot use a null date span to discard an explicit source date", () => {
+    const question = {
+      kind: "question" as const,
+      topic: "week" as const,
+      weekText: null,
+      itemText: null,
+    };
+    expect(
+      copiedFromPrompt([question], "What happens in the week of Nov 17, 2027?", ["2026-11-16"]),
+    ).toBe(false);
+    expect(copiedFromPrompt([question], "What happens this week?", ["2026-11-16"])).toBe(true);
   });
 });

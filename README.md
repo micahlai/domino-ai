@@ -82,13 +82,3 @@ An earlier local setup handoff recorded pending replacement of Jayden's key and 
 and results containing input/summary objects rather than contract outputs. Environment
 variables are now populated, but this integration does not revalidate their ownership or
 current job output. Validate the configured agents before claiming end-to-end learning.
-
-### Micah's recorded CREAO setup
-
-CREAO agents (one required `prompt` textarea containing the job input as JSON):
-
-- [Domino Source Mapper](https://agent.creao.ai/apps/02a902ae-5e45-425b-9b1b-62882b57f4f4): `02a902ae-5e45-425b-9b1b-62882b57f4f4`
-- [Domino Constraint Reader](https://agent.creao.ai/apps/fde63788-fe39-436d-abd7-10d6f651e61a): `fde63788-fe39-436d-abd7-10d6f651e61a`
-- [Domino Weekly Brief](https://agent.creao.ai/apps/6d6cad92-08c5-4091-b78c-a1252d8f1e5d): `6d6cad92-08c5-4091-b78c-a1252d8f1e5d`
-
-API setup and response handling are documented in `kb/research/sponsors.md`. Micah's setup used ignored root `.env`; this checkout documents `.env.local`. These references are not a claim that Jayden's local values match them. The E6 transport adapter still needs implementation.

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
 import { Segmented } from "../../ui/segmented";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../ui/sheet";
@@ -27,8 +28,9 @@ export const useIsDesktop = () =>
   );
 
 /**
- * Questions and the what-if chat in one place: a sticky sidebar beside the chart on desktop, a
- * slide-over sheet on phones. Both tabs stay mounted so a typed draft survives switching.
+ * Questions and the what-if chat in one place: pinned to the right of the page at full window
+ * height on desktop, a slide-over sheet on phones. Each conversation scrolls on its own with
+ * its composer pinned at the bottom. Both tabs stay mounted so a typed draft survives switching.
  */
 export function Assistant({
   tab,
@@ -55,7 +57,7 @@ export function Assistant({
     return (
       <aside
         aria-label="Ask or try a what-if"
-        className="hidden min-w-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-lg lg:border lg:bg-card lg:p-4 lg:shadow-xs"
+        className="hidden min-w-0 lg:sticky lg:top-20 lg:flex lg:h-[calc(100dvh-6rem)] lg:flex-col lg:rounded-lg lg:border lg:bg-card lg:p-4 lg:shadow-xs"
         data-testid="assistant"
       >
         {body}
@@ -65,7 +67,7 @@ export function Assistant({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-3 overflow-y-auto p-4 pt-5 sm:max-w-md"
+        className="flex h-full w-full flex-col gap-3 p-4 pt-5 sm:max-w-md"
         data-testid="assistant"
       >
         <SheetHeader>
@@ -109,8 +111,17 @@ function AssistantBody({
     });
     return () => cancelAnimationFrame(frame);
   }, [focusKey]);
+  const reduced = useReducedMotion();
+  const show = (visible: boolean) =>
+    reduced
+      ? {}
+      : {
+          initial: false as const,
+          animate: visible ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 },
+          transition: { duration: 0.18, ease: "easeOut" as const },
+        };
   return (
-    <div ref={root} className="min-w-0 space-y-4">
+    <div ref={root} className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
       {chat ? (
         <Segmented
           label="Assistant mode"
@@ -121,23 +132,29 @@ function AssistantBody({
             { value: "ask", label: "Ask a question" },
             { value: "chat", label: "What-if chat" },
           ]}
-          className="w-full [&>label]:flex-1 [&>label>span]:h-9 [&>label>span]:justify-center max-sm:[&>label>span]:h-11"
+          className="w-full shrink-0 [&>label]:flex-1 [&>label>span]:h-9 [&>label>span]:justify-center max-sm:[&>label>span]:h-11"
         />
       ) : null}
-      <div data-assistant-tab="ask" hidden={tab !== "ask"}>
+      <motion.div
+        className="min-h-0 flex-1"
+        data-assistant-tab="ask"
+        hidden={tab !== "ask"}
+        {...show(tab === "ask")}
+      >
         {ask}
-      </div>
+      </motion.div>
       {chat ? (
-        <section
+        <motion.section
           aria-label="Timeline chat"
           id="timeline-chat"
-          className="min-w-0 scroll-mt-24"
+          className="min-h-0 min-w-0 flex-1 scroll-mt-24"
           data-testid="timeline-chat-sidebar"
           data-assistant-tab="chat"
           hidden={tab !== "chat"}
+          {...show(tab === "chat")}
         >
           {chat}
-        </section>
+        </motion.section>
       ) : null}
     </div>
   );

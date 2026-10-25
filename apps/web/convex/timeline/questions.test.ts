@@ -17,6 +17,7 @@ import {
 } from "./questions.fake-workspace.test-support";
 import { formatCents, formatDate } from "./questions/parse";
 import type { QuestionReceipt } from "./questions/receipt";
+import { resolve } from "./questions/resolve";
 import { timelineQuestionsTable } from "./questions/table";
 
 // Vite writes this folder's files as "./x.ts"; convex-test resolves paths from the convex root.
@@ -67,6 +68,30 @@ const q = {
 
 const BASE = "timeline:run/kestrel-base";
 const base = makeRun({ runId: BASE });
+it("resolver cannot substitute a selection for an omitted explicit date", () => {
+  const intent = {
+    kind: "question" as const,
+    topic: "week" as const,
+    weekText: null,
+    itemText: null,
+  };
+  const explicit = resolve(base, [intent], {
+    questionId: "null-date-regression",
+    prompt: "What happens in the week of Nov 17, 2027?",
+    selectedWeek: "2026-11-16",
+    selectedItemId: null,
+  });
+  expect(explicit.status).toBe("clarification");
+  expect(explicit.citations).toEqual([]);
+  const selected = resolve(base, [intent], {
+    questionId: "selected-date-regression",
+    prompt: "What happens this week?",
+    selectedWeek: "2026-11-16",
+    selectedItemId: null,
+  });
+  expect(selected.status).toBe("answered");
+  expect(selected.citations[0]?.ref).toBe("forecast:week/2026-11-16");
+});
 let counter = 0;
 const rid = () => `req-question-${++counter}`;
 const ask = (
@@ -377,6 +402,8 @@ describe("timeline questions: clarification", () => {
 });
 
 describe("timeline questions: provider", () => {
+  // The earlier one-shot reader; the Claude assistant path is covered in assistant.test.ts.
+  beforeEach(() => vi.stubEnv("TIMELINE_ASSISTANT", "off"));
   const unknown = "Could you sort out the thing with the agency bill being slow?";
 
   it("saves a failure without any call when the provider is not configured", async () => {
@@ -395,47 +422,52 @@ describe("timeline questions: provider", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("applies the same semantic guard to generated intents", async () => {
+  it("rejects an explicit upper limit before asking the provider", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => reply({ intents: [{ kind: "min_cash_rule", amountText: "$3M" }] })),
+    const fetchSpy = vi.fn(async () =>
+      reply({ intents: [{ kind: "min_cash_rule", amountText: "$3M" }] }),
     );
+    vi.stubGlobal("fetch", fetchSpy);
     const r = await ask(setup(), "Could you enforce usable cash below $3M?");
     expect(r.status).toBe("clarification");
-    expect(r.answer).toContain("upper cash limit");
+    expect(r.answer).toMatch(/upper.*limits?/);
     expect(r.proposal).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it.each([
     [
       "Could you enforce usable cash above $3M every day?",
       { kind: "min_cash_rule", amountText: "$3M" },
-      /not day by day/,
+      /daily/,
+      0,
     ],
     [
       "Could the Northwind Health payment land 10 days behind schedule while we keep usable cash above $3M at all times?",
       { kind: "late_invoice", itemText: "Northwind Health", daysText: "10 days" },
       /not day by day/,
+      1,
     ],
     [
       "Could you enforce a headcount budget and keep usable cash above $3M?",
       { kind: "min_cash_rule", amountText: "$3M" },
       /Headcount/,
+      1,
     ],
     [
       "Could the Northwind Health payment land 10 days behind schedule with a hiring budget?",
       { kind: "late_invoice", itemText: "Northwind Health", daysText: "10 days" },
       /Headcount/,
+      1,
     ],
   ])(
     "does not let provider intents drop unsupported qualifiers from %s",
-    async (prompt, intent, message) => {
+    async (prompt, intent, message, expectedCalls) => {
       vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
       const fetchSpy = vi.fn(async () => reply({ intents: [intent] }));
       vi.stubGlobal("fetch", fetchSpy);
       const r = await ask(setup(), prompt);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(expectedCalls as number);
       expect(r.status).toBe("clarification");
       expect(r.answer).toMatch(message);
       expect(r.proposal).toBeNull();
@@ -455,6 +487,7 @@ describe("timeline questions: provider", () => {
           counterpartyText: "Atlas Legal",
         },
       ],
+      0,
     ],
     [
       "Could you arrange an $80000 payment to Atlas Legal dated 2026-11-17 and enforce usable cash above $3000000?",
@@ -468,6 +501,7 @@ describe("timeline questions: provider", () => {
         },
         { kind: "min_cash_rule", amountText: "$80000" },
       ],
+      1,
     ],
     [
       "Could you arrange an $80000 payment to Atlas Legal dated 2026-11-17 and a $10000 deposit from Acme dated 2026-11-18?",
@@ -487,15 +521,16 @@ describe("timeline questions: provider", () => {
           counterpartyText: "Acme",
         },
       ],
+      1,
     ],
   ])(
     "rejects dropped or cross-clause provider amounts and dates in %s",
-    async (prompt, intents) => {
+    async (prompt, intents, expectedCalls) => {
       vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
       const fetchSpy = vi.fn(async () => reply({ intents }));
       vi.stubGlobal("fetch", fetchSpy);
       const r = await ask(setup(), prompt);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(expectedCalls as number);
       expect(r.status).toBe("clarification");
       expect(r.proposal).toBeNull();
     },

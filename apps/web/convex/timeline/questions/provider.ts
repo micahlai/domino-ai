@@ -1,7 +1,7 @@
 import { canonicalJson } from "@domino/contracts";
 import { z } from "zod";
 import { INTENTS_JSON_SCHEMA, type Intent, IntentsSchema, wordsOf } from "./intent";
-import { countTokens, moneyTokens } from "./parse";
+import { countTokens, dateTokens, moneyTokens } from "./parse";
 
 /**
  * Optional one-shot intent reader (method "provider"). One Messages API request with a
@@ -57,7 +57,7 @@ const ReplySchema = z.object({
 });
 
 /** Complete numeric phrases only: "$80" cannot be copied out of "-$80" or "$80,00". */
-function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[]): boolean {
+export function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[]): boolean {
   const complete = (word: string) => {
     let start = prompt.indexOf(word);
     while (start !== -1) {
@@ -70,6 +70,7 @@ function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[])
   };
   const amounts = moneyTokens(prompt);
   const counts = countTokens(prompt);
+  const dates = dateTokens(prompt);
   return intents.every((i) => {
     if (!wordsOf(i).every((w) => complete(w) || selected.includes(w))) return false;
     if (
@@ -85,6 +86,16 @@ function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[])
     )
       return false;
     if (i.kind === "runway_rule" && i.monthsText !== null && !counts.includes(i.monthsText))
+      return false;
+    const date = i.kind === "cash_change" ? i.dateText : i.kind === "question" ? i.weekText : null;
+    // Null is not permission to discard an explicit date and use selected context instead.
+    if ((i.kind === "cash_change" || i.kind === "question") && dates.length && date === null)
+      return false;
+    if (
+      date !== null &&
+      !dates.includes(date) &&
+      !(i.kind === "question" && dates.length === 0 && selected.includes(date))
+    )
       return false;
     return true;
   });

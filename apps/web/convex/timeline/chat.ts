@@ -2,10 +2,32 @@ import { canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
 import { z } from "zod";
 import type { Doc } from "../_generated/dataModel";
-import { type MutationCtx, type QueryCtx, mutation, query } from "../_generated/server";
-import { DraftSchema, GREETING, advance, emptyDraft, validateProposal } from "./chat/draft";
-import { CHAT_METHOD, type ChatReceipt, DateOnly, Id, exactReceipt } from "./chat/receipt";
+import {
+  type MutationCtx,
+  type QueryCtx,
+  internalMutation,
+  mutation,
+  query,
+} from "../_generated/server";
+import { groundingIssue } from "./assistant/grounding";
+import {
+  DraftSchema,
+  GREETING,
+  advance,
+  emptyDraft,
+  evaluateIntents,
+  validateProposal,
+} from "./chat/draft";
+import {
+  CHAT_METHOD,
+  type ChatChoice,
+  type ChatReceipt,
+  DateOnly,
+  Id,
+  exactReceipt,
+} from "./chat/receipt";
 import { checkPinned, checkSelection, source } from "./chat/source";
+import { IntentSchema } from "./questions/intent";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
 
@@ -96,6 +118,7 @@ function append(
   role: "user" | "assistant",
   text: string,
   now: string,
+  choices?: ChatChoice[],
 ): ChatReceipt {
   if (receipt.turns.length >= 42)
     reject("CHAT_LIMIT", "This chat has reached 42 messages. Start a new chat to continue.");
@@ -103,7 +126,13 @@ function append(
     ...receipt,
     turns: [
       ...receipt.turns,
-      { id: `${receipt.conversationId}:${receipt.turns.length}`, role, text, createdAt: now },
+      {
+        id: `${receipt.conversationId}:${receipt.turns.length}`,
+        role,
+        text,
+        createdAt: now,
+        ...(choices?.length ? { choices } : {}),
+      },
     ],
   };
 }
@@ -304,6 +333,171 @@ export const confirm = mutation({
     );
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft } });
     return accept(ctx, args, prior.hash, updated);
+  },
+});
+const AssistantInputSchema = WriteSchema.extend({
+  text: z
+    .string()
+    .min(1)
+    .max(1000)
+    .refine((s) => s.trim().length > 0),
+}).strict();
+type AssistantInput = z.infer<typeof AssistantInputSchema>;
+const assistantArgs = { ...writeArgs, text: v.string() };
+const ASSISTANT_LEASE_MS = 140_000;
+
+/** The request key binds only original inputs, never generated output or attempt metadata. */
+async function assistantRequest(ctx: MutationCtx, args: AssistantInput) {
+  checkRequestId(args.requestId);
+  const hash = await sha256Hex(canonicalJson({ method: CHAT_METHOD, op: "assistant", args }));
+  const prior = await ctx.db
+    .query("timelineChatRequests")
+    .withIndex("by_company_and_requestId", (q) =>
+      q.eq("companyId", args.companyId).eq("requestId", args.requestId),
+    )
+    .unique();
+  if (!prior) return { hash, prior, receipt: null };
+  if (prior.requestHash !== hash) {
+    // Old assistant rows did not fingerprint their inputs. Recover only the exact accepted
+    // turn from its immutable receipt; different text, conversation or revision still rejects.
+    const oldAssistant = await sha256Hex(
+      canonicalJson({
+        method: CHAT_METHOD,
+        op: "assistant",
+        args: { companyId: args.companyId, requestId: args.requestId },
+      }),
+    );
+    const oldGrammar = await sha256Hex(canonicalJson({ method: CHAT_METHOD, op: "send", args }));
+    const oldReceipt =
+      !prior.assistant && (prior.requestHash === oldAssistant || prior.requestHash === oldGrammar)
+        ? exactReceipt(prior.data)
+        : null;
+    if (
+      !oldReceipt ||
+      oldReceipt.conversationId !== args.conversationId ||
+      oldReceipt.revision !== args.expectedRevision + 1 ||
+      oldReceipt.turns.at(-2)?.role !== "user" ||
+      oldReceipt.turns.at(-2)?.text !== args.text
+    )
+      reject("REQUEST_CONFLICT", "This request key was already used for different chat inputs.");
+  }
+  if (prior.assistant && prior.assistant.status !== "accepted")
+    return { hash, prior, receipt: null };
+  const receipt = exactReceipt(prior.data);
+  const row = await rowOf(ctx, args.companyId, receipt.conversationId);
+  if (!row || receipt.companyId !== args.companyId)
+    reject("CHAT_INTEGRITY", "The accepted chat request could not be verified.");
+  const current = await read(ctx, row);
+  checkPinned(current.run, receipt);
+  if (receipt.proposal) validateProposal(current.run, receipt.proposal);
+  return { hash, prior, receipt };
+}
+
+/** Preflight and reserve one request atomically before any provider call. */
+export const claimAssistantTurn = internalMutation({
+  args: assistantArgs,
+  handler: async (ctx, raw) => {
+    const args = parse(AssistantInputSchema, raw);
+    const prior = await assistantRequest(ctx, args);
+    if (prior.receipt) return { kind: "accepted" as const, receipt: prior.receipt };
+    const now = Date.now();
+    if (prior.prior?.assistant?.status === "running" && prior.prior.assistant.leaseUntil > now)
+      // The original revision deliberately fails the client's accepted-turn check. It keeps
+      // the request unconfirmed, without pretending a turn was saved or making another call.
+      return { kind: "running" as const, receipt: exactReceipt(prior.prior.data) };
+    const { receipt, draft, run } = await current(ctx, args);
+    if (
+      receipt.turns.filter((t) => t.role === "user").length >= 20 ||
+      receipt.turns.length + 2 > 42
+    )
+      reject(
+        "CHAT_LIMIT",
+        "This chat has reached 20 user turns or 42 messages. Start a new chat to continue.",
+      );
+    const attempt = (prior.prior?.assistant?.attempt ?? 0) + 1;
+    const claim = {
+      companyId: args.companyId,
+      requestId: args.requestId,
+      requestHash: prior.hash,
+      data: receipt,
+      assistant: { status: "running" as const, attempt, leaseUntil: now + ASSISTANT_LEASE_MS },
+    };
+    checkRowSize(claim);
+    if (prior.prior) await ctx.db.patch(prior.prior._id, claim);
+    else await ctx.db.insert("timelineChatRequests", claim);
+    return { kind: "claimed" as const, receipt, draft, run, attempt };
+  },
+});
+
+/** Release a failed attempt; a later exact retry may claim again. Late attempts cannot commit. */
+export const failAssistantTurn = internalMutation({
+  args: { ...assistantArgs, attempt: v.number() },
+  handler: async (ctx, { attempt, ...raw }): Promise<ChatReceipt | null> => {
+    const args = parse(AssistantInputSchema, raw);
+    const prior = await assistantRequest(ctx, args);
+    if (prior.receipt) return prior.receipt;
+    const claim = prior.prior?.assistant;
+    if (prior.prior && claim?.status === "running" && claim.attempt === attempt)
+      await ctx.db.patch(prior.prior._id, { assistant: { ...claim, status: "failed" } });
+    return null;
+  },
+});
+
+/** Save only a deterministic checked reply and proposal against the claimed source revision. */
+export const saveAssistantTurn = internalMutation({
+  args: { ...assistantArgs, attempt: v.number(), intentsJson: v.union(v.string(), v.null()) },
+  handler: async (ctx, { attempt, intentsJson, ...raw }): Promise<ChatReceipt> => {
+    const args = parse(AssistantInputSchema, raw);
+    const prior = await assistantRequest(ctx, args);
+    if (prior.receipt) return prior.receipt;
+    const claim = prior.prior?.assistant;
+    if (
+      !prior.prior ||
+      !claim ||
+      claim.status !== "running" ||
+      claim.attempt !== attempt ||
+      claim.leaseUntil <= Date.now()
+    )
+      reject(
+        "ASSISTANT_EXPIRED",
+        "This reply expired. Retry the same message or reopen the saved conversation.",
+      );
+    const { row, receipt, draft, run } = await current(ctx, args);
+    const intents =
+      intentsJson === null ? null : z.array(IntentSchema).max(4).parse(JSON.parse(intentsJson));
+    // Existing supplied slots are changed only by the deterministic pending-field/correction
+    // path. A model cannot silently replace them or pull values from an earlier reset draft.
+    // Enforce the original wording even when no model ran or returned no usable intents.
+    // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
+    const sourceIssue = groundingIssue(args.text, []);
+    const next = sourceIssue
+      ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
+      : draft.intents.length || intents === null
+        ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId)
+        : evaluateIntents(run, intents, receipt.conversationId, args.text, receipt.selectedItemId);
+    const unchangedReady =
+      !sourceIssue &&
+      receipt.status === "ready" &&
+      !next.draft.pending &&
+      canonicalJson(next.draft.intents) === canonicalJson(draft.intents);
+    const proposal = next.proposal ?? (unchangedReady ? receipt.proposal : null);
+    const now = new Date().toISOString();
+    let updated: ChatReceipt = {
+      ...receipt,
+      revision: receipt.revision + 1,
+      status: proposal ? "ready" : "collecting",
+      proposal,
+      pendingField: proposal ? null : next.pendingField,
+      updatedAt: now,
+    };
+    updated = append(append(updated, "user", args.text, now), "assistant", next.answer, now);
+    checkRowSize({ receipt: updated, draft: next.draft });
+    await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
+    await ctx.db.patch(prior.prior._id, {
+      data: exactReceipt(updated),
+      assistant: { ...claim, status: "accepted" },
+    });
+    return updated;
   },
 });
 export const get = query({

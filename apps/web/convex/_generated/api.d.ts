@@ -89,6 +89,9 @@ import type * as timeline_analysis_compute from "../timeline/analysis/compute.js
 import type * as timeline_analysis_receipt from "../timeline/analysis/receipt.js";
 import type * as timeline_analysis_refs from "../timeline/analysis/refs.js";
 import type * as timeline_analysis_table from "../timeline/analysis/table.js";
+import type * as timeline_assistant_claude from "../timeline/assistant/claude.js";
+import type * as timeline_assistant_context from "../timeline/assistant/context.js";
+import type * as timeline_assistant_questions from "../timeline/assistant/questions.js";
 import type * as timeline_baselines from "../timeline/baselines.js";
 import type * as timeline_chat from "../timeline/chat.js";
 import type * as timeline_chat_draft from "../timeline/chat/draft.js";
@@ -96,6 +99,7 @@ import type * as timeline_chat_receipt from "../timeline/chat/receipt.js";
 import type * as timeline_chat_refs from "../timeline/chat/refs.js";
 import type * as timeline_chat_source from "../timeline/chat/source.js";
 import type * as timeline_chat_table from "../timeline/chat/table.js";
+import type * as timeline_chatAssistant from "../timeline/chatAssistant.js";
 import type * as timeline_output from "../timeline/output.js";
 import type * as timeline_output_project from "../timeline/output/project.js";
 import type * as timeline_questions from "../timeline/questions.js";
@@ -203,6 +207,9 @@ declare const fullApi: ApiFromModules<{
   "timeline/analysis/receipt": typeof timeline_analysis_receipt;
   "timeline/analysis/refs": typeof timeline_analysis_refs;
   "timeline/analysis/table": typeof timeline_analysis_table;
+  "timeline/assistant/claude": typeof timeline_assistant_claude;
+  "timeline/assistant/context": typeof timeline_assistant_context;
+  "timeline/assistant/questions": typeof timeline_assistant_questions;
   "timeline/baselines": typeof timeline_baselines;
   "timeline/chat": typeof timeline_chat;
   "timeline/chat/draft": typeof timeline_chat_draft;
@@ -210,6 +217,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/chat/refs": typeof timeline_chat_refs;
   "timeline/chat/source": typeof timeline_chat_source;
   "timeline/chat/table": typeof timeline_chat_table;
+  "timeline/chatAssistant": typeof timeline_chatAssistant;
   "timeline/output": typeof timeline_output;
   "timeline/output/project": typeof timeline_output_project;
   "timeline/questions": typeof timeline_questions;

@@ -9,6 +9,7 @@
 | Exact suggestion simulation and saved explanations | doing | merge/field-explanations-20261025; audit repairs before friend/trace integration; optional polish frozen. |
 | Current-company latest-filing refresh | doing | New user clarification:2-3 primary companies; retain historical2U; research confirms Asana/GitLab July2026 quarters, September filings. Preserve old secondary feeds as legacy datasets. |
 | Agent-map vertical shifting during updates | done | b07c8c5: reproduced24px activity reflow;80 update samples stable after fixed two-line summary.63 focused tests/tsc/lint/build and live3114 pass. |
+| Publish verified Field release to main | done | a607b97 pushed to origin/main with explicit authorization Oct25; preserves fe39898 + af7977d. Web/Convex tsc pass; same app source as recorded passing Field release. Live runtime unchanged. |
 
 Latest planning checkpoint: two full-stack features, Field/Knowledge for Jayden and Timeline/Simulations for friend. See ../spec/independent-feature-lanes.md. P0 shared setup is planned, not implemented; after audit each lane owns its UI/backend/queue on a long-lived branch. Current lead first verifies/checkpoints existing L1/S2; L1 57a1581 first review rejected (../reviews/L1-57a1581-codex-audit.md), repair state unverified here. Older ready/sole-UI/global-queue rows below are history where superseded. No new worker launched; main/monitor/runtimes unchanged.
 
@@ -105,7 +106,7 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | ID | Task | Prompt | Depends on | Status | Branch | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | CREAO local setup complete: all five .env fields, three private agents, API mock runs and checks pass; other service access remains unverified |
+| S0 | Product machine setup | `prompts/shared/00-setup.md` | — | review | main | Main runs at localhost:3000 with separate local Convex on 3220, 25 root .env settings loaded, computed company seeded, browser and pnpm check pass; cloud/provider access unverified |
 | P1 | Web shell + playground | `prompts/product/P1-web-shell.md` | S0 | done | codex/p1-web-shell | Seven routes, fixture previews, local Convex, checks/build/browser pass |
 | P2 | Convex schema, queries, mutations, fixture seed | `prompts/product/P2-convex.md` | P1 | done | codex/p2-convex | 14 tables/queries, 5 mutations; seed and live queries verified; 56 tests/check/build pass |
 | P3 | Multiverse timeline (hero) | `prompts/product/P3-multiverse-timeline.md` | P1 | done | codex/p3-multiverse | SVG fan, stable fix morph, selection and keyboard access; desktop/mobile verified |
@@ -136,3 +137,5 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | E6e | `kb/tasks/E6e-text-artifacts.md` | E6d | done | E6e-text-artifacts |1bc9761 reviewed/merged,647tests, direct brief pass with intermittent format |
 
 | E2a | `kb/tasks/E2a-mock-sources.md` | C3 | doing | E2a-mock-sources | Claude authenticated source handler/server |
+
+| D1 | Feature completion overview PDF | User request | main fetched | done | main | Seven-page output/pdf/domino-feature-status-overview.pdf; code/status cross-check, source index, all pages visually reviewed; pnpm check passes |

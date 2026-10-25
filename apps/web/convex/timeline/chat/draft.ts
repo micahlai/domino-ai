@@ -1,5 +1,6 @@
 import { BOUNDARY_INTEGER_MAX, canonicalJson } from "@domino/contracts";
 import { z } from "zod";
+import { groundingIssue } from "../assistant/grounding";
 import { type WorkspaceRun, matchRecords, recordsOf } from "../questions/context";
 import { IN, OUT, SCENARIO, clauses, readWithGrammar } from "../questions/grammar";
 import { type Intent, IntentSchema } from "../questions/intent";
@@ -36,7 +37,7 @@ export const DraftSchema = z
   .strict();
 export type Draft = z.infer<typeof DraftSchema>;
 export const emptyDraft = (): Draft => ({ intents: [], pending: null });
-type Result = {
+export type Result = {
   draft: Draft;
   answer: string;
   proposal: QuestionProposal | null;
@@ -153,7 +154,7 @@ function fieldIssue(run: WorkspaceRun, i: Intent, field: Field, word: string): s
 
 /** Build a statement from typed slots, not transcript concatenation. All values are retained
  * user words; fixed connective words only allow the existing resolver's meaning guard to run. */
-function statement(i: Intent): string {
+export function statement(i: Intent): string {
   switch (i.kind) {
     case "cash_change":
       return `${i.direction === "in" ? "receive" : "pay"} ${i.amountText} ${i.direction === "in" ? "from" : "to"} ${i.counterpartyText} on ${i.dateText}`;
@@ -203,6 +204,21 @@ function distinctCashLabels(run: WorkspaceRun, proposal: QuestionProposal): Ques
     return { ...change, label };
   });
   return { ...proposal, changes };
+}
+/**
+ * Check a whole draft that Claude wrote (normalized slot values) with the same field
+ * validation and resolver as the fixed grammar, so proposals are identical either way.
+ */
+export function evaluateIntents(
+  run: WorkspaceRun,
+  intents: Intent[],
+  conversationId: string,
+  originalText: string,
+  selectedItemId: string | null = null,
+): Result {
+  const issue = groundingIssue(originalText, intents, selectedItemId ? [selectedItemId] : []);
+  if (issue) return { draft: emptyDraft(), answer: issue, proposal: null, pendingField: null };
+  return finish(run, DraftSchema.parse({ intents, pending: null }), conversationId);
 }
 function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result {
   for (const [index, intent] of draft.intents.entries()) {
