@@ -294,6 +294,19 @@ describe("durable Timeline clarification chat", () => {
     expect((await runs(t)).length).toBe(count);
   });
   it.each([
+    ["Pay $250,000 for a roof repair on 2026-11-17", "Payment to Roof Repair"],
+    ["We pay $250,000 to Atlas Legal for a roof repair on 2026-11-17", "Payment to Atlas Legal"],
+    ["Pay $250,000 to Atlas Legal in the week of 2026-11-17", "Payment to Atlas Legal"],
+  ])("reads plain purpose and week-of phrasing: %s", async (text, label) => {
+    const t = setup();
+    let r = await start(t);
+    r = await send(t, r, text);
+    expect(r.status).toBe("ready");
+    expect(r.proposal?.changes).toEqual([
+      { kind: "remove_cash", amount: 25_000_000, date: "2026-11-17", label },
+    ]);
+  });
+  it.each([
     "Pay $80k to Atlas on Nov 18 if Acme pays first",
     "Keep usable cash above $3M unless we raise capital",
     "Keep usable cash above $3M only for the US account",

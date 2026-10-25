@@ -301,15 +301,39 @@ const correctionFields: Record<string, Field> = {
   days: "daysText",
   months: "monthsText",
 };
+/** Purpose words that still change meaning ("for the US account", "for 3 months"). */
+const NOT_A_PURPOSE =
+  /\d|\b(account|accounts|only|tax|taxes|discount|percent|day|days|week|weeks|month|months|year|years|if|unless|except|each|every)\b/i;
+
+/**
+ * Rewrites two plain phrasings into the fixed grammar without changing meaning:
+ * "in (the) week of <date>" becomes "on <date>", and a one-time payment's purpose
+ * ("$250,000 for a roof repair on <date>") becomes its payee when none is named,
+ * or is dropped when a payee is named. Anything else is left for the guard below.
+ */
+/** The fixed grammar reads payees as capitalized words: "roof repair" -> "Roof Repair". */
+const titleCase = (words: string) => words.trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
+export function plainPhrasing(text: string): string {
+  let out = text.replace(/\bin\s+(?:the\s+)?week\s+(?:of|starting)\s+/gi, "on ");
+  const purpose = /\bfor\s+(?:a|an|the|our|some)?\s*([a-z][a-z' &-]{1,40}?)\s+(?=on\b)/i.exec(out);
+  if (purpose?.[1] && OUT.test(out) && !IN.test(out) && !NOT_A_PURPOSE.test(purpose[1])) {
+    const payee = /\bto\s+[a-z]/i.test(out.slice(0, purpose.index));
+    out = `${out.slice(0, purpose.index)}${payee ? "" : `to ${titleCase(purpose[1])} `}${out.slice(purpose.index + purpose[0].length)}`;
+  }
+  return out;
+}
+
 export function advance(
   run: WorkspaceRun,
   previous: Draft,
-  text: string,
+  rawText: string,
   conversationId: string,
   selectedItemId: string | null,
   floor: string | null = null,
 ): Result {
   const draft = DraftSchema.parse(previous);
+  const text = plainPhrasing(rawText);
   // The fixed grammar only models unconditional events on one exact date. Keep
   // conditions and relative timing visible instead of discarding their meaning.
   if (
@@ -320,7 +344,7 @@ export function advance(
     return {
       draft,
       answer:
-        'I can only read one plain event on one exact date, like "Pay $250,000 to Roofing Co on 2023-12-04". Words like for, in, if, before or with are not supported yet. Nothing changed.',
+        'I can only read one plain event on one exact date in the forecast, like "Pay $250,000 for a roof repair on" a date. Conditions (if, unless, before, with) and ranges like "in 2099" are not supported yet. Nothing changed.',
       proposal: null,
       pendingField: draft.pending ? fieldWords[draft.pending.field] : null,
     };
