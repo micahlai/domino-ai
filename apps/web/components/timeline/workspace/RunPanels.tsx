@@ -71,7 +71,9 @@ export function WeekDetail({
     <Panel title="Chosen week" testId="week-detail">
       <p className="text-sm">
         Week of <WhenDate iso={week.weekStart} />: usable cash{" "}
-        <span className="font-mono tabular-nums">{formatExactCents(week.usable)}</span>
+        <span className="whitespace-nowrap font-mono tabular-nums">
+          {formatExactCents(week.usable)}
+        </span>
         {delta ? (
           <span className="text-muted-foreground" data-testid="week-delta">
             {" "}
@@ -79,7 +81,7 @@ export function WeekDetail({
           </span>
         ) : null}
       </p>
-      <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+      <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2 text-xs">
         {(
           [
             ["Starting cash", week.opening],
@@ -90,7 +92,7 @@ export function WeekDetail({
         ).map(([label, v]) => (
           <div key={label}>
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-mono tabular-nums">{formatExactCents(v)}</dd>
+            <dd className="whitespace-nowrap font-mono tabular-nums">{formatExactCents(v)}</dd>
           </div>
         ))}
       </dl>
