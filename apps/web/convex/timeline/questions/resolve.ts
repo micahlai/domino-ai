@@ -9,6 +9,7 @@ import { type CashSchedule, cashSchedule, forecastFromSchedule } from "@domino/e
 import { bucketOf } from "@domino/engine/src/schedule";
 import type { CashItem } from "@domino/engine/src/schedule";
 import { z } from "zod";
+import { invoiceName } from "../recordNames";
 import { type RecordRef, type WorkspaceRun, matchRecords, recordsOf } from "./context";
 import type { Intent } from "./intent";
 import { meaningIssue } from "./meaning";
@@ -319,7 +320,7 @@ function lateInvoice(
   return {
     changes: [{ kind: "delay_invoice", invoiceId: rec.id, days }],
     constraints: [],
-    labels: [`${rec.name} pays ${rec.id} ${days} days late`],
+    labels: [`${invoiceName(run.baseline.seed.snapshot, rec.id)}, paid ${days} days late`],
     citations: [recordRef(rec)],
   };
 }

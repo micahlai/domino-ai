@@ -7,9 +7,9 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 describe("plain-language run summary", () => {
   it("answers with the saved breach week, or that cash stays above, or the low point", () => {
     expect(runHeadline(fixtureScenario)).toBe(
-      "Cash falls below the $3,150,000.00 minimum in the week of Dec 14, 2026",
+      "Cash falls below the $3.2M minimum in the week of Dec 14, 2026",
     );
-    expect(runHeadline(fixtureRules)).toMatch(/^Cash stays above the \$3,150,000\.00 minimum/);
+    expect(runHeadline(fixtureRules)).toMatch(/^Cash stays above the \$3\.2M minimum/);
     expect(runHeadline(fixtureRoot)).toMatch(/^Lowest cash is \$/);
   });
 
