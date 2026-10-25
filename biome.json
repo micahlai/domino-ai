@@ -9,7 +9,9 @@
       "**/.turbo",
       "**/.convex",
       "**/*.tsbuildinfo",
-      "**/next-env.d.ts"
+      "**/next-env.d.ts",
+      "data/evaluation/**",
+      "**/data/evaluation/**"
     ]
   },
   "formatter": {
