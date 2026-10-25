@@ -55,4 +55,4 @@ TL5 uses the pinned, explicitly labelled Kestrel peer fixture and reviewed neutr
 
 ## Separate conversational follow-up (TL9)
 
-User requested chat-based supported rule/scenario drafting with short clarification replies on2026-10-25. [Fixed interface](TL9-chat-interface.md) and [acceptance](TL9-acceptance.md) define a separate TL9-chat-checkpoint worktree, isolated3109/3260 runtime and reviewed save. Work is in progress and is not part of the published TL7-checkpoint merge. TL8 retains its original branch-rejoin scope.
+User requested chat-based supported rule/scenario drafting with short clarification replies on2026-10-25. [Fixed interface](TL9-chat-interface.md) and [acceptance](TL9-acceptance.md) define a separate TL9-chat-checkpoint worktree, isolated3109/3260 runtime and reviewed save. Work is accepted locally with2,028 tests, typechecks/lint/build and actual API/browser checks. Chat is a right sidebar on the timeline page, responsive in-page on phones. It is ready for a separate checkpoint push and is not part of the published TL7-checkpoint merge. TL8 retains its original branch-rejoin scope.

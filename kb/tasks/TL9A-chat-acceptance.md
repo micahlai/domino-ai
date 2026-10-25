@@ -7,6 +7,6 @@
 - **Notes:** new3109/3260/3261anonymous backend uses fixtureseed and reviewedneutralmodel, noenv/datacopy/provider. Do notmerge/pushTL9intoTL7withoutuserdirection. Independent reviewer/workerresults first.
 
 ## Result
-- Done:
+- Done: accepted locally; see kb/features/timeline/TL9-acceptance.md and TL9-review.md.
 - What changed:
-- Watch out:
+- Watch out: TL9 unpushed; no merge into TL7. Bounded deterministic supported wording only.

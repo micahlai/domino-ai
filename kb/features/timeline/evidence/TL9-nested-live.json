@@ -1,0 +1,13 @@
+{
+  "source": "timeline:workspace/e37e1e7277c6ff0e1562b818b2ed0bc62c14f315",
+  "conversation": "timeline:chat/c832fa347fa6efa4da8e9ebbdc033c19d8601ebf5f09ced4841bb3cc91b3b914",
+  "result": "timeline:workspace/c1ba395025eef3e2bbe8cc964746541a524a5699",
+  "checks": [
+    "distinct reviewed label",
+    "exact50000centdelta",
+    "ancestor once",
+    "rules retained",
+    "duplicate confirm identical",
+    "source unchanged"
+  ]
+}

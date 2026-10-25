@@ -7,6 +7,6 @@
 - **Notes:** no source/env/services/provider/TL7/main/push edits or delegation. Read review/ui-build/taste. Authors repair; reviewer reruns meaningful focused/scratch tests. Lead does independent live3109/3260 API/browser multi-turn save/reload and fullcheck/build. Existing3107 preview/published origin/TL7-checkpoint remain unchanged. Record report /tmp/TL9-review/review.md.
 
 ## Result
-- Done:
+- Done: accepted locally; see kb/features/timeline/TL9-acceptance.md and TL9-review.md.
 - What changed: none; read-only review.
-- Watch out:
+- Watch out: TL9 unpushed; no merge into TL7. Bounded deterministic supported wording only.

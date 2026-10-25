@@ -10,9 +10,10 @@ TL1–TL7 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. U
 | TL3 questions | Evidence answers, natural-language event/rule proposals, confirmation, missing-input clarification and failure receipts | Ready locally |
 | TL4 saved sessions | Nested events, exact question/result links, paginated catalog and quiet reopen | Ready locally |
 | TL5 complete flow | Full journey below, desktop and phone | Accepted locally |
-| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL5-checkpoint,3107 |
-| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL5-checkpoint,3107 |
+| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL7-checkpoint,3107 |
+| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL7-checkpoint,3107 |
 | TL8 rejoin | Evidence-based financial-state branch rejoin | Follow-on |
+| TL9 conversational sidebar | Short clarification replies, exact proposal review, saved chat/result and in-page timeline | Separate3109 preview; see TL9 acceptance |
 
 ## Try the complete flow
 
@@ -72,3 +73,16 @@ User authorized the TL7 merge into TL5. Use3107 for the merged UI and its existi
 The merged3107 preview now shows horizontal date and vertical USD cash scales. Pick a forecast week, then **Add scenario** immediately below the chart. For money in/out, the new date starts at that week and remains editable. Invoice/bill timing follows the selected record. **Queue this event**, name the scenario, review exact queued events and **Run as a new scenario**. **Hide editor · keep draft** preserves dates/queue; **Discard draft** clears explicitly. There is no separate bottom event panel. Browser acceptance status: [TL7XC-acceptance.md](TL7XC-acceptance.md).
 
 Live browser gate complete: [saved inline smoke expense](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2Faca904d0ddd1a388af53fb1a99a09af81b79fd98) shows the exact$100 planned Dec23 expense added to Atlas Legal scenario once. Original remains unchanged. Desktop/phone evidence is in TL7XC-acceptance.md.
+
+## TL9: chat beside the timeline (separate3109 preview)
+
+[Open the source timeline](http://127.0.0.1:3109/c/kestrel/timeline?runId=timeline%3Aworkspace%2F7b750204b9e2d963f740de1ecd2f68fe8bf37b11). Published TL7 stays on3107. [Acceptance status](TL9-acceptance.md) records the latest sidebar checks.
+
+1. Keep the chart visible and start a new chat in its right sidebar. Say **What if we spend $80,000?**
+2. Reply **on 2026-11-17**, then **Atlas Legal**. Each answer fills one missing detail; the earlier amount/date stay in the draft.
+3. Review the exact outgoing$80,000 payment/date/recipient and full rule set. Saving stays disabled until the review box is checked. **Calculate and save scenario**, then open its saved timeline. Low usable cash is$2,609,000 in the week of Nov16.
+4. From that result start another chat: **Keep usable cash above a minimum**, then **$2,650,000**. Review and save. The inherited expense stays once, cash stays identical, and the cash-rule receipt explains the$41,000 shortfall.
+5. Reload/reopen the conversation. Its transcript and linked result remain saved. Starting the page alone creates no chat or calculation.
+6. In another chat try **What if a customer pays late?**, **Acme Logistics**, **14 days**. Review resolves the actual open invoice. Try ambiguous dates or a daily cash rule to see clarification without a financial proposal. Use **Start over** for a different request.
+
+The chat supports bounded payment/receipt, late-invoice and three existing rule types. Conditional, account-scoped, recurring and other unsupported instructions need clarification; arbitrary provider-backed dialogue is not claimed. At phone widths chat remains within the timeline page. This checkpoint is unpushed and not merged into TL7.
