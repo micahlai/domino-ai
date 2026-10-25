@@ -25,7 +25,7 @@ The script produces current and planned PNG/PDF files under `generated/`. It use
 
 ## System architecture slide
 
-`slide.py` draws the current slide (v5) by hand at 1920 x 1080: five columns (Sources, Convex backend, Engine + AI, App, People), color-coded data-flow arrows inside and between them (blue data in, purple AI calls, green results to the UI, orange learning loop), and a tech stack strip. Every card, logo and arrow has exact coordinates in the script; there is no automatic layout. Facts and their source files are listed in its docstring.
+`slide.py` draws the current slide (v6) by hand at 1920 x 1080: five columns (Sources, Convex backend, Engine + AI, App, People), color-coded data-flow arrows inside and between them (blue data in, purple AI calls, green results to the UI, orange learning loop), and a tech stack strip. Every card, logo and arrow has exact coordinates in the script; there is no automatic layout. Facts and their source files are listed in its docstring.
 
 ```sh
 python3 docs/architecture/slide.py
