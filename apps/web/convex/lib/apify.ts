@@ -209,6 +209,8 @@ const DATE_PREFIX =
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+const SOCIAL =
+  /(^|\.)(facebook|instagram|tiktok|twitter|x|threads|pinterest|youtube|reddit|quora)\.com$/;
 function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -247,6 +249,8 @@ export function parseSearchItems(
         date ??= prefix[1];
         snippet = snippet.slice(prefix[0].length);
       }
+      // Social posts that merely mention the name are noise, not risk signals.
+      if (SOCIAL.test(hostOf(url))) continue;
       if (!phrase || !` ${normalize(`${title} ${snippet}`)} `.includes(` ${phrase} `)) continue;
       if (seen.has(url) || signals.length >= APIFY_LIMITS.maxResults) continue;
       seen.add(url);

@@ -18,6 +18,7 @@ import { v } from "convex/values";
 import {
   type CoordinatorInput,
   type CoordinatorPlan,
+  buildFieldCreaoPrompt,
   coordinatorCreaoJob,
 } from "../../../packages/agents/src/fieldCreao";
 import { internal } from "./_generated/api";
@@ -39,6 +40,7 @@ import type { AgentRow } from "./lib/agentLog";
 import { APIFY_ACTOR, signalLines } from "./lib/apify";
 import type { CoordinatorRecord } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
+import { runStructured } from "./timeline/assistant/claude";
 
 export const COORDINATOR = "coordinator#1";
 
@@ -238,28 +240,46 @@ export async function coordinate(
     repaired = run.repaired;
   } catch (error) {
     const failure = failureOf(error);
-    await write([
-      as({
-        action: "agent.failed",
-        event: "status",
-        status: "failed",
-        currentTask: task,
-        summary: `CREAO run failed (${failure}); no plan, agents keep their default order`,
-      }),
-    ]);
-    return { status: "failed", reason: `CREAO run failed (${failure})`, at: at() };
+    // CREAO rate limits or bad output should not leave the run without a plan: Claude gets the
+    // same prompt, schema and validator, so the plan is held to the same rules.
+    const fallback = await claudePlan(data);
+    if (fallback) {
+      plan = fallback;
+      remoteRunId = "claude";
+      await write([
+        as({
+          action: "agent.working",
+          event: "status",
+          status: "working",
+          currentTask: task,
+          summary: `CREAO run failed (${failure}); Claude wrote the plan instead`,
+        }),
+      ]);
+    } else {
+      await write([
+        as({
+          action: "agent.failed",
+          event: "status",
+          status: "failed",
+          currentTask: task,
+          summary: `CREAO run failed (${failure}); no plan, agents keep their default order`,
+        }),
+      ]);
+      return { status: "failed", reason: `CREAO run failed (${failure})`, at: at() };
+    }
   }
+  const byClaude = remoteRunId === "claude";
   await write([
     as({
       action: "agent.tool",
       event: "tool",
-      tool: "creao.coordinatorPlan",
-      toolCategory: "creao",
-      toolLabel: "CREAO: coordinator plan",
-      source: "creao",
+      tool: byClaude ? "claude.coordinatorPlan" : "creao.coordinatorPlan",
+      toolCategory: byClaude ? "claude" : "creao",
+      toolLabel: byClaude ? "Claude: coordinator plan" : "CREAO: coordinator plan",
+      source: byClaude ? "claude" : "creao",
       currentTask: task,
-      refs: [remoteRunId, ...plan.escalate.map((e) => e.findingId)],
-      summary: `CREAO run ${remoteRunId}${repaired ? " (repaired)" : ""}: ${plan.summary}`,
+      refs: [...(byClaude ? [] : [remoteRunId]), ...plan.escalate.map((e) => e.findingId)],
+      summary: `${byClaude ? "Claude fallback" : `CREAO run ${remoteRunId}${repaired ? " (repaired)" : ""}`}: ${plan.summary}`,
     }),
   ]);
 
@@ -394,4 +414,31 @@ export async function coordinate(
     remoteRunId,
     at: at(),
   };
+}
+
+/**
+ * The coordinator job on Claude: same prompt, JSON schema and validator as the CREAO app.
+ * Null when Claude is unavailable or its reply fails validation after one correction.
+ */
+async function claudePlan(data: CoordinatorInput): Promise<CoordinatorPlan | null> {
+  const job = coordinatorCreaoJob(data);
+  const issues = (value: unknown) => {
+    const checked = job.check(value);
+    return checked.ok
+      ? null
+      : `Fix these issues and return the full JSON again: ${checked.issues.join("; ")}`;
+  };
+  try {
+    const raw = await runStructured({
+      system:
+        "You are Domino's coordinator agent. Follow the task and rules in the message. Return JSON only.",
+      schema: job.outputSchema as Record<string, unknown>,
+      check: issues,
+      messages: [{ role: "user", content: buildFieldCreaoPrompt(job) }],
+    });
+    const checked = job.check(raw);
+    return checked.ok ? (checked.value as CoordinatorPlan) : null;
+  } catch {
+    return null;
+  }
 }
