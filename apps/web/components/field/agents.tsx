@@ -17,11 +17,20 @@ import { SourcePicker, toggleSource } from "../judge/SourcePicker";
 import { TOOL_TILE } from "../judge/flow";
 import { errorText } from "../judge/shared";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Skeleton } from "../ui/skeleton";
 import { VENDOR_OF_TOOL } from "./BrainMapConnections";
 import {
   FIELD_OPERATING_API,
   chooseReplay,
+  selectOperating,
   useOperatingSelection,
   useSelectedCompany,
 } from "./company";
@@ -295,7 +304,8 @@ export function BrainMapIdle({
 }
 
 /**
- * Brain map header action. A company with data offers "Replay from scratch": a fresh idle copy
+ * Brain map header actions. "Reset demo" (any operating company) opens a new started copy of the
+ * prepared baseline. A company with data also offers "Start from empty": a fresh idle copy
  * of the same company and scenario (fieldOperating.replay), so the agents can be watched building
  * everything live. The prepared company and its data are kept; a replay offers the way back.
  */
@@ -310,42 +320,111 @@ function LiveReplayAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!selected) return null;
-  if (selected.replayOf)
-    return (
-      <Button variant="ghost" size="sm" onClick={() => chooseReplay(selection, null)}>
-        <Undo2 aria-hidden="true" className="size-3.5" />
-        Back to prepared data
-      </Button>
-    );
-  if (!selected.started) return null;
   return (
     <span className="flex flex-col items-end gap-1">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={busy}
-        title="Creates a fresh copy of this company and scenario with nothing read yet. The prepared data stays as it is."
-        onClick={async () => {
-          setBusy(true);
-          setError(null);
-          try {
-            const next = await replay({ companyId: selected.companyId });
-            chooseReplay(selection, next.companyId);
-          } catch (e) {
-            setError(errorText(e));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <RotateCcw aria-hidden="true" className="size-3.5" />
-        {busy ? "Preparing…" : "Replay from scratch"}
-      </Button>
+      <span className="flex flex-wrap items-center justify-end gap-2">
+        {selected.replayOf ? (
+          <Button variant="ghost" size="sm" onClick={() => chooseReplay(selection, null)}>
+            <Undo2 aria-hidden="true" className="size-3.5" />
+            Back to prepared data
+          </Button>
+        ) : selected.started ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            title="Creates a fresh copy of this company with nothing read yet. The prepared data stays as it is."
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                const next = await replay({ companyId: selected.companyId });
+                chooseReplay(selection, next.companyId);
+              } catch (e) {
+                setError(errorText(e));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <RotateCcw aria-hidden="true" className="size-3.5" />
+            {busy ? "Preparing…" : "Start from empty"}
+          </Button>
+        ) : null}
+        <ResetDemoAction />
+      </span>
       {error ? (
         <span role="alert" className="text-xs text-destructive">
           {error}
         </span>
       ) : null}
     </span>
+  );
+}
+
+/**
+ * "Reset demo": a new copy of the selected company at its prepared baseline, with agents started
+ * and no planted events, decisions or learned rules (fieldOperating.resetDemo). The current copy
+ * is kept unchanged; this browser switches to the new one.
+ */
+export function ResetDemoAction({ size = "sm" }: { size?: "sm" | "default" }) {
+  return CONVEX_URL ? <LiveResetDemo size={size} /> : null;
+}
+
+function LiveResetDemo({ size }: { size: "sm" | "default" }) {
+  const { selected } = useSelectedCompany();
+  const selection = useOperatingSelection();
+  const reset = useMutation(FIELD_OPERATING_API.resetDemo);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!selected) return null;
+  const confirm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await reset({ companyId: selected.companyId });
+      const target = { company: selection.company, scenario: next.scenario };
+      chooseReplay(target, next.companyId);
+      selectOperating(target);
+      setOpen(false);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Button variant="outline" size={size} onClick={() => setOpen(true)}>
+        <RotateCcw aria-hidden="true" className="size-3.5" />
+        Reset demo
+      </Button>
+      <Dialog open={open} onOpenChange={(next) => (busy ? null : setOpen(next))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset the demo?</DialogTitle>
+            <DialogDescription>
+              Domino opens a new copy of {selected.name.split(" · ")[0]} with the prepared data and
+              the agents started. It has no planted events, decisions or learned rules, and the
+              clock starts at day 0. Your current copy is kept as it is.
+            </DialogDescription>
+          </DialogHeader>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={busy} onClick={confirm}>
+              {busy ? "Preparing…" : "Reset demo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

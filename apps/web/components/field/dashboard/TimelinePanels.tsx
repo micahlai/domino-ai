@@ -19,7 +19,6 @@ import {
   type TimelineRead,
   cashMinimum,
   type firstBreach,
-  timelineAnalysisHref,
   timelineCashLine,
   timelineHealth,
   timelineRiskCards,
@@ -205,7 +204,8 @@ export function TimelineRisks({
   timeline,
 }: { timeline: Extract<TimelineRead, { state: "ready" }> }) {
   const { link, analysis, output } = timeline;
-  const href = timelineAnalysisHref(link);
+  // The saved-risks page stays reachable by URL; these links open the run on the timeline.
+  const href = link.route;
   const head = (
     <p className="text-[13px] leading-5 text-muted-foreground">
       Timeline's automatic analysis of the saved run: each risk is a saved hypothetical scenario
@@ -222,7 +222,7 @@ export function TimelineRisks({
             ? `Timeline's analysis did not start: ${link.analysisError}`
             : "No saved analysis for this run yet."}{" "}
           <Link href={href} className="text-primary underline-offset-2 hover:underline">
-            Review the analysis
+            Open the timeline
           </Link>
         </EmptyRow>
       </div>
@@ -316,7 +316,7 @@ export function TimelineRisks({
       card={false}
       actions={
         <Button asChild variant="outline" size="sm">
-          <Link href={href}>All risks in the forecast</Link>
+          <Link href={href}>Open in timeline</Link>
         </Button>
       }
     >

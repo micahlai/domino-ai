@@ -321,6 +321,16 @@ export const FIELD_OPERATING_API = {
     { companyId: Id<"companies"> },
     { companyId: Id<"companies">; name: string; replayOf: Id<"companies"> }
   >("fieldOperating:replay"),
+  resetDemo: makeFunctionReference<
+    "mutation",
+    { companyId: Id<"companies"> },
+    {
+      companyId: Id<"companies">;
+      name: string;
+      replayOf: Id<"companies">;
+      scenario: OperatingScenarioId;
+    }
+  >("fieldOperating:resetDemo"),
 };
 const pending = new Map<string, Promise<unknown>>();
 

@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
   candidates,
   checkSource,
+  isUpside,
   projectRisk,
   resilience,
   responsesFor,
@@ -414,7 +415,7 @@ export const execute = internalActionGeneric({
           )
             return null;
           const responses = responsesFor(run, risk);
-          if (!responses.length)
+          if (!responses.length && !isUpside(risk.id))
             warnings.push(
               `No supported costed response improved the low point for ${risk.id}. Negotiation, fees and later effects may need separate review.`,
             );

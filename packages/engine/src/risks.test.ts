@@ -553,3 +553,36 @@ describe("scanRisks record-based kinds", () => {
     ]);
   });
 });
+
+describe("scanRisks subject cap", () => {
+  it("shows one customer at most twice while other risks remain", () => {
+    const r = (id: string, impactLowPoint: number) => ({
+      id,
+      label: id,
+      probability: 0.5,
+      impactLowPoint,
+      changes: [],
+      evidence: [],
+    });
+    const subject = (x: { id: string }) => (x.id.endsWith("_big") ? "big" : x.id);
+    const picked = pickDiverse(
+      [
+        r("risk_concentration_big", 100),
+        r("risk_overdue_big", 90),
+        r("risk_late_big", 80),
+        r("risk_vendor_v", 1),
+        r("risk_due_t", 2),
+        r("risk_payroll_growth", 3),
+      ],
+      subject,
+    );
+    // The third "big" risk outscores the rest but yields its slot to another customer.
+    expect(picked.map((x) => x.id)).toEqual([
+      "risk_concentration_big",
+      "risk_overdue_big",
+      "risk_payroll_growth",
+      "risk_due_t",
+      "risk_vendor_v",
+    ]);
+  });
+});

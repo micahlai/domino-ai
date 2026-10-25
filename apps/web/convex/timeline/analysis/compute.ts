@@ -129,7 +129,15 @@ export function candidates(run: WorkspaceRun): { risks: RiskEvent[]; warnings: s
     }
   }
   const accepted: RiskEvent[] = [];
-  for (const rawRisk of raw) {
+  // Reserve the last visible slot for the best upside event when one exists, so the visible
+  // set is not all bad news. scanRisks lists downside first and the best upside last.
+  const upside = raw.filter((r) => isUpside(r.id));
+  const ordered = [
+    ...raw.filter((r) => !isUpside(r.id)).slice(0, MAX_RISKS - (upside.length ? 1 : 0)),
+    ...upside,
+    ...raw.filter((r) => !isUpside(r.id)).slice(MAX_RISKS - (upside.length ? 1 : 0)),
+  ];
+  for (const rawRisk of ordered) {
     try {
       const risk = RiskEventSchema.parse({ ...rawRisk, evidence: rawRisk.evidence.slice(0, 100) });
       check(run, risk.changes);
@@ -204,7 +212,10 @@ export function projectRisk(run: WorkspaceRun, risk: RiskEvent): AnalysisRisk {
     failureReason,
   };
 }
+/** Good events (scanRisks "risk_upside_*") need no costed response. */
+export const isUpside = (id: string) => id.startsWith("risk_upside_");
 export function responsesFor(run: WorkspaceRun, risk: AnalysisRisk): AnalysisResponse[] {
+  if (isUpside(risk.id)) return [];
   const s = run.baseline.seed.snapshot;
   const m = run.baseline.model;
   const schedule = cashSchedule(s, m, risk.changes);

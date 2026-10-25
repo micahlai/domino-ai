@@ -7,7 +7,6 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState 
 import { cn } from "../../lib/utils";
 import {
   OPERATING_COMPANIES,
-  OPERATING_SCENARIOS,
   type OperatingSelection,
   isLegacyOperatingTimelinePath,
   operatingWorldId,
@@ -28,7 +27,9 @@ const fallbackLink = cn(
   focusRing,
 );
 
-/** One company and one scenario choose the same reconstructed feed on every product page. */
+/** One company chooses the same reconstructed feed on every product page. The picker always
+ * opens a company's prepared baseline; planted issues come from the Brain map, and older
+ * scenario URLs still resolve. */
 export function CompanySwitcher() {
   const pathname = usePathname() ?? "";
   if (pathname === "/case/2u" || pathname.startsWith("/case/2u/"))
@@ -100,7 +101,7 @@ function Picker({
 }
 
 /** Props-only selector for the Field playground. No backend or financial fixture is needed.
- * One button names the company and scenario; it opens a menu with both choices. */
+ * One button names the company; it opens a menu of companies, each at its baseline. */
 export function OperatingSelectorControls({
   selection,
   onChange,
@@ -125,9 +126,8 @@ export function OperatingSelectorControls({
   const focusOnOpen = useRef<"selected" | "last">("selected");
   const menuId = useId();
   const company = OPERATING_COMPANIES.find((c) => c.id === selection.company);
-  const scenario = OPERATING_SCENARIOS.find((s) => s.id === selection.scenario);
   const shown = company ? companyDisplay(company) : null;
-  const count = OPERATING_COMPANIES.length + OPERATING_SCENARIOS.length;
+  const count = OPERATING_COMPANIES.length;
 
   useEffect(() => {
     if (!open) return;
@@ -199,21 +199,11 @@ export function OperatingSelectorControls({
       >
         <CompanyMark initial={shown?.initial ?? "?"} />
         <span className="flex flex-col whitespace-nowrap">
-          <span className="sr-only">Company and scenario: </span>
+          <span className="sr-only">Company: </span>
           <span className="text-[13px] font-medium leading-4">
             {shown?.name ?? "Choose a demo"}
           </span>
-          <span className="text-[11px] leading-4 text-muted-foreground">
-            {selection.company === "2u" ? (
-              // 2U is real public filings; a scenario suffix would read as simulated.
-              <span>{shown?.subtitle}</span>
-            ) : (
-              <>
-                <span className="max-sm:hidden">{shown?.subtitle} · </span>
-                {scenario?.name}
-              </>
-            )}
-          </span>
+          <span className="text-[11px] leading-4 text-muted-foreground">{shown?.subtitle}</span>
         </span>
         <ChevronsUpDown aria-hidden="true" className="size-4 text-muted-foreground" />
       </button>
@@ -221,7 +211,7 @@ export function OperatingSelectorControls({
         <div
           id={menuId}
           role="menu"
-          aria-label="Company and scenario"
+          aria-label="Company"
           onKeyDown={onMenuKey}
           className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg"
         >
@@ -236,33 +226,17 @@ export function OperatingSelectorControls({
                     items.current[i] = el;
                   }}
                   checked={checked}
-                  onSelect={() => choose({ ...selection, company: c.id })}
+                  onSelect={() => choose({ company: c.id, scenario: "baseline" })}
                 >
                   <CompanyMark initial={d.initial} />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-[13px] font-medium leading-5">{d.name}</span>
                     <span className="text-xs leading-4 text-muted-foreground">{d.subtitle}</span>
                   </span>
-                  <StatusTag status={statusOf?.({ ...selection, company: c.id })} />
+                  <StatusTag status={statusOf?.({ company: c.id, scenario: "baseline" })} />
                 </MenuItem>
               );
             })}
-          </MenuGroup>
-          <hr className="-mx-1.5 my-1.5 border-border" />
-          <MenuGroup label="Scenario">
-            {OPERATING_SCENARIOS.map((s, j) => (
-              <MenuItem
-                key={s.id}
-                ref={(el) => {
-                  items.current[OPERATING_COMPANIES.length + j] = el;
-                }}
-                checked={s.id === selection.scenario}
-                onSelect={() => choose({ ...selection, scenario: s.id })}
-              >
-                <span className="flex-1 text-[13px] leading-5">{s.name}</span>
-                <StatusTag status={statusOf?.({ ...selection, scenario: s.id })} />
-              </MenuItem>
-            ))}
           </MenuGroup>
           <div className="-mx-1.5 mt-1.5 border-t px-3 pb-1 pt-2.5 text-xs leading-5 text-muted-foreground">
             Real 2U results after the filing are in the{" "}

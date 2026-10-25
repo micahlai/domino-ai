@@ -76,14 +76,14 @@ describe("risks we're watching", () => {
         scenario({ id: "s3", status: "running", low: null, survives: null }),
       ]),
       300_000_000,
-      "/c/kestrel/timeline/analysis?runId=r1",
+      "/c/kestrel/timeline?runId=r1",
     );
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
       status: "below",
       week: "2026-12-14",
       shortfall: 50_000_000,
-      href: "/c/kestrel/timeline/analysis?runId=r1",
+      href: "/c/kestrel/timeline?runId=r1",
     });
     expect(rows[1]).toMatchObject({ status: "holds", week: null, shortfall: null });
   });

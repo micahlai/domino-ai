@@ -29,7 +29,7 @@ export function WorkerSection({
         <div className="min-w-0">
           <h2
             id={`${id}-title`}
-            className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]"
+            className="flex scroll-mt-20 items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]"
           >
             <span
               aria-hidden="true"

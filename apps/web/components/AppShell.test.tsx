@@ -38,7 +38,7 @@ describe("AppShell navigation", () => {
     expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
     expect(html).toContain("Main navigation");
     expect(html).toContain('aria-haspopup="menu"');
-    expect(html).toContain("Company and scenario");
+    expect(html).toContain("Company: ");
     expect(html).toContain("2U (historical)");
     expect(html).toContain("Public filings");
     expect(html).toContain("as of Sep 30, 2023");
