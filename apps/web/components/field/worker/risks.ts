@@ -39,7 +39,7 @@ export const SOURCE_LABEL: Record<RiskSource, string> = {
   sample: "Sample event",
 };
 
-const MINIMUM = "the lender's minimum";
+const MINIMUM = "the illustrative cash floor";
 const gap = (minimum: number | null, low: number | null) =>
   minimum !== null && low !== null && low < minimum ? minimum - low : null;
 
@@ -80,7 +80,7 @@ export function triageRisks(
         title: s.title,
         source: "triage",
         status: s.survives ? "holds" : short !== null ? "below" : "rule",
-        rule: s.survives || short !== null ? MINIMUM : "another lender rule",
+        rule: s.survives || short !== null ? MINIMUM : "another illustrative cash rule",
         week: s.survives ? null : s.breaksAt,
         low: { cents: s.low, week: null },
         shortfall: short,

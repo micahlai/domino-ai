@@ -1,16 +1,25 @@
 "use client";
 
-import type { ProfileId } from "@domino/sim";
-import { useQuery } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
+import {
+  OPERATING_DEMO_LABEL,
+  type OperatingCompanyId,
+  type OperatingScenarioId,
+  type OperatingSelection,
+  type ProfileId,
+  operatingDemoCatalog,
+  operatingScenarioCatalog,
+} from "@domino/sim";
+import { useMutation, useQuery } from "convex/react";
+import { makeFunctionReference } from "convex/server";
 import {
   type ReactNode,
   createContext,
   createElement,
   useContext,
+  useEffect,
+  useState,
   useSyncExternalStore,
 } from "react";
-import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
   DEFAULT_FIELD_COMPANY,
@@ -18,34 +27,81 @@ import {
   type FieldCompanyProfile,
 } from "../../convex/lib/fieldCompanies";
 
-// The selected company for every Field page and the dashboard: a profile id kept in
-// localStorage, shared across tabs, and overridable by ?company=<profile> in the URL (so a link
-// opens the same company). Each page resolves it to that company's backend id.
-// The selection can also be 2U (REPLAY_COMPANY): a real company replayed from its quarterly
-// public filings, with no live feed and no backend company record.
-
 export { FIELD_COMPANIES, type FieldCompanyProfile };
-const KEY = "domino.field.company";
-const EVENT = "domino:company";
-/** 2U, Inc.: the real company replayed from public filings (the audited historical case). */
-export const REPLAY_COMPANY = "2u";
-export type CompanySelection = ProfileId | typeof REPLAY_COMPANY;
-const isProfile = (v: string | null): v is ProfileId =>
-  !!v && FIELD_COMPANIES.some((c) => c.id === v);
-const isSelection = (v: string | null): v is CompanySelection =>
-  v === REPLAY_COMPANY || isProfile(v);
+export const OPERATING_COMPANIES = operatingDemoCatalog;
+export const OPERATING_SCENARIOS = operatingScenarioCatalog;
+export { OPERATING_DEMO_LABEL };
+export type { OperatingCompanyId, OperatingScenarioId, OperatingSelection };
+export const DEFAULT_OPERATING_SELECTION: OperatingSelection = {
+  company: "2u",
+  scenario: "baseline",
+};
+export const operatingWorldId = ({ company, scenario }: OperatingSelection) =>
+  `operating/${company}/${scenario}`;
+export function operatingSelectionFromWorldId(value: string): OperatingSelection | null {
+  const [prefix, company, scenario, extra] = value.split("/");
+  if (
+    prefix !== "operating" ||
+    extra !== undefined ||
+    !OPERATING_COMPANIES.some((item) => item.id === company) ||
+    !OPERATING_SCENARIOS.some((item) => item.id === scenario)
+  )
+    return null;
+  return { company: company as OperatingCompanyId, scenario: scenario as OperatingScenarioId };
+}
 
-function read(): CompanySelection {
-  if (typeof window === "undefined") return DEFAULT_FIELD_COMPANY;
-  const fromUrl = new URLSearchParams(window.location.search).get("company");
-  if (isSelection(fromUrl)) return fromUrl;
+const COMPANY_KEY = "domino.field.operating.company";
+const SCENARIO_KEY = "domino.field.operating.scenario";
+const EVENT = "domino:operating-selection";
+const validCompany = (value: string | null): value is OperatingCompanyId =>
+  OPERATING_COMPANIES.some((item) => item.id === value);
+const validScenario = (value: string | null): value is OperatingScenarioId =>
+  OPERATING_SCENARIOS.some((item) => item.id === value);
+
+function read(): OperatingSelection {
+  if (typeof window === "undefined") return DEFAULT_OPERATING_SELECTION;
+  const query = new URLSearchParams(window.location.search);
+  const path = window.location.pathname;
+  const routePart =
+    path.match(/^\/c\/([^/]+)\/timeline(?:\/|$)/)?.[1] ??
+    path.match(/^\/c\/(operating\/[^/]+\/[^/]+)\/timeline(?:\/|$)/)?.[1];
+  let route: OperatingSelection | null = null;
   try {
-    const stored = window.localStorage.getItem(KEY);
-    if (isSelection(stored)) return stored;
+    route = routePart ? operatingSelectionFromWorldId(decodeURIComponent(routePart)) : null;
   } catch {
-    // Storage blocked: the default company is still a valid choice.
+    // Malformed address cannot override the stored or default selection.
   }
-  return DEFAULT_FIELD_COMPANY;
+  let storedCompany: string | null = null;
+  let storedScenario: string | null = null;
+  try {
+    storedCompany = window.localStorage.getItem(COMPANY_KEY);
+    storedScenario = window.localStorage.getItem(SCENARIO_KEY);
+  } catch {
+    // URL and the 2U baseline default still work without storage.
+  }
+  const company = query.get("company");
+  const scenario = query.get("scenario");
+  return {
+    company: validCompany(company)
+      ? company
+      : (route?.company ?? (validCompany(storedCompany) ? storedCompany : "2u")),
+    scenario: validScenario(scenario)
+      ? scenario
+      : (route?.scenario ?? (validScenario(storedScenario) ? storedScenario : "baseline")),
+  };
+}
+
+// useSyncExternalStore requires the same object identity until a selection changes.
+let lastKey = "";
+let lastSelection: OperatingSelection = DEFAULT_OPERATING_SELECTION;
+function snapshot(): OperatingSelection {
+  const next = read();
+  const key = `${next.company}/${next.scenario}`;
+  if (key !== lastKey) {
+    lastKey = key;
+    lastSelection = next;
+  }
+  return lastSelection;
 }
 
 function subscribe(onChange: () => void) {
@@ -59,17 +115,17 @@ function subscribe(onChange: () => void) {
   };
 }
 
-export function selectCompany(profile: CompanySelection) {
+export function selectOperating(selection: OperatingSelection) {
   try {
-    window.localStorage.setItem(KEY, profile);
+    window.localStorage.setItem(COMPANY_KEY, selection.company);
+    window.localStorage.setItem(SCENARIO_KEY, selection.scenario);
   } catch {
-    // Storage blocked: the URL below still carries the choice for this page.
+    // The URL below still carries the choice for this page.
   }
   const url = new URL(window.location.href);
-  if (url.searchParams.has("company")) {
-    url.searchParams.set("company", profile);
-    window.history.replaceState(window.history.state, "", url);
-  }
+  url.searchParams.set("company", selection.company);
+  url.searchParams.set("scenario", selection.scenario);
+  window.history.replaceState(window.history.state, "", url);
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -87,52 +143,95 @@ export function FieldCompanyOverride({
   return createElement(OverrideContext.Provider, { value: { companyId, name } }, children);
 }
 
-/** The selection, 2U included (the default company on the server and before hydration). */
-export const useCompanySelection = (): CompanySelection =>
-  useSyncExternalStore(subscribe, read, () => DEFAULT_FIELD_COMPANY);
-
-/** True when 2U, the company replayed from public filings, is selected. */
-export const useIsReplayCompany = (): boolean => {
-  const override = useContext(OverrideContext);
-  const selection = useCompanySelection();
-  return !override && selection === REPLAY_COMPANY;
-};
-
-/**
- * The selected simulated profile id. With 2U selected this is the default simulated company;
- * pages that only know simulated companies check useIsReplayCompany first.
- */
-export const useSelectedProfile = (): ProfileId => {
-  const selection = useCompanySelection();
-  return selection === REPLAY_COMPANY ? DEFAULT_FIELD_COMPANY : selection;
-};
-
-/** The selected company's display name. Company records are named exactly after their profile. */
+export const useOperatingSelection = (): OperatingSelection =>
+  useSyncExternalStore(subscribe, snapshot, () => DEFAULT_OPERATING_SELECTION);
+/** Fixture-only helper for playgrounds and the old judge sandbox. */
+export const useSelectedProfile = (): ProfileId => DEFAULT_FIELD_COMPANY;
 export const useSelectedCompanyName = (): string => {
   const override = useContext(OverrideContext);
-  const profile = useSelectedProfile();
-  return override?.name ?? FIELD_COMPANIES.find((c) => c.id === profile)?.name ?? "Your company";
+  const selection = useOperatingSelection();
+  return (
+    override?.name ??
+    OPERATING_COMPANIES.find((item) => item.id === selection.company)?.name ??
+    "Company"
+  );
 };
 
-export type PickerCompany = FunctionReturnType<typeof api.field.companies>[number];
+export type OperatingRecord = {
+  companyId: Id<"companies">;
+  company: OperatingCompanyId;
+  scenario: OperatingScenarioId;
+  name: string;
+};
+export function selectedOperatingRecord<
+  T extends { company: OperatingCompanyId; scenario: OperatingScenarioId },
+>(records: readonly T[], selection: OperatingSelection): T | null {
+  return (
+    records.find(
+      (item) => item.company === selection.company && item.scenario === selection.scenario,
+    ) ?? null
+  );
+}
+export const FIELD_OPERATING_API = {
+  list: makeFunctionReference<"query", Record<string, never>, OperatingRecord[]>(
+    "fieldOperating:list",
+  ),
+  ensure: makeFunctionReference<
+    "mutation",
+    { company: OperatingCompanyId; scenario: OperatingScenarioId },
+    { companyId: Id<"companies">; name: string; created: boolean }
+  >("fieldOperating:ensure"),
+};
+const pending = new Map<string, Promise<unknown>>();
 
-/**
- * Live only (needs the Convex provider): the companies that are set up and the selected one.
- * `selected` is undefined while loading and null when no company exists yet.
- */
+/** Resolve the exact selected company and scenario. A missing feed is created, never replaced. */
 export function useSelectedCompany(): {
-  companies: PickerCompany[] | undefined;
-  selected: PickerCompany | null | undefined;
+  companies: OperatingRecord[] | undefined;
+  selected: OperatingRecord | null | undefined;
   companyId: Id<"companies"> | null | undefined;
+  error: string | null;
 } {
   const override = useContext(OverrideContext);
-  const profile = useSelectedProfile();
-  const companies = useQuery(api.field.companies, override ? "skip" : {});
-  // A pinned company is not a picker company: no list, no picker row, only its id.
-  if (override) return { companies: undefined, selected: undefined, companyId: override.companyId };
-  const selected =
-    companies === undefined
-      ? undefined
-      : (companies.find((c) => c.profile === profile) ?? companies[0] ?? null);
-  return { companies, selected, companyId: selected ? selected.companyId : selected };
+  const selection = useOperatingSelection();
+  const companies = useQuery(FIELD_OPERATING_API.list, override ? "skip" : {});
+  const ensure = useMutation(FIELD_OPERATING_API.ensure);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+  const selected = companies ? selectedOperatingRecord(companies, selection) : undefined;
+  const key = `${selection.company}/${selection.scenario}`;
+  const error = !selected && failure?.key === key ? failure.message : null;
+  useEffect(() => {
+    if (override || companies === undefined || selected || error) return;
+    let active = true;
+    let request = pending.get(key);
+    if (!request) {
+      request = ensure(selection).finally(() => pending.delete(key));
+      pending.set(key, request);
+    }
+    request.then(
+      () => {
+        if (active) setFailure(null);
+      },
+      (cause: unknown) => {
+        if (active)
+          setFailure({
+            key,
+            message:
+              cause instanceof Error ? cause.message : "Could not set up the selected company.",
+          });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [override, companies, selected, key, ensure, selection, error]);
+  if (override)
+    return {
+      companies: undefined,
+      selected: undefined,
+      companyId: override.companyId,
+      error: null,
+    };
+  if (companies === undefined)
+    return { companies, selected: undefined, companyId: undefined, error };
+  return { companies, selected: selected ?? null, companyId: selected?.companyId ?? null, error };
 }

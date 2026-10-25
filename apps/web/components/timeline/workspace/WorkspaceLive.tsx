@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { OPEN_IN_TIMELINE_NOTE, OpenInTimeline } from "../../field/OpenInTimeline";
+import { operatingSelectionFromWorldId } from "../../field/company";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { PageHeader } from "../../ui/page";
@@ -384,7 +385,9 @@ function CompanyEyebrow({ companyId }: { companyId: string }) {
       <span className="font-medium text-foreground">
         {fieldCompanyOf(companyId)?.name ?? companyId}
       </span>
-      <Badge variant="secondary">Simulated company</Badge>
+      {operatingSelectionFromWorldId(companyId) ? (
+        <Badge variant="secondary">Illustrative forecast on reconstructed books</Badge>
+      ) : null}
     </span>
   );
 }
@@ -438,12 +441,16 @@ function CompanyHome({ companyId }: { companyId: string }) {
       <PageHeader
         eyebrow={<CompanyEyebrow companyId={companyId} />}
         title={`No timeline for ${name} yet`}
-        description="Bring in the latest books to see the next 13 weeks of cash, the lowest point and whether it stays above the lender's minimum."
+        description={
+          operatingSelectionFromWorldId(companyId)
+            ? "Bring in the reconstructed books to see an illustrative 13-week cash forecast and illustrative cash rules."
+            : "Bring in the latest books to see a 13-week cash forecast and any stated cash rules."
+        }
       />
       <section className="max-w-2xl space-y-4 rounded-lg border bg-card p-5 shadow-xs">
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>Usable cash for the next 13 weeks, next to recent history</li>
-          <li>The lowest point and the lender&rsquo;s minimum on one chart</li>
+          <li>The lowest point and any stated cash floor on one chart</li>
           <li>Ask questions, try events and see saved risks</li>
         </ul>
         <OpenInTimeline label="Bring in latest books" />

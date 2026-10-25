@@ -92,7 +92,7 @@ export function SourceBadge({
     return (
       <Badge variant="success" className={cn("gap-1.5", className)}>
         <span aria-hidden="true" className="size-1.5 rounded-full bg-safe" />
-        Live
+        Reconstructed feed
       </Badge>
     );
   if (source === "loading")

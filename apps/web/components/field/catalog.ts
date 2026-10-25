@@ -35,7 +35,7 @@ export const BUILT_IN_AGENTS: AgentProfile[] = [
     title: "Analyst",
     brief: "Tests what could go wrong and how the company's plans hold up.",
     instructions:
-      "Propose plausible events, run them through the forecast, and explain which plans keep cash above the lender's limit. Every suggested action needs a person's approval.",
+      "Propose plausible events, run them through the forecast, and explain which plans keep cash above the illustrative cash floor. Every suggested action needs a person's approval.",
   },
 ];
 
