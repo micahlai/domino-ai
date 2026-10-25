@@ -48,6 +48,7 @@ export const operatingDemoCatalog: readonly OperatingCompanyCatalogEntry[] = [
     periodEnd: "2023-09-30",
     reportedAt: "2023-11-09",
     simulationAsOf: "2023-09-30",
+    selectorDescription: "2U · Current scenarios",
   },
   {
     id: "asana-inspired",
@@ -82,6 +83,7 @@ export const operatingDemoCatalog: readonly OperatingCompanyCatalogEntry[] = [
     reportedAt: "2026-09-03",
     filedAt: "2026-09-03",
     simulationAsOf: OPERATING_CURRENT_AS_OF,
+    selectorDescription: "Taskline · inspired by Asana",
   },
   {
     id: "gitlab-current",
@@ -94,6 +96,21 @@ export const operatingDemoCatalog: readonly OperatingCompanyCatalogEntry[] = [
     reportedAt: "2026-09-01",
     filedAt: "2026-09-02",
     simulationAsOf: OPERATING_CURRENT_AS_OF,
+    selectorDescription: "CodeHarbor · inspired by GitLab",
+  },
+] as const;
+
+/**
+ * Company modes outside the operating feeds. The 2U backtest replays real filings from the
+ * Nov 10, 2023 cutoff at its own page; the selector can list it beside the operating companies.
+ */
+export const companyModeCatalog = [
+  {
+    id: "2u-backtest-2023-11",
+    company: "2u",
+    mode: "Backtest: Nov 2023",
+    selectorDescription: "2U · Backtest from Nov 2023 (real history)",
+    href: "/case/2u/backtest",
   },
 ] as const;
 

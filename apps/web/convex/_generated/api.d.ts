@@ -10,6 +10,7 @@
 
 import type * as agents from "../agents.js";
 import type * as approvals from "../approvals.js";
+import type * as backtest from "../backtest.js";
 import type * as branches from "../branches.js";
 import type * as companies from "../companies.js";
 import type * as computed from "../computed.js";
@@ -132,6 +133,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
   approvals: typeof approvals;
+  backtest: typeof backtest;
   branches: typeof branches;
   companies: typeof companies;
   computed: typeof computed;

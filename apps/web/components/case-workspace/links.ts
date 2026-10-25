@@ -10,6 +10,8 @@ export const caseHref = {
   workspace: (id?: string) => withInvestigation(CASE_BASE, id),
   company: (id?: string) => withInvestigation(`${CASE_BASE}/company`, id),
   simulations: (id?: string) => withInvestigation(`${CASE_BASE}/simulations`, id),
+  /** Backtest from the Nov 10, 2023 cutoff; it keeps its own saved forecast, not an investigation. */
+  backtest: () => `${CASE_BASE}/backtest`,
   detail: (id: string) => `${CASE_BASE}/simulations/${encodeURIComponent(id)}`,
 };
 

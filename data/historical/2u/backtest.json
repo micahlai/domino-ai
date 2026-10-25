@@ -1,0 +1,107 @@
+{
+  "id": "twou-2023-backtest-v1",
+  "caseId": "twou-2023-cash-v1",
+  "mode": "Backtest: Nov 2023",
+  "disclosure": "Written in 2026 with the outcome known. The suggestion numbers use only facts public by Nov 10, 2023 and fixed engine rules, but the list of responses was chosen by people who knew what happened later. A hindsight exercise, not proof of what Domino would have caught.",
+  "sources": [
+    {
+      "id": "S1",
+      "title": "2U 10-Q for quarter ended 2023-09-30 (Note 8, Debt)",
+      "url": "https://www.sec.gov/Archives/edgar/data/1459417/000145941723000042/twou-20230930.htm",
+      "publishedAt": "2023-11-09T16:45:46-05:00",
+      "verification": "Reader-extracted from a model-processed text of the SEC filing, not hashed original bytes."
+    },
+    {
+      "id": "S7",
+      "title": "2U Reports Results for Third Quarter 2023",
+      "url": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "publishedAt": "2023-11-09T16:01:00-05:00",
+      "verification": "Checked against raw bytes in data/historical/2u/raw/pre-cutoff/prnewswire-2u-q3-2023.html."
+    }
+  ],
+  "cutoffFacts": [
+    {
+      "id": "F18",
+      "sourceId": "S1",
+      "metric": "revolver_commitment",
+      "label": "Revolving credit facility commitment",
+      "date": "2023-09-30",
+      "cents": 4000000000,
+      "availableAt": "2023-11-09T16:45:46-05:00",
+      "locator": "S1 Note 8 Debt, Second Amended Credit Agreement (Jan 9, 2023): $40 million revolver"
+    },
+    {
+      "id": "F19",
+      "sourceId": "S1",
+      "metric": "revolver_drawn",
+      "label": "Revolving credit facility borrowings outstanding",
+      "date": "2023-09-30",
+      "cents": 2000000000,
+      "availableAt": "2023-11-09T16:45:46-05:00",
+      "locator": "S1 Note 8 Debt: outstanding borrowings $20 million, available borrowings $20 million at Sep 30, 2023"
+    }
+  ],
+  "cutoffNotes": [
+    {
+      "id": "F31",
+      "sourceId": "S7",
+      "availableAt": "2023-11-09T16:01:00-05:00",
+      "quote": "active discussions with noteholders to refinance its convertible notes to address impending maturities and strengthen its balance sheet, and aims to have a successful transaction in the near term.",
+      "locator": "S7 Business Outlook"
+    }
+  ],
+  "responses": [
+    {
+      "id": "R-DRAW",
+      "kind": "credit_draw",
+      "title": "Draw the rest of the revolving credit facility",
+      "effectiveFrom": "2023-11-13",
+      "commitmentFactId": "F18",
+      "drawnFactId": "F19"
+    },
+    { "id": "R-KEEP", "kind": "keep_plan", "title": "Keep the current plan" },
+    {
+      "id": "R-CUT",
+      "kind": "costed",
+      "title": "Cut operating spend (second cost action)",
+      "assumptionId": "A1"
+    },
+    {
+      "id": "R-REFI",
+      "kind": "not_modeled",
+      "title": "Refinance the convertible notes",
+      "reason": "Not ranked. On Nov 10, 2023 the company said it was in talks with noteholders (F31), but no amount, rate, fee or date was public, so the engine has nothing to compute.",
+      "basisIds": ["F31"]
+    }
+  ],
+  "revealSources": [
+    {
+      "id": "S8",
+      "title": "2U Reports Results for Fourth Quarter and Full-Year 2023",
+      "url": "https://www.prnewswire.com/news-releases/2u-reports-results-for-fourth-quarter-and-full-year-2023-302059834.html",
+      "publishedAt": "2024-02-12T16:01:00-05:00",
+      "verification": "Checked against raw bytes in data/historical/2u/raw/held-out/prnewswire-2u-q4-fy2023.html."
+    }
+  ],
+  "revealFacts": [
+    {
+      "id": "H09-REV",
+      "sourceId": "S8",
+      "metric": "revolver_drawn",
+      "label": "Revolving credit facility borrowings outstanding",
+      "date": "2023-12-31",
+      "cents": 4000000000,
+      "availableAt": "2024-02-12T16:01:00-05:00",
+      "locator": "S8: \"the company's total debt was $904.7 million, including borrowings of $40.0 million under the company's revolving credit facility\" (as of Dec 31, 2023)"
+    }
+  ],
+  "epilogue": {
+    "id": "H13",
+    "sourceId": "S5",
+    "date": "2024-07-25",
+    "title": "Strengthening 2U's financial position (prepackaged Chapter 11)",
+    "url": "https://2u.com/newsroom/strengthening-2us-financial-position-for-sustained-innovation-and-growth/",
+    "text": "On Jul 25, 2024, 2U announced a prepackaged Chapter 11 transaction with new capital and debt reduction, while intending to keep operating.",
+    "verification": "Unverified: URL and date come from the project's research notes (kb/research/historical-case-candidates.md); the page was not opened. Not part of the forecast, the suggestions or the counterfactual."
+  }
+}
