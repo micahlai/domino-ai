@@ -26,6 +26,7 @@ import {
 } from "@domino/engine";
 import { v } from "convex/values";
 import { type AdvisorInput, advisorCreaoJob } from "../../../packages/agents/src/fieldCreao";
+import { FieldTraceCandidateSchema } from "../lib/field-trace-contract";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -46,6 +47,7 @@ import {
   shouldWait,
 } from "./fieldAi";
 import { ANALYST } from "./fieldAnalyst";
+import { pinnedInputs, runCandidates } from "./fieldTrace";
 import type { AgentRow } from "./lib/agentLog";
 import { type Inputs, usd } from "./lib/analystScenarios";
 import { coordinatorRecordArg } from "./lib/coordinatorRecord";
@@ -108,7 +110,7 @@ export const targets = internalQuery({
           (a.breaksWeek ?? 99) - (b.breaksWeek ?? 99) ||
           a.index - b.index,
       );
-    const company = (await ctx.db.get("companies", run.companyId))?.name ?? "";
+    const company = pinnedInputs(run)?.company.name ?? "Unknown saved company";
     return {
       companyId: run.companyId,
       snapshotVersion: run.snapshotVersion,
@@ -235,15 +237,57 @@ export const store = internalMutation({
     ),
   },
   handler: async (ctx, a) => {
+    const run = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_runId", (q) => q.eq("runId", a.runId))
+      .unique();
+    if (
+      !run ||
+      run.companyId !== a.companyId ||
+      run.snapshotVersion !== a.snapshotVersion ||
+      run.status !== "running"
+    )
+      return [];
+    if (run.traceInputs) {
+      const scenarios = await ctx.db
+        .query("analystScenarios")
+        .withIndex("by_runId_and_index", (q) => q.eq("runId", a.runId))
+        .take(20);
+      if (!scenarios.some((s) => s.companyId === a.companyId && s.scenarioId === a.scenarioId))
+        return [];
+    }
+    // Save actual engine candidates even if a new ingest makes the open-suggestion write stale.
+    const candidates = a.items.map((item, rank) =>
+      FieldTraceCandidateSchema.parse({
+        suggestionId: `${a.scenarioId}:${item.kind}`,
+        scenarioId: a.scenarioId,
+        scenarioTitle: a.scenarioTitle,
+        agentId: advisorAgent(item.kind),
+        fix: { ...item.fix, kind: item.kind },
+        effect: { ...item.effect, scenarioLow: a.scenarioLow, lenderMinimum: a.lenderMinimum },
+        rank,
+        recommended: false,
+        recommendation: null,
+      }),
+    );
+    const previous = runCandidates(run);
+    const savedCandidates = [
+      ...previous,
+      ...candidates.filter(
+        (candidate) => !previous.some((old) => old.suggestionId === candidate.suggestionId),
+      ),
+    ];
+    const traceCandidates = JSON.stringify(savedCandidates);
+    if (savedCandidates.length > 80 || new TextEncoder().encode(traceCandidates).length > 150_000)
+      throw new Error("Advisor candidates exceed the saved evidence limit");
+    await ctx.db.patch("analystRuns", run._id, {
+      traceCandidates,
+    });
     const feed = await ctx.db
       .query("feeds")
       .withIndex("by_companyId", (q) => q.eq("companyId", a.companyId))
       .unique();
     if (!feed || feed.snapshotVersion !== a.snapshotVersion) return [];
-    const run = await ctx.db
-      .query("analystRuns")
-      .withIndex("by_runId", (q) => q.eq("runId", a.runId))
-      .unique();
     const latest = await ctx.db
       .query("analystRuns")
       .withIndex("by_companyId", (q) => q.eq("companyId", a.companyId))
@@ -304,6 +348,32 @@ export const recommend = internalMutation({
     remoteRunId: v.string(),
   },
   handler: async (ctx, { companyId, suggestionId, runId, snapshotVersion, text, remoteRunId }) => {
+    const run = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique();
+    if (
+      !run ||
+      run.companyId !== companyId ||
+      run.snapshotVersion !== snapshotVersion ||
+      run.status !== "running"
+    )
+      return false;
+    const recommendation = {
+      text: text.slice(0, 500),
+      provider: "creao" as const,
+      remoteRunId,
+      at: nowIso(),
+    };
+    await ctx.db.patch("analystRuns", run._id, {
+      traceCandidates: JSON.stringify(
+        runCandidates(run).map((candidate) =>
+          candidate.suggestionId === suggestionId
+            ? { ...candidate, recommended: true, recommendation }
+            : candidate,
+        ),
+      ),
+    });
     const feed = await ctx.db
       .query("feeds")
       .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
@@ -324,7 +394,7 @@ export const recommend = internalMutation({
       return false;
     await ctx.db.patch("suggestions", row._id, {
       recommended: true,
-      recommendation: { text: text.slice(0, 500), provider: "creao", remoteRunId, at: nowIso() },
+      recommendation,
     });
     return true;
   },
@@ -582,6 +652,7 @@ async function recommendFix(
   const scope = `v${first.snapshotVersion}`;
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId,
+    analystRunId: runId,
     kind: "advisor",
     provider: "creao",
     scope,
@@ -631,6 +702,7 @@ async function recommendFix(
       ctx,
       {
         companyId,
+        analystRunId: runId,
         kind: "advisor",
         scope,
         callId: reservation.callId,

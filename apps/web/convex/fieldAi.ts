@@ -100,9 +100,23 @@ export async function reserveCall(
     kind: Kind;
     provider: Provider;
     scope: string;
+    analystRunId?: string;
   },
 ): Promise<Reservation> {
   const { companyId, kind, provider, scope } = args;
+  if (args.analystRunId) {
+    const run = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_runId", (q) => q.eq("runId", args.analystRunId!))
+      .unique();
+    if (
+      !run ||
+      run.companyId !== companyId ||
+      ![`v${run.snapshotVersion}`, `v${run.snapshotVersion}:repair`].includes(scope)
+    )
+      throw new Error("AI receipt origin must match its company and snapshot");
+    if (run.status !== "running") return { ok: false, reason: "analyst run is no longer active" };
+  }
   // A routine simulated day (fieldClock.ts): new entries, but no event, flag or verdict change.
   const clock = await ctx.db
     .query("simClocks")
@@ -157,7 +171,13 @@ export async function reserveCall(
 }
 
 export const reserve = internalMutation({
-  args: { companyId: v.id("companies"), kind: kindArg, provider: providerArg, scope: v.string() },
+  args: {
+    companyId: v.id("companies"),
+    kind: kindArg,
+    provider: providerArg,
+    scope: v.string(),
+    analystRunId: v.optional(v.string()),
+  },
   handler: (ctx, args) => reserveCall(ctx, args),
 });
 
@@ -336,6 +356,7 @@ export async function runCreaoStep<T>(
     companyId: Id<"companies">;
     kind: Kind;
     scope: string;
+    analystRunId?: string;
     callId: Id<"aiCalls">;
     job: FieldCreaoJob<T>;
   },
@@ -376,6 +397,7 @@ export async function runCreaoStep<T>(
     kind: args.kind,
     provider: "creao",
     scope: repairScope(args.scope),
+    ...(args.analystRunId && { analystRunId: args.analystRunId }),
   });
   if (!reservation.ok) {
     const why = `repair skipped: ${reservation.reason}`;
@@ -438,6 +460,7 @@ export type AiStep<T> = {
   companyId: Id<"companies">;
   kind: Kind;
   scope: string;
+  analystRunId?: string;
   agentId: string;
   parentAgentId: string;
   task: string;
@@ -479,7 +502,13 @@ export type AiStepResult<T> =
 export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiStepResult<T>> {
   const { companyId, kind, scope, log } = step;
   const reserve = (provider: Provider): Promise<Reservation> =>
-    ctx.runMutation(internal.fieldAi.reserve, { companyId, kind, provider, scope });
+    ctx.runMutation(internal.fieldAi.reserve, {
+      companyId,
+      kind,
+      provider,
+      scope,
+      ...(step.analystRunId && { analystRunId: step.analystRunId }),
+    });
   const as =
     (agentKind: Provider) =>
     (r: RowBody): AgentRow => ({
@@ -569,7 +598,14 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
     try {
       const run = await runCreaoStep(
         ctx,
-        { companyId, kind, scope, callId: reservation.callId, job: step.creao.job },
+        {
+          companyId,
+          kind,
+          scope,
+          ...(step.analystRunId && { analystRunId: step.analystRunId }),
+          callId: reservation.callId,
+          job: step.creao.job,
+        },
         creaoHooks(working),
       );
       await log(

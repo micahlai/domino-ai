@@ -14,7 +14,6 @@
  * It runs on every new snapshot version (one call per version); later runs on the same version
  * skip it, and only the first of those logs the skip.
  */
-import { SnapshotSchema } from "@domino/contracts";
 import { v } from "convex/values";
 import {
   type CoordinatorInput,
@@ -36,11 +35,11 @@ import {
 } from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
 import { NOT_CONFIGURED, apifyConfigured, searchReport, searchSignals } from "./fieldApify";
+import { numericalInputs, pinnedInputs } from "./fieldTrace";
 import type { AgentRow } from "./lib/agentLog";
 import { APIFY_ACTOR, signalLines } from "./lib/apify";
 import type { CoordinatorRecord } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
-import { parse } from "./lib/parse";
 
 export const COORDINATOR = "coordinator#1";
 
@@ -82,12 +81,14 @@ export const input = internalQuery({
         summary: f.summary,
         escalated: f.escalated,
       }));
-    const snapshot = await ctx.db.get("snapshots", run.snapshotId);
-    const company = (await ctx.db.get("companies", run.companyId))?.name ?? "";
+    const { snapshot } = await numericalInputs(ctx, run);
+    const company = pinnedInputs(run)?.company.name ?? "Unknown saved company";
     const counterparties = snapshot
-      ? counterpartyJob(parse(SnapshotSchema, snapshot.data), company).counterparties.map(
-          ({ name, role, rank }) => ({ name, role, rank }),
-        )
+      ? counterpartyJob(snapshot, company).counterparties.map(({ name, role, rank }) => ({
+          name,
+          role,
+          rank,
+        }))
       : [];
     return {
       companyId: run.companyId,
@@ -179,6 +180,7 @@ export async function coordinate(
   const scope = `v${data.snapshotVersion}`;
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId,
+    analystRunId: runId,
     kind: "coordinator",
     provider: "creao",
     scope,
@@ -240,6 +242,7 @@ export async function coordinate(
       ctx,
       {
         companyId,
+        analystRunId: runId,
         kind: "coordinator",
         scope,
         callId: reservation.callId,

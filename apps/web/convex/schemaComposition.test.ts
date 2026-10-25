@@ -79,6 +79,7 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
   explanations: [["by_branch", ["branchId"]]],
   log: [
     ["by_company", ["companyId"]],
+    ["by_company_and_runId", ["companyId", "runId"]],
     ["by_company_and_action", ["companyId", "action"]],
   ],
   feeds: [["by_companyId", ["companyId"]]],
@@ -92,6 +93,7 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
   nessieLinks: [["by_companyId", ["companyId"]]],
   analystRuns: [
     ["by_companyId", ["companyId"]],
+    ["by_company_and_runId", ["companyId", "runId"]],
     ["by_runId", ["runId"]],
   ],
   analystScenarios: [["by_runId_and_index", ["runId", "index"]]],

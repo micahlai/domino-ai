@@ -54,12 +54,7 @@
  * Mutations
  *   fieldAnalyst.run({ companyId, paceMs? }) -> { runId, skipped }
  */
-import {
-  CompanyModelSchema,
-  ConstraintSchema,
-  type Snapshot,
-  SnapshotSchema,
-} from "@domino/contracts";
+import type { Snapshot } from "@domino/contracts";
 import { ConvexError, type Infer, v } from "convex/values";
 import { type AnalystDigest, summarizeScenarios } from "../../../packages/agents/src/fieldAi";
 import { counterpartyCreaoJob, summaryCreaoJob } from "../../../packages/agents/src/fieldCreao";
@@ -100,6 +95,7 @@ import { wantsCatchUp } from "./fieldClock";
 import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { checkWebsite, ensureTool } from "./fieldTools";
+import { freezeTrace, numericalInputs, pinInputs, pinnedInputs } from "./fieldTrace";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 import {
   type FixResult,
@@ -118,7 +114,6 @@ import { APIFY_ACTOR, searchName, searchOrder, signalFacts } from "./lib/apify";
 import { websiteOf } from "./lib/apifyStore";
 import { type CoordinatorRecord, coordinatorRecordArg } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
-import { parse } from "./lib/parse";
 import { SWARM_LIMIT } from "./lib/swarm";
 
 export const ANALYST = "analyst#1";
@@ -164,29 +159,6 @@ type RecordArgs = {
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-async function readInputs(
-  ctx: Pick<QueryCtx, "db">,
-  companyId: Id<"companies">,
-  snapshotId: Id<"snapshots">,
-): Promise<Inputs> {
-  const row = await ctx.db.get("snapshots", snapshotId);
-  const modelRow = await ctx.db
-    .query("models")
-    .withIndex("by_company_version", (q) => q.eq("companyId", companyId))
-    .order("desc")
-    .first();
-  if (!row || !modelRow) throw new Error("The analyst needs a snapshot and a model");
-  const constraints = await ctx.db
-    .query("constraints")
-    .withIndex("by_company", (q) => q.eq("companyId", companyId))
-    .take(100);
-  return {
-    snapshot: parse(SnapshotSchema, row.data),
-    model: parse(CompanyModelSchema, modelRow.data),
-    constraints: constraints.map((c) => parse(ConstraintSchema, c.data)),
-  };
-}
-
 async function runRow(ctx: Pick<QueryCtx, "db">, runId: string) {
   return ctx.db
     .query("analystRuns")
@@ -214,16 +186,40 @@ async function startRun(ctx: Ctx, companyId: Id<"companies">, trigger: string, p
   const now = Date.now();
   if (last?.status === "running" && now - Date.parse(last.startedAt) < STALE_MS)
     return { runId: last.runId, skipped: true };
-  const runId = `analyst-${now.toString(36)}`;
+  if (last?.status === "running") {
+    await ctx.db.patch("analystRuns", last._id, {
+      status: "failed",
+      finishedAt: new Date(now).toISOString(),
+      summary: "Run abandoned after its completion deadline",
+    });
+    await agentLog(ctx, companyId, last.runId, {
+      action: "analyst.failed",
+      agentId: ANALYST,
+      agentKind: "domino",
+      event: "status",
+      status: "failed",
+      summary: "Run abandoned after its completion deadline",
+    });
+    await freezeTrace(ctx, last._id);
+  }
+  // Company and previous durable row prevent collisions across companies or same-ms reruns.
+  const runId = `analyst-${companyId}-${now.toString(36)}-${last?._id ?? "first"}`;
   const version = `v${feed.snapshotVersion}`;
-  const company = await ctx.db.get("companies", companyId);
+  const { pinned, json } = await pinInputs(
+    ctx,
+    companyId,
+    feed.lastSnapshotId,
+    feed.snapshotVersion,
+  );
   await ctx.db.insert("analystRuns", {
     companyId,
     runId,
     trigger,
     snapshotId: feed.lastSnapshotId,
     snapshotVersion: feed.snapshotVersion,
-    asOf: company?.today ?? "",
+    asOf: pinned.snapshot.asOf,
+    traceInputs: json,
+    traceCandidates: "[]",
     status: "running",
     paceMs,
     children: 0,
@@ -273,13 +269,13 @@ export const run = mutation({
   },
 });
 
-/** Pinned inputs for one run: its snapshot version, the newest model, every constraint. */
+/** Pinned snapshot, model and constraints captured when this exact run started. */
 export const inputs = internalQuery({
   args: { runId: v.string() },
   handler: async (ctx, { runId }) => {
     const run = await runRow(ctx, runId);
     if (!run) throw new Error(`Unknown analyst run ${runId}`);
-    return readInputs(ctx, run.companyId, run.snapshotId);
+    return numericalInputs(ctx, run);
   },
 });
 
@@ -352,6 +348,7 @@ export const record = internalMutation({
         finishedAt: new Date().toISOString(),
         summary: args.failRun.slice(0, 500),
       });
+      await freezeTrace(ctx, run._id);
       return true;
     }
     if (args.next) {
@@ -1084,6 +1081,7 @@ async function aiSummary(
   const task = `Summarize ${n} scenario reports on v${digest.snapshotVersion}`;
   const out = await runAiStep(ctx, {
     companyId,
+    analystRunId: runId,
     kind: "analyst",
     scope: `v${digest.snapshotVersion}`,
     agentId: SUMMARIZER,
@@ -1180,6 +1178,7 @@ async function counterpartyResearch(
     );
   const company: string = await ctx.runQuery(internal.fieldAnalyst.companyName, {
     companyId: c.companyId,
+    runId,
   });
   const plain = counterpartyJob(s, company);
   // Public signals the research agent already fetched (Apify, cached 24 h) ride along as facts.
@@ -1206,6 +1205,7 @@ async function counterpartyResearch(
   const scope = `v${c.snapshotVersion}`;
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId: c.companyId,
+    analystRunId: runId,
     kind: "research",
     provider: "creao",
     scope,
@@ -1266,6 +1266,7 @@ async function counterpartyResearch(
       ctx,
       {
         companyId: c.companyId,
+        analystRunId: runId,
         kind: "research",
         scope,
         callId: reservation.callId,
@@ -1332,8 +1333,14 @@ async function counterpartyResearch(
 }
 
 export const companyName = internalQuery({
-  args: { companyId: v.id("companies") },
-  handler: async (ctx, { companyId }) => (await ctx.db.get("companies", companyId))?.name ?? "",
+  args: { companyId: v.id("companies"), runId: v.optional(v.string()) },
+  handler: async (ctx, { companyId, runId }) => {
+    if (!runId) return (await ctx.db.get("companies", companyId))?.name ?? "";
+    const run = await runRow(ctx, runId);
+    return run?.companyId === companyId
+      ? (pinnedInputs(run)?.company.name ?? "Unknown saved company")
+      : "";
+  },
 });
 
 /** Closes the run with the engine summary, the coordinator plan and the AI summary. */
@@ -1395,6 +1402,7 @@ export const finish = internalMutation({
       refs: failing.map((r) => r.scenarioId),
       summary: `Analyst done: ${summary}`,
     });
+    await freezeTrace(ctx, run._id);
     // Every meaningful new snapshot version gets a run (and so a coordinator plan): a version
     // ingested while this run was busy was skipped by startRun, so pick up the newest one now.
     // The simulated clock's routine days and its own queued run are left to the clock.
