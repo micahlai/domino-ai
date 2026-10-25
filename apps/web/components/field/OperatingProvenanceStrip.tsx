@@ -26,7 +26,7 @@ export function OperatingProvenanceStrip() {
         <span className="font-medium">{label}</span>
         <span className="text-muted-foreground">
           {catalog
-            ? `${catalog.referenceCompany} period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}. Reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical cutoff)" : ""}.`
+            ? `${catalog.referenceCompany} period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}. Starting reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical ledger date). 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case" : ""}.`
             : "Records reconstructed."}{" "}
           Future scenarios and forecasts illustrative.
         </span>
@@ -99,10 +99,13 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
         <p className="mt-1 text-muted-foreground">
           {catalog?.referenceCompany ?? "Public company"} reported period {context.periodStart} to{" "}
           {context.periodEnd}. Published {context.reportedAt}
-          {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Reconstructed
-          books as of {catalog?.simulationAsOf ?? context.periodEnd}
-          {context.company === "2u" ? " (historical cutoff)" : ""}. The report publication and
-          reconstructed books carry separate dates.
+          {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Starting
+          reconstructed books as of {catalog?.simulationAsOf ?? context.periodEnd}
+          {context.company === "2u" ? " (historical ledger date)" : ""}. The report publication and
+          starting books carry separate dates.
+          {context.company === "2u"
+            ? " 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case."
+            : ""}
         </p>
       </div>
       <details>
@@ -160,11 +163,11 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
       </div>
       {context.currentLedger ? (
         <div>
-          <p className="font-medium">Reconstructed current books roll-forward</p>
+          <p className="font-medium">Starting reconstructed books roll-forward</p>
           <p className="mt-1 text-muted-foreground">
-            From the reported {context.currentLedger.reportedPeriodEnd} cash balance to simulated
-            books as of {context.currentLedger.asOf}. This is a reconstruction, not a reported
-            current balance.
+            From the reported {context.currentLedger.reportedPeriodEnd} cash balance to starting
+            reconstructed books as of {context.currentLedger.asOf}. This fixed source bridge does
+            not advance with the demo clock and is not a reported balance.
           </p>
           <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">
             {(
@@ -174,9 +177,9 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
                   "Reconstructed change after report date",
                   context.currentLedger.reconstructedCashChangeCents,
                 ],
-                ["Current cash on hand", context.currentLedger.cashOnHandCents],
+                ["Starting reconstructed cash on hand", context.currentLedger.cashOnHandCents],
                 [
-                  "Current restricted cash, shown separately",
+                  "Starting reconstructed restricted cash, shown separately",
                   context.currentLedger.restrictedCashCents,
                 ],
               ] as const

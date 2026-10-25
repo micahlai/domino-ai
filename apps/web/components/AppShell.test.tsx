@@ -40,6 +40,10 @@ describe("AppShell navigation", () => {
     expect(html).toContain('aria-label="Company"');
     expect(html).toContain('aria-label="Scenario"');
     expect(html).toContain("Based on 2U public filings, with reconstructed operating data.");
+    expect(html).toContain(
+      "Starting reconstructed books as of 2023-09-30 (historical ledger date)",
+    );
+    expect(html).toContain("public reports released by 2023-11-09");
     for (const gone of [
       "/playground",
       'href="/connect"',

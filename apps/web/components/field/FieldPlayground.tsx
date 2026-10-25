@@ -35,7 +35,7 @@ export function FieldPlayground() {
               ? OPERATING_DEMO_LABEL
               : `Fictional company based on ${catalog?.referenceCompany ?? "public company"} filings.`}{" "}
             {catalog
-              ? `Period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}; reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical cutoff)" : ""}.`
+              ? `Period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}; starting reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical ledger date). 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case" : ""}.`
               : ""}{" "}
             Scenario: {selection.scenario}. This playground selector changes no backend feed.
           </p>

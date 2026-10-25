@@ -11,6 +11,9 @@ describe("operating source panel", () => {
     expect(html).toMatch(/<details><summary[^>]*>Reported and derived anchors/);
     expect(html).toContain("2023-09-30");
     expect(html).toContain("2023-11-09");
+    expect(html).toContain("historical ledger date");
+    expect(html).toContain("later actuals are in the separate historical case");
+    expect(html).not.toContain("historical cutoff");
     expect(html).toContain("combined cash including restricted");
     expect(html).toContain("2U payables and accruals bridge");
     expect(html).toContain("2022-12-31");
@@ -44,9 +47,11 @@ describe("operating source panel", () => {
       if (filed) expect(html).toContain(filed);
       expect(html).toContain("2026-10-25");
       expect(html).toContain("Reported-period cash bridge from backend");
-      expect(html).toContain("Reconstructed current books roll-forward");
+      expect(html).toContain("Starting reconstructed books roll-forward");
       expect(html).toContain("Reported ending combined cash");
-      expect(html).toContain("Current restricted cash, shown separately");
+      expect(html).toContain("Starting reconstructed cash on hand");
+      expect(html).toContain("Starting reconstructed restricted cash, shown separately");
+      expect(html).toContain("does not advance with the demo clock");
       expect(html).toContain("combined cash including restricted");
       expect(context.currentLedger?.basis).toBe("reconstructed");
     },
