@@ -9,9 +9,11 @@ import {
   withSavedState,
 } from "./graph";
 import {
+  type LiveFinding,
   type LiveLogRow,
   type LiveStatus,
   type SwarmLogFields,
+  toFinding,
   toOperations,
   toStatus,
 } from "./live";
@@ -292,5 +294,27 @@ describe("live log mapping", () => {
     expect(sources.every(hasWork)).toBe(true);
     expect(sources[0]?.saved).toBe("Data through Nov 2");
     expect(graph.nodes.find((n) => n.id === "output:books")?.saved).toBe("4 versions saved");
+  });
+
+  it("passes Claude's explanation and suggested check through to the finding", () => {
+    const base = {
+      findingId: "f1",
+      kind: "duplicate",
+      severity: "medium",
+      summary: "Two charges",
+      refs: ["card_1"],
+      detectedAt: "2026-10-30",
+      status: "open",
+      escalated: false,
+    };
+    const explained = toFinding({
+      ...base,
+      explanation: { text: "Same amount twice.", suggestedCheck: "Ask Ramp.", model: "m", at: "t" },
+    } as unknown as LiveFinding);
+    expect(explained).toMatchObject({
+      explanation: "Same amount twice.",
+      suggestedCheck: "Ask Ramp.",
+    });
+    expect(toFinding(base as unknown as LiveFinding)).not.toHaveProperty("explanation");
   });
 });

@@ -92,7 +92,14 @@ export type FieldOperation = {
 };
 
 export type FindingStatus = "open" | "approved" | "rejected";
-export type FieldFinding = Finding & { status: FindingStatus; note?: string; escalated?: boolean };
+export type FieldFinding = Finding & {
+  status: FindingStatus;
+  note?: string;
+  escalated?: boolean;
+  /** Live only: Claude's plain-language explanation of the flag and a check to run. */
+  explanation?: string;
+  suggestedCheck?: string;
+};
 
 export type Decision = "approved" | "rejected";
 
