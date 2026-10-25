@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-24: delivery extended through TL5
+
+- User authorizes implementation through TL5 and parallel workers. Lead integration uses TL5-checkpoint; three separate Claude worktrees implement backend, UI and questions. Codex audits/integrates; main and timeline/main unchanged.
+- Cards: TL2B-workspace-backend, TL2U-workspace-screen, TL3Q-timeline-questions. Fixed local API: TL2-TL5-interface.md. Acceptance remains pending in TL5-acceptance.md.
+- Own local services resumed on 3240/3241 and 3107. Existing saved TL1 baseline still reads 13 points. No peer ports/data reset or dashboard changes.
+
 ## 2026-10-24: TL1 ready for local smoke test
 
 - Done: backend e9e3f3c independently accepted after three boundary repairs; UI d1b8a37 reviewed; combined on TL1-checkpoint. Actual browser save/reload and API retry/tamper checks pass. 1,661 combined tests, typechecks/lint/production build pass. [Acceptance evidence](TL1-acceptance.md).
