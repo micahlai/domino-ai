@@ -12,6 +12,7 @@ import { HistoricalReplay } from "../../historical/HistoricalReplay";
 import { CASE_ID } from "../../historical/live";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import { BaselineLive } from "../baseline/BaselineLive";
 import { TimelineBackendSmoke } from "./TimelineBackendSmoke";
 import { WeeklySeedPanel } from "./WeeklySeedPanel";
 import { seedView } from "./seedView";
@@ -41,6 +42,7 @@ export function TimelineSeamHarness() {
 
   return (
     <div className="space-y-6">
+      <BaselineLive />
       <TimelineBackendSmoke caseId={CASE_ID} />
       <WeeklySeedPanel />
       <section className="space-y-3">
