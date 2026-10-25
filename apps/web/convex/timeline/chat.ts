@@ -1,6 +1,8 @@
 import { canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
 import { z } from "zod";
+import { WorkerChatContextSchema } from "../../lib/worker-chat-context";
+import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import {
   type MutationCtx,
@@ -209,6 +211,100 @@ export const begin = mutation({
       conversationId,
       runId: args.runId,
       data: { receipt, draft: emptyDraft() },
+    };
+    checkRowSize(row);
+    await ctx.db.insert("timelineChats", row);
+    return accept(ctx, args, prior.hash, receipt);
+  },
+});
+/** Only the frozen Worker handoff may attach context. Opening it never invokes a provider. */
+export const beginWorker = internalMutation({
+  args: {
+    fieldCompanyId: v.id("companies"),
+    fieldRunId: v.string(),
+    scenarioId: v.string(),
+    fixKind: v.string(),
+    suggestionId: v.string(),
+    snapshotVersion: v.number(),
+    companyId: v.string(),
+    runId: v.string(),
+    scenarioRunId: v.string(),
+    requestId: v.string(),
+    note: v.string(),
+  },
+  handler: async (ctx, args): Promise<ChatReceipt> => {
+    Id.parse(args.companyId);
+    Id.parse(args.runId);
+    z.string().max(500).parse(args.note);
+    const saved = await ctx.runQuery(internal.fieldTimeline.suggestionInputs, {
+      companyId: args.fieldCompanyId,
+      runId: args.fieldRunId,
+      scenarioId: args.scenarioId,
+      fixKind: args.fixKind,
+      suggestionId: args.suggestionId,
+      snapshotVersion: args.snapshotVersion,
+    });
+    const workerContext = WorkerChatContextSchema.parse({
+      ...JSON.parse(saved.workerContextJson),
+      scenarioRunId: args.scenarioRunId,
+      fixRunId: args.runId,
+      note: args.note,
+    });
+    const run = await source(ctx, args.companyId, args.runId);
+    const risk = await source(ctx, args.companyId, args.scenarioRunId);
+    if (
+      saved.timelineCompanyId !== args.companyId ||
+      run.parentRunId !== risk.runId ||
+      run.baselineRunId !== risk.baselineRunId ||
+      run.baseline.seed.contentHash !== saved.contentHash ||
+      canonicalJson(run.baseline.model) !== canonicalJson(JSON.parse(saved.modelJson)) ||
+      canonicalJson(run.constraints) !== canonicalJson(JSON.parse(saved.constraintsJson)) ||
+      canonicalJson(risk.ownChanges) !== canonicalJson(JSON.parse(saved.scenarioChangesJson)) ||
+      canonicalJson(run.ownChanges) !== canonicalJson(JSON.parse(saved.fixChangesJson)) ||
+      workerContext.candidate.effect.scenarioLow !== risk.forecast.lowPoint.usable ||
+      workerContext.candidate.effect.lowPoint !== run.forecast.lowPoint.usable ||
+      workerContext.candidate.effect.lowWeekStart !== run.forecast.lowPoint.weekStart ||
+      workerContext.candidate.effect.gain !== run.comparison?.lowPointDelta
+    )
+      reject(
+        "WORKER_CONTEXT_MISMATCH",
+        "This Worker suggestion does not match the saved Timeline comparison.",
+      );
+    const prior = await request(ctx, "begin-worker", args);
+    if (prior.receipt) return prior.receipt;
+    const now = new Date().toISOString();
+    const conversationId = `timeline:chat/${await sha256Hex(canonicalJson([args.companyId, args.requestId]))}`;
+    let receipt: ChatReceipt = {
+      schemaVersion: 1,
+      methodVersion: CHAT_METHOD,
+      companyId: args.companyId,
+      conversationId,
+      runId: args.runId,
+      inputHash: run.inputHash,
+      constraintVersion: run.constraintVersion,
+      revision: 0,
+      status: "collecting",
+      selectedWeek: null,
+      selectedItemId: null,
+      createdAt: now,
+      updatedAt: now,
+      turns: [],
+      proposal: null,
+      linkedRunId: null,
+      pendingField: null,
+      workerContext,
+    };
+    receipt = append(
+      receipt,
+      "assistant",
+      "Opened this Worker suggestion and its saved forecast comparison. Its risk, fix, calculation sources, assumptions and your optional note are attached below. Ask about it or describe another what-if. Showing this suggestion does not accept it; nothing is paid or moved.",
+      now,
+    );
+    const row = {
+      companyId: args.companyId,
+      conversationId,
+      runId: args.runId,
+      data: { receipt: exactReceipt(receipt), draft: emptyDraft() },
     };
     checkRowSize(row);
     await ctx.db.insert("timelineChats", row);

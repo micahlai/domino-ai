@@ -134,8 +134,8 @@ function LiveWorker() {
       latest={latest ?? undefined}
       suggestions={suggestions.state}
       onDecide={suggestions.decide}
-      onSimulate={async (suggestion) => {
-        const result = await suggestions.simulate(suggestion);
+      onSimulate={async (suggestion, note) => {
+        const result = await suggestions.simulate(suggestion, note);
         router.push(result.route);
       }}
     />

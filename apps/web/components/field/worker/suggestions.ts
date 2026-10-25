@@ -1,4 +1,5 @@
 import { makeFunctionReference } from "convex/server";
+import { z } from "zod";
 import type { DashboardView } from "../dashboard/derive";
 import { money, weekOf } from "./format";
 
@@ -20,11 +21,42 @@ export type SimulationResult = {
   rootRunId: string;
   scenarioRunId: string;
   fixRunId: string;
+  conversationId: string;
   route: string;
   reused: boolean;
   scenarioLow: { cents: number; weekStart: string };
   fixLow: { cents: number; weekStart: string };
 };
+const savedId = z.string().min(1).max(240);
+const lowPoint = z
+  .object({ cents: z.number().int().safe(), weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+  .strict();
+const SimulationResultSchema = z
+  .object({
+    timelineCompanyId: savedId,
+    baselineRunId: savedId,
+    rootRunId: savedId,
+    scenarioRunId: savedId,
+    fixRunId: savedId,
+    conversationId: savedId,
+    route: z.string().max(2000),
+    reused: z.boolean(),
+    scenarioLow: lowPoint,
+    fixLow: lowPoint,
+  })
+  .strict();
+/** Only navigate to the returned saved company/run/conversation, never an arbitrary route. */
+export function readSimulationResult(raw: unknown): SimulationResult {
+  const result = SimulationResultSchema.parse(raw);
+  const expected = `/c/${encodeURIComponent(result.timelineCompanyId)}/timeline?${new URLSearchParams(
+    {
+      runId: result.fixRunId,
+      conversationId: result.conversationId,
+    },
+  )}#timeline-chat`;
+  if (result.route !== expected) throw new Error("The saved Timeline link could not be verified.");
+  return result;
+}
 
 /** A fix as the backend may send it: a sentence, or the parts of one. */
 export type SuggestionFix =
@@ -91,12 +123,15 @@ export const SIMULATE_SUGGESTION_API = makeFunctionReference<
     fixKind: string;
     suggestionId: string;
     snapshotVersion: number;
+    note?: string;
   },
   SimulationResult
 >("fieldSuggestionSimulation:simulate");
 
 /** Refuse incomplete legacy identities instead of simulating a different current suggestion. */
-export function simulationArgs(companyId: string, s: Suggestion) {
+export function simulationArgs(companyId: string, s: Suggestion, note?: string) {
+  if (note !== undefined && note.length > 500)
+    throw new Error("Use a note of at most 500 characters.");
   if (
     !companyId ||
     !s.runId ||
@@ -113,6 +148,7 @@ export function simulationArgs(companyId: string, s: Suggestion) {
     fixKind: s.fix.kind,
     suggestionId: s.id,
     snapshotVersion: s.snapshotVersion as number,
+    ...(note !== undefined ? { note } : {}),
   };
 }
 
