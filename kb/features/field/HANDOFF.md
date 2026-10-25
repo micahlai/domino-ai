@@ -1,5 +1,12 @@
 # Field lane handoff (Claude lead -> Codex), Oct 25
 
+## Codex takeover, Oct 25
+- User authorized Codex as Field lead to finish and integrate this wave. Fresh integration checkout: `../domino-merge`, branch `merge/field-codex-20261025`, based on `field/main` at `8dbba79`. Main remains untouched.
+- Inspected all five worktrees: convex-depth clean and already merged; worker-page clean at `e9b2e0b`; swarms at `8857294` with unfinished backend changes; judge-simple and timeline-ux have unfinished changes based on `95d646d`.
+- Claude PID 78153 still owns running swarms and Timeline test commands. Leave those checkouts alone until the commands and worker activity finish. No active judge or worker-page process found.
+- Next: finish judge acceptance, review the worker-page backend contract, then accept swarms before merging worker-page, judge-simple, timeline-ux. Combined validation and live restart are still pending.
+- Live listeners confirmed: Next 3114 PID 68925; Convex 3260/3261 PID 55917. Do not touch protected ports.
+
 ## State
 - Integrated product branch: `field/main` (pushed; worktree `../domino-field`). Includes Field (ingestion, connectors incl. real Nessie bank, audit, CREAO-first AI with Claude fallback, real Apify, sim clock, brain map, dashboard, judge v1, 2U rewind) + Timeline TL7/TL9 integrated (joint seam "Open in Timeline", TL6 dashboard data). Latest: 95d646d. Tests: web 1137, engine 376 pass; lint clean.
 - Live demo (keep running): Next dev `http://127.0.0.1:3114` and local Convex `3260/3261`, both started from `../domino-field/apps/web`. Env on that Convex: ANTHROPIC_API_KEY, CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID/_API_KEY, DOMINO_CREAO_VERIFIED_PROFILES (evidence_analyst + 4 field_* roles), NESSIE_API_KEY/BASE_URL, APIFY_TOKEN. Never print values. Never touch ports 3102/3210/3214 (other apps) or the friend's 3107/3240/3241.
