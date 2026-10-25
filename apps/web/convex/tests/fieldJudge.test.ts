@@ -293,3 +293,154 @@ describe("judge CSV upload", () => {
     expect(none.code).toBe("INVALID_ROWS");
   }, 60_000);
 });
+
+describe("simple judge flow", () => {
+  const latestSnapshot = (t: T, companyId: Id<"companies">) =>
+    t.run(async (ctx) => {
+      const feed = await ctx.db
+        .query("feeds")
+        .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+        .unique();
+      const row = feed?.lastSnapshotId ? await ctx.db.get("snapshots", feed.lastSnapshotId) : null;
+      return row?.data as { payroll: unknown[]; bills: unknown[]; cardTxns: unknown[] };
+    });
+  const tools = (t: T, companyId: Id<"companies">) =>
+    t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("connections")
+        .withIndex("by_companyId_and_tool", (q) => q.eq("companyId", companyId))
+        .take(20);
+      return Object.fromEntries(rows.map((r) => [r.tool, r]));
+    });
+
+  it("applies the chosen data sources before the first ingest", async () => {
+    vi.useFakeTimers();
+    const t = newBackend();
+    const { companyId } = await t.mutation(api.fieldJudge.start, {
+      profile: "kestrel-late",
+      sources: ["nessie", "stripe"],
+    });
+    // Before the scheduled first ingest runs: only the chosen tools are connected.
+    const before = await tools(t, companyId);
+    expect(
+      Object.entries(before)
+        .filter(([, r]) => r.status !== "disconnected")
+        .map(([tool]) => tool)
+        .sort(),
+    ).toEqual(["nessie", "stripe"]);
+    await drain(t);
+    const after = await tools(t, companyId);
+    expect(after.gusto?.lastSyncAt).toBeNull();
+    expect(after.stripe?.lastSyncAt).not.toBeNull();
+    const snapshot = await latestSnapshot(t, companyId);
+    expect(snapshot.payroll).toEqual([]);
+    expect(snapshot.cardTxns).toEqual([]);
+    const state = await t.query(api.fieldJudge.state, { companyId });
+    expect(state).toMatchObject({ profile: "kestrel-late", sources: ["nessie", "stripe"] });
+    expect(state?.snapshotVersion).toBe(1);
+
+    // All six by default; reset keeps the same profile and sources.
+    const next = await t.mutation(api.fieldJudge.reset, { companyId });
+    expect((await t.query(api.fieldJudge.state, { companyId: next.companyId }))?.sources).toEqual([
+      "nessie",
+      "stripe",
+    ]);
+    const full = await t.mutation(api.fieldJudge.start, {});
+    expect((await t.query(api.fieldJudge.state, { companyId: full.companyId }))?.sources).toEqual([
+      "nessie",
+      "stripe",
+      "ramp",
+      "qbo",
+      "gusto",
+      "hubspot",
+    ]);
+  }, 60_000);
+
+  it("refuses a selection without the bank, and nothing is created", async () => {
+    vi.useFakeTimers();
+    const t = newBackend();
+    const refused = await code(t.mutation(api.fieldJudge.start, { sources: ["stripe", "qbo"] }));
+    expect(refused).toEqual({
+      code: "INVALID_INPUT",
+      message: "Keep the bank connected: the forecast starts from its cash balance",
+    });
+    expect(await t.query(api.fieldJudge.companies, {})).toEqual([]);
+  });
+
+  it("plants the three presets, refuses one whose tool is off, and leave archives", async () => {
+    const { t, companyId } = await started();
+    const late = await t.mutation(api.fieldJudge.surprise, {
+      companyId,
+      preset: "late_big_customer",
+    });
+    expect(late.summary).toContain("now pays 45 days late");
+    const bill = await t.mutation(api.fieldJudge.surprise, {
+      companyId,
+      preset: "unexpected_bill",
+    });
+    expect(bill.summary).toContain("$750,000");
+    const gap = await t.mutation(api.fieldJudge.surprise, {
+      companyId,
+      preset: "bank_stripe_mismatch",
+    });
+    expect(gap.summary).toContain("off by -$18,400");
+    const bad = await code(
+      t.mutation(api.fieldJudge.surprise, {
+        companyId,
+        preset: "teleport" as "unexpected_bill",
+      }),
+    ).catch((e: Error) => ({ code: "VALIDATOR", message: e.message }));
+    expect(bad.code).toBe("VALIDATOR");
+    await drain(t);
+    const state = await t.query(api.fieldJudge.state, { companyId });
+    expect(state?.history.map((h) => h.kind)).toEqual([
+      "surprise:late_big_customer",
+      "surprise:unexpected_bill",
+      "surprise:bank_stripe_mismatch",
+    ]);
+    expect(state?.snapshotVersion).toBeGreaterThan(1);
+
+    const noStripe = await t.mutation(api.fieldJudge.start, { sources: ["nessie", "qbo"] });
+    await drain(t);
+    expect(
+      await code(
+        t.mutation(api.fieldJudge.surprise, {
+          companyId: noStripe.companyId,
+          preset: "bank_stripe_mismatch",
+        }),
+      ),
+    ).toEqual({ code: "NEEDS_SOURCE", message: "Connect Stripe to try this surprise" });
+
+    expect(
+      await code(
+        t.mutation(api.fieldJudge.surprise, {
+          companyId: noStripe.companyId,
+          preset: "late_big_customer",
+        }),
+      ),
+    ).toEqual({ code: "NEEDS_SOURCE", message: "Connect Stripe to try this surprise" });
+    const bankOnly = await t.mutation(api.fieldJudge.start, { sources: ["nessie"] });
+    await drain(t);
+    expect(
+      await code(
+        t.mutation(api.fieldJudge.surprise, {
+          companyId: bankOnly.companyId,
+          preset: "unexpected_bill",
+        }),
+      ),
+    ).toEqual({ code: "NEEDS_SOURCE", message: "Connect QuickBooks Online to try this surprise" });
+
+    // Leaving also stops a playing simulated clock.
+    await t.mutation(api.fieldClock.play, { companyId, speed: 5 });
+    await t.mutation(api.fieldJudge.leave, { companyId });
+    expect((await t.query(api.fieldJudge.state, { companyId }))?.archived).toBe(true);
+    expect(await t.query(api.fieldClock.status, { companyId })).toMatchObject({
+      status: "paused",
+      pausedReason: "the sandbox company was reset",
+    });
+    expect((await t.query(api.fieldJudge.companies, {})).map((c) => c.companyId)).toEqual([
+      bankOnly.companyId,
+      noStripe.companyId,
+    ]);
+  }, 60_000);
+});

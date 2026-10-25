@@ -10,16 +10,21 @@
  *   fieldJudge.companies()            active judge companies, newest first:
  *     [{ companyId, name, number, profile }]
  *   fieldJudge.state({ companyId })   null when not a judge company:
- *     { companyId, name, number, profile, archived, asOf, snapshotVersion, lastSnapshotAt,
+ *     { companyId, name, number, profile, sources, archived, asOf, snapshotVersion, lastSnapshotAt,
  *       lastIngestStatus, history: [{ at, kind, label, summary, refs }], checklist: steps,
  *       decisions: [{ approvalId, findingId, decision, by, at, note, summary, logged }],
  *       limits: { perMinute, usedThisMinute, activeCompanies, maxCompanies } }
  *   fieldJudge.customers({ companyId })  pick list from what the mock sources serve now:
  *     [{ id, name, yearlyCents, openCents, openInvoices }]
  * Mutations
- *   fieldJudge.start({ profile? })    new judge company (default profile "kestrel"); at most
- *     JUDGE_LIMITS.activeCompanies active. { companyId, name }
- *   fieldJudge.reset({ companyId })   archive it and start a fresh one with the same profile.
+ *   fieldJudge.start({ profile?, sources? })  new judge company (default profile "kestrel");
+ *     sources = the JUDGE_SOURCES tools to read (default all six, the bank required), applied
+ *     before the first ingest. At most JUDGE_LIMITS.activeCompanies active. { companyId, name }
+ *   fieldJudge.reset({ companyId })   archive it and start a fresh one with the same profile
+ *     and sources.
+ *   fieldJudge.leave({ companyId })   archive it, no replacement.
+ *   fieldJudge.surprise({ companyId, preset })  one of SURPRISE_PRESETS, planted like a
+ *     scenario (same rate limit). { refs, summary }
  *   fieldJudge.submitScenario({ companyId, scenario })  Zod-validated ScenarioSchema;
  *     { refs, summary }. At most JUDGE_LIMITS.submitsPerMinute per company per minute.
  *   fieldJudge.importCsv({ companyId, kind, rows })  rows are header-keyed strings; every row is
@@ -30,6 +35,8 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/server";
+import { toolInfo } from "./connectors/catalog";
+import type { ToolId } from "./connectors/types";
 import { createFeedCompany } from "./field";
 import { type Overlay, servedSnapshot } from "./fieldFeed";
 import { AGENT, requireFeed, requireWorld, writeLog } from "./fieldJobs";
@@ -39,14 +46,21 @@ import {
   CSV_LABEL,
   type CsvEntry,
   JUDGE_LIMITS,
+  JUDGE_SOURCES,
   JudgeInputError,
+  type JudgeSource,
   type Planted,
   SCENARIO_LABEL,
+  SURPRISE_LABEL,
+  SURPRISE_NEEDS,
+  SURPRISE_PRESETS,
   ScenarioSchema,
   judgeChecklist,
+  judgeSourcePlan,
   plantCsv,
   plantScenario,
   rankCustomers,
+  surpriseScenario,
   validateCsvRows,
   zodMessage,
 } from "./lib/judge";
@@ -54,6 +68,7 @@ import type { JudgeHistoryEntry } from "./lib/judgeOverlay";
 
 const profileArg = v.union(...PROFILE_IDS.map((p) => v.literal(p)));
 const csvKind = v.union(...CSV_KINDS.map((k) => v.literal(k)));
+const presetArg = v.union(...SURPRISE_PRESETS.map((p) => v.literal(p)));
 /** Loose shape on the wire; ScenarioSchema (Zod) is the real check, with plain messages. */
 const scenarioArg = v.object({
   kind: v.string(),
@@ -94,7 +109,45 @@ async function requireJudge(ctx: Pick<QueryCtx, "db">, companyId: Id<"companies"
 
 const historyOf = (overlay: Overlay): JudgeHistoryEntry[] => overlay.history ?? [];
 
-async function startJudge(ctx: MutationCtx, profile: ProfileId) {
+const connectionRows = (ctx: Pick<QueryCtx, "db">, companyId: Id<"companies">) =>
+  ctx.db
+    .query("connections")
+    .withIndex("by_companyId_and_tool", (q) => q.eq("companyId", companyId))
+    .take(20);
+
+/** The judge-selectable tools a company reads now (the bank always among them). */
+async function sourcesOf(ctx: Pick<QueryCtx, "db">, companyId: Id<"companies">) {
+  const on = new Set(
+    (await connectionRows(ctx, companyId))
+      .filter((r) => r.status !== "disconnected")
+      .map((r) => r.tool),
+  );
+  return JUDGE_SOURCES.filter((t) => on.has(t));
+}
+
+/**
+ * Turns off the tools the judge left out. Runs in the same transaction that created the
+ * company, so the first ingest (scheduled by createFeedCompany, run after commit) reads only
+ * the chosen tools.
+ */
+async function applySources(ctx: MutationCtx, companyId: Id<"companies">, off: ToolId[]) {
+  for (const row of await connectionRows(ctx, companyId))
+    if (off.includes(row.tool) && row.status !== "disconnected")
+      await ctx.db.patch("connections", row._id, {
+        status: "disconnected",
+        connectedAt: null,
+        connectedBy: null,
+      });
+}
+
+async function startJudge(ctx: MutationCtx, profile: ProfileId, sources?: readonly string[]) {
+  let plan: ReturnType<typeof judgeSourcePlan>;
+  try {
+    plan = judgeSourcePlan(sources);
+  } catch (error) {
+    if (error instanceof JudgeInputError) throw bad(error.message);
+    throw error;
+  }
   const all = await judgeCompanies(ctx);
   const active = all.filter((c) => !c.judgeArchivedAt);
   if (active.length >= JUDGE_LIMITS.activeCompanies)
@@ -104,13 +157,15 @@ async function startJudge(ctx: MutationCtx, profile: ProfileId) {
     );
   const number = Math.max(0, ...all.map((c) => c.judgeNumber ?? 0)) + 1;
   const companyId = await createFeedCompany(ctx, 1, profile, { number });
+  await applySources(ctx, companyId, plan.off);
+  const names = plan.on.map((t) => toolInfo(t).name).join(", ");
   await writeLog(ctx, companyId, undefined, {
     actor: "person",
     action: "feed.judgeStarted",
-    refs: [profile],
+    refs: [profile, ...plan.on],
     agent: "mock.feed",
     tool: "judge.start",
-    summary: `Judge sandbox company #${number} started from the "${fieldCompany(profile).name}" simulation (synthetic data)`,
+    summary: `Judge sandbox company #${number} started from the "${fieldCompany(profile).name}" simulation (synthetic data), reading ${plan.on.length} of ${JUDGE_SOURCES.length} tools: ${names}`,
   });
   return { companyId, name: `Judge Co. #${number}` };
 }
@@ -125,6 +180,18 @@ async function archive(ctx: MutationCtx, company: Doc<"companies">) {
     autoGeneration: feed.autoGeneration + 1,
     autoTicksLeft: 0,
   });
+  // And the simulated clock: a superseded generation ends its pending tick.
+  const clock = await ctx.db
+    .query("simClocks")
+    .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+    .unique();
+  if (clock?.status === "playing")
+    await ctx.db.patch("simClocks", clock._id, {
+      status: "paused",
+      generation: clock.generation + 1,
+      pausedReason: "the sandbox company was reset",
+      playStartedAt: null,
+    });
   await writeLog(ctx, company._id, undefined, {
     actor: "person",
     action: "feed.judgeArchived",
@@ -277,6 +344,7 @@ export const state = query({
       name: company.name,
       number: company.judgeNumber ?? 0,
       profile: await profileOf(ctx, companyId),
+      sources: await sourcesOf(ctx, companyId),
       archived,
       asOf: company.today,
       snapshotVersion: feed.snapshotVersion,
@@ -312,17 +380,47 @@ export const customers = query({
 });
 
 export const start = mutation({
-  args: { profile: v.optional(profileArg) },
-  handler: async (ctx, { profile }) => startJudge(ctx, profile ?? "kestrel"),
+  args: { profile: v.optional(profileArg), sources: v.optional(v.array(v.string())) },
+  handler: async (ctx, { profile, sources }) => startJudge(ctx, profile ?? "kestrel", sources),
 });
 
+/** Archive and start a fresh one with the same profile and the same data sources. */
 export const reset = mutation({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
     const company = await requireJudge(ctx, companyId);
     const profile = (await profileOf(ctx, companyId)) ?? "kestrel";
+    const sources: JudgeSource[] = await sourcesOf(ctx, companyId);
     await archive(ctx, company);
-    return startJudge(ctx, profile);
+    return startJudge(ctx, profile, sources);
+  },
+});
+
+/** Archive without a replacement (the judge goes back to pick another company). */
+export const leave = mutation({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, { companyId }) => {
+    await archive(ctx, await requireJudge(ctx, companyId));
+    return null;
+  },
+});
+
+/** One of the three preset surprises, planted like a scenario (same checks and rate limit). */
+export const surprise = mutation({
+  args: { companyId: v.id("companies"), preset: presetArg },
+  handler: async (ctx, { companyId, preset }) => {
+    await requireJudge(ctx, companyId);
+    const on = await sourcesOf(ctx, companyId);
+    const missing = SURPRISE_NEEDS[preset].filter((t) => !on.includes(t));
+    if (missing.length > 0)
+      throw bad(
+        `Connect ${missing.map((t) => toolInfo(t).name).join(" and ")} to try this surprise`,
+        "NEEDS_SOURCE",
+      );
+    const label = SURPRISE_LABEL[preset].title;
+    return inject(ctx, companyId, `surprise:${preset}`, label, (served, overlay, tag) =>
+      plantScenario(served, overlay, surpriseScenario(preset, served), tag),
+    );
   },
 });
 

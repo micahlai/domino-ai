@@ -3,7 +3,13 @@
 import type { ProfileId } from "@domino/sim";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  createContext,
+  createElement,
+  useContext,
+  useSyncExternalStore,
+} from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
@@ -67,12 +73,30 @@ export function selectCompany(profile: CompanySelection) {
   window.dispatchEvent(new Event(EVENT));
 }
 
+/**
+ * Pins every Field hook below it to one backend company that is not in the picker (a judge
+ * sandbox company), so /judge can embed the brain map for it. The top bar picker is untouched.
+ */
+type Override = { companyId: Id<"companies">; name: string };
+const OverrideContext = createContext<Override | null>(null);
+export function FieldCompanyOverride({
+  companyId,
+  name,
+  children,
+}: Override & { children: ReactNode }) {
+  return createElement(OverrideContext.Provider, { value: { companyId, name } }, children);
+}
+
 /** The selection, 2U included (the default company on the server and before hydration). */
 export const useCompanySelection = (): CompanySelection =>
   useSyncExternalStore(subscribe, read, () => DEFAULT_FIELD_COMPANY);
 
 /** True when 2U, the company replayed from public filings, is selected. */
-export const useIsReplayCompany = (): boolean => useCompanySelection() === REPLAY_COMPANY;
+export const useIsReplayCompany = (): boolean => {
+  const override = useContext(OverrideContext);
+  const selection = useCompanySelection();
+  return !override && selection === REPLAY_COMPANY;
+};
 
 /**
  * The selected simulated profile id. With 2U selected this is the default simulated company;
@@ -85,8 +109,9 @@ export const useSelectedProfile = (): ProfileId => {
 
 /** The selected company's display name. Company records are named exactly after their profile. */
 export const useSelectedCompanyName = (): string => {
+  const override = useContext(OverrideContext);
   const profile = useSelectedProfile();
-  return FIELD_COMPANIES.find((c) => c.id === profile)?.name ?? "Your company";
+  return override?.name ?? FIELD_COMPANIES.find((c) => c.id === profile)?.name ?? "Your company";
 };
 
 export type PickerCompany = FunctionReturnType<typeof api.field.companies>[number];
@@ -100,8 +125,11 @@ export function useSelectedCompany(): {
   selected: PickerCompany | null | undefined;
   companyId: Id<"companies"> | null | undefined;
 } {
+  const override = useContext(OverrideContext);
   const profile = useSelectedProfile();
-  const companies = useQuery(api.field.companies, {});
+  const companies = useQuery(api.field.companies, override ? "skip" : {});
+  // A pinned company is not a picker company: no list, no picker row, only its id.
+  if (override) return { companies: undefined, selected: undefined, companyId: override.companyId };
   const selected =
     companies === undefined
       ? undefined
