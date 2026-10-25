@@ -5,6 +5,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { importSpecs } from "./import-specs.mjs";
 
 const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -63,20 +64,18 @@ function resolveSpec(from, spec) {
   return null;
 }
 
-const IMPORT =
-  /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
 const rows = [];
 for (const file of walk(WEB)) {
   const src = relative(WEB, file);
   const from = laneOf(src);
   if (!from) continue;
   const text = readFileSync(file, "utf8");
-  for (const m of text.matchAll(IMPORT)) {
-    const target = resolveSpec(file, m[1] ?? m[2]);
+  for (const { spec, index } of importSpecs(text)) {
+    const target = resolveSpec(file, spec);
     if (!target) continue;
     const to = laneOf(relative(WEB, target));
     if (!to || to === from) continue;
-    const line = text.slice(0, m.index).split("\n").length;
+    const line = text.slice(0, index).split("\n").length;
     rows.push({ src, line, from, to, target: relative(WEB, target), test: /\.test\./.test(src) });
   }
 }
