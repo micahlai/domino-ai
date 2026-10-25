@@ -187,6 +187,7 @@ describe("saved scenario comparisons", () => {
     expect(order).toEqual(["other", "base", "parent", "child"]);
     expect(html).toMatch(/data-run-id="other" data-highlighted="false" opacity="0.25"/);
     expect(html).toMatch(/data-run-id="child" data-highlighted="true" opacity="1"/);
+    expect(html).toMatch(/opacity="0.25" data-testid="forecast-line"/);
   });
 
   it("offers two-handle time and cash scrollers, axis titles and gridlines", () => {

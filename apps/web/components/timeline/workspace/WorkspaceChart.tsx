@@ -299,7 +299,7 @@ export function WorkspaceChart(p: ChartProps) {
   for (const it of p.items) itemsByWeek.set(it.dueWeek, (itemsByWeek.get(it.dueWeek) ?? 0) + 1);
   const selectedIndex = weeks.findIndex((w) => w.weekStart === p.selectedWeek);
   const mainRunId = p.forecastRunId ?? "forecast";
-  // The base line is every scenario's root, so it stays lit; the rest of the path moves to the front.
+  // The hovered path moves to the front. The base line fades with the rest unless the base itself is hovered.
   const keyEntry = comparisons.find((entry) => entry.runId === keyHover);
   const lineage = new Set(
     keyHover
@@ -308,6 +308,7 @@ export function WorkspaceChart(p: ChartProps) {
   );
   const highlighting = Boolean(keyHover) || Boolean(p.highlightRunIds?.length);
   const lit = (runId: string) => lineage.has(runId);
+  const baseFaded = highlighting && lineage.size > 0;
   const curves: FocusCurve[] = [
     { runId: mainRunId, label: mainLabel, points: lastPast ? [lastPast, ...future] : future },
     ...comparisons.map((entry) => ({
@@ -811,6 +812,8 @@ export function WorkspaceChart(p: ChartProps) {
                       d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
                       fill="none"
                       className="stroke-primary"
+                      style={{ transition: "opacity 150ms" }}
+                      opacity={baseFaded ? 0.25 : 1}
                       data-testid="forecast-line"
                       strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
                     />
@@ -917,6 +920,7 @@ export function WorkspaceChart(p: ChartProps) {
                     r={breached || i === lowIndex ? 4.5 : 2.5}
                     className={`${breached ? "fill-destructive" : "fill-primary"}${breached ? " stroke-card" : ""}`}
                     strokeWidth={breached ? 2 : undefined}
+                    opacity={baseFaded ? 0.25 : 1}
                     data-testid={`forecast-point-${w.weekStart}`}
                     data-breached={breached}
                     pointerEvents="none"
