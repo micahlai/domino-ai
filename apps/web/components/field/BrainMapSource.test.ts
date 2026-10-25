@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { formatCents } from "../../lib/format";
-import { VENDORS } from "../icons/vendors";
+import { VENDORS, vendorFor } from "../icons/vendors";
 import { type Focusable, panelFocus } from "./BrainMapFocus";
 import { demoSourceDetail, toolOfVendor } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel, connectionState } from "./BrainMapSourcePanel";
@@ -22,7 +22,7 @@ const panel = (vendor: string, extra: Record<string, unknown> = {}) => {
     createElement(SourcePanel, {
       detail: demoSourceDetail(tool, READ_AT),
       vendor,
-      title: VENDORS[tool].name,
+      title: VENDORS[vendorFor(tool)].name,
       now: NOW,
       demo: true,
       onClose: () => {},
@@ -35,9 +35,9 @@ describe("source panel", () => {
   it("maps every built-in connector source on the map to its tool", () => {
     const sources = buildBrainGraph([]).nodes.filter((n) => n.kind === "source");
     expect(sources.map((n) => toolOfVendor(n.vendor)).sort()).toEqual(
-      ["gusto", "hubspot", "plaid", "qbo", "ramp", "stripe"].sort(),
+      ["gusto", "hubspot", "nessie", "plaid", "qbo", "ramp", "stripe"].sort(),
     );
-    expect(toolOfVendor("capitalone")).toBeUndefined();
+    expect(toolOfVendor("capitalone")).toBe("nessie");
   });
 
   it("shows Stripe's logo and brand stripe, its lists and the records it read", () => {

@@ -27,7 +27,9 @@ const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 /** Brain map source vendors that are connectors (the old Capital One node is not). */
 export function toolOfVendor(vendor: VendorId | undefined): ToolId | undefined {
-  return (TOOL_IDS as readonly string[]).includes(vendor ?? "") ? (vendor as ToolId) : undefined;
+  // The Capital One bank is read through the Nessie connector.
+  const id = vendor === "capitalone" ? "nessie" : vendor;
+  return (TOOL_IDS as readonly string[]).includes(id ?? "") ? (id as ToolId) : undefined;
 }
 
 export type SourceDetailState =
@@ -40,7 +42,8 @@ const DEMO = demo as unknown as DemoFile;
 
 /** The recorded demo detail, with its read time set to when the demo map read the source. */
 export function demoSourceDetail(tool: ToolId, readAt?: string): SourceDetail {
-  const d = DEMO.sources[tool];
+  // The demo recording predates the Nessie bank: show the same bank records under Capital One.
+  const d = DEMO.sources[tool] ?? { ...DEMO.sources.plaid, tool };
   if (!readAt) return { ...d, lastReadAt: null, task: { ...d.task, at: null } };
   return {
     ...d,
