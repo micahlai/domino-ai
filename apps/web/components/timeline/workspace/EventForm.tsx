@@ -212,6 +212,7 @@ export function EventForm(p: EventFormProps) {
               <Button
                 size="sm"
                 variant="ghost"
+                className="shrink-0"
                 disabled={pending}
                 onClick={() => dispatch({ type: "remove", index: i })}
               >

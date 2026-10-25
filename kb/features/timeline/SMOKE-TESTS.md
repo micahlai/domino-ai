@@ -70,3 +70,5 @@ User authorized the TL7 merge into TL5. Use3107 for the merged UI and its existi
 ## Timeline scales and inline scenario entry
 
 The merged3107 preview now shows horizontal date and vertical USD cash scales. Pick a forecast week, then **Add scenario** immediately below the chart. For money in/out, the new date starts at that week and remains editable. Invoice/bill timing follows the selected record. **Queue this event**, name the scenario, review exact queued events and **Run as a new scenario**. **Hide editor · keep draft** preserves dates/queue; **Discard draft** clears explicitly. There is no separate bottom event panel. Browser acceptance status: [TL7XC-acceptance.md](TL7XC-acceptance.md).
+
+Live browser gate complete: [saved inline smoke expense](http://127.0.0.1:3107/c/kestrel/timeline?runId=timeline%3Aworkspace%2Faca904d0ddd1a388af53fb1a99a09af81b79fd98) shows the exact$100 planned Dec23 expense added to Atlas Legal scenario once. Original remains unchanged. Desktop/phone evidence is in TL7XC-acceptance.md.

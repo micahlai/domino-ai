@@ -18,7 +18,7 @@ export function ScenarioComposer({
   return (
     <section
       aria-label="Add a scenario on this timeline"
-      className="min-w-0 space-y-4 border-t pt-4 [&_button]:h-auto [&_button]:max-w-full [&_button]:whitespace-normal"
+      className="min-w-0 space-y-4 border-t pt-4 [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal"
       data-testid="timeline-composer"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">

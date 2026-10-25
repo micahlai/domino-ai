@@ -9,4 +9,4 @@
 ## Result
 - Done: chart source217b957 independently accepted58+3 tests; composer sourcecb7f094 reviewed by lead, combined15 focused tests and1963 full checks/build pass. See kb/features/timeline/TL7XC-review.md.
 - What changed: source review and feature-local evidence only; authors own scoped implementation. Combined on TL5-checkpoint196d154.
-- Watch out: actual connected browser/editor-save gate pending user reload after browser policy blocked stale connection-error tab. No visual success claim yet; source/data checks pass.
+- Browser done: actual1512px/390px selected-date/draft/queue/confirmation/save/reload flow passes after user Chrome reload. Exact10000-cent Dec23 saved result confirmed via backend; parent effects once/unchanged. Final console clean; screenshots in TL7XC-acceptance.md. Mobile Remove/button spacing repaired and full1963check/build repeated.
