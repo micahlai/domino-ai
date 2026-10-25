@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "modeledBusiness": "Fictional B2B work-management SaaS",
+  "publicCompany": "Asana, Inc.",
+  "currency": "USD",
+  "sources": {
+    "q3_10q": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000053/asan-20231031.htm",
+      "form": "10-Q",
+      "reportDate": "2023-12-05",
+      "reportPeriodEnd": "2023-10-31"
+    },
+    "q2_10q": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1477720/000147772023000042/asan-20230731.htm",
+      "form": "10-Q",
+      "reportDate": "2023-09-05",
+      "reportPeriodEnd": "2023-07-31"
+    }
+  },
+  "reportedAnchors": [
+    { "id": "revenue", "sourceLabel": "Revenues", "sourceValue": "166,503", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "cost_of_revenues", "sourceLabel": "Cost of revenues", "sourceValue": "16,053", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "research_and_development", "sourceLabel": "Research and development", "sourceValue": "81,028", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "sales_and_marketing", "sourceLabel": "Sales and marketing", "sourceValue": "98,349", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "general_and_administrative", "sourceLabel": "General and administrative", "sourceValue": "34,494", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "total_operating_expenses", "sourceLabel": "Total operating expenses", "sourceValue": "213,871", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "operating_loss", "sourceLabel": "Loss from operations", "sourceValue": "(63,421)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "net_loss", "sourceLabel": "Net loss", "sourceValue": "(61,750)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of operations, p. 2" },
+    { "id": "cash_and_equivalents_close", "sourceLabel": "Cash and cash equivalents", "sourceValue": "268,314", "unit": "USD thousands", "period": { "kind": "instant", "date": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated balance sheets, p. 1" },
+    { "id": "cash_and_equivalents_fiscal_open", "sourceLabel": "Cash and cash equivalents", "sourceValue": "526,563", "unit": "USD thousands", "period": { "kind": "instant", "date": "2023-01-31" }, "source": "q3_10q", "section": "Condensed consolidated balance sheets, p. 1, comparative column" },
+    { "id": "cash_and_equivalents_prior_quarter_close", "sourceLabel": "Cash and cash equivalents", "sourceValue": "413,697", "unit": "USD thousands", "period": { "kind": "instant", "date": "2023-07-31" }, "source": "q2_10q", "section": "Condensed consolidated balance sheets, p. 1" },
+    { "id": "marketable_securities_close", "sourceLabel": "Marketable securities", "sourceValue": "261,726", "unit": "USD thousands", "period": { "kind": "instant", "date": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated balance sheets, p. 1; separate from cash and equivalents" },
+    { "id": "stock_based_compensation", "sourceLabel": "Total stock-based compensation expense", "sourceValue": "52,866", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Note 10, stock-based compensation expense, p. 20; noncash expense" },
+    { "id": "operating_cash_flow_quarter", "sourceLabel": "Net cash used in operating activities", "sourceValue": "(8,233)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Item 2, free cash flow reconciliation, p. 33" },
+    { "id": "investing_cash_flow_quarter", "sourceLabel": "Net cash provided by (used in) investing activities", "sourceValue": "(140,738)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Item 2, free cash flow reconciliation, p. 33" },
+    { "id": "financing_cash_flow_quarter", "sourceLabel": "Net cash provided by financing activities", "sourceValue": "6,669", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Item 2, free cash flow reconciliation, p. 33" },
+    { "id": "property_and_equipment_cash_quarter", "sourceLabel": "Purchases of property and equipment", "sourceValue": "(1,255)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Item 2, free cash flow reconciliation, p. 33" },
+    { "id": "capitalized_software_cash_quarter", "sourceLabel": "Capitalized internal-use software costs", "sourceValue": "(1,977)", "unit": "USD thousands", "period": { "kind": "quarter", "start": "2023-08-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Item 2, free cash flow reconciliation, p. 33" },
+    { "id": "operating_cash_flow_ytd", "sourceLabel": "Net cash used in operating activities", "sourceValue": "(2,594)", "unit": "USD thousands", "period": { "kind": "nine_months", "start": "2023-02-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of cash flows, p. 8" },
+    { "id": "investing_cash_flow_ytd", "sourceLabel": "Net cash provided by (used in) investing activities", "sourceValue": "(270,205)", "unit": "USD thousands", "period": { "kind": "nine_months", "start": "2023-02-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of cash flows, p. 8" },
+    { "id": "financing_cash_flow_ytd", "sourceLabel": "Net cash provided by financing activities", "sourceValue": "16,418", "unit": "USD thousands", "period": { "kind": "nine_months", "start": "2023-02-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of cash flows, p. 8" },
+    { "id": "property_and_equipment_cash_ytd", "sourceLabel": "Purchases of property and equipment", "sourceValue": "(7,221)", "unit": "USD thousands", "period": { "kind": "nine_months", "start": "2023-02-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of cash flows, p. 8" },
+    { "id": "capitalized_software_cash_ytd", "sourceLabel": "Capitalized internal-use software costs", "sourceValue": "(4,325)", "unit": "USD thousands", "period": { "kind": "nine_months", "start": "2023-02-01", "end": "2023-10-31" }, "source": "q3_10q", "section": "Condensed consolidated statements of cash flows, p. 8" }
+  ],
+  "syntheticAssumptions": {
+    "status": "Fictional allocation and timing plan, not reported Asana data",
+    "customerArchetypes": [
+      { "type": "enterprise annual contracts", "revenueWeightBasisPoints": 7000, "invoiceCadence": "annual upfront", "collectionTerms": "net 30" },
+      { "type": "growing team quarterly contracts", "revenueWeightBasisPoints": 2000, "invoiceCadence": "quarterly upfront", "collectionTerms": "net 15" },
+      { "type": "self-service monthly subscriptions", "revenueWeightBasisPoints": 1000, "invoiceCadence": "monthly", "collectionTerms": "card settlement two days after charge" }
+    ],
+    "expenseAllocationBasisPoints": {
+      "cost_of_revenues": { "hosting_vendor": 6000, "customer_support_payroll": 2000, "payment_processing_vendor": 1500, "monitoring_vendor": 500 },
+      "research_and_development": { "product_engineering_payroll": 7000, "contract_development_vendor": 1200, "software_vendor": 1000, "facilities_vendor": 800 },
+      "sales_and_marketing": { "sales_payroll": 4500, "campaign_vendor": 3500, "commissions": 1200, "outside_services_vendor": 800 },
+      "general_and_administrative": { "administrative_payroll": 5000, "legal_and_accounting_vendor": 2300, "facilities_vendor": 1800, "software_vendor": 900 }
+    },
+    "paymentTiming": {
+      "payroll": "15th and last calendar day of each month; if nonbusiness day, preceding business day",
+      "vendorBills": "net 30 from fictional invoice date",
+      "customerReceipts": "by each archetype's collection terms"
+    },
+    "cashModelWarning": "These GAAP expense weights are not reported cash costs. Revenue is not reported receipts. Generate cents with deterministic code and reconcile cash events separately; never treat marketable securities as cash and equivalents."
+  }
+}
