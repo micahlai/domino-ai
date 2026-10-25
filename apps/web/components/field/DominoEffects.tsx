@@ -77,6 +77,11 @@ export function DominoEffects({
               <span aria-hidden="true">→</span>
               <span className="font-medium">{n.event}</span>
               <Badge variant="secondary">{n.likelihood}</Badge>
+              {n.outOfCash ? (
+                <Badge variant="destructive">
+                  Out of cash {formatFullDate(n.outOfCash.weekStart)}
+                </Badge>
+              ) : null}
               <span className="text-xs text-muted-foreground">{n.branchLabel}</span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -127,6 +132,9 @@ export function DominoEffects({
             <span className="text-xs text-muted-foreground">
               {" "}
               · scenario lowest cash {formatExactCents(state.view.eventLow.cents)}
+              {state.view.outOfCash
+                ? ` · runs out of cash in the week of ${formatFullDate(state.view.outOfCash.weekStart)}`
+                : ""}
             </span>
           </p>
           {state.view.nodes.length === 0 ? (

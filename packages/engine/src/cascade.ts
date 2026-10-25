@@ -10,6 +10,7 @@ import type {
 import { addDays, daysBetween, horizonEnd } from "./dates";
 import { money } from "./dominoes";
 import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
+import { type OutOfCash, outOfCash } from "./out-of-cash";
 import { evaluateOnSchedule, weeklyBreach } from "./rules";
 import { bucketOf } from "./schedule";
 
@@ -21,7 +22,7 @@ import { bucketOf } from "./schedule";
  * through forecast() on the complete change list, so every number comes from the engine.
  * Likelihoods are stated labels, not probabilities. Nothing here moves money.
  */
-export const CASCADE_VERSION = "cascade@1.0.0";
+export const CASCADE_VERSION = "cascade@1.1.0";
 
 export type CascadeLikelihood = "Expected" | "Likely" | "Possible";
 export type TriggerKind =
@@ -64,6 +65,8 @@ export type CascadeNode = {
   lowPoint: Forecast["lowPoint"];
   /** Earliest date the node's own changes act */
   startsOn: ISODate;
+  /** Terminal: this branch runs out of cash; only survival responses may follow it. */
+  outOfCash: OutOfCash | null;
 };
 
 export type CascadeInput = {
@@ -81,6 +84,8 @@ export type CascadeResult = {
   version: string;
   event: string;
   forecast: Forecast;
+  /** The scenario itself runs out of cash (before any follow-on) */
+  outOfCash: OutOfCash | null;
   nodes: CascadeNode[];
 };
 
@@ -151,8 +156,11 @@ export function cascade(input: CascadeInput, limits = CASCADE_LIMITS): CascadeRe
   while (queue.length > 0 && nodes.length < limits.maxNodes) {
     const level = queue.shift() as Level;
     if (level.depth >= limits.maxDepth) continue;
+    // Out of cash is terminal: only the survival responses to the gap (stretch vendors, an
+    // emergency credit draw) can follow it; ordinary knock-on effects stop there.
+    const terminal = outOfCash(level.forecast) !== null;
     const picks = triggers(ctx, level)
-      .filter((f) => !level.fired.has(f.key))
+      .filter((f) => !level.fired.has(f.key) && (!terminal || f.key === "cash_gap"))
       .flatMap((f) => f.options.map((option) => ({ f, option })));
     let n = 0;
     for (const { f, option } of picks) {
@@ -182,6 +190,7 @@ export function cascade(input: CascadeInput, limits = CASCADE_LIMITS): CascadeRe
         forecast: childForecast,
         lowPoint: childForecast.lowPoint,
         startsOn: startOf(option.changes, snapshot) ?? f.trigger.date,
+        outOfCash: outOfCash(childForecast),
       });
       queue.push({
         id,
@@ -195,7 +204,13 @@ export function cascade(input: CascadeInput, limits = CASCADE_LIMITS): CascadeRe
       });
     }
   }
-  return { version: CASCADE_VERSION, event: input.eventLabel, forecast, nodes };
+  return {
+    version: CASCADE_VERSION,
+    event: input.eventLabel,
+    forecast,
+    outOfCash: outOfCash(forecast),
+    nodes,
+  };
 }
 
 // ---------- Triggers, in priority order ----------

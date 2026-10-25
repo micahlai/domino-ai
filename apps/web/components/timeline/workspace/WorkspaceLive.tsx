@@ -258,6 +258,28 @@ function RunReady({
     const next = showWithAncestors(shown.ids, id, familyEntries(run, graph), baseRunId ?? "");
     if (next && next.length !== shown.ids.length) shown.set(next);
   };
+  // Domino effects are saved as "Then: ..." children shortly after a scenario is saved. Each
+  // one is drawn once when it first appears under a drawn line, so the cascade fans out on the
+  // chart; unticking it afterwards sticks.
+  const fanned = useRef(new Set<string>());
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reacts to new graph entries only
+  useEffect(() => {
+    if (graph.state !== "ready") return;
+    const drawn = new Set([...shown.ids, run.runId]);
+    const added: string[] = [];
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const e of graph.value) {
+        if (fanned.current.has(e.runId) || !e.label.startsWith("Then: ")) continue;
+        if (!e.parentRunId || !drawn.has(e.parentRunId)) continue;
+        fanned.current.add(e.runId);
+        drawn.add(e.runId);
+        added.push(e.runId);
+        grew = true;
+      }
+    }
+    if (added.length) shown.set((ids) => [...ids, ...added]);
+  }, [graph]);
   const entrySelection =
     entryWaiting && graph.state === "ready" && run.parentRunId
       ? acceptedSelection(
@@ -378,6 +400,7 @@ function RunReady({
         label,
         changesJson,
         reviewed: true,
+        autoCascade: true,
         ...(constraintsJson !== undefined ? { constraintsJson } : {}),
         ...(constraintNote !== null ? { constraintNote } : {}),
       }),
@@ -419,7 +442,7 @@ function RunReady({
     confirmProposal: (q: QuestionReceipt) =>
       confirmQuestionProposal(q, runKey, runs, {
         revise: (args) => write(() => revise(args)),
-        simulate: (args) => write(() => simulate(args)),
+        simulate: (args) => write(() => simulate({ ...args, autoCascade: true })),
         relink,
       }),
     relink,

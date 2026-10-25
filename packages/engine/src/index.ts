@@ -232,3 +232,4 @@ export {
   cascade,
 } from "./cascade";
 export { money } from "./dominoes";
+export { type OutOfCash, outOfCash } from "./out-of-cash";
