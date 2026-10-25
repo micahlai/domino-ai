@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RequestLedger } from "../workspace/requests";
 import { ChatPlayground } from "./ChatPlayground";
 import { ChatView, ReviewProposal } from "./ChatView";
-import { chatHref, newerReceipt, readChat, readChats } from "./api";
+import { chatHref, displayedReceipt, newerReceipt, readChat, readChats } from "./api";
 import { fixtureChat, fixtureReady, fixtureSaved, fixtureChatRun as run } from "./fixtures";
 import { type ChatCommand, ChatNavigationGuard, ChatWriteGuard, requestChat } from "./requests";
 
@@ -93,6 +93,15 @@ describe("saved chat boundary", () => {
     expect(readChat(new Error(), key).state).toBe("error");
     expect(readChats([fixtureChat, fixtureChat], key, run).state).toBe("unusable");
     expect(readChats([fixtureChat], key, run).state).toBe("ready");
+  });
+  it("holds a new composer until its durable conversation route is selected", () => {
+    // A begin answer arrives before router navigation: do not expose a textbox whose draft
+    // would disappear when the conversation URL mounts its keyed view.
+    expect(displayedReceipt(fixtureChat, null, true)).toBeNull();
+    expect(displayedReceipt(fixtureChat, fixtureChat, true)).toBe(fixtureChat);
+    // Once selected, accepted later replies still outrun lagging query subscriptions.
+    expect(displayedReceipt(fixtureReady, fixtureChat, true)).toBe(fixtureReady);
+    expect(displayedReceipt(fixtureChat, null, false)).toBe(fixtureChat);
   });
   it("never replaces a newer receipt with a delayed reply", () => {
     expect(newerReceipt(fixtureSaved, fixtureReady)).toBe(fixtureSaved);

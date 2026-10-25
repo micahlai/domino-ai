@@ -77,7 +77,7 @@ function Ready({
       run={run}
       selected={conversationId ? readChat(raw.selected, { ...key, conversationId }, run) : null}
       history={readChats(raw.history, key, run)}
-      actions={{ write }}
+      actions={{ write, beginNavigates: true }}
       selectedWeek={selectedWeek}
       selectedItemId={selectedItemId}
       sidebar
