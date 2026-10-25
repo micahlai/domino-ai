@@ -15,7 +15,9 @@
     "check": "pnpm typecheck && pnpm test && pnpm lint",
     "seed": "pnpm --filter @domino/sim seed",
     "sim:print": "pnpm --filter @domino/sim print",
-    "convex:fixtures": "pnpm --filter @domino/web exec convex run dev/seedFixtures:seed"
+    "convex:fixtures": "pnpm --filter @domino/web exec convex run dev/seedFixtures:seed",
+    "data:setup": "pnpm --filter @domino/web exec node scripts/data-setup.mjs",
+    "data:import": "pnpm --filter @domino/web exec convex import --replace-all -y"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
