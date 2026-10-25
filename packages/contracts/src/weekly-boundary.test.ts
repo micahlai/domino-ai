@@ -76,6 +76,22 @@ describe("WeeklySeedV1", () => {
     );
   });
 
+  it("rejects impossible snapshot dates and repeated snapshot record ids", () => {
+    expect(
+      edited((s) => {
+        s.snapshot.invoices[0]!.due = "2026-99-99";
+      }),
+    ).toContain("expected a real calendar date");
+    expect(
+      edited((s) => {
+        s.snapshot.payroll.push({
+          ...s.snapshot.payroll[0]!,
+          amount: s.snapshot.payroll[0]!.amount - 1,
+        });
+      }),
+    ).toContain("repeated record id");
+  });
+
   it("never throws on hostile text", () => {
     for (const t of [undefined, 1, "", "{", "[]", "null", "[".repeat(100)])
       expect(parseWeeklySeedJson(t).success).toBe(false);

@@ -100,11 +100,28 @@ const WeeklySeedObjectSchema = z
         "asOf must be the first forecast week (first Monday after snapshot.asOf)",
       );
     const last = ms(seed.asOf) + (WEEKLY_HORIZON_WEEKS - 1) * 7 * DAY_MS;
-    const records = new Set(
-      [s.customers, s.invoices, s.bankTxns, s.bills, s.cardTxns, s.payroll, s.deals].flatMap(
-        (list) => list.map((r) => r.id),
-      ),
-    );
+    const lists = { ...s } as Record<string, unknown>;
+    const records = new Set<string>();
+    for (const key of [
+      "customers",
+      "invoices",
+      "bankTxns",
+      "bills",
+      "cardTxns",
+      "payroll",
+      "deals",
+    ])
+      (lists[key] as Record<string, unknown>[]).forEach((r, i) => {
+        // A Set would silently merge repeated ids and make sourceRef ambiguous.
+        if (records.has(r.id as string))
+          issue(ctx, ["snapshot", key, i, "id"], "repeated record id");
+        records.add(r.id as string);
+        // Legacy snapshot dates are shape-only; the seam requires real calendar dates.
+        for (const [field, value] of Object.entries(r))
+          if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
+            if (!CalendarDateSchema.safeParse(value).success)
+              issue(ctx, ["snapshot", key, i, field], "expected a real calendar date");
+      });
     const ids = new Set<string>();
     const unique = (id: string, path: (string | number)[]) => {
       if (ids.has(id)) issue(ctx, path, "repeated id");
