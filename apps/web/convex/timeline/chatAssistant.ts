@@ -102,6 +102,8 @@ async function converse(
       conversationId: receipt.conversationId,
       selectedItemId: receipt.selectedItemId,
       floor,
+      userTexts: userTurns.map((t) => t.text),
+      referenceText: receipt.workerContext?.note ?? null,
     });
   let draftUpdate: DraftUpdate | null = null;
   let planText: string | null = null;
