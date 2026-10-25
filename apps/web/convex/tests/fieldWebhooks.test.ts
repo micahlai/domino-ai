@@ -37,6 +37,12 @@ async function setup() {
   const t = newBackend();
   const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel" });
   await drain(t, 20);
+  // Bounded forecasters can still be reporting after the initial ingest has finished.
+  for (let i = 0; i < 60; i++) {
+    if ((await t.query(api.fieldAnalyst.latest, { companyId }))?.status === "done") break;
+    await drain(t);
+  }
+  expect((await t.query(api.fieldAnalyst.latest, { companyId }))?.status).toBe("done");
   const secrets = await t.mutation(internal.fieldWebhooks.ensureSecrets, { companyId });
   return { t, companyId, secrets };
 }
