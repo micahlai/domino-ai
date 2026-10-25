@@ -21,6 +21,7 @@ import { StatTile } from "../../ui/page";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { Assistant, type AssistantTab, useIsDesktop } from "./Assistant";
 import { AncestryPanel } from "./CatalogPanel";
+import { DifferenceChart } from "./DifferenceChart";
 import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
 import { ChangesPanel, ComparisonPanel, ImpactPanel, ReceiptsPanel, WeekDetail } from "./RunPanels";
@@ -138,6 +139,8 @@ export function WorkspaceView({
   const [focusKey, setFocusKey] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
   const [bottomPanel, setBottomPanel] = useState<string | null>(null);
+  /** Plot each shown scenario as its distance from the line it builds on. */
+  const [differences, setDifferences] = useState(false);
   const trayId = useId();
   const [selectedWeek, setSelectedWeek] = useState<string | null>(
     initialContext?.selectedWeek ?? low.weekStart,
@@ -210,6 +213,7 @@ export function WorkspaceView({
         outOfCash: outOfCashWeek(read.value.forecast),
         breaches: breachesOf(read.value),
         ancestors: ancestorsOf(id, entries, baseRunId ?? ""),
+        anchor,
       },
     ];
   });
@@ -444,51 +448,81 @@ export function WorkspaceView({
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-[15px] font-semibold tracking-[-0.01em]">
-                  Usable cash by week
+                  {differences
+                    ? "Difference from the line each scenario builds on"
+                    : "Usable cash by week"}
                 </h2>
-                <p className="text-xs text-muted-foreground">
-                  Hover for details, click a line to focus it
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {differences
+                      ? "Zero is the line underneath; a moving line means a different shape"
+                      : "Hover for details, click a line to focus it"}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    aria-pressed={differences}
+                    onClick={() => setDifferences(!differences)}
+                    data-testid="toggle-differences"
+                  >
+                    {differences ? "Show cash" : "Show differences"}
+                  </Button>
+                </div>
               </div>
               {forecastNotice ? (
                 <output className="text-xs text-muted-foreground" aria-live="polite">
                   {forecastNotice}
                 </output>
               ) : null}
-              <WorkspaceChart
-                fill
-                history={b.history}
-                forecast={base}
-                forecastLabel="Base forecast (no what-ifs)"
-                forecastRunId={baseRunId ?? undefined}
-                initialFocusRunId={run.runId}
-                comparisons={curves}
-                highlightRunIds={hoveredLineage}
-                onReveal={selection.onReveal}
-                items={b.seed.scheduledItems}
-                limits={limits}
-                breachedWeeks={run.runId === baseRunId ? breaches.map((n) => n.weekStart) : []}
-                breachNotes={run.runId === baseRunId ? breaches : []}
-                branchPreview={
-                  branchPreview
-                    ? {
-                        key: branchPreview.key,
-                        date: branchPreview.date,
-                        color: branchParent.color,
-                        label: branchParent.label,
-                        // The marker sits on the open run's line. Draw that line too while it
-                        // flashes, unless it is the base or already ticked.
-                        forecast: run.forecast,
-                        drawLine: !(parentIsBase || selectedIds.includes(run.runId)),
-                      }
-                    : undefined
-                }
-                selectedWeek={selectedWeek}
-                onSelectWeek={(w) => {
-                  setSelectedWeek(w);
-                  setSelectedItemId(null);
-                }}
-              />
+              {differences ? (
+                <DifferenceChart
+                  series={curves.map((c) => ({
+                    runId: c.runId,
+                    label: c.label,
+                    color: c.color,
+                    points: c.forecast.weeks.map((w, i) => ({
+                      weekStart: w.weekStart,
+                      delta: w.usable - (c.anchor.weeks[i]?.usable ?? w.usable),
+                    })),
+                  }))}
+                />
+              ) : (
+                <WorkspaceChart
+                  fill
+                  history={b.history}
+                  forecast={base}
+                  forecastLabel="Base forecast (no what-ifs)"
+                  forecastRunId={baseRunId ?? undefined}
+                  initialFocusRunId={run.runId}
+                  comparisons={curves}
+                  highlightRunIds={hoveredLineage}
+                  onReveal={selection.onReveal}
+                  items={b.seed.scheduledItems}
+                  limits={limits}
+                  breachedWeeks={run.runId === baseRunId ? breaches.map((n) => n.weekStart) : []}
+                  breachNotes={run.runId === baseRunId ? breaches : []}
+                  branchPreview={
+                    branchPreview
+                      ? {
+                          key: branchPreview.key,
+                          date: branchPreview.date,
+                          color: branchParent.color,
+                          label: branchParent.label,
+                          // The marker sits on the open run's line. Draw that line too while it
+                          // flashes, unless it is the base or already ticked.
+                          forecast: run.forecast,
+                          drawLine: !(parentIsBase || selectedIds.includes(run.runId)),
+                        }
+                      : undefined
+                  }
+                  selectedWeek={selectedWeek}
+                  onSelectWeek={(w) => {
+                    setSelectedWeek(w);
+                    setSelectedItemId(null);
+                  }}
+                />
+              )}
             </section>
 
             <div
