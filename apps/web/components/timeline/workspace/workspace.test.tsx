@@ -433,13 +433,13 @@ describe("workspace view", () => {
     expect(html).toContain('data-testid="action-calculation"');
   });
 
-  it("dates books from the snapshot and hides unsupported automatic risks on event scenarios", () => {
+  it("dates books from the snapshot and offers no saved-risks link", () => {
     const scenarioHtml = render(fixtureScenario);
     expect(scenarioHtml).toContain("Books as of Oct 30, 2026");
     expect(scenarioHtml).not.toContain("Books as of Nov 2, 2026");
     expect(scenarioHtml).not.toContain('data-testid="action-risks"');
-    expect(render(fixtureRoot)).toContain('data-testid="action-risks"');
-    expect(render(fixtureRules)).toContain('data-testid="action-risks"');
+    expect(render(fixtureRoot)).not.toContain('data-testid="action-risks"');
+    expect(render(fixtureRules)).not.toContain('data-testid="action-risks"');
     const explicit = renderToStaticMarkup(
       <WorkspaceView
         run={fixtureScenario}
@@ -451,8 +451,8 @@ describe("workspace view", () => {
         risksHref="/c/kestrel/timeline/analysis?runId=exact&analysisId=saved"
       />,
     );
-    expect(explicit).toContain('data-testid="action-risks"');
-    expect(explicit).toContain("analysisId=saved");
+    expect(explicit).not.toContain('data-testid="action-risks"');
+    expect(explicit).not.toContain("analysisId=saved");
   });
 
   it("shows the saved risk and fix low points side by side with its original Field explanation", () => {

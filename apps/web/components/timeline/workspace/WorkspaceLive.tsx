@@ -530,7 +530,7 @@ function CompanyHome({ companyId }: { companyId: string }) {
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>Usable cash for the next 13 weeks, next to recent history</li>
           <li>The lowest point against the lender's minimum</li>
-          <li>Ask questions, model events and see saved risks</li>
+          <li>Ask questions and model events</li>
         </ul>
         <OpenInTimeline label="Bring in latest books" />
         <p className="text-xs text-muted-foreground">{OPEN_IN_TIMELINE_NOTE}</p>

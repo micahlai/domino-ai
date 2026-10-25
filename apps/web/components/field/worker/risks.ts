@@ -1,11 +1,6 @@
 import type { DashboardView } from "../dashboard/derive";
 import type { AnalystLatest } from "../dashboard/risks";
-import {
-  type TimelineRead,
-  cashMinimum,
-  timelineAnalysisHref,
-  timelineRiskCards,
-} from "../dashboard/timeline";
+import { type TimelineRead, cashMinimum, timelineRiskCards } from "../dashboard/timeline";
 import { money, weekOf } from "./format";
 import type { LowPoint } from "./suggestions";
 
@@ -60,7 +55,7 @@ export function timelineRisks(timeline: TimelineRead | undefined): WatchedRisk[]
       week: r.breach?.weekStart ?? r.breach?.date ?? null,
       low: { cents: r.lowPoint.usable, week: r.lowPoint.weekStart },
       shortfall: cash ? (r.breach?.shortfall ?? null) : null,
-      href: r.route ?? timelineAnalysisHref(link),
+      href: r.route ?? link.route,
     };
   });
 }
@@ -138,7 +133,7 @@ export function watchedRisks(input: {
       : undefined) ??
     input.view?.lenderMinimum?.cents ??
     null;
-  const triage = triageRisks(input.latest, minimum, link ? timelineAnalysisHref(link) : null);
+  const triage = triageRisks(input.latest, minimum, link ? link.route : null);
   if (timeline.length > 0 || triage.length > 0)
     return [...orderRisks(timeline), ...orderRisks(triage)];
   return input.view ? orderRisks(sampleRisks(input.view)) : [];
