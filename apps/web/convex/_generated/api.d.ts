@@ -108,6 +108,7 @@ import type * as timeline_baselines from "../timeline/baselines.js";
 import type * as timeline_chat from "../timeline/chat.js";
 import type * as timeline_chat_draft from "../timeline/chat/draft.js";
 import type * as timeline_chat_explain from "../timeline/chat/explain.js";
+import type * as timeline_chat_planChanges from "../timeline/chat/planChanges.js";
 import type * as timeline_chat_receipt from "../timeline/chat/receipt.js";
 import type * as timeline_chat_refs from "../timeline/chat/refs.js";
 import type * as timeline_chat_source from "../timeline/chat/source.js";
@@ -241,6 +242,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/chat": typeof timeline_chat;
   "timeline/chat/draft": typeof timeline_chat_draft;
   "timeline/chat/explain": typeof timeline_chat_explain;
+  "timeline/chat/planChanges": typeof timeline_chat_planChanges;
   "timeline/chat/receipt": typeof timeline_chat_receipt;
   "timeline/chat/refs": typeof timeline_chat_refs;
   "timeline/chat/source": typeof timeline_chat_source;
