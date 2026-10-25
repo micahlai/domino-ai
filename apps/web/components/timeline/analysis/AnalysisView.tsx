@@ -321,7 +321,7 @@ function RiskPanel({
         evidence={risk.evidence}
         description="Source records and assumptions for this hypothetical event."
       />
-      {risk.failureReason ? <output className="text-sm">{risk.failureReason}</output> : null}
+      {risk.failureReason ? <output className="block text-sm">{risk.failureReason}</output> : null}
       <div className="flex flex-wrap gap-2" aria-label="Compare simulated responses">
         <Button
           variant={responseId === null ? "default" : "outline"}
