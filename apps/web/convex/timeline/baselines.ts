@@ -146,6 +146,60 @@ function checkConstraints(constraints: Constraint[], snapshot: Snapshot) {
   }
 }
 
+/**
+ * Valid contract fields the current engine does not read. Saving a forecast that silently
+ * ignores them would misstate cash (a written-off invoice still counted as an inflow, an
+ * agreed later payment still on its due date), so the baseline fails closed instead.
+ * Empty optional arrays carry no cash and are accepted.
+ */
+function checkSupportedFields(snapshot: Snapshot) {
+  const bad = (field: string): never =>
+    reject(
+      "UNSUPPORTED_INPUT",
+      `Seed uses ${field}, which this baseline method cannot calculate yet; remove it or wait for engine support`,
+    );
+  if (snapshot.billingPlans?.length) bad("snapshot.billingPlans");
+  if (snapshot.pendingPayouts?.length) bad("snapshot.pendingPayouts");
+  for (const i of snapshot.invoices) {
+    if (i.writtenOff !== undefined) bad(`invoice ${i.id} writtenOff`);
+    if (i.collection !== undefined) bad(`invoice ${i.id} collection`);
+    if (i.paidAmount !== undefined) bad(`invoice ${i.id} paidAmount`);
+    if (i.billingPlanId !== undefined) bad(`invoice ${i.id} billingPlanId`);
+  }
+  for (const b of snapshot.bills) if (b.agreedPayOn !== undefined) bad(`bill ${b.id} agreedPayOn`);
+}
+
+/** Forecast horizon is at most 7 + 13 * 7 days after asOf (first Monday after asOf + 13 weeks). */
+const HORIZON_DAYS = 98;
+
+/**
+ * Conservative exact bound, in BigInt, on every cash sum the engine can form: opening and
+ * closing balances, weekly inflow/outflow, history balances, usable cash and rule shortfalls
+ * are each a signed sum over a subset of these magnitudes. If the total fits in a safe integer
+ * no engine intermediate can lose precision, even where large terms would cancel out later.
+ */
+function checkMoneyBound(snapshot: Snapshot, model: CompanyModel, constraints: Constraint[]) {
+  const abs = (n: number) => (n < 0 ? -BigInt(n) : BigInt(n));
+  let total = abs(snapshot.cashOnHand) + abs(snapshot.restrictedCash);
+  const add = (items: { amount: number }[]) => {
+    for (const item of items) total += abs(item.amount);
+  };
+  add(snapshot.invoices);
+  add(snapshot.bills);
+  add(snapshot.payroll);
+  add(snapshot.deals);
+  add(snapshot.bankTxns);
+  add(snapshot.cardTxns);
+  for (const s of model.recurringSpend)
+    total += abs(s.amount) * BigInt(Math.floor(HORIZON_DAYS / s.everyDays) + 1);
+  for (const c of constraints) if (c.kind === "min_cash") total += abs(c.limit);
+  if (total > BigInt(Number.MAX_SAFE_INTEGER))
+    reject(
+      "UNSAFE_MONEY",
+      "Seed, model and rule amounts together are too large to calculate exactly in cents",
+    );
+}
+
 async function parseSeed(seedJson: string) {
   if (seedJson.length > MAX_SEED_TEXT) reject("INVALID_SEED", "Seed JSON is too large");
   const parsed = parseWeeklySeedJson(seedJson);
@@ -155,7 +209,19 @@ async function parseSeed(seedJson: string) {
   if (seedText.length > MAX_CANONICAL_SEED) reject("INVALID_SEED", "Seed is too large to save");
   if ((await sha256Hex(contentHashPreimage(seed))) !== seed.contentHash)
     reject("INVALID_SEED", "Seed contentHash does not match its content");
+  checkSupportedFields(seed.snapshot);
   return { seed, seedText };
+}
+
+/**
+ * Convex rejects documents over 1 MiB. Generated outputs can repeat seed text (past events
+ * copy record descriptions into evidence), so the whole row is measured, not just the seed.
+ * Canonical JSON UTF-8 bytes slightly overstate Convex's encoding of short field names only.
+ */
+const MAX_ROW_BYTES = 900_000;
+function checkRowSize(row: Record<string, unknown>) {
+  if (new TextEncoder().encode(canonicalJson(row)).length > MAX_ROW_BYTES)
+    reject("TOO_LARGE", "This baseline is too large to save; use a smaller seed");
 }
 
 const runIdFor = async (companyId: string, requestId: string) =>
@@ -188,6 +254,7 @@ export const save = mutation({
     );
     checkModel(model, seed.snapshot);
     checkConstraints(constraints, seed.snapshot);
+    checkMoneyBound(seed.snapshot, model, constraints);
 
     const companyId = seed.company.id;
     const seedHash = seed.contentHash;
@@ -230,7 +297,7 @@ export const save = mutation({
     const pastEvents = z.array(PastEventSchema).parse(engine.pastEvents(seed.snapshot, model));
 
     const runId = await runIdFor(companyId, args.requestId);
-    await ctx.db.insert("timelineBaselines", {
+    const row = {
       runId,
       companyId,
       requestId: args.requestId,
@@ -247,7 +314,9 @@ export const save = mutation({
       history,
       pastEvents,
       savedAt: new Date().toISOString(),
-    });
+    };
+    checkRowSize(row);
+    await ctx.db.insert("timelineBaselines", row);
     return { runId, companyId, created: true };
   },
 });

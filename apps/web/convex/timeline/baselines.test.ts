@@ -2,6 +2,7 @@
 // @vitest-environment edge-runtime
 
 import {
+  BOUNDARY_INTEGER_MAX,
   type CompanyModel,
   type Constraint,
   type WeeklySeedV1,
@@ -292,5 +293,227 @@ describe("timeline baselines", () => {
     // The stored seed is canonical text, so its hash preimage is reproducible.
     const [row] = await rows(t);
     expect(row?.seedText).toBe(canonicalJson(seed));
+  });
+});
+
+/** Kestrel with scheduled items/findings removed, so record edits cannot break their refs. */
+const bare = (s: WeeklySeedV1, name: string): WeeklySeedV1 => ({
+  ...s,
+  id: `field:weekly_seed/${name}`,
+  scheduledItems: [],
+  findings: [],
+});
+const unpaidInvoice = (s: WeeklySeedV1) => s.snapshot.invoices.find((i) => !i.paid)!;
+const paidInvoice = (s: WeeklySeedV1) =>
+  s.snapshot.invoices.find((i) => i.paid && i.paid <= s.snapshot.asOf)!;
+const spend = (n: number, everyDays: number) =>
+  JSON.stringify({
+    ...NEUTRAL,
+    recurringSpend: Array.from({ length: n }, (_, i) => ({
+      label: `Spend ${i}`,
+      amount: BOUNDARY_INTEGER_MAX,
+      everyDays,
+    })),
+  });
+
+describe("timeline baselines: R1 money bounds", () => {
+  it("rejects many individually legal daily spends before the engine runs", async () => {
+    const t = setup();
+    const forecast = vi.spyOn(engine, "forecast");
+    await expect(save(t, args({ modelJson: spend(64, 1) }))).rejects.toThrow(
+      /too large to calculate/,
+    );
+    // Two daily spends already exceed the bound even though each amount is legal.
+    await expect(save(t, args({ modelJson: spend(2, 1) }))).rejects.toThrow(/too large/);
+    expect(forecast).not.toHaveBeenCalled();
+    expect(await rows(t)).toHaveLength(0);
+  });
+
+  it("counts repetitions: one large spend is fine, the same amount daily is not", async () => {
+    const t = setup();
+    const ok = await save(t, args({ modelJson: spend(1, 98) }));
+    expect(ok.created).toBe(true);
+    await expect(
+      save(t, args({ requestId: "req-daily-1", modelJson: spend(1, 1) })),
+    ).rejects.toThrow(/too large/);
+  });
+
+  it("rejects history whose large movements cancel only after unsafe partial sums", async () => {
+    const t = setup();
+    const big = (sign: 1 | -1, i: number) => ({
+      id: `txn_big_${sign > 0 ? "in" : "out"}_${i}`,
+      date: seed.snapshot.asOf,
+      amount: sign * BOUNDARY_INTEGER_MAX,
+      description: "Large transfer",
+    });
+    const seedJson = await rehashed((s) => ({
+      ...s,
+      snapshot: {
+        ...s.snapshot,
+        // Net zero, so cash on hand and every final balance stay safe and unchanged.
+        bankTxns: [
+          ...s.snapshot.bankTxns,
+          ...Array.from({ length: 20 }, (_, i) => big(1, i)),
+          ...Array.from({ length: 20 }, (_, i) => big(-1, i)),
+        ],
+      },
+    }));
+    await expect(save(t, args({ seedJson }))).rejects.toThrow(/too large to calculate/);
+    expect(await rows(t)).toHaveLength(0);
+  });
+
+  it("includes the minimum-cash limit in the bound", async () => {
+    const t = setup();
+    const rules = Array.from({ length: 17 }, (_, i) => ({
+      ...MIN_CASH,
+      id: `floor_${i}`,
+      limit: BOUNDARY_INTEGER_MAX,
+    }));
+    await expect(save(t, args({ constraintsJson: JSON.stringify(rules) }))).rejects.toThrow(
+      /too large/,
+    );
+  });
+});
+
+describe("timeline baselines: R1 unsupported forward fields", () => {
+  const cases: [string, RegExp, (s: WeeklySeedV1) => void][] = [
+    [
+      "writtenOff",
+      /invoice .* writtenOff/,
+      (s) => {
+        unpaidInvoice(s).writtenOff = s.snapshot.asOf;
+      },
+    ],
+    [
+      "collection",
+      /invoice .* collection/,
+      (s) => {
+        unpaidInvoice(s).collection = { payOn: "2027-12-01", amount: 1 };
+      },
+    ],
+    [
+      "paidAmount",
+      /invoice .* paidAmount/,
+      (s) => {
+        const i = paidInvoice(s);
+        i.paidAmount = i.amount;
+      },
+    ],
+    [
+      "agreedPayOn",
+      /bill .* agreedPayOn/,
+      (s) => {
+        s.snapshot.bills.find((b) => !b.paid)!.agreedPayOn = "2027-12-01";
+      },
+    ],
+    [
+      "billingPlans",
+      /snapshot.billingPlans/,
+      (s) => {
+        s.snapshot.deals = [];
+        s.snapshot.billingPlans = [
+          {
+            id: "plan_1",
+            customerId: s.snapshot.customers[0]!.id,
+            amount: 100_000_000,
+            anchorDate: "2026-11-01",
+            nextInvoiceDate: "2026-11-01",
+            everyMonths: 1,
+            paymentTermsDays: 0,
+          },
+        ];
+      },
+    ],
+    [
+      "pendingPayouts",
+      /snapshot.pendingPayouts/,
+      (s) => {
+        const paid = paidInvoice(s);
+        s.snapshot.pendingPayouts = [
+          {
+            id: "payout_1",
+            amount: paid.amount,
+            expectedArrival: "2026-11-02",
+            invoiceIds: [paid.id],
+          },
+        ];
+      },
+    ],
+  ];
+
+  it.each(cases)("fails closed on %s and writes nothing", async (_field, message, edit) => {
+    const t = setup();
+    const forecast = vi.spyOn(engine, "forecast");
+    const seedJson = await rehashed((s) => {
+      const next = bare(s, "forward-field");
+      edit(next);
+      return next;
+    });
+    await expect(save(t, args({ seedJson }))).rejects.toThrow(message);
+    await expect(save(t, args({ seedJson }))).rejects.toThrow(/cannot calculate yet/);
+    expect(forecast).not.toHaveBeenCalled();
+    expect(await rows(t)).toHaveLength(0);
+  });
+
+  it("accepts explicit empty forward arrays, which carry no cash", async () => {
+    const t = setup();
+    const seedJson = await rehashed((s) => ({
+      ...bare(s, "empty-forward"),
+      snapshot: { ...s.snapshot, billingPlans: [], pendingPayouts: [] },
+    }));
+    const { runId } = await save(t, args({ seedJson }));
+    const saved = await t.query(r.get, { companyId: "kestrel", runId });
+    expect(saved?.forecast).toEqual(engine.forecast(seed.snapshot, NEUTRAL, []));
+  });
+});
+
+describe("timeline baselines: R1 stored row size", () => {
+  /** Two card spends, the later one with a huge merchant that past events copy into evidence. */
+  const tinySeed = (merchant: string) =>
+    rehashed((s) => ({
+      ...bare(s, "tiny-large-merchant"),
+      company: { id: "tiny", name: "Tiny Co" },
+      snapshot: {
+        companyId: "tiny",
+        asOf: s.snapshot.asOf,
+        cashOnHand: 100_000,
+        restrictedCash: 0,
+        customers: [],
+        invoices: [],
+        bankTxns: [],
+        bills: [],
+        cardTxns: [
+          {
+            id: "card_sep",
+            date: "2026-09-15",
+            amount: 100,
+            merchant: "Tools",
+            category: "software",
+          },
+          { id: "card_oct", date: "2026-10-15", amount: 1000, merchant, category: "software" },
+        ],
+        payroll: [],
+        deals: [],
+      },
+    }));
+
+  it.each([
+    ["ASCII", "m".repeat(550_000)],
+    ["multi-byte", "\u00e9".repeat(320_000)],
+  ])(
+    "rejects a %s seed whose generated row would exceed the document limit",
+    async (_k, merchant) => {
+      const t = setup();
+      const seedJson = await tinySeed(merchant);
+      expect(seedJson.length).toBeLessThan(900_000);
+      await expect(save(t, args({ seedJson }))).rejects.toThrow(/too large to save/);
+      expect(await rows(t)).toHaveLength(0);
+    },
+  );
+
+  it("saves the same small seed with a short merchant", async () => {
+    const t = setup();
+    const out = await save(t, args({ seedJson: await tinySeed("Big vendor") }));
+    expect(out).toMatchObject({ companyId: "tiny", created: true });
   });
 });
