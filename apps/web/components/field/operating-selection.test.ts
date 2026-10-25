@@ -2,8 +2,10 @@ import { operatingDemoCatalog, operatingScenarioCatalog } from "@domino/sim";
 import { describe, expect, it } from "vitest";
 import {
   OPERATING_DEMO_LABEL,
+  adoptExplicitOperatingSelection,
   operatingSelectionFromWorldId,
   operatingWorldId,
+  resolveOperatingSelection,
   selectedOperatingRecord,
 } from "./company";
 
@@ -47,5 +49,54 @@ describe("filing-backed operating selection", () => {
     expect(operatingSelectionFromWorldId(world)).toEqual(selection);
     expect(operatingSelectionFromWorldId("kestrel")).toBeNull();
     expect(operatingSelectionFromWorldId("operating/2u/baseline/extra")).toBeNull();
+  });
+
+  it("adopts an explicit deep link so queryless navigation keeps the requested feed", () => {
+    const values = new Map([
+      ["domino.field.operating.company", "asana-inspired"],
+      ["domino.field.operating.scenario", "late-payments"],
+    ]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    expect(adoptExplicitOperatingSelection("/", "?company=2u&scenario=baseline", storage)).toEqual({
+      company: "2u",
+      scenario: "baseline",
+    });
+    expect(
+      resolveOperatingSelection(
+        "/field",
+        "",
+        storage.getItem("domino.field.operating.company"),
+        storage.getItem("domino.field.operating.scenario"),
+      ).selection,
+    ).toEqual({ company: "2u", scenario: "baseline" });
+    expect(adoptExplicitOperatingSelection("/field", "", storage)).toBeNull();
+    expect(values.get("domino.field.operating.company")).toBe("2u");
+    expect(values.get("domino.field.operating.scenario")).toBe("baseline");
+  });
+
+  it("adopts a Timeline route but never persists a default or an invalid URL", () => {
+    const values = new Map([
+      ["domino.field.operating.company", "asana-inspired"],
+      ["domino.field.operating.scenario", "late-payments"],
+    ]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    expect(adoptExplicitOperatingSelection("/", "", storage)).toBeNull();
+    expect(adoptExplicitOperatingSelection("/", "?company=not-a-company", storage)).toBeNull();
+    expect(values.get("domino.field.operating.company")).toBe("asana-inspired");
+    expect(
+      adoptExplicitOperatingSelection(
+        "/c/operating%2Fgitlab-inspired%2Fcustomer-loss/timeline",
+        "",
+        storage,
+      ),
+    ).toEqual({ company: "gitlab-inspired", scenario: "customer-loss" });
+    expect(values.get("domino.field.operating.company")).toBe("gitlab-inspired");
+    expect(values.get("domino.field.operating.scenario")).toBe("customer-loss");
   });
 });
