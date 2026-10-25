@@ -1,5 +1,5 @@
 import type { DashboardView } from "../dashboard/derive";
-import type { AnalystLatest } from "../dashboard/risks";
+import { type AnalystLatest, savedRiskHref } from "../dashboard/risks";
 import { type TimelineRead, cashMinimum, timelineRiskCards } from "../dashboard/timeline";
 import { money, weekOf } from "./format";
 import type { LowPoint } from "./suggestions";
@@ -79,7 +79,7 @@ export function triageRisks(
         week: s.survives ? null : s.breaksAt,
         low: { cents: s.low, week: null },
         shortfall: short,
-        href,
+        href: savedRiskHref(s) ?? href,
       },
     ];
   });

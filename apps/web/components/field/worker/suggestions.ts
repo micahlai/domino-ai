@@ -58,6 +58,42 @@ export function readSimulationResult(raw: unknown): SimulationResult {
   return result;
 }
 
+/**
+ * The comparison the forecasting agent already saved for a suggestion (fieldForecastRuns.ts):
+ * the risk run without the fix, the fix run under it and how many domino effects were saved.
+ */
+export type SavedForecast = {
+  timelineCompanyId: string;
+  scenarioRunId: string;
+  fixRunId: string;
+  conversationId: string;
+  route: string;
+  scenarioLow: { cents: number; weekStart: string };
+  fixLow: { cents: number; weekStart: string };
+  outOfCash: { weekStart: string } | null;
+  effects: number;
+};
+const SavedForecastSchema = z.object({
+  timelineCompanyId: savedId,
+  scenarioRunId: savedId,
+  fixRunId: savedId,
+  conversationId: savedId,
+  route: z.string().max(2000),
+  scenarioLow: lowPoint,
+  fixLow: lowPoint,
+  outOfCash: z.object({ weekStart: z.string() }).optional(),
+  effects: z.number().int().nonnegative(),
+});
+/** A saved forecast whose route opens exactly its own fix run; null when absent or malformed. */
+export function readSavedForecast(raw: unknown): SavedForecast | null {
+  const parsed = SavedForecastSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const f = parsed.data;
+  if (f.route !== workerTimelineHref(f.timelineCompanyId, f.fixRunId, f.conversationId))
+    return null;
+  return { ...f, outOfCash: f.outOfCash ?? null };
+}
+
 /** A fix as the backend may send it: a sentence, or the parts of one. */
 export type SuggestionFix =
   | string
@@ -93,6 +129,8 @@ export type Suggestion = {
   note?: string;
   /** Who suggested it; the CREAO advisor unless the backend says otherwise. */
   by: string;
+  /** Saved Timeline runs for this fix, when the forecasting agent has saved them. */
+  forecast?: SavedForecast;
 };
 
 export const SUGGESTED_BY = "Engine advisors";
@@ -170,6 +208,7 @@ export function toSuggestion(raw: unknown): Suggestion | null {
   const status = raw.status;
   if (!id || low === null || !Number.isSafeInteger(low) || fix === null) return null;
   if (status !== "open" && status !== "accepted" && status !== "declined") return null;
+  const forecast = readSavedForecast(raw.forecast);
   return {
     id,
     scenarioId: str(raw.scenarioId) || null,
@@ -194,6 +233,7 @@ export function toSuggestion(raw: unknown): Suggestion | null {
     status,
     ...(isRecord(raw.learned) && str(raw.learned.text) && { learnedNote: str(raw.learned.text) }),
     ...(str(raw.note) && { note: str(raw.note) }),
+    ...(forecast && { forecast }),
     by:
       str(raw.by) ||
       str(raw.suggestedBy) ||

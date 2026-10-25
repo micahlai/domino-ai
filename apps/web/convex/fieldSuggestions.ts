@@ -13,7 +13,10 @@
  *        effect: { lowPoint, lowWeekStart, survives, gain, scenarioLow, lenderMinimum,
  *                  breaksAt?, brokenConstraintId? }      (integer cents; dates ISO)
  *        rank, recommended, recommendation: null | { text, provider: "creao", remoteRunId, at },
- *        status, decidedBy?, decidedAt?, note?, createdAt, updatedAt }]
+ *        status, decidedBy?, decidedAt?, note?,
+ *        forecast?: { timelineCompanyId, scenarioRunId, fixRunId, conversationId, route,
+ *                     scenarioLow, fixLow, outOfCash?, effects, savedAt },
+ *        createdAt, updatedAt }]
  * Mutations
  *   fieldSuggestions.decide({ companyId, id, expectedRunId, expectedSnapshotVersion,
  *                             decision: "accepted"|"declined", note? })
@@ -51,6 +54,7 @@ const view = (s: Doc<"suggestions">) => ({
   ...(s.decidedAt && { decidedAt: s.decidedAt }),
   ...(s.note && { note: s.note }),
   ...(s.learned && { learned: s.learned }),
+  ...(s.forecast && { forecast: s.forecast }),
   createdAt: s.createdAt,
   updatedAt: s.updatedAt,
 });

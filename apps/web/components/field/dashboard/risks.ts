@@ -1,4 +1,5 @@
 import type { Cents, ISODate } from "@domino/contracts";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import type { DashboardView } from "./derive";
 
 /**
@@ -21,6 +22,8 @@ export type RiskCard = {
   /** Change in the 13-week lowest projected cash versus the plan (negative = worse). */
   impact: Cents;
   fix: { label: string; note: string | null; holds: boolean } | null;
+  /** The risk's saved Timeline run, when the forecasting agent has saved it. */
+  href?: string | null;
 };
 
 export type RiskFeed = {
@@ -54,11 +57,22 @@ export type AnalystLatest = {
     low: number | null;
     lowPointImpact: number | null;
     bestFix: { label: string; costNote: string; survivesWithFix: boolean } | null;
+    /** Saved Timeline risk run (fieldForecastRuns.ts); absent on older backends. */
+    forecast?: { timelineCompanyId: string; scenarioRunId: string } | null;
   }[];
   research?: unknown[];
 } | null;
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** Timeline route that opens one analyst scenario's saved risk run, or null before it is saved. */
+export function savedRiskHref(s: AnalystScenarioRow): string | null {
+  const f = s.forecast;
+  return f && text(f.timelineCompanyId) && text(f.scenarioRunId)
+    ? openedTimelineHref(f.timelineCompanyId, f.scenarioRunId)
+    : null;
+}
+type AnalystScenarioRow = NonNullable<AnalystLatest>["scenarios"][number];
 
 /** Apify entries of the analyst's research list, one per counterparty (newest wins). */
 export function counterpartySignals(research: unknown[] | undefined): CounterpartySignals[] {
@@ -142,6 +156,7 @@ export function analystRisks(latest: AnalystLatest, view: DashboardView): RiskFe
       fix: s.bestFix
         ? { label: s.bestFix.label, note: s.bestFix.costNote, holds: s.bestFix.survivesWithFix }
         : null,
+      href: savedRiskHref(s),
     }));
   const signals = counterpartySignals(latest.research);
   return {

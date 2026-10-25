@@ -1595,6 +1595,16 @@ export const latest = query({
           bestFix: fixes[0] ?? null,
           fixes,
           error: r.error ?? null,
+          /** Saved Timeline risk run (fieldForecastRuns.ts), null until the agent saves it. */
+          forecast: r.forecast
+            ? {
+                timelineCompanyId: r.forecast.timelineCompanyId,
+                scenarioRunId: r.forecast.scenarioRunId,
+                low: r.forecast.low,
+                outOfCash: r.forecast.outOfCash ?? null,
+                effects: r.forecast.effects,
+              }
+            : null,
         };
       }),
       research: (pick.research as unknown[] | undefined) ?? [],
