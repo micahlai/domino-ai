@@ -4,7 +4,6 @@ import {
   ControlButton,
   Controls,
   type Edge,
-  EdgeLabelRenderer,
   type EdgeProps,
   Handle,
   type Node,
@@ -71,7 +70,6 @@ import { useFieldData } from "./data";
 import {
   type BrainGraph,
   type BrainNode,
-  type CallLink,
   PULSE_SECONDS,
   type Pulse,
   type SavedState,
@@ -95,7 +93,6 @@ import {
   neighbors,
   opAgentId,
   pulsesFor,
-  recentCalls,
   toolChips,
   toolNodeId,
   toolProvider,
@@ -212,8 +209,6 @@ type RouteData = {
   /** Growth: hidden until planned, then drawn in after `delay` seconds (from its target end). */
   pending: boolean;
   draw?: Draw;
-  /** Recent calls recorded on this line (agent to toolbox, or a source read). */
-  call?: CallLink;
 };
 type MapEdge = Edge<RouteData, "route">;
 
@@ -1033,27 +1028,12 @@ const ROUTE_LOOK: Record<Route["kind"], { stroke: string; width: number; dash?: 
   uses: { stroke: "hsl(var(--foreground) / 0.14)", width: 1, dash: "1 4" },
 };
 
-/** Call lines, in the architecture diagram's colors: purple AI and tool calls, blue data reads. */
-const CALL_COLOR: Record<CallLink["via"], string> = { tool: "124 58 237", data: "37 99 235" };
-
-/** "Forecasting swarm called Apify: 3 calls, 2:14 PM". */
-function callText(call: CallLink): string {
-  const verb = call.via === "tool" ? "called" : "read";
-  const unit = call.via === "tool" ? "call" : "read";
-  const time = new Date(call.lastAt).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${call.agentTitle} ${verb} ${call.targetName}: ${call.calls} ${unit}${call.calls === 1 ? "" : "s"}, ${time}${call.inFlight ? " (still working)" : ""}`;
-}
-
 function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
   const reduced = useReducedMotion();
   // A growing link extends from its parent's end; once there it renders like any other link.
   const [grown, setGrown] = useState(false);
-  const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
   if (!data) return null;
-  const { route, pulses, active, dimmed, call } = data;
+  const { route, pulses, active, dimmed } = data;
   const look = ROUTE_LOOK[route.kind];
   const stroke = active
     ? "hsl(var(--primary-ink) / 0.8)"
@@ -1061,15 +1041,6 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
       ? "hsl(var(--foreground) / 0.35)"
       : look.stroke;
   if (data.pending && !reduced) return null;
-  // Tool lines draw only for recent recorded calls, so old calls leave the map clean.
-  if (route.kind === "uses" && !call)
-    return reduced ? null : (
-      <g data-route={id}>
-        {pulses.map((pulse) => (
-          <PulseDot key={pulse.key} pulse={pulse} path={route.path} />
-        ))}
-      </g>
-    );
   const growing = Boolean(data.draw) && !grown && !reduced;
   // Paths glide with their cards if the web ever re-settles (CSS `d`; browsers without it jump).
   const glide = reduced
@@ -1093,47 +1064,6 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
           transition={{ delay: data.draw.delay, duration: EDGE_SECONDS, ease: "easeOut" }}
           onAnimationComplete={() => setGrown(true)}
         />
-      ) : call ? (
-        <>
-          <path
-            d={route.path}
-            fill="none"
-            stroke={`rgb(${CALL_COLOR[call.via]} / ${active ? 0.9 : call.inFlight ? 0.75 : 0.45})`}
-            strokeWidth={call.inFlight || active ? 1.75 : 1}
-            strokeLinecap="round"
-            style={glide as CSSProperties}
-          />
-          {call.inFlight && !reduced ? (
-            <motion.path
-              d={route.path}
-              fill="none"
-              stroke={`rgb(${CALL_COLOR[call.via]})`}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              strokeDasharray="4 10"
-              initial={{ strokeDashoffset: 0 }}
-              animate={{ strokeDashoffset: -28 }}
-              transition={{ duration: 0.9, ease: "linear", repeat: Number.POSITIVE_INFINITY }}
-              className="pointer-events-none"
-              data-call-live=""
-            />
-          ) : null}
-          {/* A wide invisible stroke to hover; edges themselves take no pointer events. */}
-          <path
-            d={route.path}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={12}
-            style={{ pointerEvents: "stroke" }}
-            data-call={id}
-            onMouseEnter={(e) => {
-              const line = e.currentTarget;
-              const at = line.getPointAtLength(line.getTotalLength() / 2);
-              setTip({ x: at.x, y: at.y });
-            }}
-            onMouseLeave={() => setTip(null)}
-          />
-        </>
       ) : (
         <path
           d={route.path}
@@ -1148,17 +1078,6 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
       {reduced
         ? null
         : pulses.map((pulse) => <PulseDot key={pulse.key} pulse={pulse} path={route.path} />)}
-      {call && tip ? (
-        <EdgeLabelRenderer>
-          <div
-            role="tooltip"
-            className="pointer-events-none absolute z-20 max-w-72 rounded-lg border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md"
-            style={{ transform: `translate(-50%, -120%) translate(${tip.x}px, ${tip.y}px)` }}
-          >
-            {callText(call)}
-          </div>
-        </EdgeLabelRenderer>
-      ) : null}
     </g>
   );
 }
@@ -1774,34 +1693,10 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
     clusterOf,
   ]);
 
-  // Recent recorded calls: toolbox lines come from the full graph, source reads from the shown one.
-  const calls = useMemo(
-    () => new Map([...recentCalls(fullGraph), ...recentCalls(graph)]),
-    [fullGraph, graph],
-  );
   const edges = useMemo<MapEdge[]>(() => {
     const now = Date.now();
-    // A stack of finished helpers: their recent calls to one provider, as one line.
-    const stackCall = (route: Route): CallLink | undefined => {
-      const stack = layout.stacks.find((st) => st.id === route.source);
-      if (!stack || route.kind !== "uses") return undefined;
-      const mine = stack.members.flatMap((m) => calls.get(`${m}->${route.target}`) ?? []);
-      const first = mine[0];
-      if (!first) return undefined;
-      const lead = fullGraph.nodes.find((n) => n.id === stack.clusterId)?.title;
-      return {
-        ...first,
-        routeId: route.id,
-        agentId: stack.id,
-        agentTitle: lead ? `${lead}'s helpers` : "Finished helpers",
-        calls: mine.reduce((sum, c) => sum + c.calls, 0),
-        lastAt: mine.reduce((at, c) => (c.lastAt > at ? c.lastAt : at), first.lastAt),
-        inFlight: mine.some((c) => c.inFlight),
-      };
-    };
     return layout.routes.map((route): MapEdge => {
       const mine = pulses.filter((p) => p.edgeId === route.id);
-      const call = calls.get(route.id) ?? stackCall(route);
       const touches = focus.id !== null && (route.source === focus.id || route.target === focus.id);
       const draw = plan.draw.get(route.id);
       return {
@@ -1816,7 +1711,6 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
           busy: mine.length > 0,
           dimmed: focus.id !== null && !touches,
           pending: !reduced && !plan.knownRoutes.has(route.id),
-          ...(call && { call }),
           ...(draw && {
             draw: { delay: Math.max(0, (draw.at - now) / 1000), reverse: draw.reverse },
           }),
@@ -1825,7 +1719,7 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
         selectable: false,
       };
     });
-  }, [layout, pulses, focus, plan, reduced, calls, fullGraph]);
+  }, [layout, pulses, focus, plan, reduced]);
 
   useEffect(() => {
     if (!selected) return;

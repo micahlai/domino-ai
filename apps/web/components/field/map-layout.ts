@@ -648,17 +648,12 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     if (!a || !b) continue;
     routes.push(routeFor(e.id, e.source, e.target, e.kind, a, b));
   }
-  // Toolbox links: drawn for recent calls, there for growth and for data moving to and from a
-  // tool. A finished helper folded into a stack links from that stack, once per stack.
+  // Toolbox links: hidden lines, there for growth and for data moving to and from a tool.
   for (const g of groups)
     for (const user of g.users) {
-      const stack = boxes.has(user) ? undefined : stacks.find((s) => s.members.includes(user));
-      const from = stack ? stack.id : user;
-      const a = stack ? stack.box : boxes.get(user);
+      const a = boxes.get(user);
       const b = boxes.get(g.id);
-      const id = `${from}->${g.id}`;
-      if (a && b && !routes.some((r) => r.id === id))
-        routes.push(routeFor(id, from, g.id, "uses", a, b));
+      if (a && b) routes.push(routeFor(`${user}->${g.id}`, user, g.id, "uses", a, b));
     }
 
   const all: Rect[] = [

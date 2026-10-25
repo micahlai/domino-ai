@@ -19,7 +19,6 @@ import {
   neighbors,
   pulsePath,
   pulsesFor,
-  recentCalls,
   toCanvasStatus,
   toolChips,
   withSavedState,
@@ -582,52 +581,5 @@ describe("demo fixture", () => {
     expect(toCanvasStatus("running")).toBe("running");
     expect(toCanvasStatus("error")).toBe("failed");
     expect(toCanvasStatus(undefined)).toBe("idle");
-  });
-});
-
-describe("recentCalls", () => {
-  const apify = (id: string, at: string, agent = "Research agent") =>
-    op({
-      id,
-      at,
-      agent,
-      tool: "apify.google-search-scraper",
-      toolCategory: "apify",
-      source: "apify",
-      status: "succeeded",
-    });
-
-  it("draws one line per agent and provider for recorded calls only, counted once", () => {
-    const calls = recentCalls(
-      buildBrainGraph([
-        apify("a1", "2026-10-30T10:00:00Z"),
-        apify("a2", "2026-10-30T10:01:00Z"),
-        op({ id: "r1", agent: "ingestion", source: "stripe", tool: "stripe.read" }),
-      ]),
-    );
-    expect(calls.get("agent:research-agent->toolbox:apify")).toMatchObject({
-      via: "tool",
-      targetName: "Apify",
-      calls: 2,
-      lastAt: "2026-10-30T10:01:00Z",
-    });
-    const read = [...calls.values()].find((c) => c.via === "data");
-    expect(read?.routeId.endsWith("->agent:ingestion")).toBe(true);
-    expect([...calls.values()].every((c) => c.calls > 0)).toBe(true);
-  });
-
-  it("keeps the calling agent's latest run only and marks it in flight while it works", () => {
-    const calls = recentCalls(
-      buildBrainGraph([
-        apify("old", "2026-10-30T08:00:00Z", "Other agent"),
-        op({ id: "s1", agent: "Research agent", status: "working", at: "2026-10-30T10:00:00Z" }),
-        apify("a1", "2026-10-30T10:00:30Z"),
-      ]),
-    );
-    expect(calls.has("agent:other-agent->toolbox:apify")).toBe(false);
-    expect(calls.get("agent:research-agent->toolbox:apify")).toMatchObject({
-      calls: 1,
-      inFlight: true,
-    });
   });
 });
