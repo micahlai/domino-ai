@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { plainLabel, savedOn } from "../../../convex/timeline/recordNames";
+import { formatCents } from "../../../lib/format";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
-import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { Panel, WhenDate } from "./RunPanels";
 import { type CatalogEntry, type CatalogPage, type Read, ancestryOf } from "./api";
 
@@ -32,30 +33,30 @@ function EntryRow({
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         {current ? (
           <span className="font-medium" aria-current="page">
-            {e.label || "Untitled"} (open now)
+            {plainLabel(e.label) || "Untitled"} (open now)
           </span>
         ) : (
           <Link
             href={href}
             className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline sm:min-h-0"
           >
-            {e.label || "Untitled"}
+            {plainLabel(e.label) || "Untitled"}
           </Link>
         )}
         <Badge variant="secondary">{KIND[e.kind]}</Badge>
       </div>
       <span className="text-xs text-muted-foreground">
-        Lowest {formatExactCents(e.lowPointCents)}, week of <WhenDate iso={e.lowPointWeek} />
+        Lowest {formatCents(e.lowPointCents)}, week of <WhenDate iso={e.lowPointWeek} />
         {parent ? (
           <>
             {" "}
-            · built on{" "}
+            · from{" "}
             <Link href={parent.href} className="underline-offset-4 hover:underline">
-              {parent.label || "Untitled"}
+              {plainLabel(parent.label) || "Untitled"}
             </Link>
           </>
         ) : null}{" "}
-        · saved {formatSavedAt(e.savedAt)}
+        · Saved {savedOn(e.savedAt)}
       </span>
     </li>
   );

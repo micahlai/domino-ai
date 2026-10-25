@@ -204,8 +204,15 @@ export function OperatingSelectorControls({
             {shown?.name ?? "Choose a demo"}
           </span>
           <span className="text-[11px] leading-4 text-muted-foreground">
-            <span className="max-sm:hidden">{shown?.subtitle} · </span>
-            {scenario?.name}
+            {selection.company === "2u" ? (
+              // 2U is real public filings; a scenario suffix would read as simulated.
+              <span>{shown?.subtitle}</span>
+            ) : (
+              <>
+                <span className="max-sm:hidden">{shown?.subtitle} · </span>
+                {scenario?.name}
+              </>
+            )}
           </span>
         </span>
         <ChevronsUpDown aria-hidden="true" className="size-4 text-muted-foreground" />

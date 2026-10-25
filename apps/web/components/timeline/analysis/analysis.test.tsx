@@ -216,8 +216,8 @@ describe("analysis screens stay read-only until reviewed", () => {
     const html = screen();
     expect(html).toContain("Inspect exact weekly cash");
     expect(html).toContain("Show simulated event inputs");
-    expect(html).toContain("Preview: Offer early-payment terms");
-    expect(html).toContain("Read financial output JSON");
+    expect(html).toContain("With fix: Offer early-payment terms");
+    expect(html).toContain("Developer data");
     expect(html).toContain("weekly close");
   });
 });

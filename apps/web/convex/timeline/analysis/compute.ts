@@ -11,6 +11,8 @@ import { engine, rankFixes } from "@domino/engine";
 import { cashSchedule } from "@domino/engine/src/forecast";
 import { isOpenInvoice } from "@domino/engine/src/schedule";
 import type { WorkspaceRun } from "../questions/context";
+import { billName, invoiceName, shortDate } from "../recordNames";
+import { scenarioStart } from "../scenarioStart";
 import {
   addDays,
   checkChanges,
@@ -104,7 +106,7 @@ export function candidates(run: WorkspaceRun): { risks: RiskEvent[]; warnings: s
       const f = safeForecast(run, changes);
       raw.push({
         id: `assumed_late_${invoice.id}`,
-        label: `Invoice ${invoice.id} is paid 14 additional days late`,
+        label: `${invoiceName(s, invoice.id)}, paid 14 days late`,
         probability: 0.1,
         impactLowPoint: run.forecast.lowPoint.usable - f.lowPoint.usable,
         changes,
@@ -122,7 +124,7 @@ export function candidates(run: WorkspaceRun): { risks: RiskEvent[]; warnings: s
         ],
       });
       warnings.push(
-        "The neutral model supplied no risk candidates. A stated 14-day late-payment stress assumption was used without changing the saved model.",
+        "The payment history showed no specific risk, so as a stated assumption we tested the largest open invoice arriving 14 days late. The saved model is unchanged.",
       );
     }
   }
@@ -208,19 +210,25 @@ export function responsesFor(run: WorkspaceRun, risk: AnalysisRisk): AnalysisRes
   const schedule = cashSchedule(s, m, risk.changes);
   const h = horizon(run);
   const templates: FixCandidate[] = [];
+  // A response is saved as a child of the risk, so it may not act before the risk does: before
+  // that date the child's line is the risk's line. Pay on the risk's start (the late invoice's
+  // due date), never earlier, so the branch leaves its parent's line at or after the fork.
+  const tomorrow = addDays(s.asOf, 1);
+  const riskStart = scenarioStart(risk.changes, s);
+  const payOn = riskStart && riskStart > tomorrow ? riskStart : tomorrow;
   const invoice = s.invoices
     .filter((i) => isOpenInvoice(i))
     .sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
     .find((i) =>
       schedule.items.some(
-        (x) => x.kind === "invoice" && x.id === i.id && x.amount > 0 && x.date > addDays(s.asOf, 1),
+        (x) => x.kind === "invoice" && x.id === i.id && x.amount > 0 && x.date > payOn,
       ),
     );
   if (invoice)
     templates.push({
       id: `early_${risk.id}`,
-      label: `Offer 2% for early payment of ${invoice.id}`,
-      costNote: `Assumes the customer accepts a 2% discount on invoice ${invoice.id} for payment on ${addDays(s.asOf, 1)}. The engine reduces that invoice's proceeds by 2%, rounded to cents. This is a proposed negotiation.`,
+      label: `Offer 2% off for payment by ${shortDate(payOn)}: ${invoiceName(s, invoice.id)}`,
+      costNote: `Assumes the customer accepts a 2% discount on the ${invoiceName(s, invoice.id)} for payment on ${shortDate(payOn)}. Proceeds drop by 2% for good, rounded to cents. This is a proposed negotiation.`,
       risk: "medium",
       evidence: [
         {
@@ -234,19 +242,26 @@ export function responsesFor(run: WorkspaceRun, risk: AnalysisRisk): AnalysisRes
           kind: "discount_early_pay",
           invoiceId: invoice.id,
           percent: 2,
-          payOn: addDays(s.asOf, 1),
+          payOn,
         },
       ],
       targetRiskIds: [risk.id],
     });
   const bill = s.bills
-    .filter((b) => !b.paid && !b.critical && b.due > s.asOf && b.due <= h.end)
+    .filter(
+      (b) =>
+        !b.paid &&
+        !b.critical &&
+        b.due > s.asOf &&
+        b.due >= (riskStart ?? s.asOf) &&
+        b.due <= h.end,
+    )
     .sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))[0];
   if (bill)
     templates.push({
       id: `defer_${risk.id}`,
-      label: `Request 14 more days to pay ${bill.id}`,
-      costNote: `Assumes the vendor accepts a 14-day deferral of noncritical bill ${bill.id}. The full amount remains owed. No fee was supplied in the source records, so fees and vendor consent are unmodeled.`,
+      label: `Ask for 14 more days on the ${billName(s, bill.id)}`,
+      costNote: `Assumes the vendor accepts a 14-day deferral of the ${billName(s, bill.id)}. The full amount remains owed. No fee was supplied in the source records, so fees and vendor consent are unmodeled.`,
       risk: "medium",
       evidence: [
         {
