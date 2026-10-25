@@ -100,9 +100,9 @@ function AssistantBody({
     if (!focusKey) return;
     const frame = requestAnimationFrame(() => {
       const panel = root.current?.querySelector<HTMLElement>(`[data-assistant-tab="${tab}"]`);
-      const target = panel?.querySelector<HTMLElement>(
-        "textarea:not(:disabled), button:not(:disabled)",
-      );
+      const target =
+        panel?.querySelector<HTMLElement>("textarea:not(:disabled), input:not(:disabled)") ??
+        panel?.querySelector<HTMLElement>("button:not(:disabled)");
       target?.focus();
       if (window.matchMedia(DESKTOP).matches)
         panel?.scrollIntoView({ block: "nearest", behavior: smoothScroll() });

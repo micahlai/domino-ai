@@ -1,0 +1,10 @@
+# Timeline UX takeover, 2026-10-25
+
+- Goal: finish the Timeline page cleanup on `field/timeline-ux` in `../domino-field-timeline-ux` without changing `field/main` or the live demo.
+- Claude's implementation was already committed as `3753241` when takeover began. The worktree was clean and no active Claude writer held it.
+- Follow-up: connect the existing Timeline chat playground to its saved comparison fixtures, and focus the question field when the mobile assistant opens.
+- Checks: web and Convex `tsc --noEmit` passed; Biome passed on all 24 Claude-changed files and both follow-up files; full web Vitest passed 87 files and 1,141 tests; focused Timeline workspace and chat tests passed 67 tests after the follow-up; Webpack production build passed after the follow-up.
+- Standard `pnpm --filter @domino/web build` could not complete here because Turbopack was denied permission to bind a local worker port. `next build --webpack` passed with elevated access for the configured Google font fetch. This is an environment limit, not a verified Turbopack pass.
+- Runtime smoke: isolated Convex 3294/3295 and Next 3140 showed Kestrel's empty Timeline with an enabled **Bring in latest books** action. The labelled playground showed the primary actions, recorded versus scenario chart, comparison curve and saved scenarios. At 390px, document width equaled viewport width; the mobile assistant opened and focused the question field. Screenshots: `/tmp/domino-timeline-ux-desktop-full.png`, `/tmp/domino-timeline-ux-mobile-full.png`, `/tmp/domino-timeline-ux-mobile-assistant.png`.
+- The empty-state action was not clicked because it starts automatic risk analysis. Its actual import path was not exercised in this smoke test. The isolated servers were stopped; the CLI-only generated API formatting change was restored.
+- Next exact step: integration owner reviews these two commits and merges `field/timeline-ux` through the separate merge worktree after preceding feature lanes are accepted. No push or merge was done here.
