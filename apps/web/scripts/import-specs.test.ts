@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { importSpecs } from "./import-specs.mjs";
 
-const specs = (text: string) => importSpecs(text).map((s: { spec: string }) => s.spec);
+const specs = (text: string) => importSpecs(text).map((s) => s.spec);
 
 describe("lane import scan", () => {
   it("finds named, re-export, dynamic and side-effect imports", () => {
