@@ -56,6 +56,11 @@ export type BrainNode = {
   endedAt?: string;
   progress?: number;
   /**
+   * Agents whose last run stopped on missing setup, not on an error ("Waiting for an AI key").
+   * Set only while the latest lifecycle row is that failure.
+   */
+  waitingFor?: string;
+  /**
    * Sources and outputs: what saved state says, independent of how much of the log is loaded
    * ("Data through Nov 2", "12 versions saved"). Set by withSavedState().
    */
@@ -73,6 +78,19 @@ export const toolNodeId = (name: string) => `tool:${name.trim().toLowerCase()}`;
 export const outputNodeId = (id: string) => `output:${id}`;
 export const edgeId = (source: string, target: string) => `${source}->${target}`;
 export const isAgent = (n: BrainNode) => n.kind === "agent" || n.kind === "subagent";
+
+/**
+ * A failure that only means something is not set up yet, in plain words, or undefined for a
+ * real failure. Matches the reasons the backend writes (fieldAi, fieldAnalyst, fieldAgents).
+ */
+export function setupGap(summary: string | undefined): string | undefined {
+  const s = summary ?? "";
+  if (/Start agents first/i.test(s)) return "Waiting for Start agents";
+  if (/APIFY_TOKEN/.test(s)) return "Waiting for an Apify token";
+  if (/ANTHROPIC_API_KEY|API key|not configured|unavailable \(/i.test(s))
+    return "Waiting for an AI key";
+  return undefined;
+}
 
 /** Backend statuses are free text; only these words change how a node looks. */
 export function toCanvasStatus(status: string | undefined): CanvasStatus {
@@ -294,9 +312,15 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
     if (op.instructions) node.instructions = op.instructions;
     if (op.currentTask) node.currentTask = op.currentTask;
     if (typeof op.progress === "number") node.progress = Math.max(0, Math.min(1, op.progress));
-    if (isLifecycle(op.status)) {
+    // A note that a step was skipped or unavailable, written after the agent finished, is not a
+    // new run (research#1 logs "CREAO unavailable" as a working row after its done row).
+    const action = op.inputs?.action;
+    const note = typeof action === "string" && /(Unavailable|Skipped)$/.test(action);
+    const finished = node.lifecycle === "done" || node.lifecycle === "failed";
+    if (isLifecycle(op.status) && !(note && finished && op.status === "working")) {
       const running = op.status === "spawned" || op.status === "working";
-      const ended = node.lifecycle === "done" || node.lifecycle === "failed";
+      const ended = finished;
+      node.waitingFor = op.status === "failed" ? setupGap(op.summary) : undefined;
       // A long-lived agent that finished and starts again begins a new run.
       if (running && (!node.startedAt || ended)) {
         node.startedAt = op.at;
@@ -584,9 +608,39 @@ export function withSavedState(graph: BrainGraph, saved: SavedState): BrainGraph
       outputNodeId("flags"),
       `${flags.total} ${flags.total === 1 ? "flag" : "flags"}, ${flags.open} open`,
     );
+  // The log is paged, so the pipeline's own rows may be older than the loaded window. Saved
+  // reads and books still show that ingestion and audit ran, so they never read "Not used yet".
+  const pulls = (saved.sources ?? []).flatMap((s) => (s.lastPull ? [s.lastPull] : []));
+  const latest = pulls.sort().at(-1);
+  if (latest) notes.set(agentNodeId("ingestion"), `Data through ${shortDate(latest)}`);
+  if (versions > 0)
+    notes.set(
+      agentNodeId("audit"),
+      flags && flags.total > 0
+        ? `${flags.total} ${flags.total === 1 ? "flag" : "flags"} raised`
+        : "Checked the saved books",
+    );
   if (!notes.size) return graph;
+  // The same saved state stands for the pipeline's links, so the map keeps its shape when the
+  // rows that drew them are older than the loaded log page.
+  const edges = new Map(graph.edges.map((e) => [e.id, e]));
+  const ids = new Set(graph.nodes.map((n) => n.id));
+  const add = (source: string, target: string, kind: EdgeKind) => {
+    const id = edgeId(source, target);
+    const pair = kind === "handoff" && edges.has(edgeId(target, source));
+    if (ids.has(source) && ids.has(target) && !edges.has(id) && !pair)
+      edges.set(id, { id, source, target, kind });
+  };
+  const ingestion = agentNodeId("ingestion");
+  const audit = agentNodeId("audit");
+  for (const s of saved.sources ?? []) if (s.lastPull) add(sourceNodeId(s.id), ingestion, "feeds");
+  if (versions > 0) {
+    add(ingestion, outputNodeId("books"), "produces");
+    add(ingestion, audit, "handoff");
+  }
+  if (flags && flags.total > 0) add(audit, outputNodeId("flags"), "produces");
   return {
-    edges: graph.edges,
+    edges: [...edges.values()],
     nodes: graph.nodes.map((n) => {
       const note = notes.get(n.id);
       return note ? { ...n, saved: note } : n;
@@ -690,6 +744,9 @@ const CONNECTOR_VENDORS = new Set<VendorId>([
   "capitalone",
 ]);
 
+/** Vendors that are data the agents read. "bank" is the older generic bank row. */
+const DATA_VENDORS = new Set<VendorId>([...CONNECTOR_VENDORS, "bank"]);
+
 /**
  * The data sources the map shows. Apify is a tool, not a source: it moves to the toolbox. With
  * the company's connections known, a connector shows only while connected (disconnecting it
@@ -731,9 +788,10 @@ export function mapSources(graph: BrainGraph, connected?: ReadonlySet<VendorId>)
     projected.nodes
       .filter((n) => {
         if (n.kind !== "source") return false;
-        if (n.vendor === "apify") return true;
-        if (connected && n.vendor && CONNECTOR_VENDORS.has(n.vendor))
-          return !connected.has(n.vendor);
+        // Only data connectors are sources. Model providers (CREAO), the simulator's own feed
+        // ("mock"), Apify and CRS record a `source` on their rows but are tools, not data.
+        if (!n.vendor || !DATA_VENDORS.has(n.vendor)) return true;
+        if (connected && CONNECTOR_VENDORS.has(n.vendor)) return !connected.has(n.vendor);
         return !hasWork(n);
       })
       .map((n) => n.id),
@@ -758,4 +816,75 @@ export function growthRoot(graph: BrainGraph): string | undefined {
     graph.nodes.find((n) => n.id === "agent:ingestion")?.id ??
     agents[0]?.id
   );
+}
+
+/**
+ * One drawn call line: an agent to a toolbox provider it called (AI and tool calls) or a data
+ * source it read (data reads), from the log rows that record each call. Only recent calls draw.
+ */
+export type CallLink = {
+  /** The route this draws on: `<agent>-><toolbox:provider>` or `<source>-><agent>`. */
+  routeId: string;
+  agentId: string;
+  agentTitle: string;
+  targetName: string;
+  via: "tool" | "data";
+  calls: number;
+  lastAt: string;
+  /**
+   * The calling agent is still working on the run that made the call. The log records a call
+   * when it returns, so this is the step in progress, not a timer on the remote request.
+   */
+  inFlight: boolean;
+};
+
+/** Calls older than this before the newest recorded call stop drawing. */
+export const RECENT_CALL_MS = 15 * 60_000;
+const PROVIDER_NAME: Record<ToolProvider, string> = {
+  apify: "Apify",
+  claude: "Claude",
+  creao: "CREAO",
+  crs: "CRS",
+};
+
+/** Recent agent calls by route id: the calling agent's latest run, within RECENT_CALL_MS. */
+export function recentCalls(graph: BrainGraph): Map<string, CallLink> {
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const links = new Map<string, CallLink>();
+  // An Apify row names both the actor (a tool) and Apify (a source): count it once.
+  const counted = new Set<string>();
+  for (const n of graph.nodes) {
+    const provider = toolProvider(n);
+    const data = !provider && n.kind === "source";
+    if (!provider && !data) continue;
+    for (const op of n.operations) {
+      const agentId = opAgentId(op);
+      const agent = byId.get(agentId);
+      if (!agent || !isAgent(agent)) continue;
+      // The agent's latest run only, when its status rows say when that run started.
+      if (agent.startedAt && Date.parse(op.at) < Date.parse(agent.startedAt)) continue;
+      const routeId = provider ? `${agentId}->${toolboxId(provider)}` : edgeId(n.id, agentId);
+      if (counted.has(`${routeId}|${op.id}`)) continue;
+      counted.add(`${routeId}|${op.id}`);
+      const cur = links.get(routeId);
+      if (cur) {
+        cur.calls += 1;
+        if (Date.parse(op.at) > Date.parse(cur.lastAt)) cur.lastAt = op.at;
+        continue;
+      }
+      links.set(routeId, {
+        routeId,
+        agentId,
+        agentTitle: agent.title,
+        targetName: provider ? PROVIDER_NAME[provider] : n.title,
+        via: provider ? "tool" : "data",
+        calls: 1,
+        lastAt: op.at,
+        inFlight: isWorking(agent),
+      });
+    }
+  }
+  const newest = Math.max(...[...links.values()].map((l) => Date.parse(l.lastAt)));
+  for (const [id, l] of links) if (Date.parse(l.lastAt) < newest - RECENT_CALL_MS) links.delete(id);
+  return links;
 }

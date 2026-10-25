@@ -19,6 +19,7 @@ import {
   neighbors,
   pulsePath,
   pulsesFor,
+  recentCalls,
   toCanvasStatus,
   toolChips,
   withSavedState,
@@ -508,15 +509,13 @@ describe("map layout", () => {
       flags: { total: 2, open: 1 },
       sources: [{ id: "billing", lastPull: "2026-11-02" }],
     });
-    expect(mapCounts(graph)).toMatchObject({ agents: 0, sources: 1, outputs: 2 });
+    expect(mapCounts(graph)).toMatchObject({ agents: 2, sources: 1, outputs: 2 });
     expect(graph.nodes.find((n) => n.id === "output:flags")?.saved).toBe("2 flags, 1 open");
-    // Unused built-ins fold away; an agent with saved-state outputs only is still unused.
-    expect(idleAgents(graph)).toEqual([
-      "agent:ingestion",
-      "agent:audit",
-      "agent:forecaster",
-      "agent:analyst",
-    ]);
+    // Saved reads and books show the pipeline ran even when its rows are older than the loaded
+    // log page; other unused built-ins fold away.
+    expect(graph.nodes.find((n) => n.id === "agent:ingestion")?.saved).toBe("Data through Nov 2");
+    expect(graph.nodes.find((n) => n.id === "agent:audit")?.saved).toBe("2 flags raised");
+    expect(idleAgents(graph)).toEqual(["agent:forecaster", "agent:analyst"]);
   });
 
   it("is deterministic", () => {
@@ -532,6 +531,88 @@ describe("map layout", () => {
         [...b.routes].sort((x, y) => x.id.localeCompare(y.id)),
       );
     }
+  });
+});
+
+describe("pipeline homes", () => {
+  // The log is paged, so the order rows arrive in is not the pipeline order. Here the sim clock,
+  // the engine and the audit agent all show up before the ingestion agent does.
+  const rows = [
+    op({
+      id: "clock",
+      agent: "sim.clock",
+      tool: "sim.advanceDay",
+      source: "mock",
+      at: "2026-10-30T10:00:00Z",
+    }),
+    op({ id: "engine", agent: "Engine", kind: "forecast", at: "2026-10-30T10:00:01Z" }),
+    op({ id: "audit", agent: "Audit agent", kind: "audit", at: "2026-10-30T10:00:02Z" }),
+    op({
+      id: "plan",
+      agent: "Analyst",
+      tool: "creao.coordinatorPlan",
+      source: "creao",
+      at: "2026-10-30T10:00:03Z",
+    }),
+    op({ id: "read", agent: "Ingestion agent", source: "billing", at: "2026-10-30T10:00:04Z" }),
+  ];
+  it("keeps sources, ingestion, audit, the analyst and the rest in that order, however rows arrive", () => {
+    let memory: ReturnType<typeof layoutMap>["memory"] | undefined;
+    let last: ReturnType<typeof layoutMap> | undefined;
+    // Grow one row at a time, passing memory along as the map does.
+    for (let i = 1; i <= rows.length; i++) {
+      const graph = mapSources(buildBrainGraph(rows.slice(0, i)), new Set(["stripe"]));
+      last = layoutMap(graph, { idle: idleAgents(graph), memory });
+      memory = last.memory;
+    }
+    const x = (id: string) => last?.boxes.get(id)?.x ?? Number.NaN;
+    expect(x("source:billing")).toBeLessThan(x("agent:ingestion"));
+    expect(x("agent:ingestion")).toBeLessThan(x("agent:audit"));
+    expect(x("agent:audit")).toBeLessThan(x(CENTER_ID));
+    expect(x(CENTER_ID)).toBeLessThan(x("agent:engine"));
+    // The sim clock feeds the pipeline: above the ingestion agent, not in the middle.
+    expect(x("agent:sim-clock")).toBe(x("agent:ingestion"));
+    expect(last?.boxes.get("agent:sim-clock")?.y).toBeLessThan(
+      last?.boxes.get("agent:ingestion")?.y ?? 0,
+    );
+  });
+  it("shows only data connectors as sources, not CREAO or the simulator feed", () => {
+    const graph = mapSources(buildBrainGraph(rows), new Set(["stripe"]));
+    expect(graph.nodes.filter((n) => n.kind === "source").map((n) => n.id)).toEqual([
+      "source:billing",
+    ]);
+    // Without connections (demo), still only connectors with recorded work.
+    const demo = mapSources(buildBrainGraph(rows));
+    expect(demo.nodes.filter((n) => n.kind === "source").map((n) => n.id)).toEqual([
+      "source:billing",
+    ]);
+  });
+});
+
+describe("setup gaps", () => {
+  let seq = 0;
+  const status = (id: string, status: FieldOperation["status"], summary: string, action: string) =>
+    op({ id, seq: ++seq, agent: "Analyst", kind: "spawn", status, summary, inputs: { action } });
+  it("reads a failure on missing setup as waiting, and a real failure as failed", () => {
+    const waiting = buildBrainGraph([
+      status("w", "working", "Analyst started", "analyst.working"),
+      status("f", "failed", "AI summary unavailable (ANTHROPIC_API_KEY not set)", "agent.failed"),
+    ]).nodes.find((n) => n.id === CENTER_ID);
+    expect(waiting).toMatchObject({ lifecycle: "failed", waitingFor: "Waiting for an AI key" });
+    const failed = buildBrainGraph([
+      status("w", "working", "Analyst started", "analyst.working"),
+      status("f", "failed", "Run abandoned after its completion deadline", "analyst.failed"),
+    ]).nodes.find((n) => n.id === CENTER_ID);
+    expect(failed?.lifecycle).toBe("failed");
+    expect(failed?.waitingFor).toBeUndefined();
+  });
+  it("does not restart a finished agent on a later skipped or unavailable note", () => {
+    const node = buildBrainGraph([
+      status("w", "working", "Started", "agent.spawned"),
+      status("d", "done", "Done", "agent.done"),
+      status("n", "working", "CREAO unavailable (app not configured)", "research.creaoUnavailable"),
+    ]).nodes.find((n) => n.id === CENTER_ID);
+    expect(node?.lifecycle).toBe("done");
   });
 });
 
@@ -581,5 +662,52 @@ describe("demo fixture", () => {
     expect(toCanvasStatus("running")).toBe("running");
     expect(toCanvasStatus("error")).toBe("failed");
     expect(toCanvasStatus(undefined)).toBe("idle");
+  });
+});
+
+describe("recentCalls", () => {
+  const apify = (id: string, at: string, agent = "Research agent") =>
+    op({
+      id,
+      at,
+      agent,
+      tool: "apify.google-search-scraper",
+      toolCategory: "apify",
+      source: "apify",
+      status: "succeeded",
+    });
+
+  it("draws one line per agent and provider for recorded calls only, counted once", () => {
+    const calls = recentCalls(
+      buildBrainGraph([
+        apify("a1", "2026-10-30T10:00:00Z"),
+        apify("a2", "2026-10-30T10:01:00Z"),
+        op({ id: "r1", agent: "ingestion", source: "stripe", tool: "stripe.read" }),
+      ]),
+    );
+    expect(calls.get("agent:research-agent->toolbox:apify")).toMatchObject({
+      via: "tool",
+      targetName: "Apify",
+      calls: 2,
+      lastAt: "2026-10-30T10:01:00Z",
+    });
+    const read = [...calls.values()].find((c) => c.via === "data");
+    expect(read?.routeId.endsWith("->agent:ingestion")).toBe(true);
+    expect([...calls.values()].every((c) => c.calls > 0)).toBe(true);
+  });
+
+  it("keeps the calling agent's latest run only and marks it in flight while it works", () => {
+    const calls = recentCalls(
+      buildBrainGraph([
+        apify("old", "2026-10-30T08:00:00Z", "Other agent"),
+        op({ id: "s1", agent: "Research agent", status: "working", at: "2026-10-30T10:00:00Z" }),
+        apify("a1", "2026-10-30T10:00:30Z"),
+      ]),
+    );
+    expect(calls.has("agent:other-agent->toolbox:apify")).toBe(false);
+    expect(calls.get("agent:research-agent->toolbox:apify")).toMatchObject({
+      calls: 1,
+      inFlight: true,
+    });
   });
 });

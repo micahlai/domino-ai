@@ -9,9 +9,11 @@ import {
 } from "./graph";
 
 // Deterministic web layout for the brain map. Every node is a compact card. The coordinator
-// (Analyst) sits at the origin with a fixed oval of reserved helper slots around it; every other
-// top-level agent is a satellite in a column beside it (alternating left and right, as near the
-// middle as fits), with its helpers in rows of reserved slots under it. Sources form a column on the left, outputs
+// (Analyst) sits at the origin with a fixed oval of reserved helper slots around it. Left of it,
+// in fixed homes by role, sit the audit swarm and then the ingestion agent (feeds above it), so
+// the map always reads sources -> ingestion -> audit -> analyst -> outputs, whatever order the
+// log shows them in. Every other top-level agent is a satellite in a column right of the
+// coordinator, with its helpers in rows of reserved slots under it. Sources form a column on the left, outputs
 // a column on the right, and outside tools (Apify, Claude, CREAO) a toolbox under the outputs.
 // No randomness and no simulation.
 //
@@ -119,6 +121,19 @@ const STEP = 4;
 export const IDLE_CLUSTER = "idle";
 export const IDLE_STACK = `stack:${IDLE_CLUSTER}`;
 export const CENTER_ID = "agent:analyst";
+
+/**
+ * Fixed homes left of the coordinator, by role. Column 0 sits next to it. Placement never depends
+ * on which agent the loaded log window happens to show first: the log is paged (latest rows
+ * only), so arrival order is not the pipeline order. `above` agents stack upward from row 0.
+ */
+const HOMES: Record<string, { column: number; above?: boolean }> = {
+  "agent:audit": { column: 0 },
+  "agent:ingestion": { column: 1 },
+  "agent:mock-feed": { column: 1, above: true },
+  "agent:sim-clock": { column: 1, above: true },
+};
+const HOME_COLUMNS = 2;
 
 /** Port height on a card: the middle of its header row. */
 export const PORT_Y = 28;
@@ -471,9 +486,10 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     });
   }
 
-  // Place clusters: the center at the origin, satellites in columns beside it (alternating left
-  // and right, each as near the middle as it fits), idle agents straight below. Remembered
-  // clusters keep their place and only move outward, and only if something grew into them.
+  // Place clusters: the center at the origin, pipeline agents in their fixed homes on the left,
+  // other satellites in columns on the right (each as near the middle as it fits), idle agents
+  // straight below. Remembered right-side clusters keep their place and only move outward, and
+  // only if something grew into them.
   type R = { x0: number; y0: number; x1: number; y1: number };
   const placedRects: R[] = [];
   const offset = new Map<string, Point>();
@@ -490,12 +506,20 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     ...rootNodes.filter((n) => n.id !== centerId).map((n) => n.id),
   ];
   const known = mem?.order ?? [];
-  const order = [
+  const seen = [
     ...known.filter((id) => present.includes(id)),
     ...present.filter((id) => !known.includes(id)),
   ];
-  memory.order = [...known, ...order.filter((id) => !known.includes(id))];
-  let used = [...memory.side.values()].filter((v) => v !== 0).length;
+  memory.order = [...known, ...seen.filter((id) => !known.includes(id))];
+  // Homes first (row 0 before the agents stacked above it), so they never depend on the rest.
+  const homeRank = (id: string) => {
+    const home = HOMES[id];
+    return home ? (home.above ? 1 : 0) : 2;
+  };
+  const order = seen
+    .map((id, i) => ({ id, i }))
+    .sort((a, b) => homeRank(a.id) - homeRank(b.id) || a.i - b.i)
+    .map(({ id }) => id);
   const reserved = (id: string) => boundsOf(reserves.get(id) ?? []);
   const core =
     centerId && locals.has(centerId) ? reserved(centerId) : { x0: 0, y0: 0, x1: 0, y1: 0 };
@@ -509,17 +533,36 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     x1: at.x + b.x1,
     y1: at.y + b.y1,
   });
+  // Each home column is as wide as its widest cluster (a lone card until helpers arrive), and
+  // always reserved, so the sources lane does not move when the pipeline first shows up.
+  const homeWidth = Array.from({ length: HOME_COLUMNS }, (_, column) =>
+    Math.max(
+      ROOT_W,
+      ...order
+        .filter((id) => HOMES[id]?.column === column)
+        .map((id) => reserved(id).x1 - reserved(id).x0),
+    ),
+  );
+  const homeRight = (column: number) =>
+    core.x0 - CLUSTER_GAP - homeWidth.slice(0, column).reduce((sum, w) => sum + w + CLUSTER_GAP, 0);
+  const homeX = (column: number) => homeRight(column) - (homeWidth[column] ?? ROOT_W) / 2;
   for (const id of order) {
     const b = reserved(id);
-    let side = memory.side.get(id);
-    if (side === undefined) {
-      side = id === IDLE_CLUSTER ? 0 : used % 2 === 0 ? -1 : 1;
-      if (side !== 0) used += 1;
-      memory.side.set(id, side);
-    }
-    const before = mem?.at.get(id);
+    const home = HOMES[id];
+    const side = home ? -1 : id === IDLE_CLUSTER ? 0 : 1;
+    memory.side.set(id, side);
+    const before = home ? undefined : mem?.at.get(id);
     let at: Point | undefined;
-    if (before && !overlapsAny(rectAt(b, before))) at = before;
+    if (home) {
+      // Row 0 lines up with the coordinator; feeds stack upward from above it. Helpers grow
+      // downward, so neither ever pushes the other.
+      const x = homeX(home.column);
+      let y = home.above ? -ROOT_RESERVED_H / 2 - CLUSTER_GAP - b.y1 : 0;
+      for (let guard = 0; guard < 400 && overlapsAny(rectAt(b, { x, y })); guard++)
+        y += home.above ? -STEP : STEP;
+      at = { x, y };
+    }
+    if (!at && before && !overlapsAny(rectAt(b, before))) at = before;
     if (!at && side === 0) {
       // Idle agents: straight below the center, as close as fits.
       let y = Math.max(before?.y ?? 0, core.y1 + CLUSTER_GAP - b.y0);
@@ -580,11 +623,14 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     });
   }
 
-  // The web reserves one satellite column on each side of the center, so the side lanes do not
-  // move when the first satellites arrive.
+  // The web reserves the home columns on the left and one satellite column on the right, so the
+  // side lanes do not move when the first agents arrive.
   const wing = CLUSTER_GAP + ROOT_W;
   const web = {
-    x0: Math.min(core.x0 - wing, ...clusters.map((c) => c.bounds.x)),
+    x0: Math.min(
+      homeRight(HOME_COLUMNS - 1) - (homeWidth[HOME_COLUMNS - 1] ?? ROOT_W),
+      ...clusters.map((c) => c.bounds.x),
+    ),
     x1: Math.max(core.x1 + wing, ...clusters.map((c) => c.bounds.x + c.bounds.w)),
     y0: Math.min(0, ...clusters.map((c) => c.bounds.y)),
     y1: Math.max(0, ...clusters.map((c) => c.bounds.y + c.bounds.h)),
@@ -648,12 +694,17 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     if (!a || !b) continue;
     routes.push(routeFor(e.id, e.source, e.target, e.kind, a, b));
   }
-  // Toolbox links: hidden lines, there for growth and for data moving to and from a tool.
+  // Toolbox links: drawn for recent calls, there for growth and for data moving to and from a
+  // tool. A finished helper folded into a stack links from that stack, once per stack.
   for (const g of groups)
     for (const user of g.users) {
-      const a = boxes.get(user);
+      const stack = boxes.has(user) ? undefined : stacks.find((s) => s.members.includes(user));
+      const from = stack ? stack.id : user;
+      const a = stack ? stack.box : boxes.get(user);
       const b = boxes.get(g.id);
-      if (a && b) routes.push(routeFor(`${user}->${g.id}`, user, g.id, "uses", a, b));
+      const id = `${from}->${g.id}`;
+      if (a && b && !routes.some((r) => r.id === id))
+        routes.push(routeFor(id, from, g.id, "uses", a, b));
     }
 
   const all: Rect[] = [
