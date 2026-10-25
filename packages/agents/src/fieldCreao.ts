@@ -4,6 +4,7 @@ import { failer } from "./errors";
 import { type Candidate, selectDistinct } from "./extract";
 import {
   type AnalystDigest,
+  FIELD_CREAO_RETRY,
   type FindingRecord,
   acceptAnalystSummary,
   acceptExplanations,
@@ -108,6 +109,7 @@ export function buildFieldCreaoPrompt(job: FieldCreaoJob<unknown>): string {
 
 export type FieldCreaoOptions = CreaoOptions & {
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
+  onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
 };
 
 /** CREAO app credentials: the same app and key as the counterparty research job. */
@@ -141,6 +143,8 @@ export function runFieldCreaoJob<T>(
       select: (candidates) => selectDistinct(candidates, accept),
       strict: true,
       onRunCreated: options.onRunCreated,
+      ...FIELD_CREAO_RETRY,
+      onResultRetry: options.onResultRetry,
     });
     return { value: run.value as T, runId: run.runId };
   });

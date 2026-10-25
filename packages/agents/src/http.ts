@@ -19,6 +19,8 @@ export function runtimeFrom(options: Partial<TransportRuntime> = {}): TransportR
 export interface BoundedResponse {
   status: number;
   location: string | null;
+  /** Raw Retry-After header, if any. */
+  retryAfter: string | null;
   text: string;
 }
 
@@ -53,7 +55,12 @@ export async function boundedFetch(
     const isRedirect = response.status >= 300 && response.status < 400;
     const text = isRedirect ? "" : await readLimited(response, bounds.maxBytes, fail);
     if (isRedirect) discard(response.body);
-    return { status: response.status, location: response.headers.get("location"), text };
+    return {
+      status: response.status,
+      location: response.headers.get("location"),
+      retryAfter: response.headers.get("retry-after"),
+      text,
+    };
   } catch (cause) {
     if (isProviderError(cause)) throw cause;
     throw fail(controller.signal.aborted ? "timeout" : "network");

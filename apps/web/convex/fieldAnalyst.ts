@@ -55,7 +55,6 @@ import {
   SnapshotSchema,
 } from "@domino/contracts";
 import { ConvexError, type Infer, v } from "convex/values";
-import { ProviderError } from "../../../packages/agents/src/errors";
 import {
   type AnalystDigest,
   counterpartyCreaoEnv,
@@ -76,7 +75,16 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { type Reservation, runAiStep } from "./fieldAi";
+import {
+  BUSY_TOO_LONG,
+  CREAO_WAIT_MS,
+  type Reservation,
+  creaoFailure,
+  creaoRunOptions,
+  queuedRow,
+  runAiStep,
+  shouldWait,
+} from "./fieldAi";
 import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
@@ -639,8 +647,6 @@ export const researchStep = internalAction({
         });
         return null;
       }
-      const creao = await counterpartyResearch(ctx, runId, c, s);
-      const demo = c.research.filter((r) => (r as { provider?: string }).provider !== "creao");
       await write({
         rows: [
           as({
@@ -648,7 +654,7 @@ export const researchStep = internalAction({
             event: "message",
             fromAgentId: RESEARCH,
             toAgentId: ANALYST,
-            summary: `Research: ${demo.length} demo actor results (canned, not live Apify); ${creao}`,
+            summary: `Research: ${c.research.length} demo actor results (canned, not live Apify); counterparty risk (CREAO) follows the summary, one CREAO run at a time`,
           }),
           as({
             action: "agent.done",
@@ -786,44 +792,128 @@ const aiSummaryArg = v.object({
 type AiSummary = Infer<typeof aiSummaryArg>;
 
 /**
- * After aggregation: the CREAO coordinator plans and Domino executes its allowlisted actions,
- * then one budgeted summary (CREAO first, Claude fallback) turns the engine results into a
- * three-sentence recommendation that leads with the coordinator's focus scenario. Without a
+ * After aggregation, one CREAO run at a time per company, each step its own scheduled action:
+ *   summarize (coordinator plan, executed deterministically)
+ *   -> summaryStep (three-sentence summary leading with the focus scenario; CREAO first,
+ *      Claude fallback)
+ *   -> counterpartyStep (CREAO counterparty notes, the coordinator's pick first) -> finish.
+ * A step that finds another CREAO run in flight for the company reschedules itself every
+ * CREAO_WAIT_MS (`wait` counts), and after CREAO_MAX_WAITS proceeds without CREAO. Without a
  * provider, over budget or on failure the run closes on the engine summary alone and the log
  * says why. Never throws.
  */
+const chainArgs = { runId: v.string(), summary: v.string(), wait: v.optional(v.number()) };
+const nowIso = () => new Date().toISOString();
+
 export const summarize = internalAction({
-  args: { runId: v.string(), summary: v.string() },
-  handler: async (ctx, { runId, summary }) => {
-    const at = () => new Date().toISOString();
-    let plan: CoordinatorRecord;
+  args: chainArgs,
+  handler: async (ctx, { runId, summary, wait = 0 }) => {
+    let plan: CoordinatorRecord | "busy";
     try {
-      plan = await coordinate(ctx, runId);
+      plan = await coordinate(ctx, runId, !shouldWait(wait));
     } catch (error) {
-      plan = { status: "failed", reason: `Coordinator step failed: ${errorText(error)}`, at: at() };
+      plan = {
+        status: "failed",
+        reason: `Coordinator step failed: ${errorText(error)}`,
+        at: nowIso(),
+      };
     }
-    let ai: AiSummary;
-    try {
-      ai = await aiSummary(ctx, runId, at, plan.focus?.scenarioIndex);
-    } catch (error) {
-      ai = { status: "unavailable", reason: `Summary step failed: ${errorText(error)}`, at: at() };
+    if (plan === "busy") {
+      if (wait === 0) await queued(ctx, runId, "Coordinator plan (CREAO)");
+      await ctx.scheduler.runAfter(CREAO_WAIT_MS, internal.fieldAnalyst.summarize, {
+        runId,
+        summary,
+        wait: wait + 1,
+      });
+      return null;
     }
-    await ctx.runMutation(internal.fieldAnalyst.finish, {
+    await ctx.scheduler.runAfter(0, internal.fieldAnalyst.summaryStep, {
       runId,
       summary,
-      aiSummary: ai,
       coordinator: plan,
     });
     return null;
   },
 });
 
+export const summaryStep = internalAction({
+  args: { ...chainArgs, coordinator: coordinatorRecordArg },
+  handler: async (ctx, { runId, summary, coordinator, wait = 0 }) => {
+    let ai: AiSummary | "busy";
+    try {
+      ai = await aiSummary(ctx, runId, coordinator.focus?.scenarioIndex, !shouldWait(wait));
+    } catch (error) {
+      ai = {
+        status: "unavailable",
+        reason: `Summary step failed: ${errorText(error)}`,
+        at: nowIso(),
+      };
+    }
+    if (ai === "busy") {
+      if (wait === 0) await queued(ctx, runId, "Scenario summary (CREAO)");
+      await ctx.scheduler.runAfter(CREAO_WAIT_MS, internal.fieldAnalyst.summaryStep, {
+        runId,
+        summary,
+        coordinator,
+        wait: wait + 1,
+      });
+      return null;
+    }
+    await ctx.scheduler.runAfter(0, internal.fieldAnalyst.counterpartyStep, {
+      runId,
+      summary,
+      coordinator,
+      aiSummary: ai,
+    });
+    return null;
+  },
+});
+
+export const counterpartyStep = internalAction({
+  args: { ...chainArgs, coordinator: coordinatorRecordArg, aiSummary: aiSummaryArg },
+  handler: async (ctx, { runId, summary, coordinator, aiSummary, wait = 0 }) => {
+    const c = await ctx.runQuery(internal.fieldAnalyst.context, { runId });
+    if (!c) return null;
+    let outcome: string;
+    try {
+      const inputs: Inputs = await ctx.runQuery(internal.fieldAnalyst.inputs, { runId });
+      outcome = await counterpartyResearch(
+        ctx,
+        runId,
+        c,
+        inputs.snapshot,
+        coordinator.research?.counterparty,
+        !shouldWait(wait),
+      );
+    } catch (error) {
+      outcome = `Counterparty step failed: ${errorText(error)}`;
+    }
+    if (outcome === "busy") {
+      if (wait === 0) await queued(ctx, runId, "Counterparty risk (CREAO)");
+      await ctx.scheduler.runAfter(CREAO_WAIT_MS, internal.fieldAnalyst.counterpartyStep, {
+        runId,
+        summary,
+        coordinator,
+        aiSummary,
+        wait: wait + 1,
+      });
+      return null;
+    }
+    await ctx.runMutation(internal.fieldAnalyst.finish, { runId, summary, aiSummary, coordinator });
+    return null;
+  },
+});
+
+const queued = (ctx: ActionCtx, runId: string, task: string) =>
+  ctx.runMutation(internal.fieldAnalyst.record, { runId, rows: [queuedRow(ANALYST, task)] });
+
 async function aiSummary(
   ctx: ActionCtx,
   runId: string,
-  at: () => string,
   focusScenario: number | undefined,
-): Promise<AiSummary> {
+  blocked: boolean,
+): Promise<AiSummary | "busy"> {
+  const at = nowIso;
   const d: { companyId: Id<"companies">; digest: AnalystDigest } | null = await ctx.runQuery(
     internal.fieldAnalyst.digest,
     { runId },
@@ -842,6 +932,7 @@ async function aiSummary(
     scope: `v${digest.snapshotVersion}`,
     agentId: SUMMARIZER,
     parentAgentId: ANALYST,
+    ...(blocked && { creaoBlocked: BUSY_TOO_LONG }),
     task,
     ask: `${task}: survives or fails, week, engine impact, best scored fix${
       focusScenario === undefined ? "" : `; lead with scenario ${focusScenario + 1}`
@@ -866,7 +957,8 @@ async function aiSummary(
     }),
     log: (rows) => ctx.runMutation(internal.fieldAnalyst.record, { runId, rows }),
   });
-  if (!out.ok) return { status: out.status, reason: out.reason, at: at() };
+  if (!out.ok)
+    return out.status === "busy" ? "busy" : { status: out.status, reason: out.reason, at: at() };
   return {
     status: "done",
     recommendation: out.value.recommendation,
@@ -894,6 +986,9 @@ async function counterpartyResearch(
   runId: string,
   c: { companyId: Id<"companies">; snapshotVersion: number },
   s: Snapshot,
+  /** The coordinator's research_counterparty pick, researched first when it is in the job. */
+  first: string | undefined,
+  blocked: boolean,
 ): Promise<string> {
   const write = (r: Omit<RecordArgs, "runId">) =>
     ctx.runMutation(internal.fieldAnalyst.record, { runId, ...r });
@@ -927,15 +1022,22 @@ async function counterpartyResearch(
   const company: string = await ctx.runQuery(internal.fieldAnalyst.companyName, {
     companyId: c.companyId,
   });
-  const job = counterpartyJob(s, company);
-  if (job.counterparties.length === 0)
+  const base = counterpartyJob(s, company);
+  if (base.counterparties.length === 0)
     return note("CREAO skipped: no customers or vendors in the snapshot");
+  const picked = base.counterparties.filter((p) => p.name === first);
+  const job = {
+    ...base,
+    counterparties: [...picked, ...base.counterparties.filter((p) => p.name !== first)],
+  };
+  if (blocked) return note(`CREAO skipped: ${BUSY_TOO_LONG}; no counterparty notes`);
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId: c.companyId,
     kind: "research",
     provider: "creao",
     scope: `v${c.snapshotVersion}`,
   });
+  if (!reservation.ok && reservation.busy) return "busy";
   if (!reservation.ok) return note(`CREAO skipped: ${reservation.reason}`);
   const names = job.counterparties.map((p) => p.name);
   const task = `Counterparty risk notes for ${names.length} customers and vendors`;
@@ -953,7 +1055,9 @@ async function counterpartyResearch(
         status: "spawned",
         currentTask: task,
         refs: names,
-        summary: `Research agent started a CREAO run for ${names.length} counterparties`,
+        summary: `Research agent started a CREAO run for ${names.length} counterparties${
+          picked.length > 0 ? ` (${first} first, as the coordinator asked)` : ""
+        }`,
       }),
       {
         action: "agent.message",
@@ -967,9 +1071,22 @@ async function counterpartyResearch(
       },
     ],
   });
+  const transport = creaoRunOptions((attempt) =>
+    write({
+      rows: [
+        as({
+          action: "agent.working",
+          event: "status",
+          status: "working",
+          currentTask: task,
+          summary: `Waiting for CREAO result (retry ${attempt})`,
+        }),
+      ],
+    }),
+  );
   try {
     const result = await runCreaoCounterpartyResearch(process.env, job, {
-      runDeadlineMs: 120_000,
+      ...transport.options,
       onRunCreated: async ({ runId: remote, status }) => {
         await ctx.runMutation(internal.fieldAi.settle, {
           callId: reservation.callId,
@@ -983,7 +1100,7 @@ async function counterpartyResearch(
               status: "working",
               currentTask: task,
               refs: [remote],
-              summary: `CREAO run ${remote} created (${status}); polling`,
+              summary: `Waiting for CREAO run ${remote} (${status})`,
             }),
           ],
         });
@@ -1036,7 +1153,7 @@ async function counterpartyResearch(
     });
     return `CREAO run ${result.runId}: ${result.notes.length} counterparty notes`;
   } catch (error) {
-    const category = error instanceof ProviderError ? error.category : "unexpected";
+    const category = creaoFailure(error, transport.seen.stage);
     await ctx.runMutation(internal.fieldAi.settle, {
       callId: reservation.callId,
       status: "failed",

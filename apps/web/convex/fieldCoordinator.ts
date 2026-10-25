@@ -25,10 +25,11 @@ import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, internalMutation, internalQuery } from "./_generated/server";
 import {
   AUDIT_AGENT,
-  CREAO_STEP_DEADLINE_MS,
+  BUSY_TOO_LONG,
   type Reservation,
   creaoFailure,
   creaoGate,
+  creaoRunOptions,
 } from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
 import type { AgentRow } from "./lib/agentLog";
@@ -125,7 +126,15 @@ export const escalate = internalMutation({
 });
 
 /** One coordinator step for an analyst run. Never throws for provider errors. */
-export async function coordinate(ctx: ActionCtx, runId: string): Promise<CoordinatorRecord> {
+/**
+ * Returns "busy" (nothing logged, nothing reserved) when another CREAO run for the company is in
+ * flight, so the caller can reschedule; `blocked` means it waited too long and should skip.
+ */
+export async function coordinate(
+  ctx: ActionCtx,
+  runId: string,
+  blocked = false,
+): Promise<CoordinatorRecord | "busy"> {
   const at = () => new Date().toISOString();
   const write = (rows: AgentRow[], research?: unknown) =>
     ctx.runMutation(internal.fieldAnalyst.record, {
@@ -157,6 +166,7 @@ export async function coordinate(ctx: ActionCtx, runId: string): Promise<Coordin
     return analystNote("skipped", "nothing to plan");
   const gate = await creaoGate("coordinator");
   if (!gate.ok) return analystNote("unavailable", gate.reason);
+  if (blocked) return analystNote("skipped", BUSY_TOO_LONG);
   const scope = `v${data.snapshotVersion}`;
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId,
@@ -164,6 +174,7 @@ export async function coordinate(ctx: ActionCtx, runId: string): Promise<Coordin
     provider: "creao",
     scope,
   });
+  if (!reservation.ok && reservation.busy) return "busy";
   if (!reservation.ok) return analystNote("skipped", reservation.reason);
 
   const task = `Plan the next steps on ${scope}: ${data.flags.length} flags, ${data.scenarios.length} scenarios, ${data.counterparties.length} counterparties`;
@@ -203,9 +214,20 @@ export async function coordinate(ctx: ActionCtx, runId: string): Promise<Coordin
 
   let plan: CoordinatorPlan;
   let remoteRunId: string;
+  const transport = creaoRunOptions((attempt) =>
+    write([
+      as({
+        action: "agent.working",
+        event: "status",
+        status: "working",
+        currentTask: task,
+        summary: `Waiting for CREAO result (retry ${attempt})`,
+      }),
+    ]),
+  );
   try {
     const run = await runFieldCreaoJob(process.env, coordinatorCreaoJob(data), {
-      runDeadlineMs: CREAO_STEP_DEADLINE_MS,
+      ...transport.options,
       onRunCreated: async ({ runId: remote, status }) => {
         await ctx.runMutation(internal.fieldAi.settle, {
           callId: reservation.callId,
@@ -226,7 +248,7 @@ export async function coordinate(ctx: ActionCtx, runId: string): Promise<Coordin
     plan = run.value;
     remoteRunId = run.runId;
   } catch (error) {
-    const category = creaoFailure(error);
+    const category = creaoFailure(error, transport.seen.stage);
     await ctx.runMutation(internal.fieldAi.settle, {
       callId: reservation.callId,
       status: "failed",

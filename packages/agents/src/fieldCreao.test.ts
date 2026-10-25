@@ -226,3 +226,97 @@ describe("coordinator plan", () => {
     ).toBeUndefined();
   });
 });
+
+describe("field CREAO transport retries", () => {
+  const answer = {
+    explanations: [
+      { findingId: "f-high", explanation: "Counted twice.", suggestedCheck: "Void the copy." },
+    ],
+  };
+  const artifactUrl = (id: string) =>
+    `https://agent.creao.ai/api/v1/apps/app_field/runs/${id}/artifacts/download?artifactId=a1`;
+  const completedWithArtifact = (id: string) =>
+    json({
+      id,
+      status: "completed",
+      result: {
+        chatText: "Ready.",
+        artifacts: [
+          { id: "a1", title: "result.json", type: "application/json", url: artifactUrl(id) },
+        ],
+      },
+    });
+
+  it("reposts once after a 429, waiting Retry-After, and reports a second 429", async () => {
+    const ok = fakeRuntime((call, i) =>
+      i === 0
+        ? new Response('{"error":"busy"}', { status: 429, headers: { "retry-after": "3" } })
+        : call.method === "POST"
+          ? json({ id: "run_1", status: "queued" }, 201)
+          : json({ id: "run_1", status: "completed", result: { chatText: delimited(answer) } }),
+    );
+    const out = await runFieldCreaoJob(env, explainCreaoJob(findings), ok.runtime);
+    expect(out.runId).toBe("run_1");
+    expect(ok.calls.filter((c) => c.method === "POST")).toHaveLength(2);
+    expect(ok.sleeps[0]).toBe(3_000);
+
+    const twice = fakeRuntime(
+      () =>
+        new Response('{"message":"Too many runs"}', {
+          status: 429,
+          headers: { "retry-after": "1" },
+        }),
+    );
+    await expect(
+      runFieldCreaoJob(env, explainCreaoJob(findings), twice.runtime),
+    ).rejects.toMatchObject({ category: "http_status", httpStatus: 429, detail: "Too many runs" });
+    expect(twice.calls).toHaveLength(2);
+  });
+
+  it("retries a late artifact with backoff and logs each retry", async () => {
+    let downloads = 0;
+    const { runtime, sleeps } = fakeRuntime((call, i) => {
+      if (i === 0) return json({ id: "run_2", status: "queued" }, 201);
+      if (call.url.includes("/artifacts/download")) {
+        downloads++;
+        return downloads < 3 ? new Response("no", { status: 403 }) : json(answer);
+      }
+      return completedWithArtifact("run_2");
+    });
+    const retries: number[] = [];
+    const out = await runFieldCreaoJob(env, explainCreaoJob(findings), {
+      ...runtime,
+      onResultRetry: ({ attempt }) => {
+        retries.push(attempt);
+      },
+    });
+    expect(out.value).toEqual(answer.explanations);
+    expect(retries).toEqual([1, 2]);
+    expect(sleeps).toEqual(expect.arrayContaining([2_000, 4_000]));
+  });
+
+  it("gives up after three result retries, and never retries an invalid answer", async () => {
+    const missing = fakeRuntime((call, i) =>
+      i === 0
+        ? json({ id: "run_3", status: "queued" }, 201)
+        : call.url.includes("/artifacts/download")
+          ? new Response("no", { status: 404 })
+          : completedWithArtifact("run_3"),
+    );
+    await expect(
+      runFieldCreaoJob(env, explainCreaoJob(findings), missing.runtime),
+    ).rejects.toMatchObject({ category: "http_status", httpStatus: 404 });
+    expect(missing.calls.filter((c) => c.url.includes("/artifacts/download"))).toHaveLength(4);
+
+    const bad = { explanations: [{ findingId: "nope", explanation: "x", suggestedCheck: "y" }] };
+    const invalid = fakeRuntime((_call, i) =>
+      i === 0
+        ? json({ id: "run_4", status: "queued" }, 201)
+        : json({ id: "run_4", status: "completed", result: { chatText: delimited(bad) } }),
+    );
+    await expect(
+      runFieldCreaoJob(env, explainCreaoJob(findings), invalid.runtime),
+    ).rejects.toMatchObject({ category: "invalid_output" });
+    expect(invalid.calls).toHaveLength(2);
+  });
+});

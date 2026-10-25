@@ -65,9 +65,16 @@ const providerArg = v.union(v.literal("claude"), v.literal("creao"));
 export type Kind = "audit" | "analyst" | "research" | "coordinator";
 export type Provider = "claude" | "creao";
 /** Per CREAO run: create, polls and answer. Claude has its own 60 s client timeout. */
-export const CREAO_STEP_DEADLINE_MS = 120_000;
+export const CREAO_STEP_DEADLINE_MS = 150_000;
+/** A reserved CREAO row younger than this means a run is still in flight for the company. */
+export const CREAO_IN_FLIGHT_MS = CREAO_STEP_DEADLINE_MS + 60_000;
+/** A step that finds CREAO busy reschedules itself this often, at most CREAO_MAX_WAITS times. */
+export const CREAO_WAIT_MS = 5_000;
+export const CREAO_MAX_WAITS = Math.ceil(CREAO_IN_FLIGHT_MS / CREAO_WAIT_MS);
 
-export type Reservation = { ok: true; callId: Id<"aiCalls"> } | { ok: false; reason: string };
+export type Reservation =
+  | { ok: true; callId: Id<"aiCalls"> }
+  | { ok: false; reason: string; busy?: true };
 
 export async function reserveCall(
   ctx: Pick<MutationCtx, "db">,
@@ -87,11 +94,29 @@ export async function reserveCall(
     .take(4);
   if (used.some((c) => c.provider === provider))
     return { ok: false, reason: `already ran once for ${scope} (one per ingest)` };
-  const hour = Math.floor(Date.now() / HOUR_MS);
+  const now = Date.now();
+  const hour = Math.floor(now / HOUR_MS);
   const thisHour = await ctx.db
     .query("aiCalls")
     .withIndex("by_hour", (q) => q.eq("hour", hour))
     .take(AI_CALLS_PER_HOUR);
+  // One CREAO run at a time per company: parallel runs drew HTTP errors from CREAO. The check
+  // and the insert share this transaction, so two steps cannot both pass it.
+  if (provider === "creao") {
+    const lastHour = await ctx.db
+      .query("aiCalls")
+      .withIndex("by_hour", (q) => q.eq("hour", hour - 1))
+      .take(AI_CALLS_PER_HOUR);
+    const inFlight = [...lastHour, ...thisHour].some(
+      (c) =>
+        c.companyId === companyId &&
+        c.provider === "creao" &&
+        c.status === "reserved" &&
+        now - Date.parse(c.at) < CREAO_IN_FLIGHT_MS,
+    );
+    if (inFlight)
+      return { ok: false, busy: true, reason: "another CREAO run is in progress for this company" };
+  }
   if (thisHour.length >= AI_CALLS_PER_HOUR)
     return { ok: false, reason: `hourly cap of ${AI_CALLS_PER_HOUR} model calls reached` };
   const callId = await ctx.db.insert("aiCalls", {
@@ -193,10 +218,33 @@ export const writeExplanations = internalMutation({
   },
 });
 
-/** Failure category plus HTTP status when there is one, e.g. "http_status 429". No provider text. */
-export function creaoFailure(error: unknown): string {
+/**
+ * Failure text for logs: category, HTTP status, the transport stage and the sanitized provider
+ * reason when there is one, e.g. "http_status 429 at create: Too many requests". No secrets.
+ */
+export function creaoFailure(error: unknown, stage?: string): string {
   if (!(error instanceof ProviderError)) return "unexpected";
-  return error.httpStatus === undefined ? error.category : `${error.category} ${error.httpStatus}`;
+  const status = error.httpStatus === undefined ? "" : ` ${error.httpStatus}`;
+  const where = stage && error.category === "http_status" ? ` at ${stage}` : "";
+  const why = error.detail ? `: ${error.detail}` : "";
+  return `${error.category}${status}${where}${why}`;
+}
+
+/** Transport options shared by field CREAO runs: deadline, stage capture, retry logging. */
+export function creaoRunOptions(onRetry: (attempt: number) => Promise<unknown>) {
+  const seen: { stage?: string } = {};
+  return {
+    seen,
+    options: {
+      runDeadlineMs: CREAO_STEP_DEADLINE_MS,
+      diagnostics: (d: { stage: string }) => {
+        seen.stage = d.stage;
+      },
+      onResultRetry: async ({ attempt }: { attempt: number }) => {
+        await onRetry(attempt);
+      },
+    },
+  };
 }
 
 export const tokens = (u: Usage) => `${u.inputTokens} in / ${u.outputTokens} out tokens`;
@@ -243,6 +291,8 @@ export type AiStep<T> = {
   /** What the tool row, the reply message and the done row say about a result. */
   report: (value: T, via: string) => { refs: string[]; tool: string; reply: string; done: string };
   log: (rows: AgentRow[]) => Promise<unknown>;
+  /** Set after waiting too long for another CREAO run: skip CREAO and fall back to Claude. */
+  creaoBlocked?: string;
 };
 
 export type AiStepResult<T> =
@@ -256,7 +306,7 @@ export type AiStepResult<T> =
       /** Set when Claude ran because CREAO did not. */
       fallbackFrom?: string;
     }
-  | { ok: false; status: "unavailable" | "skipped"; reason: string };
+  | { ok: false; status: "unavailable" | "skipped" | "busy"; reason: string };
 
 /**
  * CREAO first, then Claude only when CREAO is not configured, not verified, fails or times out.
@@ -330,15 +380,31 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
   let creaoMiss: string;
   const gate = await creaoGate(step.creao.job.role);
   if (!gate.ok) creaoMiss = `CREAO ${gate.reason}`;
+  else if (step.creaoBlocked) creaoMiss = `CREAO ${step.creaoBlocked}`;
   else {
     const reservation = await reserve("creao");
     if (!reservation.ok)
-      return { ok: false, status: "skipped", reason: `CREAO ${reservation.reason}` };
+      return {
+        ok: false,
+        status: reservation.busy ? "busy" : "skipped",
+        reason: `CREAO ${reservation.reason}`,
+      };
     await log(opening("creao", "CREAO"));
     const row = as("creao");
+    const waiting = (attempt: number) =>
+      log([
+        row({
+          action: "agent.working",
+          event: "status",
+          status: "working",
+          currentTask: step.task,
+          summary: `Waiting for CREAO result (retry ${attempt})`,
+        }),
+      ]);
+    const transport = creaoRunOptions(waiting);
     try {
       const run = await runFieldCreaoJob(process.env, step.creao.job, {
-        runDeadlineMs: CREAO_STEP_DEADLINE_MS,
+        ...transport.options,
         onRunCreated: async ({ runId, status }) => {
           await ctx.runMutation(internal.fieldAi.settle, {
             callId: reservation.callId,
@@ -379,7 +445,7 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
         remoteRunId: run.runId,
       };
     } catch (error) {
-      const category = creaoFailure(error);
+      const category = creaoFailure(error, transport.seen.stage);
       await ctx.runMutation(internal.fieldAi.settle, {
         callId: reservation.callId,
         status: "failed",
@@ -461,10 +527,33 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
   };
 }
 
-/** Scheduled by fieldJobs.runIngest when an ingest stored new findings. Never throws. */
+/** Parent agent row for a step that waits for the company's current CREAO run. */
+export const queuedRow = (agentId: string, task: string): AgentRow => ({
+  action: "creao.queued",
+  agentId,
+  agentKind: "domino",
+  event: "status",
+  status: "working",
+  currentTask: task,
+  summary: `Queued: ${task} waits for the company's current CREAO run (one at a time)`,
+});
+
+/** True when a busy step should wait again; false once it has waited CREAO_MAX_WAITS times. */
+export const shouldWait = (wait: number) => wait < CREAO_MAX_WAITS;
+export const BUSY_TOO_LONG = "busy (another run for this company did not finish in time)";
+
+/**
+ * Scheduled by fieldJobs.runIngest when an ingest stored new findings. When another CREAO run
+ * for the company is in flight it reschedules itself (`wait` counts the retries). Never throws.
+ */
 export const explainNewFindings = internalAction({
-  args: { companyId: v.id("companies"), runId: v.string(), version: v.number() },
-  handler: async (ctx, { companyId, runId, version }) => {
+  args: {
+    companyId: v.id("companies"),
+    runId: v.string(),
+    version: v.number(),
+    wait: v.optional(v.number()),
+  },
+  handler: async (ctx, { companyId, runId, version, wait = 0 }) => {
     const log = (rows: AgentRow[]) =>
       ctx.runMutation(internal.fieldAi.logRows, { companyId, runId, rows });
     const found: FindingRecord[] = await ctx.runQuery(internal.fieldAi.unexplained, {
@@ -481,6 +570,7 @@ export const explainNewFindings = internalAction({
       scope,
       agentId: EXPLAINER,
       parentAgentId: AUDIT_AGENT,
+      ...(!shouldWait(wait) && { creaoBlocked: BUSY_TOO_LONG }),
       task: `Explain ${n} on snapshot ${scope}`,
       refs: picked.map((f) => f.findingId),
       ask: `Explain these ${n} and suggest a check for each`,
@@ -503,6 +593,16 @@ export const explainNewFindings = internalAction({
       }),
       log,
     });
+    if (!out.ok && out.status === "busy") {
+      if (wait === 0) await log([queuedRow(AUDIT_AGENT, `Explain ${n} on snapshot ${scope}`)]);
+      await ctx.scheduler.runAfter(CREAO_WAIT_MS, internal.fieldAi.explainNewFindings, {
+        companyId,
+        runId,
+        version,
+        wait: wait + 1,
+      });
+      return null;
+    }
     if (!out.ok) {
       await log([
         {

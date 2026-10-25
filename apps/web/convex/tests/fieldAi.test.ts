@@ -245,11 +245,17 @@ describe("field AI agents", () => {
         status: "ready",
       }),
     );
-    const reserve = (
+    /** Reserve, then settle a CREAO run so it no longer counts as in flight. */
+    const reserve = async (
       scope: string,
       provider: "claude" | "creao",
       kind: "audit" | "coordinator" = "audit",
-    ) => t.mutation(internal.fieldAi.reserve, { companyId, kind, provider, scope });
+    ) => {
+      const r = await t.mutation(internal.fieldAi.reserve, { companyId, kind, provider, scope });
+      if (r.ok && provider === "creao")
+        await t.mutation(internal.fieldAi.settle, { callId: r.callId, status: "ok" });
+      return r;
+    };
     expect((await reserve("v1", "creao")).ok).toBe(true);
     expect((await reserve("v1", "claude")).ok).toBe(true);
     expect((await reserve("v1", "creao")).ok).toBe(false);
@@ -263,6 +269,38 @@ describe("field AI agents", () => {
       ok: false,
       reason: expect.stringMatching(/hourly cap/),
     });
+  }, 120_000);
+
+  it("holds one CREAO run at a time per company until the in-flight run settles", async () => {
+    const t = newBackend();
+    const company = () =>
+      t.run((ctx) =>
+        ctx.db.insert("companies", {
+          name: "Serial test",
+          profile: "kestrel",
+          currentWeek: 1,
+          today: "2026-11-02",
+          status: "ready",
+        }),
+      );
+    const a = await company();
+    const b = await company();
+    const reserve = (companyId: typeof a, kind: "audit" | "coordinator", provider = "creao") =>
+      t.mutation(internal.fieldAi.reserve, {
+        companyId,
+        kind,
+        provider: provider as "creao" | "claude",
+        scope: "v1",
+      });
+    const first = await reserve(a, "audit");
+    expect(first.ok).toBe(true);
+    expect(await reserve(a, "coordinator")).toMatchObject({ ok: false, busy: true });
+    // Claude and other companies are not blocked.
+    expect((await reserve(a, "coordinator", "claude")).ok).toBe(true);
+    expect((await reserve(b, "coordinator")).ok).toBe(true);
+    if (first.ok)
+      await t.mutation(internal.fieldAi.settle, { callId: first.callId, status: "failed" });
+    expect((await reserve(a, "coordinator")).ok).toBe(true);
   }, 120_000);
 });
 
@@ -332,35 +370,77 @@ function creaoAnswer(job: Job): unknown {
 }
 
 /**
- * Offline CREAO (app-scoped runs) plus the offline Claude stub. `failTasks` makes those CREAO
- * runs end in status "failed"; `answer` can replace any answer.
+ * Offline CREAO (app-scoped runs) plus the offline Claude stub. Records the most CREAO runs in
+ * flight at once. `failTasks` end in status "failed"; `answer` can replace any answer;
+ * `artifactTasks` answer through a JSON artifact whose first `artifactMisses` downloads return
+ * 403; `rateLimitOnce` tasks get one 429 (Retry-After: 1) on create.
  */
-function stubProviders(opts: { failTasks?: string[]; answer?: (job: Job) => unknown } = {}) {
+function stubProviders(
+  opts: {
+    failTasks?: string[];
+    answer?: (job: Job) => unknown;
+    artifactTasks?: string[];
+    artifactMisses?: number;
+    rateLimitOnce?: string[];
+  } = {},
+) {
   const claude = stubClaude();
   const jobs = new Map<string, Job>();
   const posts: string[] = [];
+  const limited = new Set<string>();
+  const open = new Set<string>();
+  let maxInFlight = 0;
+  let misses = opts.artifactMisses ?? 0;
   const claudeFetch = claude.fetch.getMockImplementation()!;
   const fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const href = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
     if (!href.startsWith("https://agent.creao.ai/")) return claudeFetch(url, init);
     if ((init?.method ?? "GET") === "POST") {
       const job = JSON.parse(JSON.parse(String(init?.body)).inputs.prompt) as Job;
+      if (opts.rateLimitOnce?.includes(job.task) && !limited.has(job.task)) {
+        limited.add(job.task);
+        return new Response(JSON.stringify({ error: { message: "Too many concurrent runs" } }), {
+          status: 429,
+          headers: { "retry-after": "1" },
+        });
+      }
       const id = `run-${posts.length + 1}`;
       posts.push(job.task);
       jobs.set(id, job);
+      open.add(id);
+      maxInFlight = Math.max(maxInFlight, open.size);
       return new Response(JSON.stringify({ id, status: "queued" }), { status: 201 });
     }
-    const id = decodeURIComponent(href.split("/runs/")[1] ?? "");
+    const id = decodeURIComponent(/\/runs\/([^/?]+)/.exec(href)?.[1] ?? "");
     const job = jobs.get(id)!;
+    const answer = () => (opts.answer ?? creaoAnswer)(job);
+    if (href.includes("/artifacts/download")) {
+      if (misses > 0) {
+        misses--;
+        return new Response("not yet", { status: 403 });
+      }
+      return new Response(JSON.stringify(answer()));
+    }
+    open.delete(id);
     if (opts.failTasks?.includes(job.task))
       return new Response(JSON.stringify({ id, status: "failed" }));
-    const answer = (opts.answer ?? creaoAnswer)(job);
-    return new Response(
-      JSON.stringify({ id, status: "completed", result: { chatText: RESULT(answer) } }),
-    );
+    const result = opts.artifactTasks?.includes(job.task)
+      ? {
+          chatText: "The plan is ready for review.",
+          artifacts: [
+            {
+              id: "a1",
+              title: "result.json",
+              type: "application/json",
+              url: `https://agent.creao.ai/api/v1/apps/app_field/runs/${id}/artifacts/download?artifactId=a1`,
+            },
+          ],
+        }
+      : { chatText: RESULT(answer()) };
+    return new Response(JSON.stringify({ id, status: "completed", result }));
   });
   vi.stubGlobal("fetch", fetch);
-  return { fetch, posts, claudeCalls: claude.calls };
+  return { fetch, posts, claudeCalls: claude.calls, maxInFlight: () => maxInFlight };
 }
 
 async function verifyAll(appId = "app_field") {
@@ -406,19 +486,22 @@ describe("CREAO-first field agents", () => {
     for (const k of ENV_KEYS) delete process.env[k];
     process.env.ANTHROPIC_API_KEY = "test-key";
     await verifyAll();
-    const { posts, claudeCalls } = stubProviders();
+    const { posts, claudeCalls, maxInFlight } = stubProviders();
     const t = newBackend();
     const companyId = await liveCompanyWithFindings(t);
 
     expect(claudeCalls).toEqual([]);
-    expect(posts).toEqual(
-      expect.arrayContaining([
-        "fieldExplainFlags",
-        "fieldCoordinatorPlan",
-        "fieldScenarioSummary",
-        "fieldCounterpartyRisk",
-      ]),
-    );
+    // One CREAO run at a time, in the queue order explain -> coordinator -> summary -> research.
+    expect(maxInFlight()).toBe(1);
+    const order = [
+      "fieldExplainFlags",
+      "fieldCoordinatorPlan",
+      "fieldScenarioSummary",
+      "fieldCounterpartyRisk",
+    ];
+    const last = order.map((task) => posts.lastIndexOf(task));
+    expect(last.every((i) => i >= 0)).toBe(true);
+    expect([...last].sort((x, y) => x - y)).toEqual(last);
     const findings = await t.query(api.field.findings, { companyId });
     const explained = findings.filter((f) => f.explanation);
     expect(explained.length).toBeGreaterThan(0);
@@ -560,5 +643,65 @@ describe("CREAO-first field agents", () => {
     expect(
       rows.find((r) => r.agentId === "coordinator#1" && r.status === "failed")?.summary,
     ).toMatch(/invalid_output/);
+  }, 180_000);
+
+  it("waits for a late artifact and reposts once after a 429 with Retry-After", async () => {
+    vi.useFakeTimers();
+    for (const k of ENV_KEYS) delete process.env[k];
+    await verifyAll();
+    const { fetch, posts, claudeCalls } = stubProviders({
+      artifactTasks: ["fieldCoordinatorPlan"],
+      artifactMisses: 2,
+      rateLimitOnce: ["fieldScenarioSummary"],
+    });
+    const t = newBackend();
+    const companyId = await liveCompanyWithFindings(t);
+
+    expect(claudeCalls).toEqual([]);
+    // Every POST for the summary task: the runs created plus exactly one 429 that was reposted.
+    const summaryPosts = fetch.mock.calls.filter(
+      ([url, init]) =>
+        String(url).startsWith("https://agent.creao.ai/") &&
+        init?.method === "POST" &&
+        String(init.body).includes("fieldScenarioSummary"),
+    );
+    expect(summaryPosts.length).toBe(posts.filter((p) => p === "fieldScenarioSummary").length + 1);
+    const latest = await t.query(api.fieldAnalyst.latest, { companyId });
+    expect(latest?.coordinator).toMatchObject({ status: "done" });
+    expect(latest?.aiSummary).toMatchObject({ status: "done", provider: "creao" });
+    const rows = await logRows(t, companyId);
+    const waits = rows.filter(
+      (r) => r.agentId === "coordinator#1" && /^Waiting for CREAO result/.test(r.summary ?? ""),
+    );
+    expect(waits.map((r) => r.summary).sort()).toEqual([
+      "Waiting for CREAO result (retry 1)",
+      "Waiting for CREAO result (retry 2)",
+    ]);
+  }, 180_000);
+
+  it("logs the HTTP status, stage and sanitized reason when a create fails", async () => {
+    vi.useFakeTimers();
+    for (const k of ENV_KEYS) delete process.env[k];
+    await verifyAll();
+    stubProviders();
+    const base = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request, init?: RequestInit) =>
+        (init?.method ?? "GET") === "POST" && String(url).startsWith("https://agent.creao.ai/")
+          ? new Response(
+              JSON.stringify({ message: "Run limit hit for key capi_abcdefghijklmnopqrstuvwxyz" }),
+              { status: 503 },
+            )
+          : base(url, init),
+      ),
+    );
+    const t = newBackend();
+    const companyId = await liveCompanyWithFindings(t);
+    const rows = await logRows(t, companyId);
+    const failed = rows.find((r) => r.agentId === "coordinator#1" && r.status === "failed");
+    expect(failed?.summary).toBe(
+      "CREAO run failed (http_status 503 at create: Run limit hit for key [redacted]); no plan, agents keep their default order",
+    );
   }, 180_000);
 });

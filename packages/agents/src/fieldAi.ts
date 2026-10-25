@@ -452,7 +452,17 @@ export function acceptCounterpartyNotes(
 
 export type CounterpartyCreaoOptions = CreaoOptions & {
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
+  onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
 };
+
+/**
+ * Field runs tolerate two observed CREAO behaviors: a 429 on create (one repost after
+ * Retry-After) and a run that reports completed before its artifacts are readable.
+ */
+export const FIELD_CREAO_RETRY = {
+  createRetryOn429: { maxWaitMs: 20_000 },
+  resultRetryDelaysMs: [2_000, 4_000, 8_000],
+} as const;
 
 /** CREAO app credentials for the research job (the evidence analyst's app and key). */
 export const counterpartyCreaoEnv = creaoHistoricalEnv.evidence_analyst;
@@ -486,6 +496,8 @@ export function runCreaoCounterpartyResearch(
       select: (candidates) => selectDistinct(candidates, accept),
       strict: true,
       onRunCreated: options.onRunCreated,
+      ...FIELD_CREAO_RETRY,
+      onResultRetry: options.onResultRetry,
     });
     return { notes: run.value as CounterpartyNote[], runId: run.runId };
   });
