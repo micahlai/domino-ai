@@ -25,16 +25,21 @@
 import {
   CompanyModelSchema,
   ConstraintSchema,
+  SnapshotSchema,
   canonicalJson,
+  contentHashPreimage,
   parseWeeklyResultRefJson,
   parseWeeklySeedJson,
 } from "@domino/contracts";
 import { type OperatingProvenance, operatingProvenance } from "@domino/sim";
 import { ConvexError, v } from "convex/values";
+import { FieldTraceSchema } from "../lib/field-trace-contract";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { sha256 } from "./fieldJobs";
+import { pinnedOptionSeedDraft } from "./fieldSuggestionSeed";
+import { pinnedInputs } from "./fieldTrace";
 import { UNSUPPORTED_SEED_FIELDS } from "./timeline/baselines";
 
 const EMPTY_MODEL = { version: 1, customerDelayDays: {}, recurringSpend: [], rules: [] };
@@ -76,6 +81,105 @@ export const importInputs = internalQuery({
             reportedAt: operating.reportedAt,
           }
         : null,
+    };
+  },
+});
+
+/** Read one immutable analyst receipt for an exact suggestion. Never consult latest Field state. */
+export const suggestionInputs = internalQuery({
+  args: {
+    companyId: v.id("companies"),
+    runId: v.string(),
+    scenarioId: v.string(),
+    fixKind: v.string(),
+    suggestionId: v.string(),
+    snapshotVersion: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.db
+      .query("analystRuns")
+      .withIndex("by_company_and_runId", (q) =>
+        q.eq("companyId", args.companyId).eq("runId", args.runId),
+      )
+      .unique();
+    if (!run || run.companyId !== args.companyId || run.snapshotVersion !== args.snapshotVersion)
+      return fail("NOT_FOUND", "This saved suggestion does not match the requested run");
+    const pinned = pinnedInputs(run);
+    if (!pinned || !run.traceReceipt || run.status !== "done")
+      return fail("UNAVAILABLE", "This run has no complete pinned calculation to simulate");
+    const trace = FieldTraceSchema.parse(JSON.parse(run.traceReceipt));
+    if (
+      trace.run.companyId !== args.companyId ||
+      trace.run.runId !== args.runId ||
+      trace.run.snapshotId !== run.snapshotId ||
+      trace.run.snapshotVersion !== run.snapshotVersion ||
+      trace.evidence !== "frozen"
+    )
+      return fail("INTEGRITY", "The frozen receipt does not belong to this run");
+    const scenario = trace.scenarios.find((s) => s.id === args.scenarioId);
+    const candidate = trace.candidates.find(
+      (c) =>
+        c.suggestionId === args.suggestionId &&
+        c.scenarioId === args.scenarioId &&
+        c.fix.kind === args.fixKind,
+    );
+    if (
+      !scenario ||
+      !candidate ||
+      !scenario.work ||
+      !scenario.changes.length ||
+      !candidate.fix.changes.length
+    )
+      return fail("UNAVAILABLE", "This suggestion has no saved scenario and fix changes");
+    const row = await ctx.db.get("snapshots", run.snapshotId);
+    if (!row || row.companyId !== args.companyId)
+      return fail("UNAVAILABLE", "The pinned snapshot is no longer available");
+    const snapshot = SnapshotSchema.parse(row.data);
+    if (
+      snapshot.companyId !== pinned.snapshot.companyId ||
+      snapshot.asOf !== pinned.snapshot.asOf ||
+      snapshot.cashOnHand !== pinned.snapshot.cashOnHand ||
+      snapshot.restrictedCash !== pinned.snapshot.restrictedCash
+    )
+      return fail("INTEGRITY", "The snapshot no longer matches the saved run");
+    const counts = Object.fromEntries(
+      Object.entries(snapshot)
+        .filter(([, value]) => Array.isArray(value))
+        .map(([key, value]) => [key, (value as unknown[]).length]),
+    );
+    if (canonicalJson(counts) !== canonicalJson(pinned.snapshot.recordCounts))
+      return fail("INTEGRITY", "The snapshot record counts changed since this run");
+    const seedId = `field:weekly_seed/${(await sha256(canonicalJson([run.runId, run.snapshotId]))).slice(0, 40)}`;
+    const draft = pinnedOptionSeedDraft({
+      snapshot,
+      companyName: pinned.company.name,
+      seedId,
+      pinnedAt: run.startedAt,
+    });
+    const contentHash = await sha256(contentHashPreimage(draft));
+    const seedJson = JSON.stringify({ ...draft, contentHash });
+    if (!parseWeeklySeedJson(seedJson).success)
+      return fail("INVALID_SEED", "This saved snapshot cannot be used as a Timeline seed");
+    return {
+      seedJson,
+      contentHash,
+      timelineCompanyId: snapshot.companyId,
+      modelJson: JSON.stringify(pinned.model.data),
+      constraintsJson: JSON.stringify(pinned.constraints),
+      asOf: snapshot.asOf,
+      snapshotVersion: run.snapshotVersion,
+      scenarioId: scenario.id,
+      scenarioTitle: scenario.title,
+      scenarioChangesJson: JSON.stringify(scenario.changes),
+      fixKind: candidate.fix.kind,
+      fixLabel: candidate.fix.label,
+      fixChangesJson: JSON.stringify(candidate.fix.changes),
+      suggestionId: candidate.suggestionId,
+      illustrative: pinned.provenance !== null,
+      provenanceLabel: pinned.provenance?.label ?? null,
+      periodStart: pinned.provenance?.periodStart ?? null,
+      periodEnd: pinned.provenance?.periodEnd ?? null,
+      reportedAt: pinned.provenance?.reportedAt ?? null,
     };
   },
 });

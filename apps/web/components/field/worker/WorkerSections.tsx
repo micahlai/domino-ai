@@ -4,6 +4,7 @@ import { FlagsSection } from "./FlagsSection";
 import { RisksSection } from "./RisksSection";
 import {
   type DecideSuggestion,
+  type SimulateSuggestion,
   SuggestionsSection,
   type SuggestionsState,
 } from "./SuggestionsSection";
@@ -16,6 +17,7 @@ export function WorkerSections({
   suggestions,
   context,
   onDecide,
+  onSimulate,
   risks,
   risksLoading,
   timelineAction,
@@ -26,6 +28,7 @@ export function WorkerSections({
   suggestions: SuggestionsState;
   context: EffectContext;
   onDecide: DecideSuggestion;
+  onSimulate?: SimulateSuggestion;
   risks: WatchedRisk[];
   risksLoading: boolean;
   timelineAction?: ReactNode;
@@ -38,6 +41,7 @@ export function WorkerSections({
         state={suggestions}
         context={context}
         onDecide={onDecide}
+        onSimulate={onSimulate}
         companyId={companyId}
       />
       <RisksSection rows={risks} loading={risksLoading} action={timelineAction} />

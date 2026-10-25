@@ -1,17 +1,20 @@
 "use client";
 
-import { type RequestForQueries, useMutation, useQueries } from "convex/react";
+import { type RequestForQueries, useAction, useMutation, useQueries } from "convex/react";
 import { useCallback, useMemo, useState } from "react";
 import type { DashboardView } from "../dashboard/derive";
 import type { DecideSuggestion, SuggestionsState } from "./SuggestionsSection";
 import {
+  SIMULATE_SUGGESTION_API,
   SUGGESTIONS_API,
   SUGGESTIONS_ENABLED,
+  type SimulationResult,
   type Suggestion,
   applyDecision,
   decideArgs,
   demoSuggestions,
   isNotDeployed,
+  simulationArgs,
   toSuggestion,
 } from "./suggestions";
 
@@ -20,6 +23,7 @@ import {
 export function useLiveSuggestions(companyId: string | null | undefined): {
   state: SuggestionsState;
   decide: DecideSuggestion;
+  simulate: (suggestion: Suggestion) => Promise<SimulationResult>;
 } {
   const queries = useMemo(() => {
     const request: RequestForQueries = {};
@@ -29,6 +33,7 @@ export function useLiveSuggestions(companyId: string | null | undefined): {
   }, [companyId]);
   const result = useQueries(queries).list as unknown;
   const mutate = useMutation(SUGGESTIONS_API.decide);
+  const simulateOnServer = useAction(SIMULATE_SUGGESTION_API);
   // Not optimistic: Convex applies the query update before the mutation resolves, so the card
   // moves to Decided as soon as the save lands, and a refused save keeps the card and its error.
   const decide = useCallback<DecideSuggestion>(
@@ -37,6 +42,10 @@ export function useLiveSuggestions(companyId: string | null | undefined): {
       await mutate(decideArgs(companyId, suggestion, decision, note));
     },
     [mutate, companyId],
+  );
+  const simulate = useCallback(
+    async (suggestion: Suggestion) => simulateOnServer(simulationArgs(companyId ?? "", suggestion)),
+    [companyId, simulateOnServer],
   );
   let state: SuggestionsState;
   if (!SUGGESTIONS_ENABLED) state = { kind: "off" };
@@ -50,7 +59,7 @@ export function useLiveSuggestions(companyId: string | null | undefined): {
     });
     state = { kind: "ready", list };
   }
-  return { state, decide };
+  return { state, decide, simulate };
 }
 
 /** Demo suggestions from the demo books; decisions stay in this tab only. */

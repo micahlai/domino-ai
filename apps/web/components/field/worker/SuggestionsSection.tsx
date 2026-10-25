@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Lightbulb, X } from "lucide-react";
+import { ConvexError } from "convex/values";
+import { ArrowRight, Lightbulb, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { fieldTraceHref } from "../../../lib/trace-links";
@@ -34,18 +35,22 @@ export type DecideSuggestion = (
   decision: SuggestionDecision,
   note: string,
 ) => Promise<void>;
+export type SimulateSuggestion = (suggestion: Suggestion) => Promise<void>;
 
-export const NEVER_MOVES_MONEY = "Accepting records your decision. Domino never moves money.";
+export const NEVER_MOVES_MONEY =
+  "Simulation saves a what-if plan. Nothing is paid or moved. Dismiss records a decision.";
 
 export function SuggestionsSection({
   state,
   context,
   onDecide,
+  onSimulate,
   companyId,
 }: {
   state: SuggestionsState;
   context: EffectContext;
   onDecide: DecideSuggestion;
+  onSimulate?: SimulateSuggestion;
   companyId?: string | null;
 }) {
   const { open, decided } =
@@ -56,7 +61,7 @@ export function SuggestionsSection({
       step={1}
       title="Suggestions"
       count={state.kind === "ready" ? open.length : null}
-      description="Fixes tested on your forecast by the engine. Accept or decline each one."
+      description="Fixes tested on your forecast by the engine. Simulate one in Timeline or dismiss it."
     >
       {state.kind === "loading" ? (
         <div className="space-y-3" aria-busy="true">
@@ -83,7 +88,7 @@ export function SuggestionsSection({
           <p className="font-medium text-foreground">No suggestions waiting.</p>
           <p>
             When a risk would take cash below the illustrative cash floor, the engine tests fixes
-            and posts them here for you to accept or decline.
+            and posts them here for you to simulate or dismiss.
           </p>
         </EmptyCard>
       ) : (
@@ -94,6 +99,7 @@ export function SuggestionsSection({
               suggestion={s}
               context={context}
               onDecide={onDecide}
+              onSimulate={onSimulate}
               companyId={companyId}
             />
           ))}
@@ -144,28 +150,53 @@ function SuggestionCard({
   suggestion: s,
   context,
   onDecide,
+  onSimulate,
   companyId,
 }: {
   suggestion: Suggestion;
   context: EffectContext;
   onDecide: DecideSuggestion;
+  onSimulate?: SimulateSuggestion;
   companyId?: string | null;
 }) {
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState<SuggestionDecision | null>(null);
+  const [busy, setBusy] = useState<"simulate" | "declined" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const effect = cashEffect(s, context);
   const scenario = scenarioTitle(s, context);
   const id = domId(s.id);
-  async function decide(decision: SuggestionDecision) {
-    setBusy(decision);
+  const hasSavedInputs =
+    !!companyId &&
+    !!s.runId &&
+    !!s.scenarioId &&
+    Number.isSafeInteger(s.snapshotVersion) &&
+    typeof s.fix !== "string" &&
+    !!s.fix.kind;
+  async function dismiss() {
+    setBusy("declined");
     setError(null);
     try {
-      await onDecide(s, decision, note);
+      await onDecide(s, "declined", note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the decision.");
     } finally {
       // Saved cards move to Decided; this only matters if the card is still shown.
+      setBusy(null);
+    }
+  }
+  async function simulate() {
+    if (!onSimulate) return;
+    setBusy("simulate");
+    setError(null);
+    try {
+      await onSimulate(s);
+    } catch (e) {
+      const data = e instanceof ConvexError ? (e.data as { message?: unknown }) : null;
+      setError(
+        typeof data?.message === "string"
+          ? data.message
+          : "Could not save this simulation. Your suggestion was not changed.",
+      );
       setBusy(null);
     }
   }
@@ -212,6 +243,9 @@ function SuggestionCard({
           missing="None set"
         />
       </dl>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        The cash floor and any credit line are simulation assumptions, not a reported facility.
+      </p>
 
       {s.recommendation ? (
         <p className="mt-3 text-[13px] leading-5 text-muted-foreground">
@@ -235,7 +269,7 @@ function SuggestionCard({
 
       <div className="mt-3 space-y-1.5">
         <label htmlFor={`${id}-note`} className="block text-[13px] font-medium">
-          Note <span className="font-normal text-muted-foreground">(optional)</span>
+          Dismissal note <span className="font-normal text-muted-foreground">(optional)</span>
         </label>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
@@ -243,21 +277,27 @@ function SuggestionCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder="Why you decided this"
+            placeholder="Why you dismissed this"
             className="h-11 sm:h-9 sm:flex-1"
           />
           <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
-            <Button disabled={busy !== null} onClick={() => decide("accepted")}>
-              <Check aria-hidden="true" />
-              {busy === "accepted" ? "Saving..." : "Accept"}
+            <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
+              <ArrowRight aria-hidden="true" />
+              {busy === "simulate" ? "Saving plan..." : "Simulate this option"}
             </Button>
-            <Button variant="outline" disabled={busy !== null} onClick={() => decide("declined")}>
+            <Button variant="outline" disabled={busy !== null} onClick={dismiss}>
               <X aria-hidden="true" />
-              {busy === "declined" ? "Saving..." : "Decline"}
+              {busy === "declined" ? "Saving..." : "Dismiss"}
             </Button>
           </div>
         </div>
         <p className="text-xs leading-5 text-muted-foreground">{NEVER_MOVES_MONEY}</p>
+        {companyId && !hasSavedInputs ? (
+          <p className="text-xs leading-5 text-muted-foreground">
+            This older suggestion has no complete saved identity for a simulation. Its decision
+            record and explanation remain available.
+          </p>
+        ) : null}
       </div>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">

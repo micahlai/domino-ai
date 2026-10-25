@@ -10,6 +10,7 @@ import { getBaselineRef, readBaseline } from "../baseline/api";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { type WorkspaceRun, getRunRef, readRun } from "../workspace/api";
 import { runHeadline } from "../workspace/summary";
+import { assumptionSummary } from "./assumptions";
 
 export function changeText(change: Change): string {
   switch (change.kind) {
@@ -123,8 +124,9 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
             <h3 className="text-sm font-semibold">1. Data used</h3>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               The saved {baseline.baseline.companyName} source book and its{" "}
-              {run.forecast.weeks.length}-week starting forecast.{" "}
-              {baseline.baseline.assumptionNote || "No separate assumption note was saved."}
+              {run.forecast.weeks.length}-week starting forecast, from books as of{" "}
+              {formatFullDate(baseline.baseline.seed.snapshot.asOf)}.{" "}
+              {assumptionSummary(baseline.baseline.assumptionNote)}
             </p>
           </li>
           <li>
@@ -201,6 +203,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
           <p>Method: {run.methodVersion}</p>
           <p>Rule version: {run.constraintVersion}</p>
           <p>Operation ID: {run.operation.id}</p>
+          <p>Saved source note: {baseline.baseline.assumptionNote || "none"}</p>
         </div>
       </details>
     </article>

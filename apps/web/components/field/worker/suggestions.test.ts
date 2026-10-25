@@ -15,6 +15,7 @@ import {
   isNotDeployed,
   roomLine,
   scenarioTitle,
+  simulationArgs,
   splitSuggestions,
   toSuggestion,
 } from "./suggestions";
@@ -74,6 +75,32 @@ describe("worker formatting", () => {
 });
 
 describe("suggestions adapter", () => {
+  it("passes exact saved suggestion identity and refuses incomplete legacy rows", () => {
+    const saved = suggestion({
+      id: "suggestion/old",
+      runId: "analyst/old",
+      scenarioId: "scenario/old",
+      snapshotVersion: 4,
+      fix: { kind: "delay_bill", label: "Delay a bill" },
+    });
+    expect(simulationArgs("company/one", saved)).toEqual({
+      companyId: "company/one",
+      runId: "analyst/old",
+      scenarioId: "scenario/old",
+      snapshotVersion: 4,
+      suggestionId: "suggestion/old",
+      fixKind: "delay_bill",
+    });
+    expect(() => simulationArgs("company/one", suggestion({ runId: undefined }))).toThrow(
+      /older suggestion/,
+    );
+    expect(() => simulationArgs("company/one", suggestion({ snapshotVersion: undefined }))).toThrow(
+      /older suggestion/,
+    );
+    expect(() => simulationArgs("company/one", suggestion({ scenarioId: null }))).toThrow(
+      /older suggestion/,
+    );
+  });
   it("reads backend rows defensively and defaults the author", () => {
     expect(suggestion()).toMatchObject({ id: "sug_1", status: "open", by: "Engine advisors" });
     expect(toSuggestion(row({ id: undefined, _id: "doc1" }))?.id).toBe("doc1");

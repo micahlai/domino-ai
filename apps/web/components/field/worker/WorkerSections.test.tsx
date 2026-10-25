@@ -28,6 +28,8 @@ const render = (over: {
       suggestions={over.suggestions ?? { kind: "ready", list: [] }}
       context={context}
       onDecide={noop}
+      onSimulate={noop}
+      companyId="company123"
       risks={over.risks ?? []}
       risksLoading={over.risksLoading ?? false}
       findings={"findings" in over ? over.findings : []}
@@ -38,8 +40,10 @@ const render = (over: {
 const suggestion = (id: string, status: string) =>
   toSuggestion({
     id,
-    scenarioId: null,
-    fix: { kind: "credit_draw", amountCents: 120_000_000, week: "2026-12-14" },
+    scenarioId: "risk/old",
+    runId: "run/old",
+    snapshotVersion: 4,
+    fix: { kind: "credit_line_draw", amountCents: 120_000_000, week: "2026-12-14" },
     effect: { lowPointCents: 302_702_845, lowPointWeek: "2027-01-25", staysAboveMinimum: true },
     recommendation: "Covers the gap at the low point.",
     status,
@@ -94,9 +98,12 @@ describe("worker page sections", () => {
     expect(html).toContain("$1.8M"); // lowest cash now
     expect(html).toContain("$3M"); // with the fix, and the lender's minimum
     expect(html).toContain("Passes cash and payment checks");
-    expect(html).toContain(">Accept<");
-    expect(html).toContain(">Decline<");
-    expect(html).toContain("Accepting records your decision. Domino never moves money.");
+    expect(html).toContain("Simulate this option</button>");
+    expect(html).toContain("Dismiss</button>");
+    expect(html).toContain("Simulation saves a what-if plan. Nothing is paid or moved.");
+    expect(html).toContain(
+      "/field/analysis?companyId=company123&amp;runId=run%2Fold&amp;scenarioId=risk%2Fold&amp;fixKind=credit_line_draw",
+    );
     // The accepted one sits in the collapsed Decided list.
     expect(html).toMatch(/<details[^>]*>.*Decided.*1 suggestion.*Accepted/s);
     expect(html).toContain("1 open");
