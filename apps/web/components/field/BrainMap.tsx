@@ -68,7 +68,7 @@ import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
 import { AgentsIdleCard, BrainMapIdle, ReplayAction, useAgentsState } from "./agents";
 import { useSelectedCompanyName } from "./company";
-import { nodeResults, resolveMapNode } from "./cross-links";
+import { nodeResults, resolveMapNode, timelineRunHref } from "./cross-links";
 import { useFieldData } from "./data";
 import {
   type BrainGraph,
@@ -2450,6 +2450,10 @@ function ActivityList({
     <ol className="space-y-3">
       {operations.map((op) => {
         const tool = op.tool ? describeTool(op.tool, op.toolCategory, op.toolLabel) : undefined;
+        const refs = op.outputs?.refs;
+        const forecast = timelineRunHref(
+          Array.isArray(refs) ? refs.filter((r): r is string => typeof r === "string") : undefined,
+        );
         return (
           <li key={op.id} className="flex gap-2.5">
             <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
@@ -2475,6 +2479,18 @@ function ActivityList({
                 </span>
               </p>
               <p className="leading-5">{op.summary}</p>
+              {forecast && op.kind !== "message" ? (
+                <Link
+                  href={forecast}
+                  data-testid="activity-open-forecast"
+                  className={cn(
+                    "mt-0.5 inline-block rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline",
+                    FOCUS,
+                  )}
+                >
+                  Open in forecast
+                </Link>
+              ) : null}
               {op.tool ? (
                 <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{op.tool}</p>
               ) : null}

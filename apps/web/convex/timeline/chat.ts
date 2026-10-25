@@ -13,6 +13,7 @@ import {
 } from "../_generated/server";
 import { groundingIssue } from "./assistant/grounding";
 import { resolveFieldSource } from "./chat/brain";
+import { type ChatTool, chatFailureArg, chatToolsArg, logChatActivity } from "./chat/brainLog";
 import {
   TurnPlanSchema,
   activeUserTurns,
@@ -486,6 +487,12 @@ export const confirm = mutation({
       now,
     );
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft, segmentStart } });
+    await logChatActivity(ctx, run, updated, args.requestId, {
+      kind: "saved",
+      label: proposal.label,
+      runId: saved.runId,
+      lowPoint: low ?? null,
+    });
     return accept(ctx, args, prior.hash, updated);
   },
 });
@@ -600,14 +607,26 @@ export const claimAssistantTurn = internalMutation({
 
 /** Release a failed attempt; a later exact retry may claim again. Late attempts cannot commit. */
 export const failAssistantTurn = internalMutation({
-  args: { ...assistantArgs, attempt: v.number() },
-  handler: async (ctx, { attempt, ...raw }): Promise<ChatReceipt | null> => {
+  args: { ...assistantArgs, attempt: v.number(), tools: chatToolsArg, failure: chatFailureArg },
+  handler: async (ctx, { attempt, tools, failure, ...raw }): Promise<ChatReceipt | null> => {
     const args = parse(AssistantInputSchema, raw);
     const prior = await assistantRequest(ctx, args);
     if (prior.receipt) return prior.receipt;
     const claim = prior.prior?.assistant;
-    if (prior.prior && claim?.status === "running" && claim.attempt === attempt)
+    if (prior.prior && claim?.status === "running" && claim.attempt === attempt) {
       await ctx.db.patch(prior.prior._id, { assistant: { ...claim, status: "failed" } });
+      // Only the attempt that actually failed is logged; a late or repeated call writes nothing.
+      const row = await rowOf(ctx, args.companyId, args.conversationId);
+      if (row) {
+        const { run, receipt } = await read(ctx, row);
+        await logChatActivity(ctx, run, receipt, args.requestId, {
+          kind: "failed",
+          failure: failure ?? "failed",
+          attempt,
+          tools: tools ?? [],
+        });
+      }
+    }
     return null;
   },
 });
@@ -619,8 +638,9 @@ export const saveAssistantTurn = internalMutation({
     attempt: v.number(),
     intentsJson: v.union(v.string(), v.null()),
     planJson: v.optional(v.string()),
+    tools: chatToolsArg,
   },
-  handler: async (ctx, { attempt, intentsJson, planJson, ...raw }): Promise<ChatReceipt> => {
+  handler: async (ctx, { attempt, intentsJson, planJson, tools, ...raw }): Promise<ChatReceipt> => {
     const args = parse(AssistantInputSchema, raw);
     const prior = await assistantRequest(ctx, args);
     if (prior.receipt) return prior.receipt;
@@ -637,6 +657,12 @@ export const saveAssistantTurn = internalMutation({
         "This reply expired. Retry the same message or reopen the saved conversation.",
       );
     const { row, receipt, draft, run, segmentStart } = await current(ctx, args, true);
+    const logTurn = (updated: ChatReceipt) =>
+      logChatActivity(ctx, run, updated, args.requestId, {
+        kind: "turn",
+        tools: (tools ?? []) as ChatTool[],
+        proposalLabel: updated.status === "ready" ? (updated.proposal?.label ?? null) : null,
+      });
     if (planJson !== undefined) {
       const plan = TurnPlanSchema.parse(JSON.parse(planJson));
       const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
@@ -690,6 +716,7 @@ export const saveAssistantTurn = internalMutation({
         data: exactReceipt(updated),
         assistant: { ...claim, status: "accepted" },
       });
+      await logTurn(updated);
       return updated;
     }
     // Compatibility for existing internal proposal-integrity fixtures. The public action
@@ -751,6 +778,7 @@ export const saveAssistantTurn = internalMutation({
       data: exactReceipt(updated),
       assistant: { ...claim, status: "accepted" },
     });
+    await logTurn(updated);
     return updated;
   },
 });
