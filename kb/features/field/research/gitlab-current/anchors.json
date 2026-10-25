@@ -230,6 +230,14 @@
         "propertyAndEquipmentPurchases": "(213)"
       },
       "note": "Exact quarter source crosschecks. Adjusted free cash flow is a non-GAAP measure, not a bank inflow."
+    },
+    "customerAdvancesClosing": {
+      "value": "15.0",
+      "unit": "USD millions",
+      "asOf": "2026-07-31",
+      "source": "q2",
+      "section": "Note 3, Revenue Recognition, customer advances",
+      "note": "Rounded to USD0.1 million in the source. Outside deferred revenue until customer election; no April balance or period cash-receipt amount is disclosed here. A reconstruction scope adjustment using this amount is a rounded point estimate, not an exact cash or invoice fact."
     }
   },
   "quarterCashFlowStatus": "Quarter cash-flow totals and comparable components in the 10-Q derive in deterministic integer-cent code from six-month minus three-month values. The earnings release separately provides exact quarter operating cash flow (3,092) and capex (213), USD thousands, as independent crosschecks; other quarter categories remain derived. Reconcile all four categories to cash endpoints.",
