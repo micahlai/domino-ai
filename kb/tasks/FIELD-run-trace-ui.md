@@ -1,0 +1,10 @@
+# FIELD How we got here UI
+- Goal: plain result-specific explanations linked to exact saved scenario/suggestion evidence; graph/steps support the account.
+- Own: new calculation/trace pages and components, Field layout guard bypass for trace, AppShell trace scoping, suggestion links, Timeline public-read adapter/helpers/tests; this Result and TAKEOVER-RUN-TRACE-UI.md.
+- Read: AGENTS.md, RUN-TRACES-CONTRACT.md, backend shared field-trace-contract.ts, public Timeline workspace/baseline API/types before edits.
+- Deliver: How we got here story(data/change/actual checks/result), exact frozen identity, optional relevant recorded graph/step history, truthful engine/provider/cache statuses, collapsed Technical details, no UI money arithmetic or latest fallback.
+- Links: company+Field run+scenario+fix for suggestions; company+exact Timeline run for saved simulations/new saved scenario. Hide live/current feed strip/clock on Field traces; do not autoensure selected companies there.
+- No: backend/contracts/engine/shared trace type edits, models/providers, live ports/main, root handoff, merge/push; no private model thoughts/fake live work.
+- Coordination: friend modifies WorkspaceView/ScenarioSidebar and adds ScenarioNav. Build independent pages/suggestion links first; defer overlapping Timeline links/header changes until root provides safe merged friend base.
+- Check: explanation on engine-only/legacy/failed/running cases, correct IDs/URL slashes, company switches and no latest contamination, no-backend behavior, meaningful rendering tests/tsc/Biome; browser root integration.
+- Result: pending.

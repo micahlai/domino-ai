@@ -10,6 +10,9 @@ User asked to connect scenario creation, map activity, saved simulations and sug
 - An accepted/declined/open suggestion links by companyId+runId+scenarioId+fixKind. Old open rows are upserts, so preserve each run's candidate results in its receipt before later runs replace rows. Trace view is read-only; existing guarded decision semantics remain.
 - No new tables. Authorized optional fields/indexes on Field-owned analystRuns/log/aiCalls only, plus their composition tests. No packages/contracts, root schema, Timeline tables/schemas or monetary engine changes. Old incomplete evidence gets a clear legacy limitation; opening a trace never reruns computation/providers.
 
+## Explanation priority
+- Latest user clarification: the action is How we got here. Lead with a short result-specific account: data used, assumption/event changed, calculations/checks that actually ran, and why they produced this result/suggestion. Graph/step history supports that account; providers, IDs and raw logs stay secondary. Prefer a clear small recorded-step view over graph complexity.
+
 ## UI and Timeline boundary
 - Field trace route under /field/analysis uses explicit company/run scope. Hide the current-company provenance strip on saved trace pages and display the frozen run identity/labels instead. Switching selection cannot relabel an old trace. Show only recorded relevant agents/tools plus necessary saved source dependencies.
 - Timeline calculation route /c/<company>/timeline/calculation?runId=<exact> reads only public workspace.get and baselines.get (and exact analysis receipt when supplied). Saved workspace creation is synchronous and engine-only, with no persistent running job. Present its saved input/change/forecast/rule-check sequence as recorded calculation, not live AI work. Do not call automatic analysis.start for event descendants: that API currently rejects them.
