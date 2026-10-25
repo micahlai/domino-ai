@@ -1,5 +1,6 @@
 # Current ledgers takeover, October 25, 2026
 
+- Follow-up: zero-valued component allocations now produce no bank transaction or posting. Reported zero anchors and component/residual facts remain intact. This fixes Plaid sign reversal changing zero into negative zero without weakening roundtrip equality or editing connectors. Regression failed before the one-line fix, then 56 focused operating tests, sim TypeScript and Biome passed; all 36 legacy hashes still match. Integration owner reruns all 20 adapter roundtrip cases.
 - Goal: two current filing-backed fictional demos with reconstructed October 25 books and October 26 forecasts, preserving historical 2U and both 2023 legacy datasets.
 - Checkout: `/Users/jaydenl/Dev/Hackathon/CalHacks 26/domino-field-operating-sim`, branch `field/current-company-ledgers`, base `6e9309f`.
 - Done: added immutable `asana-current` and `gitlab-current` IDs; primary roster `[2u, asana-current, gitlab-current]`; all five supported IDs remain valid. Catalog exposes source period, publication, current filing date and `simulationAsOf`. Existing three-part world IDs remain unchanged.

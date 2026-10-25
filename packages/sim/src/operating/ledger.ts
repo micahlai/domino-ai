@@ -305,6 +305,7 @@ export function historicalLedger(spec: OperatingSpec, seed: number): Ledger {
 function postCashComponents(ledger: Ledger, spec: OperatingSpec) {
   for (const component of spec.cashFlowComponents ?? []) {
     for (const [m, cents] of allocate(component.cents, Array(spec.months).fill(1)).entries()) {
+      if (cents === 0) continue;
       post(
         ledger,
         {
