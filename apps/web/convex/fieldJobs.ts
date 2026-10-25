@@ -459,6 +459,9 @@ export async function runIngest(
     if (options.analyst === false) return;
     await ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, { companyId, changed });
   };
+  // An idle company (before fieldAgents.start) is never read, whatever queued this run.
+  if (!(await ctx.runQuery(internal.fieldAgents.isStarted, { companyId })))
+    return { changed: false, error: "agents not started" };
   try {
     await step({
       actor: "connector",

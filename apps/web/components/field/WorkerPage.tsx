@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PageHeader } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
 import { OpenInTimeline } from "./OpenInTimeline";
+import { AgentsGate, AgentsIdleCard, type AgentsState } from "./agents";
 import { useSelectedCompany, useSelectedCompanyName, useSelectedProfile } from "./company";
 import { type DashboardData, DashboardDataProvider, useDashboard } from "./dashboard/data";
 import type { AnalystLatest } from "./dashboard/risks";
@@ -90,7 +91,29 @@ function useRunner(): Runner {
 export function WorkerPage() {
   // The dashboard's provider: the same summary, Timeline run (TL6/TL7) and sample events.
   return (
-    <DashboardDataProvider>{CONVEX_URL ? <LiveWorker /> : <DemoWorker />}</DashboardDataProvider>
+    <DashboardDataProvider>
+      {CONVEX_URL ? (
+        <AgentsGate idle={(state) => <IdleWorker state={state} />}>
+          <LiveWorker />
+        </AgentsGate>
+      ) : (
+        <DemoWorker />
+      )}
+    </DashboardDataProvider>
+  );
+}
+
+/** Before Start agents: no suggestions, risks or flags exist yet, so none are implied. */
+function IdleWorker({ state }: { state: AgentsState }) {
+  const company = useSelectedCompanyName();
+  return (
+    <div className="mx-auto max-w-[1040px] space-y-8">
+      <PageHeader
+        title={company}
+        description="Suggestions, risks and flags appear here once the agents have read the books."
+      />
+      <AgentsIdleCard state={state} />
+    </div>
   );
 }
 

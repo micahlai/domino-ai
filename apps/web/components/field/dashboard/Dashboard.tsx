@@ -11,6 +11,14 @@ import { Button } from "../../ui/button";
 import { PageHeader, Section, StatTile } from "../../ui/page";
 import { Skeleton } from "../../ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
+import {
+  AgentsGate,
+  AgentsIdleCard,
+  type AgentsState,
+  AgentsWorking,
+  SourceLogos,
+  useAgentsState,
+} from "../agents";
 import { useSelectedCompany, useSelectedCompanyName } from "../company";
 import { EmptyRow, Panel } from "../panel";
 import {
@@ -63,20 +71,48 @@ function LiveDashboard() {
   if (error) return <Notice title="Operating company could not connect">{error}</Notice>;
   if (!companyId) return <LoadingState />;
   return (
-    <DashboardDataProvider>
-      <DashboardBody />
-    </DashboardDataProvider>
+    <AgentsGate idle={(state) => <IdleDashboard state={state} />}>
+      <DashboardDataProvider>
+        <DashboardBody />
+      </DashboardDataProvider>
+    </AgentsGate>
+  );
+}
+
+/** Before Start agents: the company and its connected tools, and no numbers. */
+function IdleDashboard({ state }: { state: AgentsState }) {
+  const company = useSelectedCompanyName();
+  return (
+    <div className="mx-auto max-w-[1200px] space-y-8">
+      <PageHeader
+        eyebrow="Cash health, next 13 weeks"
+        title={company}
+        description={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span>
+              {state.tools.length} {state.tools.length === 1 ? "tool" : "tools"} connected, not read
+              yet
+            </span>
+            <SourceLogos tools={state.tools} faded size={20} />
+          </span>
+        }
+      />
+      <AgentsIdleCard state={state} />
+    </div>
   );
 }
 
 function DashboardBody() {
   const data = useDashboard();
+  const agents = useAgentsState();
   const result = data.result;
   return (
     <div className="mx-auto max-w-[1200px] space-y-8">
       <Header data={data} />
       {result === undefined ? (
         <LoadingState />
+      ) : result === null && agents?.phase === "reading" ? (
+        <AgentsWorking />
       ) : result === null ? (
         <Notice title="Waiting for the first read of the books">
           The agent is connected but has not saved a snapshot yet. Numbers appear after the first

@@ -60,6 +60,7 @@ import { type PanelFocusState, panelFocus } from "./BrainMapFocus";
 import { type Draw, EDGE_SECONDS, type GrowNode, growthPlan } from "./BrainMapGrowth";
 import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
+import { BrainMapIdle, useAgentsState } from "./agents";
 import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import {
@@ -1211,8 +1212,32 @@ function useDemoSwarm(enabled: boolean): FieldOperation[] | undefined {
 /** The node a detail id belongs to: a chip id is "<agent id>|<group>". */
 const ownerOf = (id: string) => id.split("|")[0] ?? id;
 
-/** `embedded`: no page header or feed buttons, for a host page that has its own (/judge). */
+/**
+ * `embedded`: no page header or feed buttons, for a host page that has its own (/judge).
+ * Before Start agents only the idle coordinator shows; once started the live map mounts and
+ * grows as real operations arrive.
+ */
 export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
+  const agents = useAgentsState();
+  const company = useSelectedCompanyName();
+  if (agents === undefined) return null;
+  if (agents && !agents.started)
+    return (
+      <div className="space-y-5">
+        {embedded ? null : (
+          <PageHeader
+            eyebrow={company}
+            title="Your agents are ready to start"
+            description="The tools are connected but nothing has been read yet. Press Start agents: the coordinator calls in helpers as real work is recorded."
+          />
+        )}
+        <BrainMapIdle state={agents} />
+      </div>
+    );
+  return <BrainMapLive embedded={embedded} />;
+}
+
+function BrainMapLive({ embedded }: { embedded: boolean }) {
   const data = useFieldData();
   const company = useSelectedCompanyName();
   const demo = data.source === "demo";

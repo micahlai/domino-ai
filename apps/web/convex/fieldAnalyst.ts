@@ -70,6 +70,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { requireAgentsStarted } from "./fieldAgents";
 import {
   ALREADY_RAN,
   BUSY_TOO_LONG,
@@ -264,6 +265,7 @@ async function childReported(ctx: Ctx, run: Doc<"analystRuns">) {
 export const run = mutation({
   args: { companyId: v.id("companies"), paceMs: v.optional(v.number()) },
   handler: async (ctx, { companyId, paceMs }) => {
+    await requireAgentsStarted(ctx, companyId);
     const pace = Math.max(0, Math.min(MAX_PACE_MS, Math.floor(paceMs ?? DEFAULT_PACE_MS)));
     return startRun(ctx, companyId, "manual", pace);
   },

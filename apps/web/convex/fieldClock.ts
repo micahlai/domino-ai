@@ -18,6 +18,7 @@
  *     nextEvent: { day, inDays, title } | null, fired: [{ day, date, title, summary }] }
  * Mutations
  *   fieldClock.play({ companyId, speed? })   fieldClock.pause({ companyId })
+ *   (play and jump fail with AGENTS_IDLE until fieldAgents.start)
  *   fieldClock.setSpeed({ companyId, speed: 1|5|20 })
  *   fieldClock.jump({ companyId })   move to the day before the next scripted event, then ingest
  */
@@ -39,6 +40,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { requireAgentsStarted } from "./fieldAgents";
 import type { Overlay } from "./fieldFeed";
 import { type IngestResult, requireFeed, requireWorld, runIngest, writeLog } from "./fieldJobs";
 import { deliverEvents } from "./fieldWebhooks";
@@ -169,6 +171,7 @@ export const status = query({
 export const play = mutation({
   args: { companyId: v.id("companies"), speed: v.optional(speedArg) },
   handler: async (ctx, { companyId, speed }) => {
+    await requireAgentsStarted(ctx, companyId);
     const clock = await ensureClock(ctx, companyId);
     const { world } = await requireWorld(ctx, companyId);
     if (!supportsDayClock(world))
@@ -231,6 +234,7 @@ export const setSpeed = mutation({
 export const jump = mutation({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
+    await requireAgentsStarted(ctx, companyId);
     const clock = await ensureClock(ctx, companyId);
     const { row, world, overlay } = await requireWorld(ctx, companyId);
     const profile = profileOfWorld(world);

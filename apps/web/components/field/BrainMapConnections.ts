@@ -14,7 +14,7 @@ import { useFieldData } from "./data";
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
-const VENDOR_OF_TOOL: Record<ToolId, VendorId> = {
+export const VENDOR_OF_TOOL: Record<ToolId, VendorId> = {
   stripe: "stripe",
   ramp: "ramp",
   qbo: "qbo",

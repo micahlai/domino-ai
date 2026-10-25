@@ -19,7 +19,8 @@
  * Mutations
  *   fieldJudge.start({ profile?, sources? })  new judge company (default profile "kestrel");
  *     sources = the JUDGE_SOURCES tools to read (default all six, the bank required), applied
- *     before the first ingest. At most JUDGE_LIMITS.activeCompanies active. { companyId, name }
+ *     before the first ingest. Starts idle: fieldAgents.start queues that first ingest.
+ *     At most JUDGE_LIMITS.activeCompanies active. { companyId, name }
  *   fieldJudge.reset({ companyId })   archive it and start a fresh one with the same profile
  *     and sources.
  *   fieldJudge.leave({ companyId })   archive it, no replacement.
@@ -38,6 +39,7 @@ import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/s
 import { toolInfo } from "./connectors/catalog";
 import type { ToolId } from "./connectors/types";
 import { createFeedCompany } from "./field";
+import { agentsStarted, agentsStatus, requireAgentsStarted } from "./fieldAgents";
 import { type Overlay, servedSnapshot } from "./fieldFeed";
 import { AGENT, requireFeed, requireWorld, writeLog } from "./fieldJobs";
 import { fieldCompany } from "./lib/fieldCompanies";
@@ -127,8 +129,8 @@ async function sourcesOf(ctx: Pick<QueryCtx, "db">, companyId: Id<"companies">) 
 
 /**
  * Turns off the tools the judge left out. Runs in the same transaction that created the
- * company, so the first ingest (scheduled by createFeedCompany, run after commit) reads only
- * the chosen tools.
+ * company, so the first ingest (queued by fieldAgents.start, or at once when a started sandbox
+ * is reset) reads only the chosen tools.
  */
 async function applySources(ctx: MutationCtx, companyId: Id<"companies">, off: ToolId[]) {
   for (const row of await connectionRows(ctx, companyId))
@@ -140,7 +142,12 @@ async function applySources(ctx: MutationCtx, companyId: Id<"companies">, off: T
       });
 }
 
-async function startJudge(ctx: MutationCtx, profile: ProfileId, sources?: readonly string[]) {
+async function startJudge(
+  ctx: MutationCtx,
+  profile: ProfileId,
+  sources?: readonly string[],
+  startNow = false,
+) {
   let plan: ReturnType<typeof judgeSourcePlan>;
   try {
     plan = judgeSourcePlan(sources);
@@ -156,7 +163,10 @@ async function startJudge(ctx: MutationCtx, profile: ProfileId, sources?: readon
       "LIMIT",
     );
   const number = Math.max(0, ...all.map((c) => c.judgeNumber ?? 0)) + 1;
-  const companyId = await createFeedCompany(ctx, 1, profile, { number });
+  // Idle until Start agents (or started at once when a running sandbox is reset).
+  const companyId = await createFeedCompany(ctx, 1, profile, { number }, undefined, {
+    idle: !startNow,
+  });
   await applySources(ctx, companyId, plan.off);
   const names = plan.on.map((t) => toolInfo(t).name).join(", ");
   await writeLog(ctx, companyId, undefined, {
@@ -212,6 +222,7 @@ async function inject(
 ) {
   const company = await requireJudge(ctx, companyId);
   const feed = await requireFeed(ctx, companyId);
+  await requireAgentsStarted(ctx, companyId);
   if (feed.snapshotVersion < 1)
     throw bad(
       "The agents are still reading this company for the first time; try again in a few seconds",
@@ -346,6 +357,7 @@ export const state = query({
       profile: await profileOf(ctx, companyId),
       sources: await sourcesOf(ctx, companyId),
       archived,
+      agentsStarted: (await agentsStatus(ctx, company)).started,
       asOf: company.today,
       snapshotVersion: feed.snapshotVersion,
       lastSnapshotAt: feed.lastSnapshotAt,
@@ -391,8 +403,9 @@ export const reset = mutation({
     const company = await requireJudge(ctx, companyId);
     const profile = (await profileOf(ctx, companyId)) ?? "kestrel";
     const sources: JudgeSource[] = await sourcesOf(ctx, companyId);
+    const wasStarted = await agentsStarted(ctx, companyId);
     await archive(ctx, company);
-    return startJudge(ctx, profile, sources);
+    return startJudge(ctx, profile, sources, wasStarted);
   },
 });
 
