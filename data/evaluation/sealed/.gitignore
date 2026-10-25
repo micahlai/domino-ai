@@ -1,0 +1,3 @@
+# Local custody only: raw test payloads, slices and labels never enter Git.
+*
+!.gitignore

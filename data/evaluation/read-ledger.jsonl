@@ -1,0 +1,12 @@
+{"at":"2026-10-25T01:04:06Z","reader":"E0 custodian (Claude Opus 5.5 worker)","file":"sealed/raw/tenable-submissions.json","purpose":"identity check (name/ticker/FYE) and periodic filing metadata coverage; no amounts in this payload"}
+{"at":"2026-10-25T01:04:54Z","reader":"E0 custodian (Claude Opus 5.5 worker)","file":"sealed/raw/varonis-submissions.json","purpose":"identity check (name/ticker/FYE) and periodic filing metadata coverage; no amounts in this payload"}
+{"at": "2026-10-25T01:05:36+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:05:36+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:05:36+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:05:36+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at":"2026-10-25T01:05:45Z","reader":"E0 custodian (Claude Opus 5.5 worker)","file":"sealed/labels.json","purpose":"count labels with combined-cash secondary present; counts only printed"}
+{"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/labels.json", "purpose": "reuse label salt"}
