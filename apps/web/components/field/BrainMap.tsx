@@ -1866,7 +1866,7 @@ function BrainMapLive({ embedded }: { embedded: boolean }) {
         />
         <StatGroup
           stats={[
-            [versions, versions === 1 ? "books version saved" : "books versions saved"],
+            [versions, versions === 1 ? "books update saved" : "books updates saved"],
             ...(flags
               ? ([
                   [
@@ -2245,12 +2245,12 @@ function MapActions() {
         onClick={() => run(() => actions.advanceFeed(anomaly || undefined))}
       >
         <Download aria-hidden="true" className="size-3.5" />
-        New entries arrive
+        Add new entries
       </Button>
       <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={off} />
       <Button size="sm" variant="outline" disabled={off} onClick={() => run(actions.ingestNow)}>
         <RefreshCw aria-hidden="true" className="size-3.5" />
-        Ingest now
+        Check latest data
       </Button>
       <AutoIngestToggle />
       {error ? (

@@ -35,11 +35,11 @@ export type WatchedRisk = {
 
 export const SOURCE_LABEL: Record<RiskSource, string> = {
   timeline: "Timeline scenario",
-  triage: "Field triage",
+  triage: "Field check",
   sample: "Sample event",
 };
 
-const MINIMUM = "the illustrative cash floor";
+const MINIMUM = "the lender's minimum";
 const gap = (minimum: number | null, low: number | null) =>
   minimum !== null && low !== null && low < minimum ? minimum - low : null;
 

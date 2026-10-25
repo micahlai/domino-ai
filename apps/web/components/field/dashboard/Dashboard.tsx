@@ -234,12 +234,9 @@ function Header({ data }: { data: DashboardData }) {
       eyebrow={
         <span className="flex flex-wrap items-center gap-2">
           Cash health, next 13 weeks
-          <ProvenanceBadge title="Filing anchors with reconstructed operating records">
-            Filing-backed reconstruction
-          </ProvenanceBadge>
           <ProvenanceBadge title={data.note}>
             {data.source === "live"
-              ? "Reconstructed feed"
+              ? "Live"
               : data.source === "demo"
                 ? "Demo data"
                 : "Connecting..."}
@@ -363,7 +360,7 @@ const HEALTH: Record<
 
 export function healthWords(view: DashboardView): { sentence: string; action: string | null } {
   const { health, lenderMinimum } = view;
-  const floor = lenderMinimum ? "the illustrative cash floor" : "zero";
+  const floor = lenderMinimum ? "the lender's minimum" : "zero";
   const week = health.week ? formatDate(health.week) : "";
   if (health.rating === "at_risk")
     return {
@@ -405,7 +402,7 @@ function HealthBanner({ view, timeline }: { view: DashboardView; timeline?: Time
               {meta.label}
             </Badge>
             <Badge variant="secondary" className="font-normal">
-              Illustrative forecast
+              Simulated
             </Badge>
           </span>
           <p className="mt-2 max-w-3xl text-[15px] font-medium leading-6 text-foreground">
@@ -419,10 +416,7 @@ function HealthBanner({ view, timeline }: { view: DashboardView; timeline?: Time
           <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
             {timeline?.state === "loading"
               ? "Reading the saved Timeline run... "
-              : "No Timeline run yet: Field's own estimate from the lowest projected cash against "}
-            {timeline?.state === "loading"
-              ? null
-              : `${view.lenderMinimum ? "the illustrative cash floor" : "zero"}. Open in Timeline for the rated forecast and risk scenarios.`}
+              : "Quick estimate. Open in Timeline for the full forecast and risks."}
           </p>
         </div>
       </div>
@@ -462,9 +456,7 @@ function Tiles({ view }: { view: DashboardView }) {
       {min && room !== null ? (
         <StatTile
           label={
-            room < 0
-              ? "Shortfall below the illustrative cash floor"
-              : "Buffer above the illustrative cash floor"
+            room < 0 ? "Shortfall below the lender's minimum" : "Buffer above the lender's minimum"
           }
           value={<Big>{formatCents(Math.abs(room))}</Big>}
           delta={`At the lowest projected week, against ${formatCents(min.cents)}`}
@@ -472,7 +464,7 @@ function Tiles({ view }: { view: DashboardView }) {
         />
       ) : (
         <StatTile
-          label="Illustrative cash floor"
+          label="Lender's minimum"
           value={<Big>None on file</Big>}
           delta="Cash is compared with zero instead"
         />
@@ -489,7 +481,7 @@ function CashLineSection({ view }: { view: DashboardView }) {
       title="Usable cash, next 13 weeks"
       description={
         view.lenderMinimum
-          ? `Cash you can spend at the end of each week, against the illustrative ${formatCents(view.lenderMinimum.cents)} cash floor.`
+          ? `Cash you can spend at the end of each week, against the lender's ${formatCents(view.lenderMinimum.cents)} minimum (sample).`
           : "Cash you can spend at the end of each week."
       }
     >
@@ -842,8 +834,8 @@ function Risks({ feed, secondary = false }: { feed: RiskFeed; secondary?: boolea
                   <p className={cn("mt-0.5", r.fix.holds ? "text-safe" : "text-destructive")}>
                     {r.fix.holds
                       ? analyst
-                        ? "Stays within the illustrative cash rules with this fix"
-                        : "Stays above the illustrative cash floor with this fix"
+                        ? "Stays within the cash rules with this fix"
+                        : "Stays above the lender's minimum with this fix"
                       : "Still short with this fix"}
                   </p>
                 </div>

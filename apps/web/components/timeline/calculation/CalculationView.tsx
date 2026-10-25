@@ -97,7 +97,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
                 href={originHref}
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                Why that suggestion
+                See suggestion
               </Link>
             ) : null}
             {run.parentRunId ? (
@@ -105,7 +105,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
                 className="font-medium text-primary underline-offset-4 hover:underline"
                 href={timelineCalculationHref(companyId, run.parentRunId)}
               >
-                View previous calculation
+                Compare
               </Link>
             ) : null}
           </p>

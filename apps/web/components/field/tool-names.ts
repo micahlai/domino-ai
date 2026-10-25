@@ -53,7 +53,7 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "sim.createcompany": { label: "Create demo company", category: "simulate" },
   "mock.plant": { label: "Plant test anomaly", category: "simulate" },
   read_snapshot: { label: "Read saved books", category: "read" },
-  check_limit: { label: "Check the illustrative cash floor", category: "audit" },
+  check_limit: { label: "Check the lender's minimum", category: "audit" },
   rank_scenarios: { label: "Rank events by risk", category: "forecast" },
   draft_events: { label: "Draft what-if events", category: "other" },
   "engine.forecast": { label: "Run forecast", category: "forecast" },

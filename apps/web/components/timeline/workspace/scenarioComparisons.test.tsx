@@ -120,7 +120,7 @@ describe("saved scenario comparisons", () => {
         catalogHref="/catalog"
       />,
     );
-    expect(html).toContain("How we got here for Acme pays 30 days late");
+    expect(html).toContain("See how for Acme pays 30 days late");
     expect(html).toContain("/timeline/calculation?runId=");
   });
 

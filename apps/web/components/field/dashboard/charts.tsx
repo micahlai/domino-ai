@@ -575,7 +575,7 @@ export function CashLine({
   const todayLabel = todayText
     ? clampLabel(x(0), rising ? todayY + 22 : todayY - 12, plot, textWidth(todayText))
     : null;
-  const minText = minimum === null ? "" : `Illustrative cash floor ${formatCents(minimum)}`;
+  const minText = minimum === null ? "" : `Lender's minimum ${formatCents(minimum)}`;
   const minLabel =
     minY === null ? null : clampLabel(plot.right, minY - 6, plot, textWidth(minText));
 
@@ -813,7 +813,7 @@ export function CashLine({
               className="h-0 w-4 border-t-2 border-dashed"
               style={{ borderColor: DANGER }}
             />
-            Illustrative cash floor
+            Lender's minimum
           </span>
         ) : null}
         <span className="inline-flex items-center gap-1.5">

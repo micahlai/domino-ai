@@ -282,7 +282,7 @@ export function WorkspaceView({
                 href={timelineCalculationHref(run.companyId, run.runId)}
                 data-testid="action-calculation"
               >
-                How we got here
+                See how
               </Link>
             </Button>
             {run.kind !== "scenario" || risksHref ? (
@@ -397,7 +397,7 @@ export function WorkspaceView({
                   href={originHref}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  Why that suggestion
+                  See suggestion
                 </Link>
               </p>
             ) : null}

@@ -98,7 +98,7 @@ export function FieldTraceView() {
     return (
       <Notice
         title="Saved run could not be verified"
-        text="Its identity or receipt did not match this link."
+        text="Its saved record did not match this link."
       />
     );
   return <TraceContent trace={trace.value} />;

@@ -16,6 +16,7 @@ import {
 import { formatCents, formatDate } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import { BrainMap } from "../field/BrainMap";
+import { OpenInTimeline } from "../field/OpenInTimeline";
 import { FieldCompanyOverride } from "../field/company";
 import { FieldDataProvider } from "../field/data";
 import { Button } from "../ui/button";
@@ -89,6 +90,16 @@ function SidePanel({ state, onLeave }: { state: JudgeState; onLeave: () => void 
       <Verdict companyId={state.companyId} />
       <Clock companyId={state.companyId} />
       <Surprises state={state} />
+      {state.snapshotVersion > 0 ? (
+        <div className="space-y-2 rounded-lg border bg-card p-4 shadow-xs">
+          <p className="text-[13px] text-muted-foreground">
+            Try your own events and questions on the forecast.
+          </p>
+          <FieldCompanyOverride companyId={state.companyId} name={state.name}>
+            <OpenInTimeline variant="outline" label="Open in Timeline" />
+          </FieldCompanyOverride>
+        </div>
+      ) : null}
       <div className="space-y-2 rounded-lg border bg-card p-4 shadow-xs">
         <div className="flex flex-wrap gap-2">
           <Button

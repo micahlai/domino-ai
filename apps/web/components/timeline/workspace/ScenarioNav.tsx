@@ -274,10 +274,10 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
                 </span>
                 <Link
                   href={timelineCalculationHref(run.companyId, entry.runId)}
-                  aria-label={`How we got here for ${name}`}
+                  aria-label={`See how for ${name}`}
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  How we got here
+                  See how
                 </Link>
               </span>
             </div>

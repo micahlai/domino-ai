@@ -14,7 +14,7 @@ import {
 } from "./explain-model";
 import { traceProvenanceLine } from "./story";
 
-const FLOOR = "illustrative cash floor";
+const FLOOR = "lender's minimum";
 
 export function selectedScenario(trace: FieldTrace) {
   return trace.selection.scenarioId
@@ -263,7 +263,7 @@ export function traceExplain(trace: FieldTrace): Explain {
               .join(" · "),
           })),
           ...(trace.truncation.operations
-            ? [{ label: "Note", value: "Older steps were omitted from this bounded receipt." }]
+            ? [{ label: "Note", value: "Older steps were left out." }]
             : []),
         ],
       },
@@ -273,7 +273,7 @@ export function traceExplain(trace: FieldTrace): Explain {
           ...(r.low
             ? [{ label: "Lowest usable cash", value: `${r.low.exact} (week of ${r.lowWeek})` }]
             : []),
-          ...(r.floor ? [{ label: "Illustrative cash floor", value: r.floor.exact }] : []),
+          ...(r.floor ? [{ label: "Lender's minimum (sample)", value: r.floor.exact }] : []),
           ...r.facts.flatMap((f) => (f.money ? [{ label: f.text, value: f.money.exact }] : [])),
         ],
       },
@@ -304,14 +304,14 @@ export function traceExplain(trace: FieldTrace): Explain {
               ? trace.providers
                   .map((p) => `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`)
                   .join("; ")
-              : "No provider receipt recorded",
+              : "None recorded",
           },
           {
             label: "Advisor / coordinator",
             value: `${trace.aiSummary?.status ?? "No advisor summary recorded"} / ${trace.coordinator?.status ?? "No coordinator record"}`,
           },
           ...(trace.truncation.providers
-            ? [{ label: "Note", value: "Some provider receipts were omitted." }]
+            ? [{ label: "Note", value: "Some AI records were left out." }]
             : []),
         ],
       },

@@ -18,7 +18,7 @@ import { useSelectedCompany } from "./company";
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export const OPEN_IN_TIMELINE_NOTE =
-  "Saves the latest books as a Timeline forecast with illustrative cash rules, then starts Timeline's risk analysis. Nothing is paid or moved.";
+  "Opens the latest books in Timeline and checks risks. Nothing is paid or moved.";
 
 export function OpenInTimeline({
   variant = "default",
