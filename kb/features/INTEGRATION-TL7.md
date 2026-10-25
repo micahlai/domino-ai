@@ -1,14 +1,15 @@
 # TL7 integration: Timeline merged into Field
 
-Date: 2026-10-25. Branch `integrate/tl7` (worktree `domino-integrate`), from field/main 836ab8c. It also merges field/main 49d238f (CREAO robustness, sim clock). Not pushed and not merged to main.
+Date: 2026-10-25. Branch `integrate/tl7` (worktree `domino-integrate`), from field/main 836ab8c. It also merges field/main 49d238f (CREAO robustness, sim clock), field/main 9d4d341 (brain map squircles, toolbox) and `origin/TL9-chat-checkpoint` 8c33b99 (conversational timeline sidebar). Not pushed and not merged to main.
 
 ## What merged
 
 - `origin/TL7-checkpoint` 1140c26 (66 commits, based on shared/shell f20f0c4). It brings Timeline TL1-TL7: saved baselines, workspace runs, constraints, questions, the TL6 output envelope (`timeline/output:get`), TL7 automatic analysis (`timeline/analysis:*`), the saved-scenario sidebar, chart scales and the inline scenario editor.
 - Merge commit 3396249. The only conflict was the table count in `apps/web/convex/schemaComposition.test.ts`.
 - The later field/main merge (af9497f) had two conflicts. In `AppShell.tsx` both imports were kept: SimClockBar and the selected profile. The schema count also conflicted.
-- Composed schema: 39 tables. Timeline has 16 (`risks` ... `timelineAnalyses`). Field has 23, including `findings`, `connections`, `aiCalls`, `apifyRuns`, `nessieLinks`, `simClocks` and the new `timelineLinks`.
-- `schema.ts` is unchanged. One copy of the shared theme is kept, since TL7 did not touch it. `api.d.ts` registrations were hand-merged and then confirmed by a local `convex dev` codegen (only its formatting differed). `package.json` and the lockfile were not changed by either lane. `lane-imports` passes (19 cross-lane imports, 0 in harness files).
+- field/main 9d4d341 merged cleanly. TL9 conflicted only on the schema count.
+- Composed schema: 41 tables. Timeline has 18 (`risks` ... `timelineAnalyses`, plus TL9's `timelineChats` and `timelineChatRequests`). Field has 23, including `findings`, `connections`, `aiCalls`, `apifyRuns`, `nessieLinks`, `simClocks` and the new `timelineLinks`.
+- `schema.ts` is unchanged. One copy of the shared theme is kept, since TL7 did not touch it. `api.d.ts` registrations were hand-merged and then confirmed by a local `convex dev` codegen (only its formatting differed). `package.json` and the lockfile were not changed by either lane. `lane-imports` passes (31 cross-lane imports after all merges, 0 in harness files).
 
 ## Joint engine change (shared math: both lanes' numbers shift)
 
@@ -51,6 +52,12 @@ Timeline's company id is the seed's `company.id`, which is the sim profile id (`
 - **Dashboard without a run:** Field's derivation, labelled "Field estimate", with Open in Timeline.
 - **Navigation:** the top bar Timeline link goes to `/c/<selected company>/timeline`. The company switcher on Timeline pages moves to the picked company (2U goes to the dashboard). Opening a Timeline URL selects its company. `/simulations` is now Timeline's saved-run catalog for the selected company. The old demo sub-nav stays only on legacy `/c` pages.
 
+## TL9 chat
+
+- TL9 adds `timeline/chat` (begin/send/confirm/reset/get/list). The chat is pinned to one saved run and is company-scoped like every Timeline function.
+- No seam or dashboard change was needed: imported Field runs are ordinary workspace runs, so the chat sidebar appears beside the selected company's imported run.
+- Written-off invoices: the chat's record matcher can still name one. Confirming then rejects it through the workspace check ("written off on ..."), so nothing wrong is saved, but the wording could be friendlier.
+
 ## Overlap decision
 
 - Timeline TL7 automatic analysis is the source of truth for risk scenarios and responses on the dashboard and the timeline.
@@ -60,7 +67,7 @@ Timeline's company id is the seed's `company.id`, which is the sim profile id (`
 
 **Automated checks:**
 - tsc: web, convex and the four packages.
-- vitest: contracts 496, engine 376, sim 73, agents 326, web 1056.
+- vitest after all merges: contracts 496, engine 376, sim 73, agents 326, web 1137.
 - `pnpm --filter @domino/web build`.
 - Biome: changed files clean. `pnpm lint` fails only on `apps/web/components/field/BrainMapSourceDemo.json` formatting. That failure is pre-existing on field/main 49d238f and was left untouched.
 - `convex/tests/fieldTimeline.test.ts` covers Osprey end to end: same seed hash and result identity, TL6 health `at_risk` from `con_lender_min`, idempotent reopen, and a succeeded TL7 analysis with saved risks.
@@ -70,6 +77,7 @@ Timeline's company id is the seed's `company.id`, which is the sim profile id (`
 - The dashboard showed "At risk, Rated by Timeline", the Timeline chart, and 3 saved risk scenarios plus Field triage scenarios.
 - The analysis page, `/simulations`, and the company switch to Kestrel (follow, import, dashboard "On track, Rated by Timeline") all worked.
 - At 390px the document width was 390. Console errors: 0.
+- TL9 chat on Osprey's imported run worked: "pay a $250,000 legal settlement", then the date, then the counterparty. It asked one question at a time, showed the review, and confirm saved the scenario. Console errors: 0.
 - Screenshots are in the session scratchpad `integrate/` folder.
 
 ## Remaining gaps
