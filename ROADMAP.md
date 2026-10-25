@@ -26,7 +26,7 @@ Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
 | L0 contracts | Claude worker (lead subagent, Opus), launched 2026-10-24 | L0-learning-contracts / ../domino-L0 from 16a3a56 | Worker commits and stops; lead runs `codex review` audit | [Card](kb/tasks/L0-learning-contracts.md): additive schemas, synthetic tests, focused test/typecheck/lint; Codex audit |
-| E0 data custody | Claude worker (lead subagent, Opus), launched 2026-10-24 | E0-evaluation-custody / ../domino-E0 from 16a3a56 | One SEC probe; stops if 403 (no authorized contact User-Agent). Offline ledger/manifest regardless | [Card](kb/tasks/E0-evaluation-custody.md): hashes, coverage, exposure ledger, nothing sealed committed; Codex audit |
+| E0 data custody | Claude worker finished at b441a2a (data 6179238); Codex CLI review running | E0-evaluation-custody / ../domino-E0 from 16a3a56 | Await `codex review` verdict; worker reports 16/16 test pairs eligible, 6 SEC GETs, dev 4/8 + validation 4/4; manifest b4005325..., protocol 41344e7a... | [Card](kb/tasks/E0-evaluation-custody.md): hashes, coverage, exposure ledger, nothing sealed committed; Codex audit |
 
 ## Review
 
@@ -59,5 +59,5 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ2 one Claude lead with a queue and subagents | Claude lead | User launches C0; actual slots verified | This roadmap/control handoff ready; Codex stops competing dispatch |
 | RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
 | RQ4 CREAO setup says done | Lead-assigned verifier | User-reported empty memory/data access and input/key steps | Verify remote `prompt` and backend config; no isolation/provider-success claim yet |
-| RQ5 SEC contact User-Agent for E0 | User decision | E0 network work | SEC returns 403 without declared contact UA. Needs user to authorize a contact identity, or E0 stays offline-only |
+| RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
