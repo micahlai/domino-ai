@@ -47,6 +47,11 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   check_limit: { label: "Check the lender's limit", category: "audit" },
   rank_scenarios: { label: "Rank events by risk", category: "forecast" },
   draft_events: { label: "Draft what-if events", category: "other" },
+  "engine.forecast": { label: "Run forecast", category: "forecast" },
+  "engine.stresstest": { label: "Stress test", category: "forecast" },
+  "engine.scorefix": { label: "Score a fix", category: "forecast" },
+  "engine.scanrisks": { label: "Scan for risks", category: "forecast" },
+  "convex.analystruns": { label: "Save analyst run", category: "other" },
 };
 
 const CATEGORIES = new Set<string>(Object.keys(TOOL_CATEGORY_LABEL));
@@ -83,7 +88,12 @@ const groupOf = (category: ToolCategory) => `category:${category}`;
 export function describeTool(raw: string, category?: string): ToolInfo {
   const key = raw.trim().toLowerCase();
   if (category === "apify" || key.startsWith("apify.") || key.startsWith("apify/"))
-    return { label: humanize(raw), category: "apify", group: groupOf("apify"), demoActor: true };
+    return {
+      label: humanize(raw.replace(/(^|[./])demo-/i, "$1")),
+      category: "apify",
+      group: groupOf("apify"),
+      demoActor: true,
+    };
   const known = KNOWN[key];
   if (known) return { ...known, group: groupOf(known.category) };
   if (isCategory(category)) return { label: humanize(raw), category, group: groupOf(category) };

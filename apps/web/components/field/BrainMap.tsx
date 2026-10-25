@@ -93,6 +93,8 @@ type CardData = View & {
   dimmed: boolean;
   /** Root agents: how many of their copies are working now. */
   running: number;
+  /** Cards in the lower part of the web open their hover card upward, so it is not cut off. */
+  above: boolean;
 };
 type StackData = View & { type: "stack"; stack: Stack; titles: string[]; dimmed: boolean };
 type MapNode = Node<CardData, "card"> | Node<StackData, "stack">;
@@ -286,7 +288,7 @@ function CardNode({ data }: NodeProps<Node<CardData, "card">>) {
           <SideBody node={node} data={data} />
         )}
       </div>
-      {showHover ? <HoverCard node={node} chip={hoverChip} /> : null}
+      {showHover ? <HoverCard node={node} chip={hoverChip} above={data.above} /> : null}
     </motion.div>
   );
 }
@@ -516,14 +518,15 @@ function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
   );
 }
 
-function HoverCard({ node, chip }: { node: BrainNode; chip?: ToolChip }) {
+function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; above: boolean }) {
+  const place = above ? "bottom-full mb-2" : "top-full mt-2";
   const now = useNow(1000);
   if (chip) {
     const tools = [
       ...new Map(chip.operations.flatMap((op) => (op.tool ? [[op.tool, op]] : []))).values(),
     ];
     return (
-      <div role="tooltip" className={TOOLTIP}>
+      <div role="tooltip" className={cn(TOOLTIP, place)}>
         <p className="text-xs text-muted-foreground">Tools · {node.title}</p>
         <p className="text-sm font-medium">{chip.label}</p>
         <ul className="mt-1.5 space-y-0.5 text-xs">
@@ -548,7 +551,7 @@ function HoverCard({ node, chip }: { node: BrainNode; chip?: ToolChip }) {
   const time = elapsed(node, now);
   const lastMessage = node.messages.at(-1);
   return (
-    <div role="tooltip" className={TOOLTIP}>
+    <div role="tooltip" className={cn(TOOLTIP, place)}>
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <StatusDot status={stateOf(node)} />
         {isAgent(node)
@@ -590,7 +593,7 @@ function HoverCard({ node, chip }: { node: BrainNode; chip?: ToolChip }) {
 }
 
 const TOOLTIP =
-  "pointer-events-none absolute left-3 top-full z-20 mt-2 w-72 rounded-xl border bg-popover p-3 text-left text-popover-foreground shadow-[0_12px_32px_-12px_hsl(var(--foreground)/0.25)]";
+  "pointer-events-none absolute left-3 z-20 w-72 rounded-xl border bg-popover p-3 text-left text-popover-foreground shadow-[0_12px_32px_-12px_hsl(var(--foreground)/0.25)]";
 
 function DemoActorTag() {
   return (
@@ -856,6 +859,7 @@ export function BrainMap() {
             leaving: leaving.has(node.id),
             dimmed: focus.id !== null && !focus.related.has(node.id),
             running: box.depth === 0 && isAgent(node) ? running(node.id) : 0,
+            above: box.y + box.h / 2 > layout.height * 0.55,
             ...view,
           },
           draggable: false,

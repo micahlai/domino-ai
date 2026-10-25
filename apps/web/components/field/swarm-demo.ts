@@ -32,7 +32,7 @@ const RESULTS = [
   "Lowest cash $1.8M in week 11. Stays above the lender's limit.",
   "Lowest cash $1.2M in week 7. Stays above the lender's limit.",
 ];
-const SOURCES = ["billing", "cards", "bank", "crm", "payroll", "books"];
+const SOURCES = ["billing", "cards", "plaid", "crm", "payroll", "books"];
 
 type Row = Omit<FieldOperation, "id" | "at" | "seq">;
 export type SwarmState = {
@@ -68,7 +68,7 @@ export function scriptRound(round: number): Row[][] {
     return beats[i] as Row[];
   };
   const writer = `writer#${round + 1}`;
-  const source = SOURCES[round % SOURCES.length] ?? "bank";
+  const source = SOURCES[round % SOURCES.length] ?? "plaid";
   const analystTask = `Test ${FORECASTERS} what-if events against this week's forecast`;
 
   at(0).push(

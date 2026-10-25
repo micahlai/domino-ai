@@ -16,33 +16,48 @@ export type LiveLogRow = FunctionReturnType<typeof api.field.log>["page"][number
 export type LiveFinding = FunctionReturnType<typeof api.field.findings>[number];
 
 /**
- * Agent swarm fields the log is gaining (field/swarm lane). Optional and read defensively, so
- * rows written before them, or by a backend without them, map exactly as before.
+ * Agent web fields on log rows (convex/lib/agentLog.ts). All optional and read defensively, so
+ * rows written before them map exactly as before. `agent` repeats agentId on these rows.
  */
 export type SwarmLogFields = {
-  agentInstanceId?: string;
+  /** "analyst#1", "forecaster#3", "research#1", "analyst.loop". */
+  agentId?: string;
   agentKind?: string;
   parentAgentId?: string;
-  /** "message" for agent -> agent messages. */
-  kind?: string;
-  from?: string;
-  to?: string;
-  /** Lifecycle step: spawned, working, done or failed. */
+  event?: "status" | "message" | "tool";
+  /** Lifecycle step on status rows: spawned, working, done or failed. */
   status?: string;
   currentTask?: string;
+  fromAgentId?: string;
+  toAgentId?: string;
+  /** "engine" | "apify" | "convex". */
   toolCategory?: string;
-  progress?: number;
-  instructions?: string;
+  /** "demo actor" on Apify rows. */
+  toolLabel?: string;
+  step?: number;
+  steps?: number;
 };
 type SwarmRow = LiveLogRow & SwarmLogFields;
 
 const AGENT_KINDS = new Set(["domino", "claude", "creao", "system"]);
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : undefined);
-/** A log agent reference: field ids keep their friendly names ("field.audit" -> "Audit agent"). */
-const agentRef = (v: unknown) => {
-  const s = str(v);
-  return s && !s.includes("#") ? liveAgentName(s) : s;
-};
+
+/**
+ * Agent ids -> how the map names them. A copy started by another agent ("forecaster#3" with a
+ * parent) stays an instance. A top-level agent's id ("analyst#1") is its role, so it lands on the
+ * built-in Analyst node rather than a second analyst.
+ */
+function agentNamer(rows: SwarmRow[]) {
+  const children = new Set(
+    rows.flatMap((r) => (r.parentAgentId && (r.agentId ?? r.agent) ? [r.agentId ?? r.agent] : [])),
+  );
+  return (v: unknown): string | undefined => {
+    const id = str(v);
+    if (!id) return undefined;
+    if (!id.includes("#")) return liveAgentName(id);
+    return children.has(id) ? id : liveAgentName(id.split("#")[0]);
+  };
+}
 
 /** Log agent ids -> names the brain map catalog knows (see catalog.ts). */
 const AGENT_NAME: Record<string, string> = {
@@ -53,6 +68,10 @@ const AGENT_NAME: Record<string, string> = {
   "field.analyst": "Analyst",
   "field.forecaster": "Forecaster",
   "field.research": "Research agent",
+  analyst: "Analyst",
+  forecaster: "Forecaster",
+  research: "Research agent",
+  "analyst.loop": "Auto-run loop",
 };
 
 /**
@@ -116,32 +135,44 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
   );
   const runStart = new Map<string, LiveLogRow>();
   for (const row of sorted) if (row.runId && !runStart.has(row.runId)) runStart.set(row.runId, row);
+  const name = agentNamer(sorted as SwarmRow[]);
   return sorted.map((plain) => {
     const row = plain as SwarmRow;
     const first = row.runId ? runStart.get(row.runId) : undefined;
     const parentId =
       first && first._id !== row._id && first.agent !== row.agent ? first._id : undefined;
-    const kind = row.kind === "message" ? "message" : operationKind(row.action);
+    const kind: OperationKind =
+      row.event === "message"
+        ? "message"
+        : row.event === "status" && row.status === "spawned"
+          ? "spawn"
+          : operationKind(row.action);
     const status = isLifecycle(row.status) ? row.status : operationStatus(row.action);
     const agentKind = str(row.agentKind);
+    const agentId = str(row.agentId);
+    const named = agentId ? name(agentId) : undefined;
+    const instanceId = named?.includes("#") ? named : undefined;
+    const progress =
+      typeof row.step === "number" && typeof row.steps === "number" && row.steps > 0
+        ? Math.min(1, Math.max(0, row.step / row.steps))
+        : undefined;
     return {
       id: row._id,
       at: row.at,
       seq: row._creationTime,
-      agent: liveAgentName(row.agent, row.actor),
+      agent: named && !instanceId ? named : liveAgentName(row.agent, row.actor),
       actor: row.actor,
       ...(row.tool && { tool: row.tool }),
       ...(row.source && { source: liveSourceName(row.source) }),
-      ...(str(row.agentInstanceId) && { instanceId: str(row.agentInstanceId) }),
+      ...(instanceId && { instanceId }),
       ...(agentKind &&
         AGENT_KINDS.has(agentKind) && { agentKind: agentKind as FieldOperation["agentKind"] }),
-      ...(agentRef(row.parentAgentId) && { parentAgentId: agentRef(row.parentAgentId) }),
-      ...(agentRef(row.from) && { from: agentRef(row.from) }),
-      ...(agentRef(row.to) && { to: agentRef(row.to) }),
+      ...(name(row.parentAgentId) && { parentAgentId: name(row.parentAgentId) }),
+      ...(name(row.fromAgentId) && { from: name(row.fromAgentId) }),
+      ...(name(row.toAgentId) && { to: name(row.toAgentId) }),
       ...(str(row.currentTask) && { currentTask: str(row.currentTask) }),
       ...(str(row.toolCategory) && { toolCategory: str(row.toolCategory) }),
-      ...(str(row.instructions) && { instructions: str(row.instructions) }),
-      ...(typeof row.progress === "number" && { progress: row.progress }),
+      ...(progress !== undefined && { progress }),
       kind,
       status,
       summary: row.summary ?? row.action,
