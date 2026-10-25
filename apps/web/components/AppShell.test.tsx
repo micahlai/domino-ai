@@ -29,7 +29,7 @@ describe("AppShell navigation", () => {
       "/field",
       "/field/map",
       "/field/connect",
-      "/c/kestrel/timeline",
+      "/c/operating%2F2u%2Fbaseline/timeline",
       "/simulations",
       "/judge",
     ].map((h) => html.indexOf(`href="${h}"`));
@@ -37,8 +37,9 @@ describe("AppShell navigation", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
     expect(html).toContain("Main navigation");
-    // The 2U case study opens from the company switcher, not a separate top bar link.
-    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-label="Company"');
+    expect(html).toContain('aria-label="Scenario"');
+    expect(html).toContain("Based on 2U public filings, with reconstructed operating data.");
     for (const gone of [
       "/playground",
       'href="/connect"',

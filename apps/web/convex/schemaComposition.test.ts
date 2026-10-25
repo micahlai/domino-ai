@@ -61,7 +61,7 @@ const LANES = {
 };
 
 const INDEXES: Record<string, Array<[string, string[]]>> = {
-  companies: [],
+  companies: [["by_operating_demo", ["operatingDemo.company", "operatingDemo.scenario"]]],
   sources: [["by_company", ["companyId"]]],
   snapshots: [["by_company_asOf", ["companyId", "asOf"]]],
   models: [["by_company_version", ["companyId", "version"]]],
