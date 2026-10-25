@@ -260,5 +260,14 @@ export function toFinding(f: LiveFinding): FieldFinding {
     ...(f.note && { note: f.note }),
     ...(f.explanation?.text && { explanation: f.explanation.text }),
     ...(f.explanation?.suggestedCheck && { suggestedCheck: f.explanation.suggestedCheck }),
+    ...(f.learned && {
+      learned: {
+        effect: f.learned.effect,
+        text: f.learned.text,
+        ruleId: f.learned.ruleId,
+        version: f.learned.version,
+        ...(f.learned.undoneAt && { undoneAt: f.learned.undoneAt }),
+      },
+    }),
   };
 }

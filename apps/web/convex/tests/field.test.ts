@@ -165,7 +165,13 @@ describe("field ingest", () => {
     const approvals = await t.run((ctx) => ctx.db.query("approvals").collect());
     expect(approvals).toMatchObject([{ fixId: fid, decision: "approved" }]);
     expect(await t.query(api.field.findings, { companyId })).toEqual([]);
-    expect((await actions(t, companyId))[0]).toBe("escalation.approved");
+    // The decision row, then the Learning agent's rows for the rule it learned.
+    expect((await actions(t, companyId)).slice(0, 4)).toEqual([
+      "agent.done",
+      "learning.tool",
+      "agent.working",
+      "escalation.approved",
+    ]);
 
     const exported = await t.query(api.field.exportSeed, { companyId });
     const parsed = parseWeeklySeedJson(exported.json);

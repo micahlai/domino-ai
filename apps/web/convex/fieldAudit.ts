@@ -38,6 +38,7 @@ import {
 } from "./_generated/server";
 import { AUDIT_AGENT } from "./fieldAi";
 import { writeLog } from "./fieldJobs";
+import { LEARNED_BY, flagEffects } from "./fieldLearning";
 import { type AgentRow, agentLog } from "./lib/agentLog";
 import { SWARM_LIMIT, mapBounded, member } from "./lib/swarm";
 
@@ -157,6 +158,10 @@ export const store = internalMutation({
     if (!feed || !pending || pending.snapshotId !== snapshotId) return [];
     if (pending.phase !== "audit") return [];
     const added: string[] = [];
+    // Learned rules in force at this audit's own server stamp (never earlier snapshots).
+    const cutoff = a.findings[0]?.detectedAt ?? new Date().toISOString();
+    const learned = await flagEffects(ctx, { companyId, snapshotId, cutoff, findings: a.findings });
+    let hidden = 0;
     for (const f of a.findings) {
       const existing = await ctx.db
         .query("findings")
@@ -165,19 +170,52 @@ export const store = internalMutation({
         )
         .first();
       if (existing) continue;
-      const escalated = f.severity === "high";
+      const effect = learned.effects[f.id];
+      const receipt = effect && {
+        effect: effect.effect,
+        text: effect.text,
+        ruleId: effect.ruleId,
+        recordId: effect.recordId,
+        version: effect.version,
+        severityBefore: effect.severityBefore,
+      };
+      if (effect?.effect === "suppressed") {
+        // Not flagged: kept as a record with its receipt, outside the review queue.
+        await ctx.db.insert("findings", {
+          companyId,
+          findingId: f.id,
+          snapshotId,
+          version,
+          kind: f.kind,
+          severity: f.severity,
+          summary: f.summary,
+          refs: f.refs,
+          detectedAt: f.detectedAt,
+          escalated: false,
+          status: "rejected",
+          decidedBy: LEARNED_BY,
+          decidedAt: cutoff,
+          note: effect.text,
+          learned: receipt,
+        });
+        hidden++;
+        continue;
+      }
+      const severity = effect?.severityAfter ?? f.severity;
+      const escalated = severity === "high";
       await ctx.db.insert("findings", {
         companyId,
         findingId: f.id,
         snapshotId,
         version,
         kind: f.kind,
-        severity: f.severity,
+        severity,
         summary: f.summary,
         refs: f.refs,
         detectedAt: f.detectedAt,
         escalated,
         status: "open",
+        ...(receipt && { learned: receipt }),
       });
       added.push(f.id);
       if (escalated)
@@ -190,7 +228,9 @@ export const store = internalMutation({
           summary: f.summary,
         });
     }
+    await learned.commit();
     const n = a.findings.length;
+    const learnedNote = hidden > 0 ? `; ${hidden} not flagged by learned rules` : "";
     const failed = a.failed.length > 0 ? `; ${plural(a.failed.length, "checker")} failed` : "";
     await writeLog(ctx, companyId, a.ingestRunId, {
       actor: "engine",
@@ -198,7 +238,7 @@ export const store = internalMutation({
       refs: added,
       agent: AUDIT_LEAD,
       tool: "engine.mergeAuditFindings",
-      summary: `Audit found ${plural(n, "issue")}, ${added.length} new (${a.checkers} checkers in parallel${failed})`,
+      summary: `Audit found ${plural(n, "issue")}, ${added.length} new${learnedNote} (${a.checkers} checkers in parallel${failed})`,
     });
     await agentLog(ctx, companyId, a.swarmRunId, {
       action: "agent.done",

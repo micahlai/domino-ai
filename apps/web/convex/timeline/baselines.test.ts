@@ -289,7 +289,8 @@ describe("timeline baselines", () => {
       return out;
     });
     // Every Field table after the TL7 joint integration, counted from the composed schema.
-    expect(Object.keys(counts)).toHaveLength(28);
+    // 29 since Field added learnedRules (fieldLearning.ts).
+    expect(Object.keys(counts)).toHaveLength(29);
     expect(Object.values(counts).every((n) => n === 0)).toBe(true);
     // The stored seed is canonical text, so its hash preimage is reproducible.
     const [row] = await rows(t);

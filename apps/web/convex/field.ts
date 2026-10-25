@@ -82,6 +82,7 @@ import {
   sha256,
   writeLog,
 } from "./fieldJobs";
+import { learnFromFinding } from "./fieldLearning";
 import { FIELD_COMPANIES, profileOfName } from "./lib/fieldCompanies";
 import { Timestamp, parse } from "./lib/parse";
 
@@ -352,6 +353,7 @@ const publicFinding = (f: Doc<"findings">) => ({
   decidedAt: f.decidedAt,
   note: f.note,
   explanation: f.explanation,
+  ...(f.learned && { learned: f.learned }),
 });
 
 export const findings = query({
@@ -414,7 +416,15 @@ export const decide = mutation({
       agent: "field.worker",
       summary: `${decision === "approved" ? "Confirmed" : "Dismissed"}: ${finding.summary}`,
     });
-    return { approvalId };
+    const ruleId = await learnFromFinding(ctx, {
+      companyId,
+      finding,
+      decision,
+      note: text,
+      by,
+      at,
+    });
+    return { approvalId, learnedRule: ruleId };
   },
 });
 

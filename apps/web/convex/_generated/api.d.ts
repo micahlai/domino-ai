@@ -47,6 +47,7 @@ import type * as fieldDashboard from "../fieldDashboard.js";
 import type * as fieldFeed from "../fieldFeed.js";
 import type * as fieldJobs from "../fieldJobs.js";
 import type * as fieldJudge from "../fieldJudge.js";
+import type * as fieldLearning from "../fieldLearning.js";
 import type * as fieldNessie from "../fieldNessie.js";
 import type * as fieldNotifications from "../fieldNotifications.js";
 import type * as fieldOperating from "../fieldOperating.js";
@@ -173,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   fieldFeed: typeof fieldFeed;
   fieldJobs: typeof fieldJobs;
   fieldJudge: typeof fieldJudge;
+  fieldLearning: typeof fieldLearning;
   fieldNessie: typeof fieldNessie;
   fieldNotifications: typeof fieldNotifications;
   fieldOperating: typeof fieldOperating;

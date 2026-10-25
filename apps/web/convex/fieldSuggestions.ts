@@ -24,6 +24,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { requireFeed, writeLog } from "./fieldJobs";
+import { learnFromSuggestion } from "./fieldLearning";
 
 const status = v.union(v.literal("open"), v.literal("accepted"), v.literal("declined"));
 
@@ -49,6 +50,7 @@ const view = (s: Doc<"suggestions">) => ({
   ...(s.decidedBy && { decidedBy: s.decidedBy }),
   ...(s.decidedAt && { decidedAt: s.decidedAt }),
   ...(s.note && { note: s.note }),
+  ...(s.learned && { learned: s.learned }),
   createdAt: s.createdAt,
   updatedAt: s.updatedAt,
 });
@@ -128,6 +130,7 @@ export const decide = mutation({
       agent: "field.worker",
       summary: `${decision === "accepted" ? "Accepted" : "Declined"} suggestion: ${row.fix.label} (${row.scenarioTitle}). A decision record only; no money moved.`,
     });
+    await learnFromSuggestion(ctx, { companyId, row, decision, note: text, by, at });
     return { id, status: decision };
   },
 });

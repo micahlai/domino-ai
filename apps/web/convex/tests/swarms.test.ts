@@ -196,9 +196,17 @@ describe("suggestion records", () => {
     expect(await t.run((ctx) => ctx.db.query("approvals").take(1))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("snapshots").collect())).toHaveLength(2);
     const logs = await t.run((ctx) => ctx.db.query("log").collect());
+    // The decision, then the Learning agent's rows for the fix preference it learned.
     expect(logs).toMatchObject([
       { companyId: first, action: "suggestion.accepted", actor: "person" },
+      { companyId: first, action: "agent.working", agentId: "learning#1" },
+      { companyId: first, action: "learning.tool", agentId: "learning#1" },
+      { companyId: first, action: "agent.done", agentId: "learning#1" },
     ]);
+    expect(await t.query(api.fieldLearning.list, { companyId: first })).toMatchObject({
+      rules: [{ active: true, source: "You approved a suggestion" }],
+    });
+    expect((await t.query(api.fieldLearning.list, { companyId: second })).rules).toEqual([]);
   });
 
   it("returns the newest 50 suggestions even when their ids sort last", async () => {
