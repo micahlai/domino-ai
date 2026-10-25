@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { SnapshotSchema, WorldStateSchema } from "@domino/contracts";
 import { engine } from "@domino/engine";
 import { describe, expect, it } from "vitest";
-import { thousandsToCents } from "./operating/anchors.ts";
+import { reportedValueToCents, thousandsToCents } from "./operating/anchors.ts";
 import {
   OPERATING_COMPANY_IDS,
   OPERATING_SCENARIO_IDS,
@@ -123,9 +123,12 @@ describe("filing-backed operating demos", () => {
             b.collectionsCents +
             b.receivablesAdjustmentCents,
         ).toBe(b.endingReceivablesCents);
-        expect(b.openingDeferredRevenueCents + b.invoicedCents - b.recognizedRevenueCents).toBe(
-          b.endingDeferredRevenueCents,
-        );
+        expect(
+          b.openingDeferredRevenueCents +
+            b.invoicedCents -
+            b.recognizedRevenueCents +
+            (b.deferredRevenueAdjustmentCents ?? 0),
+        ).toBe(b.endingDeferredRevenueCents);
         const e = p.expenseBridge;
         expect(
           e.gaapExpensesCents - e.identifiedNoncashExpensesCents + e.cashConversionAdjustmentCents,
@@ -185,7 +188,7 @@ describe("filing-backed operating demos", () => {
       expect(p.reported.find((r) => r.id === f.id)?.cents).toBe(f.cents);
     for (const company of OPERATING_COMPANY_IDS)
       for (const r of operatingProvenance({ company, scenario: "baseline" }).reported) {
-        if (r.sourceValue) expect(thousandsToCents(r.sourceValue)).toBe(r.cents);
+        if (r.sourceValue) expect(reportedValueToCents(r.sourceValue, r.sourceUnit!)).toBe(r.cents);
         expect(r.sourceUrl).toMatch(/^https:\/\//);
         expect(Number.isSafeInteger(r.cents)).toBe(true);
       }

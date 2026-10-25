@@ -1,6 +1,15 @@
 import type { Cents, ISODate } from "@domino/contracts";
 
-export const OPERATING_COMPANY_IDS = ["2u", "asana-inspired", "gitlab-inspired"] as const;
+export const OPERATING_PRIMARY_COMPANY_IDS = ["2u", "asana-current", "gitlab-current"] as const;
+export const OPERATING_COMPANY_IDS = [
+  "2u",
+  "asana-inspired",
+  "gitlab-inspired",
+  "asana-current",
+  "gitlab-current",
+] as const;
+/** Frozen reconstruction cutoff, independent of the machine clock. */
+export const OPERATING_CURRENT_AS_OF = "2026-10-25";
 export type OperatingCompanyId = (typeof OPERATING_COMPANY_IDS)[number];
 export const OPERATING_SCENARIO_IDS = [
   "baseline",
@@ -15,6 +24,18 @@ export interface OperatingSelection {
 }
 export const OPERATING_DEMO_LABEL =
   "Based on 2U public filings, with reconstructed operating data.";
+
+export interface OperatingCompanyCatalogEntry {
+  id: OperatingCompanyId;
+  name: string;
+  referenceCompany: string;
+  label: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  reportedAt: ISODate;
+  simulationAsOf: ISODate;
+  filedAt?: ISODate;
+}
 
 export interface ReportedAnchor {
   id: string;
@@ -88,6 +109,8 @@ export interface OperatingProvenance extends OperatingSelection {
     endingDeferredRevenueCents: Cents;
     recognizedRevenueCents: Cents;
     receivablesAdjustmentCents: Cents;
+    /** Rounded closing advance balance used only as a scope adjustment, not cash or quarter change. */
+    deferredRevenueAdjustmentCents?: Cents;
     note: string;
   };
   expenseBridge: {
@@ -100,6 +123,16 @@ export interface OperatingProvenance extends OperatingSelection {
   };
   /** Only present when reported opening and closing AP/accrual anchors are available. */
   payablesBridge?: OperatingPayablesBridge;
+  /** Post-report reconstructed observations, never claimed to be filed balances. */
+  currentLedger?: {
+    asOf: ISODate;
+    reportedPeriodEnd: ISODate;
+    reportedEndingCashCents: Cents;
+    reconstructedCashChangeCents: Cents;
+    cashOnHandCents: Cents;
+    restrictedCashCents: Cents;
+    basis: "reconstructed";
+  };
   /** A factual endpoint does not make its reconstructed allocation factual. */
   aggregateBasis: Record<string, string>;
   reconciliation: {

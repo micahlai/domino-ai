@@ -1,0 +1,1577 @@
+{
+  "asana-current": [
+    {
+      "id": "balance.close.cash_and_equivalents",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "219,562",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.cash_and_equivalents",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "193,656",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.cash_and_equivalents",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "199,835",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.restricted_cash",
+      "label": "Restricted cash",
+      "sourceValue": "844",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.restricted_cash",
+      "label": "Restricted cash",
+      "sourceValue": "696",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.restricted_cash",
+      "label": "Restricted cash",
+      "sourceValue": "418",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.marketable_securities",
+      "label": "Marketable securities",
+      "sourceValue": "120,289",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.marketable_securities",
+      "label": "Marketable securities",
+      "sourceValue": "230,984",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.marketable_securities",
+      "label": "Marketable securities",
+      "sourceValue": "234,210",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.accounts_receivable_net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "78,645",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.accounts_receivable_net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "73,483",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.accounts_receivable_net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "110,312",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.accounts_payable",
+      "label": "Accounts payable",
+      "sourceValue": "15,438",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.accounts_payable",
+      "label": "Accounts payable",
+      "sourceValue": "25,155",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.accounts_payable",
+      "label": "Accounts payable",
+      "sourceValue": "18,822",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.accrued_expenses_and_other_current_liabilities",
+      "label": "Accrued expenses and other current liabilities",
+      "sourceValue": "119,875",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.accrued_expenses_and_other_current_liabilities",
+      "label": "Accrued expenses and other current liabilities",
+      "sourceValue": "105,559",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.accrued_expenses_and_other_current_liabilities",
+      "label": "Accrued expenses and other current liabilities",
+      "sourceValue": "123,716",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.deferred_revenue_current",
+      "label": "Deferred revenue, current",
+      "sourceValue": "350,337",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.deferred_revenue_current",
+      "label": "Deferred revenue, current",
+      "sourceValue": "322,931",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.deferred_revenue_current",
+      "label": "Deferred revenue, current",
+      "sourceValue": "333,636",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.deferred_revenue_noncurrent",
+      "label": "Deferred revenue, noncurrent",
+      "sourceValue": "379",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.deferred_revenue_noncurrent",
+      "label": "Deferred revenue, noncurrent",
+      "sourceValue": "187",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.deferred_revenue_noncurrent",
+      "label": "Deferred revenue, noncurrent",
+      "sourceValue": "220",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.total_current_assets",
+      "label": "Total current assets",
+      "sourceValue": "471,768",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.total_current_assets",
+      "label": "Total current assets",
+      "sourceValue": "550,483",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.total_current_assets",
+      "label": "Total current assets",
+      "sourceValue": "593,348",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.total_current_liabilities",
+      "label": "Total current liabilities",
+      "sourceValue": "512,867",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.total_current_liabilities",
+      "label": "Total current liabilities",
+      "sourceValue": "479,644",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.total_current_liabilities",
+      "label": "Total current liabilities",
+      "sourceValue": "501,020",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.close.total_assets",
+      "label": "Total assets",
+      "sourceValue": "816,149",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, July 31 column. Filed 2026-09-03."
+    },
+    {
+      "id": "balance.open.total_assets",
+      "label": "Total assets",
+      "sourceValue": "805,512",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, April 30 column. Filed 2026-05-28."
+    },
+    {
+      "id": "balance.fiscalOpen.total_assets",
+      "label": "Total assets",
+      "sourceValue": "844,088",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated balance sheets, p. 1, January 31 comparative column. Filed 2026-09-03."
+    },
+    {
+      "id": "income.quarter.revenue",
+      "label": "Revenues",
+      "sourceValue": "216,429",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.cost_of_revenues",
+      "label": "Cost of revenues",
+      "sourceValue": "30,325",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.gross_profit",
+      "label": "Gross profit",
+      "sourceValue": "186,104",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.research_and_development",
+      "label": "Research and development",
+      "sourceValue": "81,728",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.sales_and_marketing",
+      "label": "Sales and marketing",
+      "sourceValue": "104,384",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.general_and_administrative",
+      "label": "General and administrative",
+      "sourceValue": "41,211",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.total_operating_expenses",
+      "label": "Total operating expenses",
+      "sourceValue": "227,323",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.operating_loss",
+      "label": "Loss from operations",
+      "sourceValue": "(41,219)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.net_loss",
+      "label": "Net loss",
+      "sourceValue": "(39,189)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "income.quarter.stock_based_compensation",
+      "label": "Total stock-based compensation expense",
+      "sourceValue": "56,326",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Note 12, Stockholders\u2019 Equity, stock-based compensation expense table, p. 25; expense recognized in statements of operations. Filed 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.operating",
+      "label": "Net cash provided by operating activities",
+      "sourceValue": "86,290",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.investing",
+      "label": "Net cash provided by (used in) investing activities",
+      "sourceValue": "29,330",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.financing",
+      "label": "Net cash used in financing activities",
+      "sourceValue": "(94,062)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.foreignExchangeEffect",
+      "label": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(1,405)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.beginningCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "200,253",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.endingCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "220,406",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.netIncreaseCombinedCash",
+      "label": "Net increase (decrease) in cash, cash equivalents, and restricted cash",
+      "sourceValue": "20,153",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.acquisition",
+      "label": "Cash paid for acquisition, net of acquired cash",
+      "sourceValue": "(71,616)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketablePurchases",
+      "label": "Purchases of marketable securities",
+      "sourceValue": "(81,750)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketableSales",
+      "label": "Sales of marketable securities",
+      "sourceValue": "133,603",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketableMaturities",
+      "label": "Maturities of marketable securities",
+      "sourceValue": "61,021",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.propertyEquipment",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(4,302)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.capitalizedSoftware",
+      "label": "Capitalized internal-use software costs",
+      "sourceValue": "(7,626)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.termLoanRepayment",
+      "label": "Repayment of term loan",
+      "sourceValue": "(3,750)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.shareRepurchases",
+      "label": "Repurchases of common stock",
+      "sourceValue": "(96,526)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.stockOptionProceeds",
+      "label": "Proceeds from exercise of stock options",
+      "sourceValue": "1,340",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.sixMonths.employeeSharePlanProceeds",
+      "label": "Proceeds from employee stock purchase plan",
+      "sourceValue": "4,874",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026. Filed 2026-09-03.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.operating",
+      "label": "Net cash provided by operating activities",
+      "sourceValue": "40,244",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.investing",
+      "label": "Net cash (used in) provided by investing activities",
+      "sourceValue": "(3,422)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.financing",
+      "label": "Net cash used in financing activities",
+      "sourceValue": "(41,925)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.foreignExchangeEffect",
+      "label": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(798)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.beginningCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "200,253",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.endingCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "194,352",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.netIncreaseCombinedCash",
+      "label": "Net (decrease) increase in cash, cash equivalents, and restricted cash",
+      "sourceValue": "(5,901)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.marketablePurchases",
+      "label": "Purchases of marketable securities",
+      "sourceValue": "(50,043)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.marketableMaturities",
+      "label": "Maturities of marketable securities",
+      "sourceValue": "52,515",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.propertyEquipment",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(2,808)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.capitalizedSoftware",
+      "label": "Capitalized internal-use software costs",
+      "sourceValue": "(3,086)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.termLoanRepayment",
+      "label": "Repayment of term loan",
+      "sourceValue": "(2,500)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.shareRepurchases",
+      "label": "Repurchases of common stock",
+      "sourceValue": "(44,985)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.stockOptionProceeds",
+      "label": "Proceeds from exercise of stock options",
+      "sourceValue": "686",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.firstQuarter.employeeSharePlanProceeds",
+      "label": "Proceeds from employee stock purchase plan",
+      "sourceValue": "4,874",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "note": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026. Filed 2026-05-28.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.operating",
+      "label": "Net cash provided by operating activities",
+      "sourceValue": "46,046",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.investing",
+      "label": "Net cash provided by (used in) investing activities",
+      "sourceValue": "32,752",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.financing",
+      "label": "Net cash used in financing activities",
+      "sourceValue": "(52,137)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.foreignExchangeEffect",
+      "label": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(607)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.beginningCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "194,352",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.endingCombinedCash",
+      "label": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "220,406",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.netIncreaseCombinedCash",
+      "label": "Net increase (decrease) in cash, cash equivalents, and restricted cash",
+      "sourceValue": "26,054",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.acquisition",
+      "label": "Cash paid for acquisition, net of acquired cash",
+      "sourceValue": "(71,616)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketablePurchases",
+      "label": "Purchases of marketable securities",
+      "sourceValue": "(31,707)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketableSales",
+      "label": "Sales of marketable securities",
+      "sourceValue": "133,603",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketableMaturities",
+      "label": "Maturities of marketable securities",
+      "sourceValue": "8,506",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.propertyEquipment",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(1,494)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.capitalizedSoftware",
+      "label": "Capitalized internal-use software costs",
+      "sourceValue": "(4,540)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.termLoanRepayment",
+      "label": "Repayment of term loan",
+      "sourceValue": "(1,250)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.shareRepurchases",
+      "label": "Repurchases of common stock",
+      "sourceValue": "(51,541)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlow.quarterRelease.stockOptionProceeds",
+      "label": "Proceeds from exercise of stock options",
+      "sourceValue": "654",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "note": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026. Published 2026-09-03.",
+      "periodStart": "2026-05-01"
+    }
+  ],
+  "gitlab-current": [
+    {
+      "id": "cashOpeningQuarter",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "335,395",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "cashClosingQuarter",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "226,491",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02."
+    },
+    {
+      "id": "cashComparativeFiscalOpening",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "229,576",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-01-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02."
+    },
+    {
+      "id": "shortTermInvestmentsOpening",
+      "label": "Short-term investments",
+      "sourceValue": "1,022,117",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02. Separate from cash and cash equivalents."
+    },
+    {
+      "id": "shortTermInvestmentsClosing",
+      "label": "Short-term investments",
+      "sourceValue": "1,030,495",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. Separate from cash and cash equivalents."
+    },
+    {
+      "id": "balanceSheetOpening.accountsReceivableNet",
+      "label": "accountsReceivableNet",
+      "sourceValue": "200,302",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.accountsPayable",
+      "label": "accountsPayable",
+      "sourceValue": "8,847",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.accruedExpensesAndOtherCurrentLiabilities",
+      "label": "accruedExpensesAndOtherCurrentLiabilities",
+      "sourceValue": "72,680",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.accruedCompensationAndBenefits",
+      "label": "accruedCompensationAndBenefits",
+      "sourceValue": "28,538",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.deferredRevenueCurrent",
+      "label": "deferredRevenueCurrent",
+      "sourceValue": "532,983",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.deferredRevenueNoncurrent",
+      "label": "deferredRevenueNoncurrent",
+      "sourceValue": "23,991",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.totalCurrentAssets",
+      "label": "totalCurrentAssets",
+      "sourceValue": "1,639,405",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.totalCurrentLiabilities",
+      "label": "totalCurrentLiabilities",
+      "sourceValue": "643,048",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.totalAssets",
+      "label": "totalAssets",
+      "sourceValue": "1,705,533",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetOpening.totalLiabilities",
+      "label": "totalLiabilities",
+      "sourceValue": "674,147",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-06-02."
+    },
+    {
+      "id": "balanceSheetClosing.accountsReceivableNet",
+      "label": "accountsReceivableNet",
+      "sourceValue": "257,343",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.accountsPayable",
+      "label": "accountsPayable",
+      "sourceValue": "9,955",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.accruedExpensesAndOtherCurrentLiabilities",
+      "label": "accruedExpensesAndOtherCurrentLiabilities",
+      "sourceValue": "51,580",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.accruedCompensationAndBenefits",
+      "label": "accruedCompensationAndBenefits",
+      "sourceValue": "46,932",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.deferredRevenueAndCustomerAdvancesCurrent",
+      "label": "deferredRevenueAndCustomerAdvancesCurrent",
+      "sourceValue": "553,844",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.deferredRevenueNoncurrent",
+      "label": "deferredRevenueNoncurrent",
+      "sourceValue": "20,829",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.totalCurrentAssets",
+      "label": "totalCurrentAssets",
+      "sourceValue": "1,595,055",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.totalCurrentLiabilities",
+      "label": "totalCurrentLiabilities",
+      "sourceValue": "662,311",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.totalAssets",
+      "label": "totalAssets",
+      "sourceValue": "1,661,832",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "balanceSheetClosing.totalLiabilities",
+      "label": "totalLiabilities",
+      "sourceValue": "690,345",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Balance Sheets. Filed 2026-09-02. The current deferred liability line includes customer advances in Q2; do not treat it as a like-for-like deferred-revenue-only balance."
+    },
+    {
+      "id": "quarterIncome.subscriptionRevenue",
+      "label": "subscriptionRevenue",
+      "sourceValue": "258,311",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.licenseRevenue",
+      "label": "licenseRevenue",
+      "sourceValue": "27,943",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.totalRevenue",
+      "label": "totalRevenue",
+      "sourceValue": "286,254",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.subscriptionCostOfRevenue",
+      "label": "subscriptionCostOfRevenue",
+      "sourceValue": "38,258",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.licenseCostOfRevenue",
+      "label": "licenseCostOfRevenue",
+      "sourceValue": "7,380",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.totalCostOfRevenue",
+      "label": "totalCostOfRevenue",
+      "sourceValue": "45,638",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.grossProfit",
+      "label": "grossProfit",
+      "sourceValue": "240,616",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.salesAndMarketing",
+      "label": "salesAndMarketing",
+      "sourceValue": "134,363",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.researchAndDevelopment",
+      "label": "researchAndDevelopment",
+      "sourceValue": "94,980",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.generalAndAdministrative",
+      "label": "generalAndAdministrative",
+      "sourceValue": "68,208",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.totalOperatingExpenses",
+      "label": "totalOperatingExpenses",
+      "sourceValue": "297,551",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.operatingLoss",
+      "label": "operatingLoss",
+      "sourceValue": "(56,935)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.incomeTaxProvision",
+      "label": "incomeTaxProvision",
+      "sourceValue": "(3,195)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.netLoss",
+      "label": "netLoss",
+      "sourceValue": "(36,132)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterIncome.netLossAttributableToGitLab",
+      "label": "netLossAttributableToGitLab",
+      "sourceValue": "(36,844)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Operations. Filed 2026-09-02. Net loss is consolidated, including noncontrolling interest, matching the older anchor's semantics. The negative income-tax provision is a benefit.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "quarterStockBasedCompensation",
+      "label": "Total stock-based compensation expense",
+      "sourceValue": "75,006",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Notes to Condensed Consolidated Financial Statements, Stock-Based Compensation Expense. Filed 2026-09-02. Noncash expense; do not map to a payroll disbursement.",
+      "periodStart": "2026-05-01"
+    },
+    {
+      "id": "cashFlowSixMonths.operating",
+      "label": "operating",
+      "sourceValue": "146,105",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.investing",
+      "label": "investing",
+      "sourceValue": "(5,378)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.financing",
+      "label": "financing",
+      "sourceValue": "(143,346)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.foreignExchangeEffect",
+      "label": "foreignExchangeEffect",
+      "sourceValue": "(466)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.netCashChange",
+      "label": "netCashChange",
+      "sourceValue": "(3,085)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.purchasesOfShortTermInvestments",
+      "label": "purchasesOfShortTermInvestments",
+      "sourceValue": "(421,817)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.maturitiesOfShortTermInvestments",
+      "label": "maturitiesOfShortTermInvestments",
+      "sourceValue": "358,647",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.salesOfShortTermInvestments",
+      "label": "salesOfShortTermInvestments",
+      "sourceValue": "60,398",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.propertyAndEquipmentPurchases",
+      "label": "propertyAndEquipmentPurchases",
+      "sourceValue": "(2,606)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.stockOptionExerciseProceedsNet",
+      "label": "stockOptionExerciseProceedsNet",
+      "sourceValue": "5,361",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.employeeStockPurchasePlanProceeds",
+      "label": "employeeStockPurchasePlanProceeds",
+      "sourceValue": "6,886",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.commonStockRepurchases",
+      "label": "commonStockRepurchases",
+      "sourceValue": "(154,685)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.netShareSettlementTaxPayments",
+      "label": "netShareSettlementTaxPayments",
+      "sourceValue": "(908)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowSixMonths.cashTaxesPaidIncludingJiHuSettlement",
+      "label": "cashTaxesPaidIncludingJiHuSettlement",
+      "sourceValue": "8,820",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-09-02.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.operating",
+      "label": "operating",
+      "sourceValue": "149,197",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.investing",
+      "label": "investing",
+      "sourceValue": "4,157",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.financing",
+      "label": "financing",
+      "sourceValue": "(47,835)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.foreignExchangeEffect",
+      "label": "foreignExchangeEffect",
+      "sourceValue": "300",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.netCashChange",
+      "label": "netCashChange",
+      "sourceValue": "105,819",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.purchasesOfShortTermInvestments",
+      "label": "purchasesOfShortTermInvestments",
+      "sourceValue": "(222,196)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.maturitiesOfShortTermInvestments",
+      "label": "maturitiesOfShortTermInvestments",
+      "sourceValue": "218,824",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.salesOfShortTermInvestments",
+      "label": "salesOfShortTermInvestments",
+      "sourceValue": "9,922",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.propertyAndEquipmentPurchases",
+      "label": "propertyAndEquipmentPurchases",
+      "sourceValue": "(2,393)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.stockOptionExerciseProceedsNet",
+      "label": "stockOptionExerciseProceedsNet",
+      "sourceValue": "2,373",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.commonStockRepurchases",
+      "label": "commonStockRepurchases",
+      "sourceValue": "(50,048)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.netShareSettlementTaxPayments",
+      "label": "netShareSettlementTaxPayments",
+      "sourceValue": "(160)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.cashTaxRefundsRelatedToBAPA",
+      "label": "cashTaxRefundsRelatedToBAPA",
+      "sourceValue": "(77)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "cashFlowThreeMonths.otherCashTaxesPaid",
+      "label": "otherCashTaxesPaid",
+      "sourceValue": "139",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2026-04-30",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026039793/gtlb-20260430.htm",
+      "note": "Condensed Consolidated Statements of Cash Flows. Filed 2026-06-02. Q1 separately presents BAPA cash tax refunds and other cash taxes. Those lines are not comparable to Q2's combined JiHu-settlement cash tax disclosure.",
+      "periodStart": "2026-02-01"
+    },
+    {
+      "id": "customerAdvancesClosing",
+      "label": "Customer advances at July 31, 2026 (rounded disclosure)",
+      "sourceValue": "15.0",
+      "sourceUnit": "USD millions",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1653482/000162828026059943/gtlb-20260731.htm",
+      "note": "Note 3, Revenue Recognition, customer advances. Filed 2026-09-02. Rounded to USD0.1 million in the source. Outside deferred revenue until customer election; no April balance or period cash-receipt amount is disclosed here. A reconstruction scope adjustment using this amount is a rounded point estimate, not an exact cash or invoice fact."
+    },
+    {
+      "id": "cashFlowQuarterRelease.operating",
+      "label": "operating",
+      "sourceValue": "(3,092)",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://ir.gitlab.com/news/news-details/2026/GitLab-Reports-Second-Quarter-Fiscal-Year-2027-Financial-Results/default.aspx",
+      "note": "Reconciliation of GAAP Cash Flow from Operating Activities to Adjusted Free Cash Flow. Published 2026-09-01. Exact quarter source crosschecks. Adjusted free cash flow is a non-GAAP measure, not a bank inflow."
+    },
+    {
+      "id": "cashFlowQuarterRelease.propertyAndEquipmentPurchases",
+      "label": "propertyAndEquipmentPurchases",
+      "sourceValue": "(213)",
+      "sourceUnit": "USD thousands",
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "sourceUrl": "https://ir.gitlab.com/news/news-details/2026/GitLab-Reports-Second-Quarter-Fiscal-Year-2027-Financial-Results/default.aspx",
+      "note": "Reconciliation of GAAP Cash Flow from Operating Activities to Adjusted Free Cash Flow. Published 2026-09-01. Exact quarter source crosschecks. Adjusted free cash flow is a non-GAAP measure, not a bank inflow."
+    }
+  ]
+}

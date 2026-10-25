@@ -2,6 +2,7 @@ import { type Constraint, type WorldState, WorldStateSchema } from "@domino/cont
 import { addDays, isRealDate } from "../create.ts";
 import { daysBetween, mulDiv, sum } from "../drivers/basics.ts";
 import { companySpec, operatingScenarioCatalog } from "./anchors.ts";
+import { withCurrentLedger } from "./current-provenance.ts";
 import { historicalLedger, observableLedger } from "./ledger.ts";
 import { payablesBridge } from "./payables.ts";
 import {
@@ -42,7 +43,7 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
     ([category, amount]) =>
       sum(ledger.postings.filter((p) => p.category === category).map((p) => p.cents)) === amount,
   );
-  return {
+  const provenance: OperatingProvenance = {
     version: 1,
     ...selection,
     label: spec.label,
@@ -141,6 +142,7 @@ export function operatingProvenance(selection: OperatingSelection, seed = 1): Op
         sum(ledger.recognition.map((r) => r.cents)) === spec.revenue,
     },
   };
+  return spec.cashFlowComponents ? withCurrentLedger(provenance, spec, seed) : provenance;
 }
 
 function worldOn(selection: OperatingSelection, seed: number, today: string): WorldState {
@@ -166,7 +168,7 @@ export function createOperatingDemo(
   seed = 1,
 ): { world: WorldState; provenance: OperatingProvenance; constraints: Constraint[] } {
   const provenance = operatingProvenance(selection, seed);
-  const world = worldOn(selection, seed, provenance.periodEnd);
+  const world = worldOn(selection, seed, companySpec(selection.company).simulationAsOf);
   const limit = mulDiv(
     provenance.expenseBridge.modeledOperatingPaymentsCents,
     1,
