@@ -22,7 +22,14 @@ import {
   toolChips,
   withSavedState,
 } from "./graph";
-import { IDLE_CLUSTER, IDLE_STACK, clusterRoots, layoutMap, overlaps } from "./map-layout";
+import {
+  CENTER_ID,
+  IDLE_CLUSTER,
+  IDLE_STACK,
+  clusterRoots,
+  layoutMap,
+  overlaps,
+} from "./map-layout";
 import { initialSwarm, swarmStep } from "./swarm-demo";
 import { describeTool } from "./tool-names";
 import type { FieldOperation } from "./types";
@@ -391,11 +398,13 @@ describe("map layout", () => {
 
   it("folds unused built-in agents and completed helpers, expandable, without overlaps", () => {
     for (const [name, graph] of sampleGraphs()) {
-      const idle = idleAgents(graph);
+      // The coordinator holds the middle even before it has work; it never folds away.
+      const idle = idleAgents(graph).filter((id) => id !== CENTER_ID);
+      expect(layoutMap(graph, { idle: idleAgents(graph) }).boxes.has(CENTER_ID)).toBe(true);
       const done = new Set(
         graph.nodes.filter((n) => n.kind === "subagent" && n.lifecycle === "done").map((n) => n.id),
       );
-      const folded = layoutMap(graph, { collapsed: done, idle });
+      const folded = layoutMap(graph, { collapsed: done, idle: idleAgents(graph) });
       expect(overlaps(folded, 8), name).toEqual([]);
       for (const id of [...idle, ...done])
         expect(folded.boxes.has(id), `${name} ${id}`).toBe(false);
@@ -403,7 +412,7 @@ describe("map layout", () => {
         expect(folded.stacks.find((s) => s.id === IDLE_STACK)?.members).toEqual(idle);
       // Expanding every stack shows its members and keeps a card to fold them again.
       const open = new Set([IDLE_CLUSTER, ...folded.stacks.map((s) => s.clusterId)]);
-      const shown = layoutMap(graph, { collapsed: done, idle, expanded: open });
+      const shown = layoutMap(graph, { collapsed: done, idle: idleAgents(graph), expanded: open });
       expect(overlaps(shown, 8), name).toEqual([]);
       for (const id of [...idle, ...done]) expect(shown.boxes.has(id), `${name} ${id}`).toBe(true);
       expect(shown.stacks.every((s) => s.expanded)).toBe(true);

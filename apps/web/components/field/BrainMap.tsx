@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ControlButton,
   Controls,
   type Edge,
   type EdgeProps,
@@ -11,6 +12,7 @@ import {
   ReactFlow,
   useNodesState,
   useReactFlow,
+  useStore,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -21,11 +23,12 @@ import {
   ChevronRight,
   Download,
   List,
+  Maximize,
   Network,
   RefreshCw,
   X,
 } from "lucide-react";
-import { animate, motion, useReducedMotion } from "motion/react";
+import { type Transition, animate, motion, useReducedMotion } from "motion/react";
 import {
   type CSSProperties,
   type ReactNode,
@@ -37,7 +40,7 @@ import {
   useState,
 } from "react";
 import { cn } from "../../lib/utils";
-import { AGENT_KIND_LABEL, AgentIcon, type AgentKind } from "../icons/AgentIcon";
+import { AGENT_KIND_LABEL, AGENT_TINT, AgentIcon, type AgentKind } from "../icons/AgentIcon";
 import { TOOL_CATEGORY_LABEL, ToolIcon } from "../icons/ToolIcon";
 import { ToolLogo } from "../icons/ToolLogo";
 import { VENDORS, type VendorId } from "../icons/vendors";
@@ -45,7 +48,16 @@ import type { CanvasStatus } from "../investigate/types";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
+import {
+  type CameraEvent,
+  type CameraState,
+  INITIAL_CAMERA,
+  cameraStep,
+  fitViewport,
+} from "./BrainMapCamera";
+import { useConnectedVendors } from "./BrainMapConnections";
 import { type PanelFocusState, panelFocus } from "./BrainMapFocus";
+import { type Draw, EDGE_SECONDS, type GrowNode, growthPlan } from "./BrainMapGrowth";
 import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
 import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
 import { useSelectedCompanyName } from "./company";
@@ -57,30 +69,42 @@ import {
   type Pulse,
   type SavedState,
   type ToolChip,
+  type ToolProvider,
+  type ToolboxGroup,
   activityFor,
   buildBrainGraph,
   byTime,
   collapsedInstances,
   finishedAge,
   freshOperations,
+  growthRoot,
   hasWork,
   idleAgents,
   instanceNodeId,
   isAgent,
   isWorking,
   mapCounts,
+  mapSources,
   neighbors,
+  opAgentId,
   pulsesFor,
   toolChips,
+  toolNodeId,
+  toolProvider,
+  toolboxGroups,
+  toolboxId,
   withSavedState,
 } from "./graph";
 import {
   type Box,
   IDLE_CLUSTER,
   type Lane,
+  type LayoutMemory,
+  MAX_CHIPS,
   type MapLayout,
   type Route,
   type Stack,
+  TOOLBOX_ROWS,
   layoutMap,
 } from "./map-layout";
 import {
@@ -107,6 +131,21 @@ const FINISH_GRACE_MS = 3200;
 const LEAVE_MS = 600;
 
 type Focus = { id: string | null; related: ReadonlySet<string> };
+/** The growth schedule: ids already accounted for, and absolute times (ms) to pop and draw. */
+type GrowthState = {
+  known: ReadonlySet<string>;
+  knownRoutes: ReadonlySet<string>;
+  pop: ReadonlyMap<string, number>;
+  draw: ReadonlyMap<string, { at: number; reverse: boolean }>;
+  rows: ReadonlyMap<string, number>;
+};
+const NO_GROWTH: GrowthState = {
+  known: new Set(),
+  knownRoutes: new Set(),
+  pop: new Map(),
+  draw: new Map(),
+  rows: new Map(),
+};
 type View = {
   lit: ReadonlyMap<string, number>;
   hovered: string | null;
@@ -114,28 +153,45 @@ type View = {
   onOpen: (id: string) => void;
   onHover: (id: string | null) => void;
 };
-type CardData = View & {
-  type: "card";
-  node: BrainNode;
-  box: Box;
-  chips: ToolChip[];
-  enter: boolean;
-  leaving: boolean;
-  dimmed: boolean;
-  /** Root agents: how many of their copies are working now. */
-  running: number;
-  /** Cards in the lower part of the web open their hover card upward, so it is not cut off. */
-  above: boolean;
-};
-type StackData = View & {
-  type: "stack";
-  stack: Stack;
-  titles: string[];
-  dimmed: boolean;
-  onToggle: (clusterId: string) => void;
-};
+/** Growth: new and not planned yet (hidden), or popping in after `grow` seconds. */
+type Growing = { pending: boolean; grow: number | undefined };
+type CardData = View &
+  Growing & {
+    type: "card";
+    node: BrainNode;
+    box: Box;
+    chips: ToolChip[];
+    leaving: boolean;
+    dimmed: boolean;
+    /** Root agents: how many of their copies are working now. */
+    running: number;
+    /** Cards in the lower part of the web open their hover card upward, so it is not cut off. */
+    above: boolean;
+  };
+type StackData = View &
+  Growing & {
+    type: "stack";
+    stack: Stack;
+    titles: string[];
+    dimmed: boolean;
+    onToggle: (clusterId: string) => void;
+  };
+type ToolboxData = View &
+  Growing & {
+    type: "toolbox";
+    group: ToolboxGroup;
+    items: BrainNode[];
+    box: Box;
+    dimmed: boolean;
+    /** Tool rows popping in, with their delay in seconds. */
+    rows: ReadonlyMap<string, number>;
+  };
 type LaneData = { type: "lane"; lane: Lane; label: string; count: string };
-type MapNode = Node<CardData, "card"> | Node<StackData, "stack"> | Node<LaneData, "lane">;
+type MapNode =
+  | Node<CardData, "card">
+  | Node<StackData, "stack">
+  | Node<ToolboxData, "toolbox">
+  | Node<LaneData, "lane">;
 type RouteData = {
   route: Route;
   pulses: Pulse[];
@@ -144,6 +200,9 @@ type RouteData = {
   /** A step is travelling this line now. */
   busy: boolean;
   dimmed: boolean;
+  /** Growth: hidden until planned, then drawn in after `delay` seconds (from its target end). */
+  pending: boolean;
+  draw?: Draw;
 };
 type MapEdge = Edge<RouteData, "route">;
 
@@ -169,6 +228,7 @@ const LANE_LABEL: Record<Lane["id"], string> = {
   source: "Data sources",
   agent: "Agents",
   output: "Outputs",
+  toolbox: "Toolbox",
 };
 
 /** Any agent kind the log records (Claude, CREAO, ...) keeps its own logo; unknown is Domino. */
@@ -243,7 +303,11 @@ function StatusDot({ status, className }: { status: CanvasStatus; className?: st
 }
 
 /** Dot plus status word, e.g. "Working". */
-function StatusText({ node, className }: { node: BrainNode; className?: string }) {
+function StatusText({
+  node,
+  className,
+  label,
+}: { node: BrainNode; className?: string; label?: string }) {
   const s = stateOf(node);
   return (
     <span
@@ -254,7 +318,7 @@ function StatusText({ node, className }: { node: BrainNode; className?: string }
       )}
     >
       <StatusDot status={s} />
-      {stateLabel(node)}
+      {label ?? stateLabel(node)}
     </span>
   );
 }
@@ -288,12 +352,6 @@ function lastLine(node: { operations: FieldOperation[]; lastAt?: string }, now: 
   return node.operations.length ? timeAgo(node.lastAt, now) : "No work yet";
 }
 
-/** Outputs lead with what is saved; sources with when they were last read. */
-function sideLine(node: BrainNode, now: number) {
-  if (node.kind === "output") return node.saved ?? lastLine(node, now);
-  return node.operations.length ? timeAgo(node.lastAt, now) : (node.saved ?? "No work yet");
-}
-
 const HIDDEN_HANDLE = "!pointer-events-none !opacity-0 !min-h-0 !min-w-0 !size-px !border-0";
 
 function Handles() {
@@ -315,14 +373,98 @@ function Handles() {
   );
 }
 
-const CARD =
-  "relative rounded-lg border bg-card text-card-foreground shadow-xs transition-[border-color,opacity] duration-300";
+/**
+ * Squircle corners: a superellipse where the browser supports `corner-shape`, a plain rounded
+ * corner elsewhere.
+ */
+const SQUIRCLE =
+  "rounded-[14px] supports-[corner-shape:squircle]:rounded-[22px] [corner-shape:squircle]";
+const CARD = cn(
+  "relative border bg-card text-card-foreground shadow-xs transition-[border-color,opacity] duration-300",
+  SQUIRCLE,
+);
 /** A new event touched this card: a quiet border change, no glow. */
 const LIT = "border-foreground/35";
 /** Blue marks only the selected card and its links. */
 const SELECTED = "border-[hsl(var(--primary-ink))] ring-1 ring-[hsl(var(--primary-ink))]";
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card";
+
+/** Pop in: from 60% past full size, then settle, fading in. Constant objects so it runs once. */
+const HIDDEN = { opacity: 0, scale: 0.6 };
+const SHOWN = { opacity: 1, scale: 1 };
+const POP = { opacity: [0, 1, 1], scale: [0.6, 1.06, 1] };
+const popTransition = (delay: number): Transition => ({
+  duration: 0.8,
+  delay,
+  times: [0, 0.62, 1],
+  ease: ["easeOut", "easeInOut"],
+});
+const RIPPLE_FROM = { opacity: 0, scale: 1 };
+const RIPPLE_TO = { opacity: [0, 0.5, 0], scale: [1, 1, 1.18] };
+const PULSE = { opacity: [0.45, 0], scale: [1, 1.06] };
+const PULSE_TRANSITION: Transition = {
+  duration: 1.6,
+  ease: "easeOut",
+  repeat: Number.POSITIVE_INFINITY,
+};
+
+/**
+ * Growth for one card: hidden until its parent's link has reached it, then it pops in with a
+ * soft ripple. `pending` cards are new and not planned yet; `grow` is the delay in seconds.
+ */
+function Grow({
+  pending,
+  grow,
+  children,
+  className,
+}: {
+  pending: boolean;
+  grow: number | undefined;
+  children: ReactNode;
+  className?: string;
+}) {
+  const reduced = useReducedMotion();
+  if (reduced) return <div className={cn("relative size-full", className)}>{children}</div>;
+  const popping = grow !== undefined;
+  return (
+    <motion.div
+      initial={pending || popping ? HIDDEN : false}
+      animate={pending ? HIDDEN : popping ? POP : SHOWN}
+      transition={popping ? popTransition(grow) : { duration: 0 }}
+      className={cn("relative size-full", className)}
+    >
+      {children}
+      {popping ? (
+        <motion.span
+          aria-hidden="true"
+          initial={RIPPLE_FROM}
+          animate={RIPPLE_TO}
+          transition={{ duration: 1, delay: grow + 0.3, ease: "easeOut" }}
+          className={cn(
+            "pointer-events-none absolute inset-0 border-2 border-[hsl(var(--primary-ink)/0.35)]",
+            SQUIRCLE,
+          )}
+        />
+      ) : null}
+    </motion.div>
+  );
+}
+
+/** A soft ring breathing out of a working agent's card. Reduced motion: none. */
+function WorkingPulse() {
+  const reduced = useReducedMotion();
+  if (reduced) return null;
+  return (
+    <motion.span
+      aria-hidden="true"
+      initial={false}
+      animate={PULSE}
+      transition={PULSE_TRANSITION}
+      className={cn("pointer-events-none absolute -inset-1 border border-foreground/30", SQUIRCLE)}
+    />
+  );
+}
 
 /** Hover summaries open on keyboard focus too. */
 const hoverOn = (onHover: View["onHover"], id: string) => ({
@@ -331,9 +473,16 @@ const hoverOn = (onHover: View["onHover"], id: string) => ({
   "data-open-id": id,
 });
 
+/** Where a card's hover card opens: beside the side lanes, under (or over) agents. */
+function hoverPlace(node: BrainNode, above: boolean) {
+  if (node.kind === "source") return "left-full top-0 ml-2";
+  if (node.kind === "output") return "right-full top-0 mr-2";
+  return cn("left-3", above ? "bottom-full mb-2" : "top-full mt-2");
+}
+
 function CardNode({ data }: NodeProps<Node<CardData, "card">>) {
   const reduced = useReducedMotion();
-  const { node, box, enter, leaving, dimmed, onHover, lit, selected } = data;
+  const { node, box, leaving, dimmed, onHover, lit, selected } = data;
   const glowing = lit.has(node.id);
   const done =
     node.lifecycle === "done" || (node.kind === "subagent" && stateOf(node) === "succeeded");
@@ -343,36 +492,37 @@ function CardNode({ data }: NodeProps<Node<CardData, "card">>) {
   const opacity = leaving ? 0 : dimmed ? 0.4 : 1;
   return (
     <motion.div
-      initial={enter && !reduced ? { opacity: 0, scale: 0.6 } : false}
-      animate={{ opacity, scale: leaving && !reduced ? 0.86 : 1 }}
-      transition={
-        enter && !reduced
-          ? { type: "spring", stiffness: 260, damping: 20 }
-          : { duration: leaving ? LEAVE_MS / 1000 : 0.3, ease: "easeOut" }
-      }
+      animate={{ opacity, scale: leaving && !reduced ? 0.92 : 1 }}
+      transition={{ duration: leaving ? LEAVE_MS / 1000 : 0.3, ease: "easeOut" }}
       onMouseEnter={() => onHover(node.id)}
       onMouseLeave={() => onHover(null)}
       style={{ width: box.w, height: box.h }}
+      className="relative"
     >
       <Handles />
-      <div
-        className={cn(
-          CARD,
-          glowing && LIT,
-          selected === node.id && SELECTED,
-          "h-full overflow-hidden",
-        )}
-        style={glowing ? { transitionDelay: `${lit.get(node.id) ?? 0}s` } : undefined}
-      >
-        {box.depth > 0 ? (
-          <InstanceBody node={node} data={data} done={done} />
-        ) : isAgent(node) ? (
-          <AgentBody node={node} data={data} />
-        ) : (
-          <SideBody node={node} data={data} />
-        )}
-      </div>
-      {showHover ? <HoverCard node={node} chip={hoverChip} above={data.above} /> : null}
+      <Grow pending={data.pending} grow={data.grow}>
+        {isAgent(node) && isWorking(node) ? <WorkingPulse /> : null}
+        <div
+          className={cn(
+            CARD,
+            glowing && LIT,
+            selected === node.id && SELECTED,
+            "h-full overflow-hidden",
+          )}
+          style={glowing ? { transitionDelay: `${lit.get(node.id) ?? 0}s` } : undefined}
+        >
+          {box.depth > 0 ? (
+            <InstanceBody node={node} data={data} done={done} />
+          ) : isAgent(node) ? (
+            <AgentBody node={node} data={data} />
+          ) : (
+            <SideBody node={node} data={data} />
+          )}
+        </div>
+      </Grow>
+      {showHover ? (
+        <HoverCard node={node} chip={hoverChip} place={hoverPlace(node, data.above)} />
+      ) : null}
     </motion.div>
   );
 }
@@ -385,6 +535,10 @@ function openLabel(node: BrainNode) {
 function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
   const now = useNow();
   const working = isWorking(node);
+  // At most MAX_CHIPS chips: the last place says "+N" and opens the full list.
+  const over = data.chips.length > MAX_CHIPS;
+  const shown = over ? data.chips.slice(0, MAX_CHIPS - 1) : data.chips;
+  const rest = data.chips.length - shown.length;
   return (
     <>
       <button
@@ -393,17 +547,17 @@ function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
         aria-label={openLabel(node)}
         {...hoverOn(data.onHover, node.id)}
         className={cn(
-          "nodrag nopan flex h-16 w-full items-center gap-3 rounded-[inherit] px-3 text-left",
+          "nodrag nopan flex h-14 w-full items-center gap-2.5 rounded-[inherit] px-3 text-left",
           FOCUS,
         )}
       >
-        <NodeIcon node={node} size={32} />
+        <NodeIcon node={node} size={30} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate text-sm font-medium leading-5">{node.title}</span>
             {data.running > 0 ? (
               <span className="shrink-0 rounded-md border px-1.5 text-xs font-medium leading-5 tabular-nums">
-                {data.running} {data.running === 1 ? "helper" : "helpers"} working
+                {data.running} working
               </span>
             ) : null}
           </span>
@@ -423,13 +577,28 @@ function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
       {data.chips.length ? (
         <ul
           aria-label={`Tools ${node.title} used`}
-          className="grid grid-cols-2 gap-2 border-t px-2.5 py-2.5"
+          className="grid grid-cols-2 gap-1.5 border-t px-2 py-2"
         >
-          {data.chips.map((chip) => (
+          {shown.map((chip) => (
             <li key={chip.id} className="min-w-0">
               <ChipButton chip={chip} data={data} ownerId={node.id} />
             </li>
           ))}
+          {rest > 0 && over ? (
+            <li className="min-w-0">
+              <button
+                type="button"
+                onClick={() => data.onOpen(node.id)}
+                aria-label={`${rest} more kinds of tools. Open details.`}
+                className={cn(
+                  "nodrag nopan flex h-[26px] w-full items-center justify-center rounded-[10px] border bg-background px-1.5 text-xs text-muted-foreground hover:bg-muted",
+                  FOCUS,
+                )}
+              >
+                +{rest} more
+              </button>
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </>
@@ -447,7 +616,7 @@ function ChipButton({ chip, data, ownerId }: { chip: ToolChip; data: CardData; o
       {...hoverOn(data.onHover, chip.id)}
       aria-label={`${chip.label}, ${chip.tools.length} ${chip.tools.length === 1 ? "tool" : "tools"}, ${chip.calls} ${chip.calls === 1 ? "call" : "calls"}. Open details.`}
       className={cn(
-        "nodrag nopan flex h-7 w-full items-center gap-1.5 rounded-md border bg-background px-1.5 text-left text-xs transition-colors duration-300 hover:bg-muted",
+        "nodrag nopan flex h-[26px] w-full items-center gap-1.5 rounded-[10px] border bg-background px-1.5 text-left text-xs transition-colors duration-300 hover:bg-muted",
         FOCUS,
         lit && "border-foreground/35",
         data.selected === chip.id && "border-[hsl(var(--primary-ink))] bg-muted",
@@ -483,21 +652,21 @@ function InstanceBody({ node, data, done }: { node: BrainNode; data: CardData; d
       aria-label={openLabel(node)}
       {...hoverOn(data.onHover, node.id)}
       className={cn(
-        "nodrag nopan relative flex h-full w-full items-center gap-2.5 rounded-[inherit] px-3 text-left",
+        "nodrag nopan relative flex h-full w-full items-center gap-2 rounded-[inherit] px-2.5 text-left",
         FOCUS,
       )}
     >
-      <NodeIcon node={node} size={28} />
+      <NodeIcon node={node} size={26} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-medium leading-5">{node.title}</span>
+          <span className="truncate text-[13px] font-medium leading-5">{node.title}</span>
           <span aria-hidden="true" className="ml-auto flex shrink-0 items-center gap-1">
             {categories.map((c) => (
               <ToolIcon key={c} category={c} size={13} className="text-muted-foreground" />
             ))}
           </span>
         </span>
-        <span className="flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-xs leading-5 text-muted-foreground">
           <StatusText node={node} />
           {detail ? (
             <>
@@ -510,7 +679,7 @@ function InstanceBody({ node, data, done }: { node: BrainNode; data: CardData; d
       {node.progress !== undefined ? (
         <span
           aria-hidden="true"
-          className="absolute inset-x-2.5 bottom-1.5 h-[3px] rounded-full bg-muted"
+          className="absolute inset-x-3 bottom-1 h-[3px] rounded-full bg-muted"
         >
           <span
             className="block h-full rounded-full bg-[hsl(var(--primary-ink))] transition-[width] duration-700 ease-out"
@@ -522,6 +691,12 @@ function InstanceBody({ node, data, done }: { node: BrainNode; data: CardData; d
   );
 }
 
+/** Outputs lead with what is saved; sources with when they were last read. */
+function sideLine(node: BrainNode, now: number) {
+  if (node.kind === "output") return node.saved ?? lastLine(node, now);
+  return node.operations.length ? timeAgo(node.lastAt, now) : (node.saved ?? "No work yet");
+}
+
 function SideBody({ node, data }: { node: BrainNode; data: CardData }) {
   const now = useNow();
   return (
@@ -531,19 +706,14 @@ function SideBody({ node, data }: { node: BrainNode; data: CardData }) {
       aria-label={openLabel(node)}
       {...hoverOn(data.onHover, node.id)}
       className={cn(
-        "nodrag nopan flex h-full w-full items-center gap-3 rounded-[inherit] px-3 text-left",
+        "nodrag nopan flex h-full w-full items-center gap-2.5 rounded-[inherit] px-2.5 text-left",
         FOCUS,
       )}
     >
-      <NodeIcon node={node} size={30} />
+      <NodeIcon node={node} size={28} />
       <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-1.5">
-          <span className="truncate text-sm font-medium leading-5">{node.title}</span>
-          {node.kind === "source" ? (
-            <span className="truncate text-xs text-muted-foreground">{node.subtitle}</span>
-          ) : null}
-        </span>
-        <span className="flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+        <span className="block truncate text-[13px] font-medium leading-5">{node.title}</span>
+        <span className="flex items-center gap-1.5 text-xs leading-5 text-muted-foreground">
           <StatusText node={node} />
           <span aria-hidden="true">·</span>
           <span className="truncate">{sideLine(node, now)}</span>
@@ -574,24 +744,25 @@ function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
       className="relative"
     >
       <Handles />
-      <button
-        type="button"
-        onClick={() => onToggle(stack.clusterId)}
-        aria-expanded={Boolean(stack.expanded)}
-        aria-label={`${label}. ${stack.expanded ? "Fold them away" : "Show them on the map"}.`}
-        {...hoverOn(onHover, stack.id)}
-        className={cn(
-          CARD,
-          "nodrag nopan flex h-full w-full items-center gap-2 px-3 text-left text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
-          FOCUS,
-        )}
-      >
-        <Chevron aria-hidden="true" className="size-4 shrink-0" />
-        <span className="min-w-0 flex-1 truncate">{stack.expanded ? `Fold ${label}` : label}</span>
-        {stack.clusterId === IDLE_CLUSTER ? null : (
-          <Check aria-hidden="true" className="size-4 shrink-0 text-safe" />
-        )}
-      </button>
+      <Grow pending={data.pending} grow={data.grow}>
+        <button
+          type="button"
+          onClick={() => onToggle(stack.clusterId)}
+          aria-expanded={Boolean(stack.expanded)}
+          aria-label={`${label}. ${stack.expanded ? "Fold them away" : "Show them on the map"}.`}
+          {...hoverOn(onHover, stack.id)}
+          className={cn(
+            CARD,
+            "nodrag nopan flex h-full w-full items-center gap-1.5 px-2.5 text-left text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+            FOCUS,
+          )}
+        >
+          <Chevron aria-hidden="true" className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">
+            {stack.expanded ? `Fold ${label}` : <StackCount stack={stack} label={label} />}
+          </span>
+        </button>
+      </Grow>
       {hovered === stack.id && !stack.expanded ? (
         <div role="tooltip" className={cn(TOOLTIP, "left-0 top-full mt-2 w-64")}>
           <p className="text-xs text-muted-foreground">
@@ -608,6 +779,117 @@ function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
   );
 }
 
+/** The stack's count settles with a small bounce each time another helper folds into it. */
+function StackCount({ stack, label }: { stack: Stack; label: string }) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.span
+      key={stack.members.length}
+      className="inline-block origin-left"
+      initial={reduced ? false : { scale: 1.12, opacity: 0.5 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 320, damping: 20 }}
+    >
+      {label}
+    </motion.span>
+  );
+}
+
+const PROVIDER: Record<ToolProvider, { name: string; note: string; icon: ReactNode }> = {
+  apify: {
+    name: "Apify",
+    note: "Web data actors (demo)",
+    icon: <ToolLogo vendor="apify" size={26} />,
+  },
+  claude: { name: "Claude", note: "Model calls", icon: <AgentIcon kind="claude" size={26} /> },
+  creao: { name: "CREAO", note: "Model calls", icon: <AgentIcon kind="creao" size={26} /> },
+};
+
+/** One outside provider in the toolbox, with the tools of it agents used. */
+function ToolboxNode({ data }: NodeProps<Node<ToolboxData, "toolbox">>) {
+  const reduced = useReducedMotion();
+  const { group, items, dimmed, onHover, onOpen, lit, selected } = data;
+  const p = PROVIDER[group.provider];
+  const calls = items.reduce((sum, n) => sum + n.operations.length, 0);
+  // The card has room for TOOLBOX_ROWS rows; the last says "+N more" when there are more.
+  const shown = items.length > TOOLBOX_ROWS ? items.slice(0, TOOLBOX_ROWS - 1) : items;
+  const hidden = items.slice(shown.length);
+  return (
+    <motion.div
+      animate={{ opacity: dimmed ? 0.4 : 1 }}
+      onMouseEnter={() => onHover(group.id)}
+      onMouseLeave={() => onHover(null)}
+      style={{ width: data.box.w, height: data.box.h }}
+      className="relative"
+    >
+      <Handles />
+      <Grow pending={data.pending} grow={data.grow}>
+        <section
+          aria-label={`${p.name} tools`}
+          className={cn(CARD, "h-full overflow-hidden", lit.has(group.id) && LIT)}
+        >
+          <div className="flex h-11 items-center gap-2.5 px-2.5">
+            {p.icon}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium leading-5">{p.name}</span>
+              <span className="block truncate text-xs leading-4 text-muted-foreground">
+                {items.length} {items.length === 1 ? "tool" : "tools"} · {calls}{" "}
+                {calls === 1 ? "call" : "calls"}
+              </span>
+            </span>
+          </div>
+          <ul aria-label={p.note} className="border-t px-1.5 py-1">
+            {shown.map((n) => {
+              const rowGrow = data.rows.get(n.id);
+              return (
+                <motion.li
+                  key={n.id}
+                  initial={!reduced && rowGrow !== undefined ? HIDDEN : false}
+                  animate={!reduced && rowGrow !== undefined ? POP : SHOWN}
+                  transition={rowGrow !== undefined ? popTransition(rowGrow) : { duration: 0 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpen(n.id)}
+                    aria-label={`${n.title}, ${n.operations.length} ${n.operations.length === 1 ? "call" : "calls"}. Open details.`}
+                    className={cn(
+                      "nodrag nopan flex h-6 w-full items-center gap-1.5 rounded-md px-1 text-left text-xs transition-colors duration-300 hover:bg-muted",
+                      FOCUS,
+                      lit.has(n.id) && "bg-muted",
+                      selected === n.id && "bg-muted text-foreground",
+                    )}
+                  >
+                    <ToolIcon category={n.tool?.category ?? "apify"} size={12} />
+                    <span className="min-w-0 flex-1 truncate">{n.title}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      {n.operations.length}
+                    </span>
+                  </button>
+                </motion.li>
+              );
+            })}
+            {hidden.length ? (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => hidden[0] && onOpen(hidden[0].id)}
+                  aria-label={`${hidden.length} more ${p.name} tools. Open details.`}
+                  className={cn(
+                    "nodrag nopan flex h-6 w-full items-center rounded-md px-1 text-left text-xs text-muted-foreground hover:bg-muted",
+                    FOCUS,
+                  )}
+                >
+                  +{hidden.length} more
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      </Grow>
+    </motion.div>
+  );
+}
+
 function LaneNode({ data }: NodeProps<Node<LaneData, "lane">>) {
   return (
     <h3
@@ -620,8 +902,7 @@ function LaneNode({ data }: NodeProps<Node<LaneData, "lane">>) {
   );
 }
 
-function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; above: boolean }) {
-  const place = above ? "bottom-full mb-2" : "top-full mt-2";
+function HoverCard({ node, chip, place }: { node: BrainNode; chip?: ToolChip; place: string }) {
   const now = useNow(1000);
   if (chip) {
     const tools = [
@@ -717,7 +998,7 @@ function SourceHoverCard({ node, now }: { node: BrainNode; now: number }) {
 }
 
 const TOOLTIP =
-  "pointer-events-none absolute left-3 z-20 w-72 rounded-lg border bg-popover p-3 text-left text-popover-foreground shadow-md";
+  "pointer-events-none absolute z-20 w-72 rounded-lg border bg-popover p-3 text-left text-popover-foreground shadow-md";
 
 function DemoActorTag() {
   return (
@@ -732,11 +1013,14 @@ const ROUTE_LOOK: Record<Route["kind"], { stroke: string; width: number; dash?: 
   produces: { stroke: "hsl(var(--foreground) / 0.12)", width: 1.25 },
   handoff: { stroke: "hsl(var(--foreground) / 0.2)", width: 1.25 },
   message: { stroke: "hsl(var(--foreground) / 0.28)", width: 1.25, dash: "3 4" },
-  uses: { stroke: "transparent", width: 0 },
+  /** An agent to the outside tools it used: a faint dotted line. */
+  uses: { stroke: "hsl(var(--foreground) / 0.14)", width: 1, dash: "1 4" },
 };
 
 function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
   const reduced = useReducedMotion();
+  // A growing link extends from its parent's end; once there it renders like any other link.
+  const [grown, setGrown] = useState(false);
   if (!data) return null;
   const { route, pulses, active, dimmed } = data;
   const look = ROUTE_LOOK[route.kind];
@@ -745,7 +1029,9 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
     : data.busy
       ? "hsl(var(--foreground) / 0.35)"
       : look.stroke;
-  // Paths glide with their cards when the web re-settles (CSS `d`; browsers without it jump).
+  if (data.pending && !reduced) return null;
+  const growing = Boolean(data.draw) && !grown && !reduced;
+  // Paths glide with their cards if the web ever re-settles (CSS `d`; browsers without it jump).
   const glide = reduced
     ? undefined
     : { d: `path("${route.path}")`, transition: "d 500ms ease, stroke 300ms" };
@@ -755,15 +1041,29 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
       style={{ opacity: dimmed ? 0.15 : 1 }}
       data-route={id}
     >
-      <path
-        d={route.path}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={active ? 1.75 : look.width}
-        strokeDasharray={active ? undefined : look.dash}
-        strokeLinecap="round"
-        style={glide as CSSProperties}
-      />
+      {growing && data.draw ? (
+        <motion.path
+          d={route.path}
+          fill="none"
+          stroke="hsl(var(--foreground) / 0.32)"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          initial={{ pathLength: 0, pathOffset: data.draw.reverse ? 1 : 0, opacity: 1 }}
+          animate={{ pathLength: 1, pathOffset: 0 }}
+          transition={{ delay: data.draw.delay, duration: EDGE_SECONDS, ease: "easeOut" }}
+          onAnimationComplete={() => setGrown(true)}
+        />
+      ) : (
+        <path
+          d={route.path}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={active ? 1.75 : look.width}
+          strokeDasharray={active ? undefined : look.dash}
+          strokeLinecap="round"
+          style={glide as CSSProperties}
+        />
+      )}
       {reduced
         ? null
         : pulses.map((pulse) => <PulseDot key={pulse.key} pulse={pulse} path={route.path} />)}
@@ -771,23 +1071,33 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
   );
 }
 
-/** One dot along the drawn route, once. Positions come from the path, not from data. */
+/** Light particles trailing each other along the drawn route, once: data moving. */
+const PARTICLES = [
+  { lag: 0, r: 2.6 },
+  { lag: 0.07, r: 2 },
+  { lag: 0.14, r: 1.5 },
+];
+
 function PulseDot({ pulse, path }: { pulse: Pulse; path: string }) {
-  const dot = useRef<SVGGElement>(null);
+  const dots = useRef<(SVGGElement | null)[]>([]);
   const track = useRef<SVGPathElement>(null);
   useEffect(() => {
-    const g = dot.current;
     const line = track.current;
-    if (!g || !line) return;
+    if (!line) return;
     const length = line.getTotalLength();
-    const controls = animate(0, 1, {
-      duration: PULSE_SECONDS,
+    const controls = animate(0, 1 + (PARTICLES.at(-1)?.lag ?? 0), {
+      duration: PULSE_SECONDS * 1.15,
       delay: pulse.delay,
       ease: "easeInOut",
-      onUpdate: (t) => {
-        const at = line.getPointAtLength((pulse.reverse ? 1 - t : t) * length);
-        g.setAttribute("transform", `translate(${at.x} ${at.y})`);
-        g.setAttribute("opacity", t <= 0 ? "0" : t > 0.85 ? String((1 - t) / 0.15) : "1");
+      onUpdate: (v) => {
+        PARTICLES.forEach((p, i) => {
+          const g = dots.current[i];
+          if (!g) return;
+          const t = Math.min(1, Math.max(0, v - p.lag));
+          const at = line.getPointAtLength((pulse.reverse ? 1 - t : t) * length);
+          g.setAttribute("transform", `translate(${at.x} ${at.y})`);
+          g.setAttribute("opacity", t <= 0 ? "0" : t > 0.85 ? String((1 - t) / 0.15) : "1");
+        });
       },
     });
     return () => controls.stop();
@@ -795,74 +1105,78 @@ function PulseDot({ pulse, path }: { pulse: Pulse; path: string }) {
   return (
     <g className="pointer-events-none">
       <path ref={track} d={path} fill="none" stroke="none" />
-      <g ref={dot} opacity={0} data-pulse={pulse.key}>
-        <circle r={7} fill="hsl(var(--primary-ink) / 0.16)" />
-        <circle r={3} fill="hsl(var(--primary-ink))" />
-      </g>
+      {PARTICLES.map((p, i) => (
+        <g
+          key={p.lag}
+          ref={(el) => {
+            dots.current[i] = el;
+          }}
+          opacity={0}
+          data-pulse={i === 0 ? pulse.key : undefined}
+        >
+          {i === 0 ? <circle r={7} fill="hsl(var(--primary-ink) / 0.14)" /> : null}
+          <circle r={p.r} fill="hsl(var(--primary-ink))" fillOpacity={1 - i * 0.25} />
+        </g>
+      ))}
     </g>
   );
 }
 
-const nodeTypes = { card: CardNode, stack: StackNode, lane: LaneNode };
+const nodeTypes = { card: CardNode, stack: StackNode, toolbox: ToolboxNode, lane: LaneNode };
 const edgeTypes = { route: RouteEdge };
 
 /**
- * Zoom for fitting. On desktop the map holds 100% so the smallest label stays 12px; it centres
- * on the current run and the rest is a pan away. A phone's optional map view fits everything.
+ * The map's camera. It fits the whole map once, when the first data has loaded, and after that
+ * only a person moves it (drag, pinch, zoom buttons, the fit button): new events, new cards,
+ * finished helpers and resizes never change zoom or position. Rules live in BrainMapCamera.ts.
  */
-const fitZoom = (narrow: boolean) =>
-  narrow ? { minZoom: 0.3, maxZoom: 1 } : { minZoom: 1, maxZoom: 1 };
-
-/**
- * Centres the current run: on load, when the web changes size, and whenever the map's box
- * resizes (window, docked panel). Camera moves are instant with reduced motion.
- */
-function AutoFit({
-  box,
-  focusIds,
-  sizeKey,
+function Camera({
+  bounds,
+  ready,
   narrow,
+  layout,
+  api,
 }: {
-  box: RefObject<HTMLDivElement | null>;
-  focusIds: string[];
-  sizeKey: string;
+  bounds: MapLayout["bounds"];
+  ready: boolean;
   narrow: boolean;
+  layout: MapLayout;
+  api: RefObject<((event: CameraEvent) => void) | null>;
 }) {
-  const { fitView } = useReactFlow();
+  const { setViewport } = useReactFlow();
+  const width = useStore((s) => s.width);
+  const height = useStore((s) => s.height);
   const reduced = useReducedMotion();
-  const fit = useRef<() => void>(() => {});
-  fit.current = () => {
-    void fitView({
-      ...(focusIds.length && { nodes: focusIds.map((id) => ({ id })) }),
-      padding: 0.06,
-      ...fitZoom(narrow),
-      duration: reduced ? 0 : 300,
-    });
-  };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refit only when the web's size class changes, not on every new event.
+  const state = useRef<CameraState>(INITIAL_CAMERA);
+  const live = useRef({ bounds, width, height, narrow, reduced });
+  live.current = { bounds, width, height, narrow, reduced };
+  const send = useCallback(
+    (event: CameraEvent) => {
+      const step = cameraStep(state.current, event);
+      state.current = step.state;
+      const view = live.current;
+      if (!step.fit || !view.width || !view.height) return;
+      void setViewport(
+        fitViewport(view.bounds, view.width, view.height, view.narrow ? { minZoom: 0.3 } : {}),
+        { duration: view.reduced || event === "ready" ? 0 : 300 },
+      );
+    },
+    [setViewport],
+  );
+  api.current = send;
   useEffect(() => {
-    const id = requestAnimationFrame(() => fit.current());
-    return () => cancelAnimationFrame(id);
-  }, [sizeKey, narrow]);
+    if (ready && width > 0 && height > 0) send("ready");
+  }, [ready, width, height, send]);
+  const seen = useRef<{ w: number; h: number } | null>(null);
   useEffect(() => {
-    const el = box.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    let seen = { w: el.clientWidth, h: el.clientHeight };
-    let frame = 0;
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
-      if (Math.abs(width - seen.w) < 8 && Math.abs(height - seen.h) < 8) return;
-      seen = { w: width, h: height };
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => fit.current());
-    });
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
-    };
-  }, [box]);
+    if (!width || !height) return;
+    const prev = seen.current;
+    seen.current = { w: width, h: height };
+    // By rule a resize (window, docked panel) leaves the view alone.
+    if (prev && (prev.w !== width || prev.h !== height)) send("resize");
+  }, [width, height, send]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: every new layout is a data update, which by rule leaves the view alone.
+  useEffect(() => send("data"), [layout, send]);
   return null;
 }
 
@@ -922,10 +1236,14 @@ export function BrainMap() {
         }
       : undefined,
   } satisfies SavedState);
-  const graph = useMemo(
+  const fullGraph = useMemo(
     () => withSavedState(logGraph, JSON.parse(savedKey) as SavedState),
     [logGraph, savedKey],
   );
+  // Only connected sources; Apify and the model providers live in the toolbox instead.
+  const connected = useConnectedVendors();
+  const graph = useMemo(() => mapSources(fullGraph, connected), [fullGraph, connected]);
+  const toolbox = useMemo(() => toolboxGroups(fullGraph), [fullGraph]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -969,19 +1287,30 @@ export function BrainMap() {
   const idleKey = idleAgents(graph)
     .filter((id) => !held(id))
     .join(" ");
+  // Each layout starts from the last one's memory, so existing tiles keep their places. While a
+  // stack is open the memory is not saved, so folding it again restores the usual places.
+  const memory = useRef<LayoutMemory | undefined>(undefined);
   const layout = useMemo(
-    () => layoutMap(graph, { collapsed, expanded, idle: idleKey ? idleKey.split(" ") : [] }),
-    [graph, collapsed, expanded, idleKey],
+    () =>
+      layoutMap(graph, {
+        collapsed,
+        expanded,
+        idle: idleKey ? idleKey.split(" ") : [],
+        toolbox,
+        memory: memory.current,
+      }),
+    [graph, collapsed, expanded, idleKey, toolbox],
   );
+  useEffect(() => {
+    if (!expanded.size) memory.current = layout.memory;
+  }, [layout, expanded]);
 
-  const mapBox = useRef<HTMLDivElement>(null);
+  const camera = useRef<((event: CameraEvent) => void) | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<MapNode>([]);
   const [pulses, setPulses] = useState<Pulse[]>([]);
   const [lit, setLit] = useState<ReadonlyMap<string, number>>(new Map());
-  // Ids already shown. The first real delivery is history: remembered, never animated.
+  // Operations already shown. The first real delivery is history: remembered, never pulsed.
   const seenOps = useRef<Set<string> | null>(null);
-  const seenNodes = useRef<Set<string> | null>(null);
-  const [appeared, setAppeared] = useState<ReadonlySet<string>>(new Set());
   const batch = useRef(0);
   const litBatch = useRef(new Map<string, number>());
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -991,16 +1320,39 @@ export function BrainMap() {
     const quiet = seenOps.current === null;
     const { seen, fresh } = freshOperations(seenOps.current ?? new Set(), operations, quiet);
     seenOps.current = seen;
-    const ids = graph.nodes.map((n) => n.id);
-    const newNodes = quiet ? [] : ids.filter((id) => !seenNodes.current?.has(id));
-    seenNodes.current = new Set(ids);
-    if (newNodes.length) setAppeared((cur) => new Set([...cur, ...newNodes]));
     if (!fresh.length) return;
     const id = ++batch.current;
+    // Data back from an outside tool runs from its toolbox card to the agent that called it.
+    const toolPulses = fresh.flatMap((op, i): Pulse[] => {
+      const tool = op.tool
+        ? fullGraph.nodes.find((n) => n.id === toolNodeId(op.tool ?? ""))
+        : undefined;
+      const provider = tool ? toolProvider(tool) : undefined;
+      return provider
+        ? [
+            {
+              key: `${op.id}:t`,
+              edgeId: `${opAgentId(op)}->${toolboxId(provider)}`,
+              delay: i * 0.3 * PULSE_SECONDS,
+              reverse: true,
+            },
+          ]
+        : [];
+    });
     const next = reduced
       ? []
-      : pulsesFor(fresh, graph).map((p) => ({ ...p, key: `${p.key}@${id}` }));
+      : [...pulsesFor(fresh, graph), ...toolPulses].map((p) => ({ ...p, key: `${p.key}@${id}` }));
     const active = activityFor(fresh);
+    for (const op of fresh) {
+      const tool = op.tool
+        ? fullGraph.nodes.find((n) => n.id === toolNodeId(op.tool ?? ""))
+        : undefined;
+      const provider = tool ? toolProvider(tool) : undefined;
+      if (tool && provider) {
+        active.set(toolboxId(provider), 0);
+        active.set(tool.id, 0);
+      }
+    }
     for (const key of active.keys()) litBatch.current.set(key, id);
     setPulses((cur) => [...cur, ...next]);
     setLit((cur) => new Map([...cur, ...active]));
@@ -1023,13 +1375,92 @@ export function BrainMap() {
       last * 1000 + 1200,
     );
     timers.current.add(timer);
-  }, [operations, graph, reduced]);
+  }, [operations, graph, fullGraph, reduced]);
   useEffect(() => {
     const all = timers.current;
     return () => {
       for (const t of all) clearTimeout(t);
     };
   }, []);
+
+  // Growth: the web grows out from its root. Each new card waits for a link to extend to it
+  // from a card already on screen, then pops in (BrainMapGrowth.ts). The first load grows the
+  // whole web in order; later cards grow the same way. Reduced motion: everything shows at once.
+  const grown = useRef<{
+    nodes: Set<string>;
+    routes: Set<string>;
+    rows: Set<string>;
+    pop: Map<string, number>;
+  } | null>(null);
+  const [plan, setPlan] = useState<GrowthState>(NO_GROWTH);
+  const ready = data.source !== "loading" && operations !== undefined;
+  useEffect(() => {
+    if (!ready) return;
+    const nodeIds = [...layout.boxes.keys(), ...layout.stacks.map((st) => st.id)];
+    const rowIds = toolbox.flatMap((g) => g.items);
+    const first = grown.current === null;
+    const g = grown.current ?? {
+      nodes: new Set(),
+      routes: new Set(),
+      rows: new Set(),
+      pop: new Map(),
+    };
+    grown.current = g;
+    const freshNodes = nodeIds.filter((id) => !g.nodes.has(id));
+    const freshRoutes = layout.routes.filter((r) => !g.routes.has(r.id));
+    const freshRows = rowIds.filter((id) => !g.rows.has(id));
+    if (!first && !freshNodes.length && !freshRoutes.length && !freshRows.length) return;
+    for (const id of freshNodes) g.nodes.add(id);
+    for (const r of freshRoutes) g.routes.add(r.id);
+    for (const id of freshRows) g.rows.add(id);
+    const now = Date.now();
+    const pop = new Map<string, number>();
+    const draw = new Map<string, { at: number; reverse: boolean }>();
+    const rows = new Map<string, number>();
+    if (!reduced) {
+      const fresh = new Set(freshNodes);
+      const known = new Map(
+        nodeIds
+          .filter((id) => !fresh.has(id))
+          .map((id) => [id, ((g.pop.get(id) ?? 0) - now) / 1000]),
+      );
+      const kindOfId = (id: string): GrowNode["kind"] => {
+        if (id.startsWith("toolbox:")) return "tool";
+        if (id.startsWith("stack:")) return "swarm";
+        const n = graph.nodes.find((x) => x.id === id);
+        if (n?.kind === "source") return "source";
+        if (n?.kind === "output") return "output";
+        return n?.kind === "subagent" ? "swarm" : "agent";
+      };
+      const result = growthPlan(
+        freshNodes.map((id) => ({ id, kind: kindOfId(id) })),
+        freshRoutes,
+        known,
+        growthRoot(graph),
+      );
+      for (const [id, s] of result.pop) {
+        pop.set(id, now + s * 1000);
+        g.pop.set(id, now + s * 1000);
+      }
+      for (const [id, d] of result.draw)
+        draw.set(id, { at: now + d.delay * 1000, reverse: d.reverse });
+      // Tool rows pop in one by one once their toolbox card is there.
+      freshRows.forEach((id, i) => {
+        const card = toolbox.find((tb) => tb.items.includes(id));
+        const base = card ? (g.pop.get(card.id) ?? now) : now;
+        rows.set(id, Math.max(now, base + 500) + i * 120);
+      });
+    }
+    const keep = <T,>(m: ReadonlyMap<string, T>, at: (v: T) => number) =>
+      [...m].filter(([, v]) => at(v) > now - 3000);
+    setPlan((cur) => ({
+      known: new Set([...cur.known, ...nodeIds]),
+      knownRoutes: new Set([...cur.knownRoutes, ...layout.routes.map((r) => r.id)]),
+      pop: new Map([...keep(cur.pop, (v) => v), ...pop]),
+      draw: new Map([...keep(cur.draw, (v) => v.at), ...draw]),
+      rows: new Map([...keep(cur.rows, (v) => v), ...rows]),
+    }));
+  }, [layout, toolbox, ready, reduced, graph]);
 
   const clusterOf = useMemo(() => {
     const map = new Map<string, string>();
@@ -1041,6 +1472,8 @@ export function BrainMap() {
   const focusId = selected ? ownerOf(selected) : hovered ? ownerOf(hovered) : null;
   const focus = useMemo<Focus>(() => {
     if (!focusId) return { id: null, related: new Set() };
+    const tools = toolbox.find((g) => g.id === focusId || g.items.includes(focusId));
+    if (tools) return { id: focusId, related: new Set([focusId, tools.id, ...tools.users]) };
     const stack = layout.stacks.find((s) => s.id === focusId);
     if (stack) return { id: focusId, related: new Set([focusId, stack.clusterId]) };
     const { from, to } = neighbors(graph, focusId);
@@ -1048,7 +1481,7 @@ export function BrainMap() {
       id: focusId,
       related: new Set([focusId, ...from.map((n) => n.id), ...to.map((n) => n.id)]),
     };
-  }, [graph, layout, focusId]);
+  }, [graph, layout, focusId, toolbox]);
 
   const onOpen = useCallback((id: string) => setSelected((cur) => (cur === id ? null : id)), []);
   const onHover = useCallback((id: string | null) => setHovered(id), []);
@@ -1059,11 +1492,22 @@ export function BrainMap() {
       source: `${counts.sources} of ${total("source")} read`,
       agent: `${counts.agents} with recorded work`,
       output: `${counts.outputs} of ${total("output")} ready`,
+      toolbox: toolbox.length
+        ? `${toolbox.reduce((sum, g) => sum + g.items.length, 0)} outside tools used`
+        : "No outside tools used yet",
     };
-  }, [graph, counts]);
+  }, [graph, counts, toolbox]);
 
   useEffect(() => {
     const view: View = { lit, hovered, selected, onOpen, onHover };
+    const now = Date.now();
+    const growing = (id: string): Growing => {
+      const at = plan.pop.get(id);
+      return {
+        pending: !reduced && !plan.known.has(id),
+        grow: at === undefined ? undefined : Math.max(0, (at - now) / 1000),
+      };
+    };
     const running = (id: string) =>
       graph.nodes.filter((n) => n.kind === "subagent" && clusterOf.get(n.id) === id && isWorking(n))
         .length;
@@ -1083,11 +1527,11 @@ export function BrainMap() {
             node,
             box,
             chips: layout.chips.get(node.id) ?? [],
-            enter: appeared.has(node.id),
+            ...growing(node.id),
             leaving: leaving.has(node.id),
             dimmed: focus.id !== null && !focus.related.has(node.id),
             running: box.depth === 0 && isAgent(node) ? running(node.id) : 0,
-            above: box.y + box.h / 2 > layout.height * 0.55,
+            above: box.y + box.h / 2 > layout.bounds.y + layout.bounds.h * 0.55,
             ...view,
           },
           draggable: false,
@@ -1108,6 +1552,7 @@ export function BrainMap() {
       data: {
         type: "stack",
         stack,
+        ...growing(stack.id),
         titles: stack.members.map((m) => graph.nodes.find((n) => n.id === m)?.title ?? m),
         dimmed: focus.id !== null && !focus.related.has(stack.id),
         onToggle,
@@ -1129,7 +1574,40 @@ export function BrainMap() {
       focusable: false,
       zIndex: 0,
     }));
-    const next = [...lanes, ...cards, ...stacks];
+    const tools: MapNode[] = toolbox.flatMap((group) => {
+      const box = layout.boxes.get(group.id);
+      if (!box) return [];
+      return [
+        {
+          id: group.id,
+          type: "toolbox",
+          position: { x: box.x, y: box.y },
+          width: box.w,
+          height: box.h,
+          data: {
+            type: "toolbox",
+            group,
+            box,
+            items: group.items.flatMap((id) => fullGraph.nodes.find((n) => n.id === id) ?? []),
+            dimmed: focus.id !== null && !focus.related.has(group.id),
+            rows: new Map(
+              group.items.flatMap((id) => {
+                const at = plan.rows.get(id);
+                return at === undefined ? [] : [[id, Math.max(0, (at - now) / 1000)] as const];
+              }),
+            ),
+            ...growing(group.id),
+            ...view,
+          },
+          draggable: false,
+          selectable: false,
+          focusable: false,
+          zIndex: 1,
+          style: { pointerEvents: "all" },
+        } satisfies MapNode,
+      ];
+    });
+    const next = [...lanes, ...cards, ...stacks, ...tools];
     setNodes((current) => {
       const known = new Map(current.map((n) => [n.id, n]));
       return next.map((n) => {
@@ -1139,8 +1617,11 @@ export function BrainMap() {
     });
   }, [
     graph,
+    fullGraph,
+    toolbox,
     layout,
-    appeared,
+    plan,
+    reduced,
     leaving,
     focus,
     lit,
@@ -1154,30 +1635,33 @@ export function BrainMap() {
     clusterOf,
   ]);
 
-  const edges = useMemo<MapEdge[]>(
-    () =>
-      layout.routes.map((route) => {
-        const mine = pulses.filter((p) => p.edgeId === route.id);
-        const touches =
-          focus.id !== null && (route.source === focus.id || route.target === focus.id);
-        return {
-          id: route.id,
-          source: route.source,
-          target: route.target,
-          type: "route",
-          data: {
-            route,
-            pulses: mine,
-            active: touches,
-            busy: mine.length > 0,
-            dimmed: focus.id !== null && !touches,
-          },
-          focusable: false,
-          selectable: false,
-        };
-      }),
-    [layout, pulses, focus],
-  );
+  const edges = useMemo<MapEdge[]>(() => {
+    const now = Date.now();
+    return layout.routes.map((route): MapEdge => {
+      const mine = pulses.filter((p) => p.edgeId === route.id);
+      const touches = focus.id !== null && (route.source === focus.id || route.target === focus.id);
+      const draw = plan.draw.get(route.id);
+      return {
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        type: "route",
+        data: {
+          route,
+          pulses: mine,
+          active: touches,
+          busy: mine.length > 0,
+          dimmed: focus.id !== null && !touches,
+          pending: !reduced && !plan.knownRoutes.has(route.id),
+          ...(draw && {
+            draw: { delay: Math.max(0, (draw.at - now) / 1000), reverse: draw.reverse },
+          }),
+        },
+        focusable: false,
+        selectable: false,
+      };
+    });
+  }, [layout, pulses, focus, plan, reduced]);
 
   useEffect(() => {
     if (!selected) return;
@@ -1186,7 +1670,7 @@ export function BrainMap() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
 
-  const detailNode = selected ? graph.nodes.find((n) => n.id === ownerOf(selected)) : undefined;
+  const detailNode = selected ? fullGraph.nodes.find((n) => n.id === ownerOf(selected)) : undefined;
   const detailChip = selected?.includes("|")
     ? layout.chips.get(ownerOf(selected))?.find((c) => c.id === selected)
     : undefined;
@@ -1244,23 +1728,6 @@ export function BrainMap() {
   const flags = data.findings;
   const openFlags = flags?.filter((f) => f.status === "open").length ?? 0;
   const versions = data.status?.counts.snapshots ?? 0;
-  // The map centres on the current run: clusters with an agent working now, else the cluster
-  // of the agent that recorded the latest step.
-  const currentRoot = (() => {
-    const busy = working.map((n) => clusterOf.get(n.id) ?? n.id);
-    if (busy.length) return new Set(busy);
-    const last = latest
-      ? agents.find(
-          (n) => n.operations.some((o) => o.id === latest.id) || n.messages.includes(latest),
-        )
-      : undefined;
-    return new Set(last ? [clusterOf.get(last.id) ?? last.id] : []);
-  })();
-  const focusIds = layout.clusters
-    .filter((c) => currentRoot.has(c.id))
-    .flatMap((c) => c.members)
-    .concat(layout.stacks.filter((s) => currentRoot.has(s.clusterId)).map((s) => s.id));
-  const sizeKey = `${Math.round(layout.width / 120)}x${Math.round(layout.height / 120)}`;
   const visibleAgents = agents.filter((n) => layout.boxes.has(n.id));
   const kindsShown = [...new Set((visibleAgents.length ? visibleAgents : agents).map(kindOf))];
   const vendorsShown = [
@@ -1374,7 +1841,6 @@ export function BrainMap() {
         />
       ) : (
         <div
-          ref={mapBox}
           className={cn(
             "relative flex overflow-hidden rounded-lg border bg-card shadow-xs",
             // Cards glide when the web re-settles. A media query, so server and client agree.
@@ -1392,8 +1858,10 @@ export function BrainMap() {
               onPaneClick={() => setSelected(null)}
               colorMode="light"
               style={flowStyle}
-              fitView
-              fitViewOptions={{ padding: 0.06, ...fitZoom(narrow) }}
+              onMove={(event) => {
+                // Only a person's drag, pinch or double-click carries an event.
+                if (event) camera.current?.("user-move");
+              }}
               minZoom={0.25}
               maxZoom={1.6}
               nodesDraggable={false}
@@ -1408,13 +1876,29 @@ export function BrainMap() {
               selectionKeyCode={null}
               proOptions={{ hideAttribution: true }}
             >
-              <AutoFit box={mapBox} focusIds={focusIds} sizeKey={sizeKey} narrow={narrow} />
+              <Camera
+                bounds={layout.bounds}
+                ready={data.source !== "loading" && operations !== undefined}
+                narrow={narrow}
+                layout={layout}
+                api={camera}
+              />
               <Controls
                 showInteractive={false}
+                showFitView={false}
                 position="bottom-left"
-                fitViewOptions={{ padding: 0.06, duration: reduced ? 0 : 300 }}
+                onZoomIn={() => camera.current?.("user-move")}
+                onZoomOut={() => camera.current?.("user-move")}
                 className="overflow-hidden rounded-lg border shadow-xs [&_.react-flow__controls-button]:size-8 [&_.react-flow__controls-button]:border-border"
-              />
+              >
+                <ControlButton
+                  onClick={() => camera.current?.("fit")}
+                  aria-label="Fit the whole map"
+                  title="Fit the whole map"
+                >
+                  <Maximize aria-hidden="true" />
+                </ControlButton>
+              </Controls>
             </ReactFlow>
             {data.source === "loading" ? (
               <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
@@ -1423,7 +1907,7 @@ export function BrainMap() {
             ) : null}
           </div>
           {detail && !narrow ? (
-            // Docks beside the map; the map refits into the space left (ResizeObserver).
+            // Docks beside the map; the view stays where it is (the fit button refits).
             <div ref={panel} className="w-[360px] shrink-0 border-l bg-card">
               {detail}
             </div>

@@ -614,3 +614,110 @@ export function collapsedInstances(graph: BrainGraph, now: number, graceMs: numb
   }
   return out;
 }
+
+/** Outside providers whose tools the map shows in its toolbox. Domino's own tools stay chips. */
+export type ToolProvider = "apify" | "claude" | "creao";
+export const TOOL_PROVIDERS: readonly ToolProvider[] = ["apify", "claude", "creao"];
+export const toolboxId = (provider: ToolProvider) => `toolbox:${provider}`;
+
+/** The toolbox provider of a tool node (or of an Apify node recorded as a source). */
+export function toolProvider(n: BrainNode): ToolProvider | undefined {
+  if (n.kind === "source") return n.vendor === "apify" ? "apify" : undefined;
+  if (n.kind !== "tool" || !n.tool) return undefined;
+  const raw = n.tool.raw.trim().toLowerCase();
+  if (n.tool.category === "apify" || raw.startsWith("apify")) return "apify";
+  if (raw.startsWith("claude.")) return "claude";
+  if (raw.startsWith("creao.")) return "creao";
+  return undefined;
+}
+
+/** One toolbox card: an outside provider, the tools of it agents used, and those agents. */
+export type ToolboxGroup = {
+  id: string;
+  provider: ToolProvider;
+  /** Tool node ids (an Apify node recorded as a source too), in first-use order. */
+  items: string[];
+  /** Agents that used them. */
+  users: string[];
+};
+
+/** Toolbox cards in the order their provider was first used; Apify actors group under Apify. */
+export function toolboxGroups(graph: BrainGraph): ToolboxGroup[] {
+  const groups = new Map<ToolProvider, ToolboxGroup>();
+  const items = graph.nodes
+    .flatMap((n) => {
+      const provider = toolProvider(n);
+      return provider ? [{ n, provider, at: n.operations[0]?.at ?? "" }] : [];
+    })
+    .sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? -1 : 1));
+  for (const { n, provider } of items) {
+    const group = groups.get(provider) ?? {
+      id: toolboxId(provider),
+      provider,
+      items: [],
+      users: [],
+    };
+    group.items.push(n.id);
+    for (const e of graph.edges) {
+      const user =
+        e.kind === "uses" && e.target === n.id
+          ? e.source
+          : e.kind === "feeds" && e.source === n.id
+            ? e.target
+            : undefined;
+      if (user && !group.users.includes(user)) group.users.push(user);
+    }
+    groups.set(provider, group);
+  }
+  return [...groups.values()];
+}
+
+/** Connector vendors a company connects on the Connect page; others are not connections. */
+const CONNECTOR_VENDORS = new Set<VendorId>([
+  "stripe",
+  "ramp",
+  "qbo",
+  "gusto",
+  "hubspot",
+  "plaid",
+  "capitalone",
+]);
+
+/**
+ * The data sources the map shows. Apify is a tool, not a source: it moves to the toolbox. With
+ * the company's connections known, a connector shows only while connected (disconnecting it
+ * removes it from the map); without them (demo, loading) a source shows once it has work.
+ */
+export function mapSources(graph: BrainGraph, connected?: ReadonlySet<VendorId>): BrainGraph {
+  const drop = new Set(
+    graph.nodes
+      .filter((n) => {
+        if (n.kind !== "source") return false;
+        if (n.vendor === "apify") return true;
+        if (connected && n.vendor && CONNECTOR_VENDORS.has(n.vendor))
+          return !connected.has(n.vendor);
+        return !hasWork(n);
+      })
+      .map((n) => n.id),
+  );
+  if (!drop.size) return graph;
+  return {
+    nodes: graph.nodes.filter((n) => !drop.has(n.id)),
+    edges: graph.edges.filter((e) => !drop.has(e.source) && !drop.has(e.target)),
+  };
+}
+
+/**
+ * Where the web grows from on load: an orchestrator or coordinator agent when the log has one,
+ * else the ingestion agent, else the first agent with work.
+ */
+export function growthRoot(graph: BrainGraph): string | undefined {
+  const agents = graph.nodes.filter((n) => n.kind === "agent" && hasWork(n));
+  const lead = agents.find((n) => /orchestrat|coordinat/i.test(`${n.id} ${n.title}`));
+  return (
+    lead?.id ??
+    agents.find((n) => n.id === "agent:ingestion")?.id ??
+    graph.nodes.find((n) => n.id === "agent:ingestion")?.id ??
+    agents[0]?.id
+  );
+}
