@@ -16,7 +16,7 @@ import {
 import { type Outcome, isConfirmed } from "./requests";
 
 export const inputClass =
-  "w-full rounded-md border bg-background px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "min-w-0 w-full max-w-full rounded-md border bg-background px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export type RuleEditorProps = {
   constraints: Constraint[];
@@ -119,7 +119,7 @@ export function RuleEditor({ constraints, bills, onSave, disabled }: RuleEditorP
         ))}
       </ul>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="space-y-1 text-xs">
+        <label className="min-w-0 max-w-full space-y-1 text-xs">
           <span>Add a rule</span>
           <select
             className={inputClass}

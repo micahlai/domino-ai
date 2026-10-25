@@ -69,7 +69,11 @@ export function WorkspaceView({
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? b.seed.asOf;
 
   return (
-    <article className="space-y-6" data-testid="workspace" data-run-id={run.runId}>
+    <article
+      className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]"
+      data-testid="workspace"
+      data-run-id={run.runId}
+    >
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Link
@@ -95,8 +99,8 @@ export function WorkspaceView({
         ) : null}
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 max-w-full space-y-6 lg:col-span-2">
           <WorkspaceChart
             history={b.history}
             forecast={run.forecast}
@@ -112,7 +116,7 @@ export function WorkspaceView({
               setSelectedItemId(null);
             }}
           />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             <WeekDetail
               run={run}
               weekStart={selectedWeek}
@@ -127,7 +131,7 @@ export function WorkspaceView({
           </div>
           <Provenance run={run} resultRef={resultRef} />
         </div>
-        <div className="space-y-6">
+        <div className="min-w-0 max-w-full space-y-6">
           <QuestionsPanel
             questions={questions}
             selectedWeek={selectedWeek}
