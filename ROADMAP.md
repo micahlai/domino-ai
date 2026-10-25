@@ -25,7 +25,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
+| S2 catalog | Friend pushed bd7e880; Codex audit running (lead 78153) | origin/S2-simulation-catalog; review worktree ../domino-S2-review (detached) | Scope matches card (catalog module/test, schema index, api.d.ts, card). Merges cleanly with preview. Next: audit -> integrate -> P0-S |
 | P0-C contracts / P0-S schema | P0-C: Opus worker, Jayden option 1: freeze JSON-text boundary only (object schemas internal), cap derived-chain depth and day counts; one scoped audit. P0-S: planned (card decisions), waits for friend S2 integration | [Exception audit](kb/reviews/P0C-66fe754-codex-exception.md), [P0-S scout](kb/reviews/P0S-prep-scout.md) | PREPARING THE SPLIT |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
