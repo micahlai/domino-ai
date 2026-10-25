@@ -123,3 +123,6 @@ export const engine: Engine = {
   pastEvents,
   stressTest,
 };
+/** Field weekly audit and 13-week scheduled items; engine-local, not part of Engine. */
+export { type AuditInput, auditSnapshot } from "./audit";
+export { scheduledItems } from "./scheduled-items";

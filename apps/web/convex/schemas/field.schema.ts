@@ -74,7 +74,68 @@ export const fieldTables = {
     action: v.string(),
     refs: v.array(v.string()),
     at: v.string(),
+    // Field weekly ingest (optional, so older rows stay valid): who did the step, with which
+    // tool, against which data source, so the brain map animates only recorded exchanges.
+    agent: v.optional(v.string()),
+    tool: v.optional(v.string()),
+    source: v.optional(v.string()),
+    runId: v.optional(v.string()),
+    summary: v.optional(v.string()),
   }).index("by_company", ["companyId"]),
+  // Field weekly feed (field.ts): ingest state, kept small because it changes every run.
+  feeds: defineTable({
+    companyId,
+    auto: v.boolean(),
+    /** Bumped on every enable/disable so a stale self-scheduled tick stops itself. */
+    autoGeneration: v.number(),
+    autoTicksLeft: v.number(),
+    week: v.number(),
+    snapshotVersion: v.number(),
+    lastSnapshotId: v.union(v.id("snapshots"), v.null()),
+    lastSnapshotHash: v.union(v.string(), v.null()),
+    lastSnapshotAt: v.union(v.string(), v.null()),
+    lastIngestAt: v.union(v.string(), v.null()),
+    lastIngestStatus: v.union(
+      v.literal("ok"),
+      v.literal("no_change"),
+      v.literal("failed"),
+      v.null(),
+    ),
+    lastError: v.union(v.string(), v.null()),
+    /** Records per snapshot list in the latest version, so status never loads a snapshot. */
+    recordCounts: v.union(v.record(v.string(), v.number()), v.null()),
+  }).index("by_companyId", ["companyId"]),
+  // The private mock world behind the feed (sim WorldState plus planted entries). Only the
+  // in-process mock source handler reads it; ingest sees source responses only.
+  feedWorlds: defineTable({ companyId, world: v.any(), overlay: v.any() }).index("by_companyId", [
+    "companyId",
+  ]),
+  // Audit findings (FindingSchema fields) per snapshot version; high severity is an escalation
+  // a person approves (finding confirmed) or rejects (dismissed) via field.decide.
+  findings: defineTable({
+    companyId,
+    findingId: v.string(),
+    snapshotId: v.id("snapshots"),
+    version: v.number(),
+    kind: v.union(
+      v.literal("duplicate"),
+      v.literal("conflict"),
+      v.literal("unusual_amount"),
+      v.literal("unusual_timing"),
+      v.literal("missing_expected"),
+    ),
+    severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    summary: v.string(),
+    refs: v.array(v.string()),
+    detectedAt: v.string(),
+    escalated: v.boolean(),
+    status: v.union(v.literal("open"), v.literal("approved"), v.literal("rejected")),
+    decidedBy: v.optional(v.string()),
+    decidedAt: v.optional(v.string()),
+    note: v.optional(v.string()),
+  })
+    .index("by_companyId_and_findingId", ["companyId", "findingId"])
+    .index("by_companyId_and_status", ["companyId", "status"]),
   // Investigations.
   // G2b: server-owned investigation conversations. One receipt per accepted requestId binds it
   // to its kind, payload hash and conversation, so retries return and key reuse conflicts.

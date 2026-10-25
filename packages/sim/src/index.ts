@@ -1,4 +1,5 @@
 import type { Simulator } from "@domino/contracts";
+import { advanceWeek } from "./advance.ts";
 import { createCompany } from "./create.ts";
 
 /** Placeholder. Built by prompt E1 (prompts/engine/E1-simulator.md). */
@@ -8,6 +9,6 @@ const notBuilt = (name: string) => () => {
 
 export const simulator: Simulator = {
   createCompany,
-  advanceWeek: notBuilt("advanceWeek"),
+  advanceWeek,
   answerKey: notBuilt("answerKey"),
 };
