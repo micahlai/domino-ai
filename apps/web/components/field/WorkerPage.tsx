@@ -3,28 +3,37 @@
 import {
   ArrowUpRight,
   Check,
+  ChevronRight,
   Copy,
   Download,
   FileOutput,
   History,
   Inbox,
-  Play,
+  Link2,
   RefreshCw,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { verifyWeeklySeedText } from "../../lib/feature-boundary/verify";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
-import { PageHeader, StatTile } from "../ui/page";
+import { PageHeader } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
 import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
+import {
+  LARGE_CENTS,
+  describeFinding,
+  findingExplanation,
+  formatDay,
+  humanizeText,
+  relatedFlags,
+} from "./finding-text";
 import { byTime } from "./graph";
 import { EmptyRow, Panel } from "./panel";
 import {
@@ -41,20 +50,53 @@ import {
 } from "./parts";
 import type { Anomaly, Decision, FieldFinding, FieldOperation } from "./types";
 
+type Busy = "feed" | "ingest" | "export" | null;
+type Runner = {
+  busy: Busy;
+  message: { text: string; error?: boolean } | null;
+  run: (kind: Exclude<Busy, null>, task: () => Promise<void>, done: string) => Promise<void>;
+};
+
+/** One busy flag and one result line for every action on the page. */
+function useRunner(): Runner {
+  const [busy, setBusy] = useState<Busy>(null);
+  const [message, setMessage] = useState<Runner["message"]>(null);
+  async function run(kind: Exclude<Busy, null>, task: () => Promise<void>, done: string) {
+    setBusy(kind);
+    setMessage(null);
+    try {
+      await task();
+      setMessage({ text: done });
+    } catch (error) {
+      setMessage({
+        text: `That did not work: ${error instanceof Error ? error.message : "unknown error"}`,
+        error: true,
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+  return { busy, message, run };
+}
+
 export function WorkerPage() {
   const data = useFieldData();
   const company = useSelectedCompanyName();
   const now = useNow();
+  const runner = useRunner();
+  const [seed, setSeed] = useState<string | null>(null);
   const open = data.findings?.filter((f) => f.status === "open") ?? [];
   const decided = data.findings?.filter((f) => f.status !== "open") ?? [];
+  const related = relatedFlags(open);
   const headline = !data.findings
     ? "Loading the review queue"
     : open.length === 0
       ? "Nothing needs your review right now"
       : `${open.length} ${open.length === 1 ? "flag needs" : "flags need"} your review`;
+  const disabled = data.source === "loading" || data.needsSetup || runner.busy !== null;
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
+    <div className="mx-auto max-w-[1200px] space-y-4">
       <PageHeader
         eyebrow={
           <span className="flex flex-wrap items-center gap-2">
@@ -63,20 +105,57 @@ export function WorkerPage() {
           </span>
         }
         title={headline}
-        description="The finance agent reads new entries from your six tools and flags anything odd. You decide every flag. Domino never moves money."
+        description="You decide every flag. Domino only reads your tools and never moves money."
+        actions={
+          <>
+            <Button
+              disabled={disabled}
+              onClick={() =>
+                runner.run(
+                  "ingest",
+                  data.actions.ingestNow,
+                  data.source === "live"
+                    ? "Checking every tool now. New flags appear below as they land."
+                    : "Checked every tool.",
+                )
+              }
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={cn(
+                  runner.busy === "ingest" && "animate-spin motion-reduce:animate-none",
+                )}
+              />
+              Check latest data
+            </Button>
+            <Button
+              variant="outline"
+              disabled={disabled}
+              onClick={() =>
+                runner.run(
+                  "export",
+                  async () => setSeed(await data.actions.exportSeed()),
+                  "Seed exported for a simulation.",
+                )
+              }
+            >
+              <FileOutput aria-hidden="true" />
+              Export seed
+            </Button>
+          </>
+        }
       />
 
+      <StatusLine now={now} runner={runner} />
       {data.needsSetup ? <SetupCard /> : null}
-      <StatusStrip now={now} />
-      <ActionBar />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
         <div className="min-w-0 space-y-4">
           <Panel
             aria-labelledby="queue-title"
             level="h2"
             title={<span id="queue-title">Review queue</span>}
-            description="Approve if the flag is a real problem; reject if it is fine."
+            description="Confirm a flag if it is a real problem. Dismiss it if it is fine."
             aside={
               data.findings ? (
                 <Badge variant={open.length > 0 ? "warning" : "secondary"}>
@@ -99,7 +178,15 @@ export function WorkerPage() {
               <ul className="divide-y">
                 <AnimatePresence initial={false}>
                   {open.map((finding) => (
-                    <FindingCard key={finding.id} finding={finding} now={now} />
+                    <FindingCard
+                      key={finding.id}
+                      finding={finding}
+                      now={now}
+                      related={(related.get(finding.id) ?? []).flatMap((id) => {
+                        const other = open.find((f) => f.id === id);
+                        return other ? [other] : [];
+                      })}
+                    />
                   ))}
                 </AnimatePresence>
               </ul>
@@ -107,75 +194,94 @@ export function WorkerPage() {
           </Panel>
           {decided.length > 0 ? <DecidedList findings={decided} /> : null}
         </div>
-        <ActivityFeed operations={data.operations} now={now} />
+        <div className="min-w-0 space-y-4">
+          <DemoControls runner={runner} disabled={disabled} />
+          <ActivityFeed
+            operations={data.operations}
+            now={now}
+            aside={
+              <Link
+                href="/field/map"
+                className="inline-flex min-h-11 items-center gap-1 rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
+              >
+                Brain map
+                <ArrowUpRight aria-hidden="true" className="size-3.5" />
+              </Link>
+            }
+          />
+        </div>
       </div>
+      <SeedDialog text={seed} demo={data.source === "demo"} onClose={() => setSeed(null)} />
     </div>
   );
 }
 
-function StatusStrip({ now }: { now: number }) {
+const RUN_NOTE: Record<string, string> = {
+  ok: "saved new entries",
+  no_change: "found nothing new",
+  failed: "failed",
+};
+
+/** Agent status as one quiet metadata line; the queue below is the main thing on the page. */
+function StatusLine({ now, runner }: { now: number; runner: Runner }) {
   const { status } = useFieldData();
-  const items = status
+  const parts: ReactNode[] = status
     ? [
-        {
-          label: "New entries arrived",
-          value: timeAgo(status.feed.lastAdvanceAt, now),
-          note:
-            status.week !== undefined
-              ? `Books as of ${status.asOf ? shortDay(status.asOf) : "unknown"} · week ${status.week}`
-              : status.feed.enabled
-                ? "Mock feed on"
-                : "Mock feed off",
-        },
-        {
-          label: "Agent last ran",
-          value: timeAgo(status.ingest.lastRunAt, now),
-          note: `${status.ingest.enabled ? "Auto ingest on" : "Auto ingest off"} · ${RUN_NOTE[status.ingest.lastStatus ?? ""] ?? status.ingest.lastStatus ?? "no runs yet"}`,
-        },
-        { label: "Sources read", value: String(status.counts.sources), note: "of 6 connected" },
-        {
-          label: "Books versions saved",
-          value: String(status.counts.snapshots),
-          note: "one per ingest with new entries",
-        },
+        status.feed.lastAdvanceAt
+          ? `New entries arrived ${timeAgo(status.feed.lastAdvanceAt, now)}`
+          : "Arrival time unavailable",
+        status.ingest.lastRunAt
+          ? `Agent last ran ${timeAgo(status.ingest.lastRunAt, now)}${
+              status.ingest.lastStatus && RUN_NOTE[status.ingest.lastStatus]
+                ? `, ${RUN_NOTE[status.ingest.lastStatus]}`
+                : ""
+            }`
+          : "Agent has not run yet",
+        ...(status.asOf
+          ? [
+              `Books as of ${formatDay(status.asOf)}${status.week !== undefined ? `, week ${status.week}` : ""}`,
+            ]
+          : []),
+        `${status.counts.sources} of 6 tools read`,
+        `Auto checks ${status.ingest.enabled ? "on" : "off"}`,
       ]
-    : null;
+    : [];
   return (
     <section aria-label="Agent status" className="space-y-2">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {items
-          ? items.map((item) => (
-              <StatTile key={item.label} label={item.label} value={item.value} delta={item.note} />
-            ))
-          : [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[100px] rounded-lg" />)}
-      </div>
+      {status ? (
+        <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] leading-5 text-muted-foreground">
+          {parts.map((part, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed order of status parts
+            <span key={i} className="inline-flex items-center gap-2">
+              {i > 0 ? <span aria-hidden="true">·</span> : null}
+              {part}
+            </span>
+          ))}
+        </p>
+      ) : (
+        <Skeleton className="h-5 w-full max-w-lg" />
+      )}
+      {runner.busy || runner.message ? (
+        <output
+          className={cn(
+            "block text-[13px]",
+            runner.message?.error ? "text-destructive" : "text-foreground",
+          )}
+        >
+          {runner.busy ? "Working..." : runner.message?.text}
+        </output>
+      ) : null}
       {status?.ingest.lastStatus === "failed" && status.lastError ? (
         <p
           role="alert"
           className="rounded-md border border-destructive/25 bg-destructive/[0.04] px-3 py-2 text-sm text-destructive"
         >
-          Last ingest failed: {status.lastError}
+          Last check failed: {status.lastError}
         </p>
       ) : null}
     </section>
   );
 }
-
-/** "2026-10-30" -> "Oct 30"; anything else is shown as is. */
-const shortDay = (iso: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(iso)
-    ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      })
-    : iso;
-
-const RUN_NOTE: Record<string, string> = {
-  ok: "last run saved new entries",
-  no_change: "last run found nothing new",
-  failed: "last run failed",
-};
 
 function SetupCard() {
   const { actions } = useFieldData();
@@ -205,125 +311,48 @@ function SetupCard() {
   );
 }
 
-type Busy = "feed" | "ingest" | "analysis" | "export" | null;
-
-function ActionBar() {
-  const { actions, source, status, needsSetup } = useFieldData();
-  const [busy, setBusy] = useState<Busy>(null);
-  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
-  const [seed, setSeed] = useState<string | null>(null);
+/** Synthetic-feed controls for demos. Collapsed so the review queue stays first. */
+function DemoControls({ runner, disabled }: { runner: Runner; disabled: boolean }) {
+  const { actions, status } = useFieldData();
   const [anomaly, setAnomaly] = useState<Anomaly | "">("");
-  const disabled = source === "loading" || needsSetup || busy !== null;
-
-  async function run(kind: Exclude<Busy, null>, task: () => Promise<void>, done: string) {
-    setBusy(kind);
-    setMessage(null);
-    try {
-      await task();
-      setMessage({ text: done });
-    } catch (error) {
-      setMessage({
-        text: `That did not work: ${error instanceof Error ? error.message : "unknown error"}`,
-        error: true,
-      });
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
-    <section aria-label="Actions" className="overflow-hidden rounded-lg border bg-card shadow-xs">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button
-            disabled={disabled}
-            onClick={() =>
-              run(
-                "feed",
-                () => actions.advanceFeed(anomaly || undefined),
-                `New entries arrived in the mock feed${anomaly ? " with a planted anomaly" : ""}. ${status?.ingest.enabled ? "Auto ingest picks them up on its next run." : "Press Ingest now to read them."}`,
-              )
-            }
-          >
-            <Download aria-hidden="true" />
-            New entries arrive
-          </Button>
-          <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={disabled} />
-        </div>
-        <span aria-hidden="true" className="hidden h-6 w-px bg-border xl:block" />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            disabled={disabled}
-            onClick={() =>
-              run(
-                "ingest",
-                actions.ingestNow,
-                source === "live"
-                  ? "Ingest queued. The agent reads every source; results appear below as they land."
-                  : "The agent ran and checked every source.",
-              )
-            }
-          >
-            <RefreshCw aria-hidden="true" className={cn(busy === "ingest" && "animate-spin")} />
-            Ingest now
-          </Button>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            title="For now this runs a fresh ingest and audit."
-            onClick={() =>
-              run(
-                "analysis",
-                actions.ingestNow,
-                "Analysis started: a fresh ingest and audit. Forecast analysis comes next.",
-              )
-            }
-          >
-            <Play aria-hidden="true" />
-            Launch analysis
-          </Button>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            onClick={() =>
-              run(
-                "export",
-                async () => setSeed(await actions.exportSeed()),
-                "Seed exported for a simulation.",
-              )
-            }
-          >
-            <FileOutput aria-hidden="true" />
-            Export seed for simulation
-          </Button>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 xl:ml-auto xl:w-auto">
-          <AutoIngestToggle />
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t bg-muted/40 px-3 py-2">
-        <output
-          className={cn(
-            "block min-h-5 text-[13px]",
-            message?.error ? "text-destructive" : "text-muted-foreground",
-          )}
+    <details className="group overflow-hidden rounded-lg border bg-card text-sm shadow-xs">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <span>
+          Demo controls
+          <span className="ml-2 text-[13px] font-normal text-muted-foreground">
+            Synthetic entries only
+          </span>
+        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className="size-4 text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none"
+        />
+      </summary>
+      <div className="space-y-3 border-t px-4 py-3">
+        <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={disabled} stacked />
+        <Button
+          variant="outline"
+          className="w-full"
+          disabled={disabled}
+          onClick={() =>
+            runner.run(
+              "feed",
+              () => actions.advanceFeed(anomaly || undefined),
+              `New entries arrived in the mock feed${anomaly ? " with a planted anomaly" : ""}. ${
+                status?.ingest.enabled
+                  ? "Auto checks pick them up on the next run."
+                  : "Press Check latest data to read them."
+              }`,
+            )
+          }
         >
-          {busy
-            ? "Working..."
-            : (message?.text ??
-              "Ready. Every action here only reads or checks; nothing moves money.")}
-        </output>
-        <Link
-          href="/field/map"
-          className="inline-flex items-center gap-1 rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          Watch it on the brain map
-          <ArrowUpRight aria-hidden="true" className="size-3.5" />
-        </Link>
+          <Download aria-hidden="true" />
+          New entries arrive
+        </Button>
+        <AutoIngestToggle />
       </div>
-      <SeedDialog text={seed} demo={source === "demo"} onClose={() => setSeed(null)} />
-    </section>
+    </details>
   );
 }
 
@@ -407,12 +436,27 @@ function SeedDialog({
   );
 }
 
-function FindingCard({ finding, now }: { finding: FieldFinding; now: number }) {
+/** A DOM id for a flag; finding ids can carry ":" and ",". */
+const flagDomId = (id: string) => `flag-${id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+/** The primary amount sits next to the name, so the fact line skips it. */
+const PRIMARY_FACT = new Set(["Amount", "Now"]);
+
+function FindingCard({
+  finding,
+  now,
+  related,
+}: { finding: FieldFinding; now: number; related: FieldFinding[] }) {
   const { actions } = useFieldData();
   const reduced = useReducedMotion();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const view = describeFinding(finding);
+  const { explanation, suggestedCheck } = findingExplanation(finding);
+  const primary = view.facts.find((f) => PRIMARY_FACT.has(f.label));
+  const rest = view.facts.filter((f) => f !== primary);
+  const high = finding.severity === "high";
+  const large = view.amountCents !== null && Math.abs(view.amountCents) >= LARGE_CENTS;
   async function decide(decision: Decision) {
     setBusy(decision);
     setError(null);
@@ -424,71 +468,134 @@ function FindingCard({ finding, now }: { finding: FieldFinding; now: number }) {
     }
   }
   const noteId = `note-${finding.id}`;
+  const domId = flagDomId(finding.id);
   return (
     <motion.li
+      id={domId}
       layout={!reduced}
       initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={reduced ? { opacity: 0 } : { opacity: 0, x: 24 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="bg-card px-4 py-4"
+      aria-labelledby={`${domId}-title`}
+      className={cn(
+        "relative scroll-mt-20 bg-card px-4 py-4",
+        high &&
+          "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-destructive",
+      )}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Badge variant={SEVERITY_BADGE[finding.severity]}>{SEVERITY_LABEL[finding.severity]}</Badge>
-        <span className="text-sm font-semibold">{FINDING_LABEL[finding.kind]}</span>
-        {finding.escalated ? (
-          <Badge variant="outline" className="font-normal text-muted-foreground">
-            Escalated to you
-          </Badge>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 id={`${domId}-title`} className="text-[15px] font-semibold leading-6">
+            {view.counterparty ?? FINDING_LABEL[finding.kind]}
+          </h3>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <Badge variant={SEVERITY_BADGE[finding.severity]}>
+              {SEVERITY_LABEL[finding.severity]}
+            </Badge>
+            {view.counterparty ? <span>{FINDING_LABEL[finding.kind]}</span> : null}
+            <span>Found {timeAgo(finding.detectedAt, now)}</span>
+            {finding.escalated ? <span>Escalated to you</span> : null}
+          </p>
+        </div>
+        {primary ? (
+          <p className="shrink-0 text-right">
+            <span
+              className={cn(
+                "block font-semibold tabular-nums tracking-[-0.01em]",
+                high || large ? "text-lg leading-6" : "text-[15px] leading-6",
+              )}
+            >
+              {primary.value}
+            </span>
+            {rest.length > 0 ? (
+              <span className="block text-xs tabular-nums text-muted-foreground">
+                {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
+              </span>
+            ) : null}
+          </p>
         ) : null}
-        <span className="ml-auto text-xs text-muted-foreground">
-          Found {timeAgo(finding.detectedAt, now)}
-        </span>
       </div>
-      <p className="mt-2 text-sm leading-6">{finding.summary}</p>
-      <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        Records
-        {finding.refs.map((ref) => (
-          <code
-            key={ref}
-            className="rounded border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-foreground"
-          >
-            {ref}
-          </code>
-        ))}
-      </p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <label htmlFor={noteId} className="sr-only">
-          Note (optional)
+
+      <p className="mt-2 text-sm leading-6">{view.headline}</p>
+      {!primary && rest.length > 0 ? (
+        <p className="mt-1 text-[13px] tabular-nums text-muted-foreground">
+          {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
+        </p>
+      ) : null}
+      {explanation ? (
+        <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
+          <span className="font-medium text-foreground">Why it matters: </span>
+          {explanation}
+        </p>
+      ) : null}
+      {suggestedCheck ? (
+        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+          <span className="font-medium text-foreground">Suggested check: </span>
+          {suggestedCheck}
+        </p>
+      ) : null}
+
+      {related.length > 0 ? (
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+          <Link2 aria-hidden="true" className="size-3.5" />
+          Shares a record with
+          {related.map((other) => (
+            <a
+              key={other.id}
+              href={`#${flagDomId(other.id)}`}
+              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
+            >
+              {describeFinding(other).counterparty ?? FINDING_LABEL[other.kind]}
+            </a>
+          ))}
+        </p>
+      ) : null}
+
+      {finding.refs.length > 0 ? (
+        <details className="group mt-2 text-[13px]">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0 [&::-webkit-details-marker]:hidden">
+            <ChevronRight
+              aria-hidden="true"
+              className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+            />
+            View records ({finding.refs.length})
+          </summary>
+          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+            {finding.refs.map((ref) => (
+              <li key={ref}>
+                <code className="rounded border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-foreground">
+                  {ref}
+                </code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
+      <div className="mt-3 space-y-1.5">
+        <label htmlFor={noteId} className="block text-[13px] font-medium">
+          Note <span className="font-normal text-muted-foreground">(optional)</span>
         </label>
-        <Input
-          id={noteId}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={500}
-          placeholder="Add a note (optional): why you decided this"
-          className="h-8 sm:flex-1"
-        />
-        <div className="flex shrink-0 gap-2">
-          <Button
-            size="sm"
-            className="flex-1 sm:flex-none"
-            disabled={busy !== null}
-            onClick={() => decide("approved")}
-          >
-            <Check aria-hidden="true" />
-            Approve
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1 sm:flex-none"
-            disabled={busy !== null}
-            onClick={() => decide("rejected")}
-          >
-            <X aria-hidden="true" />
-            Reject
-          </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            id={noteId}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={500}
+            placeholder="Why you decided this"
+            className="h-11 sm:h-9 sm:flex-1"
+          />
+          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+            <Button disabled={busy !== null} onClick={() => decide("approved")}>
+              <Check aria-hidden="true" />
+              Confirm issue
+            </Button>
+            <Button variant="outline" disabled={busy !== null} onClick={() => decide("rejected")}>
+              <X aria-hidden="true" />
+              Dismiss flag
+            </Button>
+          </div>
         </div>
       </div>
       {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
@@ -499,7 +606,7 @@ function FindingCard({ finding, now }: { finding: FieldFinding; now: number }) {
 function DecidedList({ findings }: { findings: FieldFinding[] }) {
   return (
     <details className="group overflow-hidden rounded-lg border bg-card text-sm shadow-xs">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
         <span>
           Decided
           <span className="ml-2 font-normal text-muted-foreground">
@@ -514,25 +621,32 @@ function DecidedList({ findings }: { findings: FieldFinding[] }) {
         </span>
       </summary>
       <ul className="divide-y border-t">
-        {findings.map((f) => (
-          <li
-            key={f.id}
-            className="grid gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[88px_minmax(0,1fr)]"
-          >
-            <div>
-              <Badge variant={f.status === "approved" ? "success" : "secondary"}>
-                {f.status === "approved" ? "Approved" : "Rejected"}
-              </Badge>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">{FINDING_LABEL[f.kind]}</p>
-              <p className="mt-0.5 leading-6">{f.summary}</p>
-              {f.note ? (
-                <p className="mt-1 text-[13px] text-muted-foreground">Note: {f.note}</p>
-              ) : null}
-            </div>
-          </li>
-        ))}
+        {findings.map((f) => {
+          const view = describeFinding(f);
+          return (
+            <li
+              key={f.id}
+              className="grid gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[96px_minmax(0,1fr)]"
+            >
+              <div>
+                <Badge variant={f.status === "approved" ? "success" : "secondary"}>
+                  {f.status === "approved" ? "Confirmed" : "Dismissed"}
+                </Badge>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {view.counterparty
+                    ? `${view.counterparty} · ${FINDING_LABEL[f.kind]}`
+                    : FINDING_LABEL[f.kind]}
+                </p>
+                <p className="mt-0.5 leading-6">{view.headline}</p>
+                {f.note ? (
+                  <p className="mt-1 text-[13px] text-muted-foreground">Note: {f.note}</p>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </details>
   );
@@ -544,10 +658,13 @@ export function ActivityFeed({
   operations,
   now,
   className,
+  aside,
 }: {
   operations?: FieldOperation[];
   now: number;
   className?: string;
+  /** Right side of the header; a history icon by default. */
+  aside?: ReactNode;
 }) {
   const reduced = useReducedMotion();
   // Rows on screen at first render are history and appear still; only later arrivals animate.
@@ -562,7 +679,7 @@ export function ActivityFeed({
       aria-labelledby="activity-title"
       level="h2"
       title={<span id="activity-title">Recent activity</span>}
-      aside={<History aria-hidden="true" className="size-4 text-muted-foreground" />}
+      aside={aside ?? <History aria-hidden="true" className="size-4 text-muted-foreground" />}
       className={className}
     >
       {!operations ? (
@@ -612,7 +729,9 @@ export function ActivityFeed({
                         {timeAgo(op.at, now)}
                       </time>
                     </div>
-                    <p className="text-[13px] leading-5 text-muted-foreground">{op.summary}</p>
+                    <p className="text-[13px] leading-5 text-muted-foreground">
+                      {humanizeText(op.summary)}
+                    </p>
                   </div>
                 </motion.li>
               );

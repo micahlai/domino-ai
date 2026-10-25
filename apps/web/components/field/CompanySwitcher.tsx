@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { Check, ChevronsUpDown, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { cn } from "../../lib/utils";
 import { FIELD_COMPANIES, selectCompany, useSelectedCompany, useSelectedProfile } from "./company";
@@ -61,6 +61,9 @@ function HealthDot({ health }: { health: Item["health"] }) {
     />
   );
 }
+
+const menuItems = (menu: HTMLElement | null) =>
+  Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? []);
 
 export function CompanySwitcher() {
   return CONVEX_URL ? <LiveSwitcher /> : <DemoSwitcher />;
@@ -130,23 +133,52 @@ function Picker({
   const onCase = pathname === "/case" || pathname.startsWith("/case/");
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  /** Which item gets focus when the menu opens: the selected one, or the first/last by arrow. */
+  const start = useRef<"selected" | "first" | "last">("selected");
+  const close = (refocus: boolean) => {
+    setOpen(false);
+    if (refocus) button.current?.focus();
+  };
   useEffect(() => {
     if (!open) return;
+    const items = menuItems(menu.current);
+    const target =
+      start.current === "first"
+        ? items[0]
+        : start.current === "last"
+          ? items.at(-1)
+          : (items.find((i) => i.getAttribute("aria-checked") === "true") ?? items[0]);
+    target?.focus();
     const outside = (e: PointerEvent) => {
       if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      button.current?.focus();
-    };
     document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
+  const openWith = (from: typeof start.current) => {
+    start.current = from;
+    setOpen(true);
+    onOpen?.();
+  };
+  // Menu keys (WAI-ARIA menu pattern): arrows move, Home/End jump, Enter/Space activate (native
+  // buttons and links), Escape closes and returns focus to the button, Tab closes.
+  const onMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const items = menuItems(menu.current);
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const go = (i: number) => {
+      e.preventDefault();
+      items[(i + items.length) % items.length]?.focus();
+    };
+    if (e.key === "ArrowDown") go(at + 1);
+    else if (e.key === "ArrowUp") go(at - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(items.length - 1);
+    else if (e.key === "Escape") {
+      e.preventDefault();
+      close(true);
+    } else if (e.key === "Tab") close(false);
+  };
   const selected = onCase ? undefined : items.find((i) => i.profile === current);
   const name = onCase ? "2U" : (selected?.name ?? "Choose a company");
   return (
@@ -156,12 +188,14 @@ function Picker({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => {
-          setOpen((o) => !o);
-          onOpen?.();
+        onClick={() => (open ? close(false) : openWith("selected"))}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+          e.preventDefault();
+          openWith(e.key === "ArrowDown" ? "selected" : "last");
         }}
         className={cn(
-          "flex h-9 items-center gap-2 rounded-md border bg-card pl-1.5 pr-2 text-[13px] font-medium shadow-xs transition-colors hover:bg-accent",
+          "flex h-11 items-center sm:h-9 gap-2 rounded-md border bg-card pl-1.5 pr-2 text-[13px] font-medium shadow-xs transition-colors hover:bg-accent",
           focusRing,
         )}
       >
@@ -187,8 +221,10 @@ function Picker({
       </button>
       {open ? (
         <div
+          ref={menu}
           role="menu"
           aria-label="Companies"
+          onKeyDown={onMenuKey}
           className="absolute right-0 top-full z-50 mt-1.5 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
         >
           <p className="px-3 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -203,6 +239,7 @@ function Picker({
                     type="button"
                     role="menuitemradio"
                     aria-checked={on}
+                    tabIndex={-1}
                     onClick={() => {
                       selectCompany(item.profile);
                       setOpen(false);
@@ -210,7 +247,7 @@ function Picker({
                       else button.current?.focus();
                     }}
                     className={cn(
-                      "flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent",
+                      "flex min-h-11 w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent focus:bg-accent focus:outline-none",
                       focusRing,
                       on && "bg-secondary",
                     )}
@@ -244,9 +281,10 @@ function Picker({
               href="/case/2u"
               role="menuitemradio"
               aria-checked={onCase}
+              tabIndex={-1}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-accent",
+                "flex min-h-11 items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-accent focus:bg-accent focus:outline-none",
                 focusRing,
                 onCase && "bg-secondary",
               )}
