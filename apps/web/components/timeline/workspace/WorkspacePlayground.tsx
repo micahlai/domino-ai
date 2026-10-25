@@ -5,7 +5,9 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { CatalogList } from "./CatalogPanel";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
+import type { WorkspaceRun } from "./api";
 import { fixtureGraph, fixtureQuestions, fixtureRuns } from "./fixtures";
+import { comparisonIds } from "./scenarioComparisons";
 
 const NOTHING_SAVED = "Playground fixture: nothing is saved or calculated here.";
 
@@ -54,24 +56,45 @@ export function WorkspacePlayground() {
           hrefFor={actions.hrefFor}
         />
       </div>
-      {run ? (
-        <WorkspaceView
-          key={run.runId}
-          run={run}
-          parent={
-            run.parentRunId
-              ? { state: "ready", value: fixtureRuns[run.parentRunId as keyof typeof fixtureRuns] }
-              : null
-          }
-          graph={{ state: "ready", value: fixtureGraph }}
-          questions={{
-            state: "ready",
-            value: fixtureQuestions.map((q) => ({ ...q, runId: run.runId })),
-          }}
-          resultRef={{ state: "missing" }}
-          actions={actions}
-        />
-      ) : null}
+      {run ? <FixtureWorkspace key={run.runId} run={run} actions={actions} /> : null}
     </section>
+  );
+}
+
+function FixtureWorkspace({ run, actions }: { run: WorkspaceRun; actions: WorkspaceActions }) {
+  const [ids, setIds] = useState<string[]>(
+    run.parentRunId
+      ? [run.parentRunId]
+      : fixtureGraph
+          .filter((entry) => entry.parentRunId === run.runId)
+          .slice(0, 1)
+          .map((entry) => entry.runId),
+  );
+  return (
+    <WorkspaceView
+      run={run}
+      comparisons={{
+        ids: comparisonIds(ids, run.runId),
+        reads: Object.fromEntries(
+          Object.entries(fixtureRuns).map(([id, value]) => [
+            id,
+            { state: "ready" as const, value },
+          ]),
+        ),
+        onChange: setIds,
+      }}
+      parent={
+        run.parentRunId
+          ? { state: "ready", value: fixtureRuns[run.parentRunId as keyof typeof fixtureRuns] }
+          : null
+      }
+      graph={{ state: "ready", value: fixtureGraph }}
+      questions={{
+        state: "ready",
+        value: fixtureQuestions.map((q) => ({ ...q, runId: run.runId })),
+      }}
+      resultRef={{ state: "missing" }}
+      actions={actions}
+    />
   );
 }
