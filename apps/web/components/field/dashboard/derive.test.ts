@@ -1,7 +1,7 @@
 import { type Snapshot, SnapshotSchema } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { cashFlowStatement, cashFlowSummary, engine } from "@domino/engine";
-import { simulator } from "@domino/sim";
+import { createProfileCompany, simulator } from "@domino/sim";
 import { describe, expect, it } from "vitest";
 import { buildDemo, liveHeader } from "./data";
 import { ACTUAL_WEEKS, type DashboardView, deriveDashboard } from "./derive";
@@ -129,13 +129,21 @@ describe("deriveDashboard", () => {
 });
 
 describe("dashboard adapter", () => {
-  it("builds the demo from the sim snapshot through the same derivation", () => {
-    const d = buildDemo();
-    expect(d.result).toEqual(
-      deriveDashboard({ snapshot: kestrel(), model: MODEL, constraints: fixtures.constraints }),
-    );
-    expect(d.header.agent.state).toBe("demo");
-    expect(d.header.asOf).toBe("2026-10-30");
+  it("builds the demo from the selected picker company through the same derivation", () => {
+    for (const [profile, name, rating] of [
+      ["kestrel", "Kestrel Data", "ok"],
+      ["kestrel-crunch", "Osprey Insights", "at_risk"],
+    ] as const) {
+      const d = buildDemo(profile);
+      const snapshot = createProfileCompany(profile, 1).snapshot;
+      expect(d.result).toEqual(
+        deriveDashboard({ snapshot, model: MODEL, constraints: fixtures.constraints }),
+      );
+      expect(d.header.name).toBe(name);
+      expect(d.header.agent.state).toBe("demo");
+      expect(d.header.asOf).toBe(snapshot.asOf);
+      expect(d.result.ok && d.result.view.health.rating).toBe(rating);
+    }
   });
 
   it("maps the live summary into the header", () => {
@@ -155,7 +163,7 @@ describe("dashboard adapter", () => {
     });
     expect(h.name).toBe("Kestrel Data");
     expect(h.agent).toEqual({ state: "failed", intervalMs: 45_000, lastError: "bank timeout" });
-    expect(h.tools).toEqual({ connected: 5, total: 6 });
+    expect(h.tools).toEqual({ connected: 5, total: 6, off: [] });
     expect(h.updatedAt).toBe("2026-10-30T10:00:00.000Z");
   });
 });

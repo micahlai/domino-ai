@@ -54,7 +54,14 @@ describe("field profiles", () => {
       await drain(t);
       const first = await t.query(api.field.status, { companyId });
       expect(first).toMatchObject({ snapshotVersion: 1, lastIngestStatus: "ok" });
-      expect(first?.name).toContain("Kestrel Data");
+      expect(first?.name).toBe(
+        {
+          kestrel: "Kestrel Data",
+          "kestrel-churn": "Harrier Analytics",
+          "kestrel-late": "Merlin Metrics",
+          "kestrel-crunch": "Osprey Insights",
+        }[profile],
+      );
       expect(first?.sources.every((s) => s.tieOut === "ok")).toBe(true);
       const snapshot = await t.run(async (ctx) => {
         const row = await ctx.db
@@ -120,7 +127,7 @@ describe("field ingest", () => {
       "ingest.recomputed",
     ]);
     expect(new Set(run.filter((r) => r.action === "ingest.pulled").map((r) => r.source))).toEqual(
-      new Set(["stripe", "crm", "ramp", "books", "payroll", "nessie"]),
+      new Set(["stripe", "ramp", "qbo", "gusto", "hubspot", "plaid"]),
     );
     expect(run.every((r) => r.agent === "field.ingest" || r.agent === "field.audit")).toBe(true);
     expect(await actions(t, companyId)).toContain("engine.recompute");
@@ -209,4 +216,73 @@ describe("field ingest", () => {
     );
     expect(await t.query(api.field.status, { companyId })).toMatchObject({ auto: false });
   }, 60_000);
+});
+
+describe("field companies and connected tools", () => {
+  it("setupAll sets up the four picker companies once, each with a health summary", async () => {
+    vi.useFakeTimers();
+    const t = newBackend();
+    expect(await t.query(api.field.companies, {})).toEqual([]);
+    expect((await t.mutation(api.field.setupAll, {})).created).toHaveLength(4);
+    await drain(t);
+    expect((await t.mutation(api.field.setupAll, {})).created).toEqual([]);
+    const list = await t.query(api.field.companies, {});
+    expect(list.map((c) => [c.profile, c.name, c.health?.rating])).toEqual([
+      ["kestrel", "Kestrel Data", "ok"],
+      ["kestrel-churn", "Harrier Analytics", expect.any(String)],
+      ["kestrel-late", "Merlin Metrics", expect.any(String)],
+      ["kestrel-crunch", "Osprey Insights", "at_risk"],
+    ]);
+    expect(list.every((c) => c.story.length > 0)).toBe(true);
+    // Each company's status follows its own feed.
+    const crunch = list[3];
+    const status = await t.query(api.field.status, { companyId: crunch!.companyId });
+    expect(status?.name).toBe("Osprey Insights");
+  }, 120_000);
+
+  it("a disconnected tool is not read; its lists stay as last ingested until reconnected", async () => {
+    vi.useFakeTimers();
+    const t = newBackend();
+    const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel" });
+    await drain(t);
+    const snapshotOf = (version: number) =>
+      t.run(async (ctx) => {
+        const rows = await ctx.db
+          .query("snapshots")
+          .withIndex("by_company_asOf", (q) => q.eq("companyId", companyId))
+          .collect();
+        return rows[version - 1]?.data as { cardTxns: { id: string }[]; asOf: string };
+      });
+    const first = await snapshotOf(1);
+    await t.mutation(api.connections.disconnect, { companyId, tool: "ramp" });
+    await t.mutation(api.field.advanceFeed, { companyId });
+    const after = await ingest(t, companyId);
+    expect(after).toMatchObject({ snapshotVersion: 2, lastIngestStatus: "ok" });
+    const log = await t.query(api.field.log, {
+      companyId,
+      paginationOpts: { numItems: 200, cursor: null },
+    });
+    const run = log.page.filter((r) => r.runId && r.runId === log.page[0]?.runId);
+    const pulled = run.filter((r) => r.action === "ingest.pulled").map((r) => r.source);
+    expect(pulled).not.toContain("ramp");
+    expect(pulled).toHaveLength(5);
+    expect(run.find((r) => r.action === "ingest.skipped")?.refs).toEqual(["ramp"]);
+    // Card spend is stale: exactly what the last read saw.
+    const second = await snapshotOf(2);
+    expect(second.cardTxns).toEqual(first.cardTxns);
+    expect(second.asOf > first.asOf).toBe(true);
+    const ramp = after?.sources.find((s) => s.kind === "ramp");
+    expect(ramp?.lastPull).toBe(first.asOf);
+
+    await t.mutation(api.connections.connect, { companyId, tool: "ramp", consent: true });
+    await drain(t);
+    const served = await t.query(internal.fieldJobs.served, { companyId });
+    expect(served.cardTxns.length).toBeGreaterThan(second.cardTxns.length);
+    const back = await ingest(t, companyId);
+    expect(back).toMatchObject({ snapshotVersion: 3, lastIngestStatus: "ok" });
+    expect(back?.sources.find((s) => s.kind === "ramp")?.lastPull).toBe(second.asOf);
+    expect((await snapshotOf(3)).cardTxns.length).toBe(served.cardTxns.length);
+    const summary = await t.query(api.fieldDashboard.summary, { companyId });
+    expect(summary?.sources).toEqual({ total: 6, connected: 6, off: [] });
+  }, 120_000);
 });

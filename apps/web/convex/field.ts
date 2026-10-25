@@ -1,5 +1,6 @@
 /**
- * Field weekly API (public). Mock entries arrive -> the ingestion agent pulls them -> a new
+ * Field weekly API (public). Mock entries arrive -> the ingestion agent reads the connected
+ * tools (connectors/pullAll) -> a new
  * immutable snapshot version -> audit findings (high = escalation) -> forecast recompute.
  * Every step is a `log` row with agent/tool/source identities. Synthetic mocks only; nothing
  * here calls a real money API or moves money.
@@ -17,7 +18,10 @@
  *     version, escalated, status, decidedBy?, decidedAt?, note? }
  *   field.exportSeed({ companyId })   { seedId, contentHash, json } where json is
  *     WeeklySeedV1 text for the latest snapshot, already checked by parseWeeklySeedJson.
+ *   field.companies()   picker companies in picker order (newest per profile, by name):
+ *     [{ companyId, profile, name, story, asOf, health: { rating, week } | null }]
  * Mutations
+ *   field.setupAll()   set up every picker company that is missing; { created: profile[] }.
  *   field.setup({ seed?, profile? })  new live-feed company; first ingest queued. No profile =
  *     legacy sim Kestrel; profile "kestrel" | "kestrel-churn" | "kestrel-late" | "kestrel-crunch"
  *     = driver-based company whose mock sources report that profile id as companyId.
@@ -42,12 +46,15 @@ import {
 } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { scheduledItems } from "@domino/engine";
-import { PROFILE_IDS } from "@domino/sim";
+import { PROFILE_IDS, type ProfileId } from "@domino/sim";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
+import { deriveDashboard } from "../components/field/dashboard/derive";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { type QueryCtx, mutation, query } from "./_generated/server";
+import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/server";
+import { connectAll } from "./connections";
+import { TOOL_IDS } from "./connectors/types";
 import {
   ANOMALIES,
   type Anomaly,
@@ -66,6 +73,7 @@ import {
   sha256,
   writeLog,
 } from "./fieldJobs";
+import { FIELD_COMPANIES, profileOfName } from "./lib/fieldCompanies";
 import { Timestamp, parse } from "./lib/parse";
 
 const SOURCES = [
@@ -86,67 +94,151 @@ async function personName(ctx: { auth: QueryCtx["auth"] }) {
   return identity?.tokenIdentifier ?? "demo-user (unverified)";
 }
 
+/** One new live-feed company with six connected tools; its first ingest is queued. */
+async function createFeedCompany(ctx: MutationCtx, seed: number, profile: ProfileId | undefined) {
+  const world = newWorld(seed, profile);
+  const name = profileName(profile);
+  const companyId = await ctx.db.insert("companies", {
+    name,
+    profile: "kestrel",
+    currentWeek: world.week,
+    today: world.today,
+    status: "connecting",
+  });
+  // A plain starting model: no learned delays or rules yet; constraints are the
+  // synthetic loan and board documents.
+  await ctx.db.insert("models", {
+    companyId,
+    version: 1,
+    data: CompanyModelSchema.parse({
+      version: 1,
+      customerDelayDays: {},
+      recurringSpend: [],
+      rules: [],
+    }),
+  });
+  for (const c of fixtures.constraints)
+    await ctx.db.insert("constraints", { companyId, data: ConstraintSchema.parse(c) });
+  for (const [kind, baseUrl] of SOURCES)
+    await ctx.db.insert("sources", {
+      companyId,
+      kind,
+      baseUrl,
+      mappings: [],
+      lastPull: null,
+      tieOut: "pending",
+      step: "waiting for first pull",
+    });
+  await connectAll(ctx, companyId, name);
+  await ctx.db.insert("feedWorlds", { companyId, world, overlay: emptyOverlay() });
+  await ctx.db.insert("feeds", {
+    companyId,
+    auto: false,
+    autoGeneration: 0,
+    autoTicksLeft: 0,
+    week: world.week,
+    snapshotVersion: 0,
+    lastSnapshotId: null,
+    lastSnapshotHash: null,
+    lastSnapshotAt: null,
+    lastIngestAt: null,
+    lastIngestStatus: null,
+    lastError: null,
+    recordCounts: null,
+  });
+  await writeLog(ctx, companyId, undefined, {
+    actor: "person",
+    action: "feed.created",
+    refs: [...TOOL_IDS],
+    agent: "mock.feed",
+    tool: "sim.createCompany",
+    summary: `Connected six tools (read only, mock vendor APIs) for ${name} as of ${world.today}`,
+  });
+  await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
+  return companyId;
+}
+
 export const setup = mutation({
   args: { seed: v.optional(v.number()), profile: v.optional(profileArg) },
   handler: async (ctx, { seed, profile }) => {
-    const world = newWorld(Number.isSafeInteger(seed) ? (seed as number) : 1, profile);
-    const companyId = await ctx.db.insert("companies", {
-      name: profileName(profile),
-      profile: "kestrel",
-      currentWeek: world.week,
-      today: world.today,
-      status: "connecting",
-    });
-    // A plain starting model: no learned delays or rules yet; constraints are the
-    // synthetic loan and board documents.
-    await ctx.db.insert("models", {
-      companyId,
-      version: 1,
-      data: CompanyModelSchema.parse({
-        version: 1,
-        customerDelayDays: {},
-        recurringSpend: [],
-        rules: [],
-      }),
-    });
-    for (const c of fixtures.constraints)
-      await ctx.db.insert("constraints", { companyId, data: ConstraintSchema.parse(c) });
-    for (const [kind, baseUrl] of SOURCES)
-      await ctx.db.insert("sources", {
-        companyId,
-        kind,
-        baseUrl,
-        mappings: [],
-        lastPull: null,
-        tieOut: "pending",
-        step: "waiting for first pull",
-      });
-    await ctx.db.insert("feedWorlds", { companyId, world, overlay: emptyOverlay() });
-    await ctx.db.insert("feeds", {
-      companyId,
-      auto: false,
-      autoGeneration: 0,
-      autoTicksLeft: 0,
-      week: world.week,
-      snapshotVersion: 0,
-      lastSnapshotId: null,
-      lastSnapshotHash: null,
-      lastSnapshotAt: null,
-      lastIngestAt: null,
-      lastIngestStatus: null,
-      lastError: null,
-      recordCounts: null,
-    });
-    await writeLog(ctx, companyId, undefined, {
-      actor: "person",
-      action: "feed.created",
-      refs: SOURCES.map(([kind]) => kind),
-      agent: "mock.feed",
-      tool: "sim.createCompany",
-      summary: `Connected six mock sources for a synthetic company as of ${world.today}`,
-    });
-    await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
+    const companyId = await createFeedCompany(
+      ctx,
+      Number.isSafeInteger(seed) ? (seed as number) : 1,
+      profile,
+    );
     return { companyId };
+  },
+});
+
+/** The newest live-feed company per profile, by its picker name. */
+async function companiesByProfile(ctx: QueryCtx) {
+  const feeds = await ctx.db.query("feeds").order("desc").take(100);
+  const out = new Map<ProfileId, { feed: Doc<"feeds">; company: Doc<"companies"> }>();
+  for (const feed of feeds) {
+    const company = await ctx.db.get("companies", feed.companyId);
+    const profile = company ? profileOfName(company.name) : null;
+    if (company && profile && !out.has(profile)) out.set(profile, { feed, company });
+  }
+  return out;
+}
+
+/** Sets up every picker company that does not exist yet (seed 1). Idempotent. */
+export const setupAll = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const have = await companiesByProfile(ctx);
+    const created: ProfileId[] = [];
+    for (const c of FIELD_COMPANIES)
+      if (!have.has(c.id)) {
+        await createFeedCompany(ctx, 1, c.id);
+        created.push(c.id);
+      }
+    return { created };
+  },
+});
+
+/**
+ * The picker's companies, in picker order: profile, name, one-line story and a health summary
+ * from the latest ingested snapshot (the dashboard's own derivation). Not set up yet = absent.
+ */
+export const companies = query({
+  args: {},
+  handler: async (ctx) => {
+    const have = await companiesByProfile(ctx);
+    const out = [];
+    for (const c of FIELD_COMPANIES) {
+      const hit = have.get(c.id);
+      if (!hit) continue;
+      const { feed, company } = hit;
+      let health: { rating: "ok" | "watch" | "at_risk"; week: string | null } | null = null;
+      const row = feed.lastSnapshotId ? await ctx.db.get("snapshots", feed.lastSnapshotId) : null;
+      if (row) {
+        const model = await ctx.db
+          .query("models")
+          .withIndex("by_company_version", (q) => q.eq("companyId", company._id))
+          .order("desc")
+          .first();
+        const constraints = await ctx.db
+          .query("constraints")
+          .withIndex("by_company", (q) => q.eq("companyId", company._id))
+          .take(50);
+        const r = deriveDashboard({
+          snapshot: SnapshotSchema.parse(row.data),
+          model: CompanyModelSchema.parse(model?.data),
+          constraints: constraints.map((x) => ConstraintSchema.parse(x.data)),
+        });
+        if (r.ok) health = { rating: r.view.health.rating, week: r.view.health.week };
+      }
+      out.push({
+        companyId: company._id,
+        profile: c.id,
+        name: company.name,
+        story: c.story,
+        asOf: company.today,
+        health,
+      });
+    }
+    return out;
   },
 });
 

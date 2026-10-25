@@ -29,22 +29,26 @@ const tool = <T extends { tool: string }>(list: { tools: T[] } | null, id: strin
   list?.tools.find((x) => x.tool === id);
 
 describe("connections", () => {
-  it("lists every tool as not connected for a new company", async () => {
+  it("a new company starts with every tool connected, filled by its first ingest", async () => {
     const { t, companyId } = await setup();
     const list = await t.query(api.connections.list, {});
     expect(list?.companyId).toBe(companyId);
     expect(list?.tools.map((x) => [x.tool, x.status])).toEqual([
-      ["plaid", "disconnected"],
-      ["stripe", "disconnected"],
-      ["qbo", "disconnected"],
-      ["gusto", "disconnected"],
-      ["ramp", "disconnected"],
-      ["hubspot", "disconnected"],
+      ["plaid", "connected"],
+      ["stripe", "connected"],
+      ["qbo", "connected"],
+      ["gusto", "connected"],
+      ["ramp", "connected"],
+      ["hubspot", "connected"],
     ]);
+    expect(list?.tools.every((x) => x.lastSyncAt !== null && x.recordsIn > 0)).toBe(true);
+    expect(list?.tools.every((x) => x.checksOk === x.checksTotal)).toBe(true);
   });
 
   it("connect needs consent, then syncs and stores counts and tie-outs", async () => {
     const { t, companyId } = await setup();
+    for (const id of ["plaid", "stripe", "qbo", "gusto", "ramp", "hubspot"] as const)
+      await t.mutation(api.connections.disconnect, { companyId, tool: id });
     await expect(
       t.mutation(api.connections.connect, { companyId, tool: "stripe", consent: false }),
     ).rejects.toThrow(/consent/);
@@ -76,8 +80,6 @@ describe("connections", () => {
 
   it("disconnect stops reading the tool and clears its counts", async () => {
     const { t, companyId } = await setup();
-    await t.mutation(api.connections.connect, { companyId, tool: "gusto", consent: true });
-    await drain(t);
     expect(tool(await t.query(api.connections.list, {}), "gusto")?.counts.payroll).toBeGreaterThan(
       0,
     );

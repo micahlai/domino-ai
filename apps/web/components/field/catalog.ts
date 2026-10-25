@@ -65,11 +65,7 @@ export const BUILT_IN_SOURCES: SourceProfile[] = [
     brief: "Bills and the books' cash accounts (mock QuickBooks server).",
   },
   { id: "payroll", title: "Gusto", brief: "Pay runs and their dates (mock Gusto server)." },
-  {
-    id: "bank",
-    title: "Capital One",
-    brief: "Bank balance and transactions (Capital One Nessie sandbox).",
-  },
+  { id: "plaid", title: "Plaid", brief: "Bank balance and transactions (mock Plaid server)." },
 ];
 
 /** What the agents produce. Always shown, like the built-in agents; idle until the log says so. */

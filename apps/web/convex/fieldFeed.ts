@@ -7,13 +7,13 @@ import {
   type WorldState,
 } from "@domino/contracts";
 import {
-  PROFILES,
   type ProfileId,
   advanceProfileWeek,
   createProfileCompany,
   isProfileWorld,
   simulator,
 } from "@domino/sim";
+import { fieldCompany } from "./lib/fieldCompanies";
 
 /**
  * Field mock feed (pure, no Convex functions). The feed is a private sim WorldState plus an
@@ -63,8 +63,9 @@ export function nextWorld(world: WorldState): WorldState {
   );
 }
 
+/** A profile company is named exactly as in the picker; the legacy world keeps its old name. */
 export const profileName = (profile?: ProfileId) =>
-  profile ? `${PROFILES[profile].name} (live feed)` : "Kestrel Data (live feed)";
+  profile ? fieldCompany(profile).name : "Kestrel Data (live feed)";
 
 /** The observable snapshot the mock sources serve: world snapshot with the overlay applied. */
 export function servedSnapshot(world: WorldState, overlay: Overlay): Snapshot {

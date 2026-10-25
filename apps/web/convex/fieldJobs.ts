@@ -1,6 +1,5 @@
 import { type Snapshot, SnapshotSchema, WorldStateSchema, canonicalJson } from "@domino/contracts";
 import { auditSnapshot } from "@domino/engine";
-import { createMockHandler } from "@domino/mocks";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -12,13 +11,17 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import { toolInfo } from "./connectors/catalog";
+import { inProcessFetcher } from "./connectors/inProcess";
+import type { ToolId } from "./connectors/types";
 import { type Overlay, servedSnapshot } from "./fieldFeed";
-import { type Ingested, type Pull, type SourceKind, ingestSources } from "./fieldSources";
+import { type Ingested, type Pull, SOURCE_OF_TOOL, ingestConnected } from "./fieldSources";
+import { storeToolResults, toolArg, toolResult } from "./lib/connectionRows";
 import { computedRefs } from "./lib/refs";
 
 /**
- * Field ingestion agent (internal). One run: pull every mock source through the in-process
- * mock API, map and validate, then commit a new immutable snapshot version, audit it, store
+ * Field ingestion agent (internal). One run: read every connected tool through the connectors
+ * (connectors/pullAll over the in-process vendor mocks), map and validate, then commit a new immutable snapshot version, audit it, store
  * findings and recompute the forecast. Every step writes a `log` row naming the agent, tool
  * and data source. Deterministic code only: no model call, no money estimate, no real API.
  */
@@ -27,8 +30,6 @@ import { computedRefs } from "./lib/refs";
 export const AUTO_INTERVAL_MS = 45_000;
 export const AUTO_MAX_TICKS = 120;
 export const AGENT = "field.ingest";
-/** The mock handler runs in-process here; this key only satisfies its auth check. */
-const IN_PROCESS_KEY = "field-in-process";
 const LISTS = [
   "customers",
   "invoices",
@@ -104,6 +105,25 @@ export const served = internalQuery({
   },
 });
 
+/** One ingest's inputs: what the vendor mocks serve, which tools are connected, last version. */
+export const ingestInputs = internalQuery({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, { companyId }) => {
+    const { world, overlay } = await requireWorld(ctx, companyId);
+    const feed = await requireFeed(ctx, companyId);
+    const rows = await ctx.db
+      .query("connections")
+      .withIndex("by_companyId_and_tool", (q) => q.eq("companyId", companyId))
+      .take(20);
+    const prev = feed.lastSnapshotId ? await ctx.db.get("snapshots", feed.lastSnapshotId) : null;
+    return {
+      served: servedSnapshot(world, overlay),
+      connected: rows.filter((r) => r.status !== "disconnected").map((r) => r.tool),
+      previous: prev ? SnapshotSchema.parse(prev.data) : null,
+    };
+  },
+});
+
 export const logStep = internalMutation({
   args: {
     companyId: v.id("companies"),
@@ -136,10 +156,12 @@ const pullStep = (p: Pull): Step => ({
   action: "ingest.pulled",
   refs: p.endpoints,
   agent: AGENT,
-  tool: p.tool,
-  source: p.kind,
-  summary: `Pulled ${p.records} records from ${p.kind} in ${p.pages} page${p.pages === 1 ? "" : "s"}`,
+  tool: `${p.tool}.read`,
+  source: p.tool,
+  summary: `Read ${p.records} records from ${toolInfo(p.tool).name} in ${p.pages} page${p.pages === 1 ? "" : "s"}`,
 });
+
+const toolNames = (tools: ToolId[]) => tools.map((t) => toolInfo(t).name).join(", ");
 
 /** Commit one ingest: new snapshot version (old ones untouched), findings and log rows. */
 export const commit = internalMutation({
@@ -150,32 +172,46 @@ export const commit = internalMutation({
     snapshot: v.any(),
     pulls: v.array(
       v.object({
-        kind: v.string(),
-        tool: v.string(),
+        tool: toolArg,
         endpoints: v.array(v.string()),
         records: v.number(),
         pages: v.number(),
+        tiedOut: v.boolean(),
       }),
     ),
+    skipped: v.array(toolArg),
+    stale: v.array(v.string()),
+    results: v.array(toolResult),
     tieOut: v.object({ checked: v.number(), mismatches: v.array(v.string()) }),
   },
-  handler: async (ctx, { companyId, runId, hash, pulls, tieOut, ...args }) => {
+  handler: async (ctx, args) => {
+    const { companyId, runId, hash, pulls, skipped, stale, results, tieOut } = args;
     const snapshot = SnapshotSchema.parse(args.snapshot);
     const feed = await requireFeed(ctx, companyId);
     const at = new Date().toISOString();
-    for (const p of pulls) await writeLog(ctx, companyId, runId, pullStep(p as Pull));
-    await recordSources(ctx, companyId, snapshot.asOf, pulls as Pull[], tieOut);
+    for (const p of pulls) await writeLog(ctx, companyId, runId, pullStep(p));
+    if (skipped.length > 0)
+      await writeLog(ctx, companyId, runId, {
+        actor: "connector",
+        action: "ingest.skipped",
+        refs: skipped,
+        agent: AGENT,
+        summary: `Skipped ${toolNames(skipped)}: disconnected${
+          stale.length > 0 ? `; kept the last ${stale.join(", ")} (stale until reconnected)` : ""
+        }`,
+      });
+    await recordSources(ctx, companyId, snapshot.asOf, pulls);
+    await storeToolResults(ctx, companyId, at, results);
     await writeLog(ctx, companyId, runId, {
       actor: "connector",
       action: "ingest.reconciled",
-      refs: tieOut.mismatches.length > 0 ? tieOut.mismatches : ["stripe", "nessie"],
+      refs: tieOut.mismatches.length > 0 ? tieOut.mismatches : pulls.map((p) => p.tool),
       agent: AGENT,
       tool: "field.tieOut",
-      source: "stripe",
       summary:
         tieOut.mismatches.length === 0
-          ? `All ${tieOut.checked} billing payouts match a bank deposit to the cent`
-          : `${tieOut.mismatches.length} of ${tieOut.checked} billing payouts do not match the bank`,
+          ? `All ${tieOut.checked} cross-tool checks agree to the cent`
+          : `${tieOut.mismatches.length} of ${tieOut.checked} cross-tool checks disagree`,
     });
     if (hash === feed.lastSnapshotHash) {
       await writeLog(ctx, companyId, runId, {
@@ -284,34 +320,24 @@ export const commit = internalMutation({
   },
 });
 
-const SOURCE_STEP: Record<SourceKind, string> = {
-  stripe: "billing",
-  crm: "crm",
-  ramp: "cards",
-  books: "books",
-  payroll: "payroll",
-  nessie: "bank",
-};
-
+/** Only tools read this run move forward; a disconnected tool's row keeps its last pull. */
 async function recordSources(
   ctx: MutationCtx,
   companyId: Id<"companies">,
   asOf: string,
   pulls: Pull[],
-  tieOut: { mismatches: string[] },
 ) {
   const rows = await ctx.db
     .query("sources")
     .withIndex("by_company", (q) => q.eq("companyId", companyId))
     .take(20);
   for (const p of pulls) {
-    const row = rows.find((r) => r.kind === p.kind);
+    const row = rows.find((r) => r.kind === SOURCE_OF_TOOL[p.tool]);
     if (!row) continue;
-    const reconciled = p.kind === "stripe" || p.kind === "nessie";
     await ctx.db.patch("sources", row._id, {
       lastPull: asOf,
-      step: `${SOURCE_STEP[p.kind]}: ${p.records} records`,
-      tieOut: !reconciled ? "ok" : tieOut.mismatches.length === 0 ? "ok" : "needs_review",
+      step: `${toolInfo(p.tool).name}: ${p.records} records`,
+      tieOut: p.tiedOut ? "ok" : "needs_review",
     });
   }
 }
@@ -328,13 +354,14 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       refs: [trigger],
       summary: `Ingestion agent started (${trigger})`,
     });
-    const snapshot: Snapshot = await ctx.runQuery(internal.fieldJobs.served, { companyId });
-    const handler = createMockHandler({ apiKey: IN_PROCESS_KEY, snapshot: () => snapshot });
-    const fetcher = (path: string) =>
-      handler(
-        new Request(`http://mocks.local${path}`, { headers: { "x-api-key": IN_PROCESS_KEY } }),
-      );
-    const ingested: Ingested = await ingestSources(fetcher);
+    const inputs: { served: Snapshot; connected: ToolId[]; previous: Snapshot | null } =
+      await ctx.runQuery(internal.fieldJobs.ingestInputs, { companyId });
+    const ingested: Ingested = await ingestConnected({
+      fetcher: inProcessFetcher(inputs.served),
+      companyId: inputs.served.companyId,
+      connected: inputs.connected,
+      previous: inputs.previous,
+    });
     const hash = await sha256(canonicalJson(ingested.snapshot));
     const result = await ctx.runMutation(internal.fieldJobs.commit, {
       companyId,
@@ -342,9 +369,18 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
       hash,
       snapshot: ingested.snapshot,
       pulls: ingested.pulls,
+      skipped: ingested.skipped,
+      stale: ingested.stale,
+      results: ingested.results,
       tieOut: ingested.tieOut,
     });
-    if (!result.changed) return result;
+    // Field analyst after the ingest (and after recompute, which scans the log).
+    const analyst = () =>
+      ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, {
+        companyId,
+        changed: result.changed,
+      });
+    if (!result.changed) return analyst().then(() => result);
     try {
       const r = await ctx.runMutation(computedRefs.recompute, { companyId });
       await step({
@@ -363,6 +399,7 @@ export async function runIngest(ctx: ActionCtx, companyId: Id<"companies">, trig
         summary: `Forecast recompute refused: ${message(error)}`,
       });
     }
+    await analyst();
     return result;
   } catch (error) {
     await step({

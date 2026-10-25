@@ -81,7 +81,67 @@ export const fieldTables = {
     source: v.optional(v.string()),
     runId: v.optional(v.string()),
     summary: v.optional(v.string()),
+    // Field agent web (fieldAnalyst.ts, optional): agent instances, manager links, agent to
+    // agent messages, status transitions and categorized tool calls, all from real operations.
+    agentId: v.optional(v.string()),
+    agentKind: v.optional(
+      v.union(v.literal("domino"), v.literal("claude"), v.literal("creao"), v.literal("system")),
+    ),
+    parentAgentId: v.optional(v.string()),
+    event: v.optional(v.union(v.literal("status"), v.literal("message"), v.literal("tool"))),
+    status: v.optional(
+      v.union(v.literal("spawned"), v.literal("working"), v.literal("done"), v.literal("failed")),
+    ),
+    currentTask: v.optional(v.string()),
+    fromAgentId: v.optional(v.string()),
+    toAgentId: v.optional(v.string()),
+    toolCategory: v.optional(v.string()),
+    toolLabel: v.optional(v.string()),
+    step: v.optional(v.number()),
+    steps: v.optional(v.number()),
   }).index("by_company", ["companyId"]),
+  // Field analyst (fieldAnalyst.ts): one row per orchestrated run and per forecaster scenario.
+  analystRuns: defineTable({
+    companyId,
+    runId: v.string(),
+    trigger: v.string(),
+    snapshotId: v.id("snapshots"),
+    snapshotVersion: v.number(),
+    asOf: v.string(),
+    status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+    paceMs: v.number(),
+    children: v.number(),
+    reported: v.number(),
+    startedAt: v.string(),
+    finishedAt: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    research: v.optional(v.any()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_runId", ["runId"]),
+  analystScenarios: defineTable({
+    companyId,
+    runId: v.string(),
+    index: v.number(),
+    agentId: v.string(),
+    scenarioId: v.string(),
+    title: v.string(),
+    basis: v.string(),
+    changes: v.any(),
+    status: v.union(
+      v.literal("spawned"),
+      v.literal("working"),
+      v.literal("done"),
+      v.literal("failed"),
+    ),
+    work: v.optional(v.any()),
+    fixes: v.optional(v.any()),
+    error: v.optional(v.string()),
+  }).index("by_runId_and_index", ["runId", "index"]),
+  analystLoops: defineTable({ companyId, generation: v.number(), ticksLeft: v.number() }).index(
+    "by_companyId",
+    ["companyId"],
+  ),
   // Field weekly feed (field.ts): ingest state, kept small because it changes every run.
   feeds: defineTable({
     companyId,
