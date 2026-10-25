@@ -1,3 +1,7 @@
+## 2026-10-25 Saved suggestion journey live
+- Done: af76dda pushed; Next3114 restarted, Convex3260 watcher recovered after locked dependency install with data preserved. Live2U Late payments analysis completed; primary Simulate opened exact saved risk/fix comparison, required label and How links. Existing baseline91-day history preserved. Isolated3138/3298 stopped.
+- Runtime: Next92582/session61687; Convex94703/watcher94604/session28954. Checks/build reused from the checked candidate. No main/protected-port/data changes. Optional Try-it/map polish remains queued. See features/field/HANDOFF.md and /tmp/field-suggestion-live-3114.png.
+
 ## 2026-10-25 Saved suggestion journey checked
 - Done: reviewed friend Timeline assistant/layout merged with exact frozen calculations, primary Simulate this option, saved risk/fix comparison, editable alternatives and clear provenance. Full2673 checks plus final51 focused UI checks, both tsc boundaries and final webpack build pass. Actual production2U edit/save/How journey passes; independent safety and financial identity reviews accept.
 - Next: field/main fast-forward/install/push, restart3114, refresh existing2U legacy suggestions with explicit analyst run, one liveverify and stop own isolated runtimes. Optional map/Try-it polish deferred; main/protected ports/data preserved. Details in features/field/HANDOFF.md.
