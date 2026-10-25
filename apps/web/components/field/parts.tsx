@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
@@ -162,5 +164,35 @@ export function AutoIngestToggle() {
       <label htmlFor={id}>Auto ingest {on ? "on" : "off"}</label>
       {error ? <span className="text-[hsl(var(--danger-text))]">{error}</span> : null}
     </span>
+  );
+}
+
+const TABS = [
+  { href: "/field", label: "Review and actions" },
+  { href: "/field/map", label: "Brain map" },
+  { href: "/field/connect", label: "Connected tools" },
+];
+
+export function FieldTabs() {
+  const pathname = usePathname();
+  return (
+    <nav aria-label="Agent workspace" className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+      {TABS.map((tab) => {
+        const active = pathname === tab.href;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-9 items-center rounded-md px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+              active && "bg-background font-medium text-foreground shadow-sm",
+            )}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

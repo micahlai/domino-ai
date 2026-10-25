@@ -1,0 +1,63 @@
+[
+  {
+    "path": "/vendor/gusto/v1/companies/kestrel/payrolls?page=1&per=100",
+    "status": 200,
+    "link": null,
+    "body": [
+      {
+        "payroll_uuid": "pay_1023",
+        "company_uuid": "kestrel",
+        "check_date": "2026-10-23",
+        "processed": true,
+        "pay_period": {
+          "start_date": "2026-10-05",
+          "end_date": "2026-10-18"
+        },
+        "totals": {
+          "company_debit": "600000.00",
+          "gross_pay": "557361.83",
+          "employer_taxes": "42638.17",
+          "employee_taxes": "122619.60",
+          "net_pay": "434742.23",
+          "reimbursements": "0.00"
+        }
+      },
+      {
+        "payroll_uuid": "pay_1106",
+        "company_uuid": "kestrel",
+        "check_date": "2026-11-06",
+        "processed": false,
+        "pay_period": {
+          "start_date": "2026-10-19",
+          "end_date": "2026-11-01"
+        },
+        "totals": {
+          "company_debit": "600000.00",
+          "gross_pay": "557361.83",
+          "employer_taxes": "42638.17",
+          "employee_taxes": "122619.60",
+          "net_pay": "434742.23",
+          "reimbursements": "0.00"
+        }
+      },
+      {
+        "payroll_uuid": "pay_1120",
+        "company_uuid": "kestrel",
+        "check_date": "2026-11-20",
+        "processed": false,
+        "pay_period": {
+          "start_date": "2026-11-02",
+          "end_date": "2026-11-15"
+        },
+        "totals": {
+          "company_debit": "600000.00",
+          "gross_pay": "557361.83",
+          "employer_taxes": "42638.17",
+          "employee_taxes": "122619.60",
+          "net_pay": "434742.23",
+          "reimbursements": "0.00"
+        }
+      }
+    ]
+  }
+]
