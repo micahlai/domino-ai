@@ -591,3 +591,6 @@ export const fixtures = {
 
 /** Synthetic historical case fixture; see ./historical.ts. */
 export * as historicalFixtures from "./historical";
+
+/** P0-C feature-boundary exchange fixtures; see ./feature-boundary/index.ts. */
+export * as featureBoundaryFixtures from "./feature-boundary/index";

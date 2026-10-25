@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "id": "timeline:reveal/twou-2023q4-s8",
+  "seed": {
+    "id": "field:seed/twou-2023q3-v1",
+    "contentHash": "ec648c0c49a46a489346ab628df57adc26fd17de49b67aab5dbcc147cd9fe2ef"
+  },
+  "company": {
+    "cik": "0001459417",
+    "name": "2U, Inc."
+  },
+  "knowledgeCutoff": "2023-11-10T23:59:59-05:00",
+  "revealedThrough": "2024-02-13T00:00:00-05:00",
+  "disclosures": {
+    "id": "twou-2023-cash-v1",
+    "companyName": "2U, Inc.",
+    "provenance": "evidence",
+    "currency": "USD",
+    "sources": [
+      {
+        "id": "S8",
+        "title": "2U Reports Results for Fourth Quarter and Full-Year 2023",
+        "url": "https://www.prnewswire.com/news-releases/2u-reports-results-for-fourth-quarter-and-full-year-2023-302059834.html",
+        "publishedAt": "2024-02-12T16:01:00-05:00",
+        "timezone": "America/New_York",
+        "period": {
+          "kind": "duration",
+          "start": "2023-10-01",
+          "end": "2023-12-31"
+        },
+        "retrievedOn": "2026-10-24",
+        "contentHash": "7c8500056751dcc9b9c46c94f5813e1b8f3d899041a577600c8aa3b54a2f5d24"
+      }
+    ],
+    "facts": [
+      {
+        "kind": "reported",
+        "id": "H01",
+        "metric": "cash_and_equivalents",
+        "period": {
+          "kind": "instant",
+          "date": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": 6068900000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Balance Sheets (in thousands), December 31, 2023 column, row 'Cash and cash equivalents'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H02",
+        "metric": "restricted_cash",
+        "period": {
+          "kind": "instant",
+          "date": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": 1271000000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Balance Sheets (in thousands), December 31, 2023 column, row 'Restricted cash'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H03",
+        "metric": "cash_including_restricted",
+        "period": {
+          "kind": "instant",
+          "date": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": 7339900000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Statements of Cash Flows (in thousands), Year Ended December 31, 2023 column, row 'Cash, cash equivalents and restricted cash, end of period'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H04",
+        "metric": "operating_cash_flow",
+        "period": {
+          "kind": "duration",
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": -343100000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Statements of Cash Flows (in thousands), Year Ended December 31, 2023 column, row 'Net cash (used in) provided by operating activities'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H05",
+        "metric": "investing_cash_flow",
+        "period": {
+          "kind": "duration",
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": -4983100000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Statements of Cash Flows (in thousands), Year Ended December 31, 2023 column, row 'Net cash used in investing activities'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H06",
+        "metric": "financing_cash_flow",
+        "period": {
+          "kind": "duration",
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": -5501800000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Statements of Cash Flows (in thousands), Year Ended December 31, 2023 column, row 'Net cash (used in) provided by financing activities'",
+        "reportedScale": "thousands"
+      },
+      {
+        "kind": "reported",
+        "id": "H07",
+        "metric": "fx_effect_on_cash",
+        "period": {
+          "kind": "duration",
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "currency": "USD",
+        "cents": -89900000,
+        "availableAt": "2024-02-12T16:01:00-05:00",
+        "sourceId": "S8",
+        "locator": "S8 Condensed Consolidated Statements of Cash Flows (in thousands), Year Ended December 31, 2023 column, row 'Effect of exchange rate changes on cash'",
+        "reportedScale": "thousands"
+      }
+    ],
+    "assumptions": []
+  }
+}
