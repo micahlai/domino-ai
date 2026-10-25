@@ -346,7 +346,7 @@ export function fixCandidates(inputs: Inputs, sc: Scenario, work: ForecastWork):
           label: "Bridge financing",
         },
       ],
-      costNote: `Covers the ${usd(floor - work.low)} gap to the lender minimum; dilution or interest`,
+      costNote: `Covers the ${usd(floor - work.low)} gap to the cash minimum; dilution or interest`,
       risk: "high",
       evidence: [],
       targetRiskIds: target,
