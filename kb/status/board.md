@@ -150,4 +150,4 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | MERGE-TW | Integrate Timeline and Worker into main | kb/tasks/MERGE-timeline-worker-main.md | TL12, TL13, W1 | done | main | Both tips merged; 2,755 tests/typechecks/lint, Convex tsc, webpack build and props browser pass |
 
-| TL14 | Reveal newly opened scenario branches | kb/tasks/TL14-opened-scenario-reveal.md | MERGE-TW | done | main | Saved-entry parent-anchored reveal; browser delay/fork/no-replay pass; 2,803 integrated tests/typechecks/lint and Convex tsc pass |
+| TL14 | Reveal newly opened scenario branches | kb/tasks/TL14-opened-scenario-reveal.md | MERGE-TW | done | main | Saved-entry parent-anchored reveal; browser delay/fork/no-replay pass; 2,804 integrated tests/typechecks/lint and Convex tsc pass |
