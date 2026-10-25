@@ -22,14 +22,20 @@ const current = (html: string) =>
   [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
 
 describe("AppShell navigation", () => {
-  it("lists the six product pages in order and hides dev routes", () => {
+  it("lists the six product pages, then the judge sandbox, in order and hides dev routes", () => {
     const html = render("/");
-    const order = ["/", "/field", "/field/map", "/field/connect", "/c/kestrel", "/simulations"].map(
-      (h) => html.indexOf(`href="${h}"`),
-    );
+    const order = [
+      "/",
+      "/field",
+      "/field/map",
+      "/field/connect",
+      "/c/kestrel",
+      "/simulations",
+      "/judge",
+    ].map((h) => html.indexOf(`href="${h}"`));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(6);
+    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
     expect(html).toContain("Main navigation");
     // The 2U case study opens from the company switcher, not a separate top bar link.
     expect(html).toContain('aria-haspopup="menu"');
@@ -52,6 +58,7 @@ describe("AppShell navigation", () => {
     expect(current(render("/field/connect"))).toEqual(["Connected tools"]);
     expect(current(render("/simulations"))).toEqual(["Simulations"]);
     expect(current(render("/c/kestrel/simulations"))).toEqual(["Simulations"]);
+    expect(current(render("/judge"))).toEqual(["Try it"]);
     expect(current(render("/case"))).toEqual([]);
   });
 

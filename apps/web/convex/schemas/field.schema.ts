@@ -34,6 +34,11 @@ export const fieldTables = {
     currentWeek: v.number(),
     today: v.string(),
     status: v.union(v.literal("connecting"), v.literal("ready")),
+    // Judge sandbox (fieldJudge.ts, optional): an isolated simulated company a judge started.
+    // Hidden from the main company picker (its name is not a picker name).
+    judge: v.optional(v.boolean()),
+    judgeNumber: v.optional(v.number()),
+    judgeArchivedAt: v.optional(v.string()),
   }),
   sources: defineTable({
     companyId,

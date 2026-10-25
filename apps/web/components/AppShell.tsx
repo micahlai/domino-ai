@@ -32,6 +32,8 @@ const primaryLinks = [
     on: (p: string) => under(p, "/c") && !SIMULATIONS.test(p),
   },
   { href: "/simulations", label: "Simulations", on: (p: string) => SIMULATIONS.test(p) },
+  // Judge sandbox: a fresh simulated company to try scenarios on.
+  { href: "/judge", label: "Try it", on: (p: string) => under(p, "/judge") },
 ];
 
 /** Routes that own the whole window under the top bar and pin the Original dark tokens. */

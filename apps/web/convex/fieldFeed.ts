@@ -14,13 +14,14 @@ import {
   simulator,
 } from "@domino/sim";
 import { fieldCompany } from "./lib/fieldCompanies";
+import { type JudgeOverlay, applyJudgeOverlay } from "./lib/judgeOverlay";
 
 /**
  * Field mock feed (pure, no Convex functions). The feed is a private sim WorldState plus an
  * overlay of planted entries. Only servedSnapshot() crosses into the mock source handler, so
  * ingestion sees source-shaped responses, never the world or the overlay. Synthetic only.
  */
-export interface Overlay {
+export interface Overlay extends JudgeOverlay {
   bills: Bill[];
   cardTxns: CardTxn[];
   bankTxns: BankTxn[];
@@ -72,14 +73,18 @@ export function servedSnapshot(world: WorldState, overlay: Overlay): Snapshot {
   const s = world.snapshot;
   const amounts = new Map(overlay.invoiceAmounts.map((p) => [p.id, p.amount]));
   const hidden = new Set(overlay.hiddenPayroll);
-  return SnapshotSchema.parse({
+  const planted: Snapshot = {
     ...s,
-    invoices: s.invoices.map((i) => (amounts.has(i.id) ? { ...i, amount: amounts.get(i.id) } : i)),
+    invoices: s.invoices.map((i) =>
+      amounts.has(i.id) ? { ...i, amount: amounts.get(i.id) as number } : i,
+    ),
     bills: [...s.bills, ...overlay.bills],
     cardTxns: [...s.cardTxns, ...overlay.cardTxns],
     bankTxns: [...s.bankTxns, ...overlay.bankTxns],
     payroll: s.payroll.filter((p) => !hidden.has(p.id)),
-  });
+  };
+  // Judge sandbox entries (fieldJudge.ts); a no-op for overlays without them.
+  return SnapshotSchema.parse(applyJudgeOverlay(planted, overlay));
 }
 
 const byDate = <T extends { date: string }>(xs: T[]) =>
