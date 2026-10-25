@@ -54,6 +54,11 @@
 - Reuse passing checks. Rerun full suites only when code changes or a new failure justify them. Documentation-only synchronization needs no suite/build restart.
 - Integer cents; pure engine; AI never computes money; a person approves actions; Domino never moves money. No secrets printed/committed, no destructive Git or data operations without asking Jayden.
 
+## Additional product feedback queue, Oct25
+- Jayden sent side-conversation feedback alongside this build: Try it should begin at selection with explicit resume; support several quick/custom events and show whether real backend work or fallback ran. Pause should explain current analysis finishing, with any immediate visual freeze separate from cancellation. Reproduce before changing semantics.
+- Map follow-up: role icons/colors, optional role containers, actual agent-to-tool routes, fewer crossings, plain activity summaries, repeated-check aggregation, raw evidence codes/IDs/JSON collapsed at the bottom. Preserve camera/map stability.
+- Source was a read-only side investigation, not a completed fix. Browser during this release also showed a Research helper still working after the analyst completed while isolated providers were unconfigured; investigate lifecycle/log-window behavior during the pause/map follow-up.
+
 ## Next exact step and queue
 1. Convex priority2: Workpool for swarms, rate-limiter and action-cache components; priority3 Workflow for ingestion. Current swarms use bounded app scheduling, not those components.
 2. Osprey storyline: possible request to start OK and flip At risk on day9. TL8 rejoin stays the friend's lane.
