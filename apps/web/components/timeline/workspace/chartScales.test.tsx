@@ -80,7 +80,7 @@ describe("timeline scale guides", () => {
     expect(html).toMatch(/<figcaption[^>]*>.*Recorded cash.*This scenario.*Cash minimum/);
     expect(html.match(/data-testid="chart-week-/g)).toHaveLength(13);
     expect(html).toContain('data-testid="week-range"');
-    expect(html).toContain("Lender&#x27;s limit $3,150,000.00");
+    expect(html).toContain("Lender&#x27;s limit $3.2M");
     expect(html).not.toMatch(/NaN|Infinity/);
   });
 });

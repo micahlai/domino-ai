@@ -59,6 +59,21 @@ const runs = (t: T) => t.run((ctx) => ctx.db.query("timelineRuns").collect());
 afterEach(() => vi.restoreAllMocks());
 
 describe("durable Timeline clarification chat", () => {
+  it("answers why/how questions as questions instead of a modeling refusal", async () => {
+    const t = setup();
+    let r = await start(t);
+    const before = (await runs(t)).length;
+    r = await send(t, r, "why is the 2% offer branch starting before the invoice parent branch");
+    const answer = r.turns.at(-1)?.text ?? "";
+    expect(answer).toMatch(/starts the week its own change first moves cash/);
+    expect(answer).not.toMatch(/Negations|clarification|grammar/);
+    expect(r.proposal).toBeNull();
+    r = await send(t, r, "why does the late invoice line snap back to the base?");
+    expect(r.turns.at(-1)?.text).toMatch(/only moves timing/);
+    r = await send(t, r, "pay $50,000 to Atlas Legal on 2026-11-17 unless it rains");
+    expect(r.turns.at(-1)?.text).toMatch(/For example/);
+    expect((await runs(t)).length).toBe(before);
+  });
   it("clarifies amount, date and counterparty in typed turns; only explicit confirmation calculates", async () => {
     const t = setup();
     let r = await start(t);

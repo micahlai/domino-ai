@@ -17,6 +17,7 @@ import {
   advance,
   emptyDraft,
   evaluateIntents,
+  isQuestion,
   validateProposal,
 } from "./chat/draft";
 import {
@@ -490,7 +491,8 @@ export const saveAssistantTurn = internalMutation({
     // path. A model cannot silently replace them or pull values from an earlier reset draft.
     // Enforce the original wording even when no model ran or returned no usable intents.
     // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
-    const sourceIssue = groundingIssue(args.text, []);
+    // A question is answered as a question; qualifier words in it are not a modeling request.
+    const sourceIssue = isQuestion(args.text) ? null : groundingIssue(args.text, []);
     const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
     // Questions are always answered by the deterministic resolver, never by model wording.
     const asksOnly = intents?.length && intents.every((i) => i.kind === "question");

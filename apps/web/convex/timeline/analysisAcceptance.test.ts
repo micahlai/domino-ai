@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { contentHashPreimage } from "@domino/contracts";
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
 import { type Constraint, WeeklySeedV1Schema } from "@domino/contracts";
@@ -14,6 +16,10 @@ import { parseFinancialOutputJson } from "./output/schema";
 import { baselineRefs } from "./refs";
 import { workspaceRefs } from "./workspaceRefs";
 
+const rehash = (record: Record<string, unknown>) => ({
+  ...record,
+  contentHash: createHash("sha256").update(contentHashPreimage(record)).digest("hex"),
+});
 const modules = Object.fromEntries(
   Object.entries(
     import.meta.glob([
@@ -36,7 +42,19 @@ afterEach(() => {
 it("TL7 real risk/response receipts fit the screen and financial handoff, then quietly reopen", async () => {
   vi.useFakeTimers();
   const t = convexTest(schema, modules);
-  const seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+  // Acme falls due before the base low week, so responses dated after the risk can clear it.
+  const kestrel = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+  const seed = WeeklySeedV1Schema.parse(
+    rehash({
+      ...kestrel,
+      snapshot: {
+        ...kestrel.snapshot,
+        invoices: kestrel.snapshot.invoices.map((i) =>
+          i.id === "inv_acme_2027" ? { ...i, due: "2026-11-10" } : i,
+        ),
+      },
+    }),
+  );
   const model = { version: 0, customerDelayDays: {}, recurringSpend: [], rules: [] };
   const rules: Constraint[] = [
     {
@@ -114,7 +132,7 @@ it("TL7 real risk/response receipts fit the screen and financial handoff, then q
   expect(parsed.data.chart.forecast).toEqual(source.forecast);
   expect(parsed.data.chart.runwayMonths).toBeNull();
   expect(parsed.data.receipts).toEqual(source.receipts);
-  expect(parsed.data.health.rating).toBe("at_risk");
+  expect(parsed.data.health.rating).toBe("ok");
   expect(parsed.data.scenarios.map((s) => s.runId)).toEqual(receipt.risks.map((r) => r.runId));
   expect(await t.action(output, key)).toBe(text);
   expect(await t.query(analysisRefs.get, analysisKey)).toEqual(receipt);

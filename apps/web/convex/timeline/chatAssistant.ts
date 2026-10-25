@@ -5,7 +5,7 @@ import { action } from "../_generated/server";
 import { assistantConfig, runStructured } from "./assistant/claude";
 import { companyContext } from "./assistant/context";
 import { groundingIssue } from "./assistant/grounding";
-import { type Draft, evaluateIntents } from "./chat/draft";
+import { type Draft, evaluateIntents, isQuestion } from "./chat/draft";
 import type { ChatReceipt } from "./chat/receipt";
 import type { WorkspaceRun } from "./questions/context";
 import { INTENTS_JSON_SCHEMA, type Intent, IntentSchema } from "./questions/intent";
@@ -122,7 +122,10 @@ export const send = action({
     try {
       // Existing typed slots/corrections and unsupported qualifiers need no paid interpretation.
       const intents =
-        assistantConfig() && !claim.draft.intents.length && !groundingIssue(args.text, [])
+        assistantConfig() &&
+        !claim.draft.intents.length &&
+        !isQuestion(args.text) &&
+        !groundingIssue(args.text, [])
           ? await readIntents(claim.run, claim.receipt, args.text, claim.floor)
           : null;
       return await ctx.runMutation(refs.save, {

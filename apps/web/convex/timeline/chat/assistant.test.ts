@@ -441,7 +441,7 @@ describe("Claude Timeline chat safety", () => {
         const after = await t.action(assistantSend, turn(target, text));
         expect(after.status).toBe("collecting");
         expect(after.proposal).toBeNull();
-        expect(after.turns.at(-1)?.text).toMatch(/need clarification/);
+        expect(after.turns.at(-1)?.text).toMatch(/daily limit|upper limit|one change at a time/);
       }
       const question = await t.action(ask, { ...src, requestId: rid(), prompt: text });
       expect(question.status).toBe("clarification");

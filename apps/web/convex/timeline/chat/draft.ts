@@ -8,6 +8,8 @@ import { meaningIssue } from "../questions/meaning";
 import {
   addDays,
   findDateText,
+  formatCents,
+  formatDate,
   parseDateText,
   parseDaysText,
   parseMoneyText,
@@ -16,7 +18,8 @@ import {
 import type { QuestionProposal } from "../questions/receipt";
 import type { Citation } from "../questions/resolve";
 import { resolve } from "../questions/resolve";
-import { startsBefore } from "../scenarioStart";
+import { friendlyLabel } from "../recordNames";
+import { scenarioStart, startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
 
 const FieldSchema = z.enum([
@@ -324,6 +327,68 @@ export function plainPhrasing(text: string): string {
   return out;
 }
 
+/** One or two plain sentences with one example that works. Nothing changed. */
+export const CANT_MODEL =
+  'I can model one change at a time on a specific date, so I could not run that one as written. For example, "Northwind pays its invoice 14 days late" or "Pay $250,000 for a roof repair on Nov 17" works.';
+
+/** "why ...", "how does ...", "what is ...?" but not "what if ..." or "could you ...". */
+export function isQuestion(text: string): boolean {
+  const t = text.trim();
+  if (/^what if\b/i.test(t) || /^(suppose|assume|imagine)\b/i.test(t)) return false;
+  return (
+    /^(why|how|what|when|where|which|who|explain|is|are|does|do|did)\b/i.test(t) &&
+    // "How about paying Acme on Nov 3" is a request, not a question.
+    !/^how about\b/i.test(t)
+  );
+}
+
+/**
+ * Answer a question from the saved run. The fixed question grammar handles low point, weeks,
+ * items, rules and dominoes with citations; anything else gets a plain explanation of what the
+ * saved scenario does, how branches start, and why timing-only lines rejoin.
+ */
+export function answerQuestion(
+  run: WorkspaceRun,
+  draft: Draft,
+  text: string,
+  conversationId: string,
+  selectedItemId: string | null,
+): Result {
+  const parsed = readWithGrammar(text, recordsOf(run), {
+    week: false,
+    item: selectedItemId !== null,
+  });
+  if (parsed?.length && parsed.every((i) => i.kind === "question")) {
+    const outcome = resolve(run, parsed, {
+      questionId: conversationId,
+      prompt: text,
+      selectedWeek: null,
+      selectedItemId,
+    });
+    return {
+      draft,
+      answer: outcome.answer,
+      ...(outcome.citations.length ? { citations: outcome.citations } : {}),
+      proposal: null,
+      pendingField: null,
+    };
+  }
+  return { draft, answer: explain(run, text), proposal: null, pendingField: null };
+}
+
+function explain(run: WorkspaceRun, text: string): string {
+  const snapshot = run.baseline.seed.snapshot;
+  const name = run.parentRunId === null ? "The base forecast" : friendlyLabel(run.label, snapshot);
+  const start = scenarioStart(run.ownChanges, snapshot);
+  const low = run.forecast.lowPoint;
+  const lowText = `lowest cash is ${formatCents(low.usable)} in the week of ${formatDate(low.weekStart)}`;
+  if (/\b(start|starts|starting|begin|before|earlier|branch|fork|diverge)/i.test(text))
+    return `Each scenario's line starts the week its own change first moves cash, and a scenario added on top of another should not start before the one under it. ${start ? `${name} starts ${formatDate(start)}.` : `${name} changes no events, so it follows the line it was added to.`} Fixes from the risk analysis are now dated on or after the risk they answer; rerun the analysis to refresh older saved fixes.`;
+  if (/\b(converge|catch|snap|rejoin|merge|back to|same as|join)/i.test(text))
+    return "A late payment only moves timing: once the invoice is paid, cash catches up and the line rejoins the one it left. Discounts, fees, lost customers and cost changes stay offset in every later week, so those lines do not rejoin.";
+  return `${name}: ${lowText}.${start ? ` Its own change starts ${formatDate(start)}.` : ""} Ask about a week, an invoice, a bill or the cash rules for the detail behind it.`;
+}
+
 export function advance(
   run: WorkspaceRun,
   previous: Draft,
@@ -334,6 +399,9 @@ export function advance(
 ): Result {
   const draft = DraftSchema.parse(previous);
   const text = plainPhrasing(rawText);
+  // Questions are answered as questions, from the saved run, never parsed as a what-if.
+  if (!draft.pending && !draft.intents.length && isQuestion(text))
+    return answerQuestion(run, draft, text, conversationId, selectedItemId);
   // The fixed grammar only models unconditional events on one exact date. Keep
   // conditions and relative timing visible instead of discarding their meaning.
   if (
@@ -343,8 +411,7 @@ export function advance(
   )
     return {
       draft,
-      answer:
-        'I can only read one plain event on one exact date in the forecast, like "Pay $250,000 for a roof repair on" a date. Conditions (if, unless, before, with) and ranges like "in 2099" are not supported yet. Nothing changed.',
+      answer: CANT_MODEL,
       proposal: null,
       pendingField: draft.pending ? fieldWords[draft.pending.field] : null,
     };
@@ -399,7 +466,7 @@ export function advance(
   if (!parsed || parsed.some((i) => i.kind === "question" || i.kind === "unclear"))
     return {
       draft,
-      answer: `I could not safely read every part of that request. ${intro}`,
+      answer: CANT_MODEL,
       proposal: null,
       pendingField: null,
     };

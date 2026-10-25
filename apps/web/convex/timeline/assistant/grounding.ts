@@ -10,13 +10,22 @@ export function groundingIssue(prompt: string, intents: Intent[], selected: stri
       prompt.replace(/\s+/g, " ").replace(/\bwhat if\b/gi, " "),
     )
   )
-    return "Negations, conditions, recurring events, ranges, daily or upper limits need clarification. State one unconditional event on an exact date, or a supported weekly minimum rule.";
+    return unsupportedReply(prompt);
   if (
     intents.some((i) => i.kind === "min_cash_rule" || i.kind === "runway_rule") &&
     findDateText(prompt)
   )
-    return "Time-limited rules need clarification. State an unconditional weekly minimum rule.";
+    return 'Cash rules apply to every week, so I could not add one with a date range. For example, "Keep at least $2,000,000 in cash" works.';
   if (!copiedFromPrompt(intents, prompt, selected))
     return "I could not verify every suggested value against your words. State the exact amount, date and counterparty, or the rule and its limit. Nothing was calculated.";
   return meaningIssue(prompt, intents);
+}
+
+/** One or two plain sentences, naming what could not be modeled, with one example that works. */
+function unsupportedReply(prompt: string): string {
+  if (/\b(daily|intraday|every day|each day)\b/i.test(prompt))
+    return 'Cash is checked at each weekly close, so I cannot hold a daily limit. For example, "Keep at least $3,000,000 in cash" works.';
+  if (/\b(maximum|max|at most|less than|below|under)\b/i.test(prompt))
+    return 'I can set a minimum cash level, not an upper limit or a cap. For example, "Keep at least $3,000,000 in cash" or "Pay $50,000 to Atlas Legal on Nov 17" works.';
+  return 'I can model one change at a time on a specific date, so I could not run that one as written. For example, "Northwind pays its invoice 14 days late" or "Pay $250,000 for a roof repair on Nov 17" works.';
 }

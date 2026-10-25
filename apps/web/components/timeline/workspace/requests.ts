@@ -44,7 +44,7 @@ export function describeWriteError(error: unknown): string {
     if (data.success)
       return `Not saved: ${typeof data.data === "string" ? data.data : data.data.message}`;
   }
-  return "Could not confirm the result. It may or may not have been saved. Try again: the retry repeats the same request, so it will not be saved twice.";
+  return "Could not confirm the result. It may or may not have been saved. Sending it again repeats the same request, so it will not be saved twice.";
 }
 
 export const UNUSABLE_ANSWER =

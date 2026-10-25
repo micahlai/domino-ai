@@ -67,7 +67,8 @@ function Ready({ run, analysisId }: { run: WorkspaceRun; analysisId: string | nu
       } catch {
         return {
           ok: false,
-          message: "The financial output could not be read. Try again; this only reads saved data.",
+          message:
+            "The financial output could not be read. Please retry; this only reads saved data.",
         };
       }
     },

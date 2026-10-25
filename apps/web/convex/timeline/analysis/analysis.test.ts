@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
 import {
@@ -14,10 +15,15 @@ import { makeFunctionReference } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import schema from "../../schema";
 import { baselineRefs } from "../refs";
+import { scenarioStart } from "../scenarioStart";
 import { workspaceRefs } from "../workspaceRefs";
 import { candidates, checkSource, projectRisk, resilience, responsesFor } from "./compute";
 import { ANALYSIS_METHOD, LEASE_MS, exactReceipt } from "./receipt";
 import { analysisRefs as a } from "./refs";
+const rehash = (record: Record<string, unknown>) => ({
+  ...record,
+  contentHash: createHash("sha256").update(contentHashPreimage(record)).digest("hex"),
+});
 const modules = Object.fromEntries(
   Object.entries(
     import.meta.glob(["../../**/*.ts", "../../_generated/*.js", "!../../**/*.test.ts"]),
@@ -32,7 +38,20 @@ const modules = Object.fromEntries(
 );
 const setup = () => convexTest(schema, modules);
 type T = ReturnType<typeof setup>;
-const seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+// The Acme invoice falls due before the base forecast's low week, so the non-renewal risk
+// creates the breach and a response dated on or after the risk can clear it.
+const kestrel = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
+const seed = WeeklySeedV1Schema.parse(
+  rehash({
+    ...kestrel,
+    snapshot: {
+      ...kestrel.snapshot,
+      invoices: kestrel.snapshot.invoices.map((i) =>
+        i.id === "inv_acme_2027" ? { ...i, due: "2026-11-10" } : i,
+      ),
+    },
+  }),
+);
 const model: CompanyModel = { version: 0, customerDelayDays: {}, recurringSpend: [], rules: [] };
 const min = (limit: number): Constraint => ({
   id: "analysis_cash",
@@ -303,6 +322,26 @@ describe("TL7 saved automatic analysis", () => {
     expect(generated.risks[0]?.changes[0]).toMatchObject({ kind: "delay_invoice", days: 14 });
     expect(generated.warnings.join(" ")).toMatch(/assumption/);
     expect(neutral.baseline.model).toEqual(before);
+  });
+  it("never starts a response before the risk it is saved under, and names records plainly", async () => {
+    const t = setup();
+    const run = await root(t, [min(270_000_000)]);
+    const neutral = structuredClone(run);
+    neutral.baseline.seed.snapshot.deals = [];
+    neutral.baseline.seed.snapshot.cardTxns = [];
+    const snapshot = neutral.baseline.seed.snapshot;
+    for (const candidate of [...candidates(neutral).risks, ...candidates(run).risks]) {
+      const source = candidate.id.startsWith("assumed_") ? neutral : run;
+      const risk = projectRisk(source, candidate);
+      const riskStart = scenarioStart(risk.changes, source.baseline.seed.snapshot);
+      for (const response of responsesFor(source, risk)) {
+        const start = scenarioStart(response.changes, source.baseline.seed.snapshot);
+        if (riskStart && start) expect(start >= riskStart).toBe(true);
+        for (const i of source.baseline.seed.snapshot.invoices)
+          expect(response.label).not.toContain(i.id);
+      }
+      for (const i of snapshot.invoices) expect(risk.label).not.toContain(i.id);
+    }
   });
   it("caps budgets before scan, validates effective dates and refuses unsafe money", async () => {
     const t = setup();
