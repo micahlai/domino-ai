@@ -30,6 +30,28 @@ export const FieldTraceInputsSchema = z.object({
   }),
   model: z.object({ id: text, version: z.number(), data: CompanyModelSchema }),
   constraints: z.array(ConstraintSchema),
+  /** Absent on older receipts. Missing evidence is never replaced with today's findings. */
+  coordinatorFindings: z
+    .object({
+      openFlags: z.number().int().nonnegative(),
+      openEscalations: z.number().int().nonnegative(),
+      flags: z.array(
+        z.object({
+          findingId: text,
+          kind: z.enum([
+            "duplicate",
+            "conflict",
+            "unusual_amount",
+            "unusual_timing",
+            "missing_expected",
+          ]),
+          severity: z.enum(["low", "medium", "high"]),
+          summary: text,
+          escalated: z.boolean(),
+        }),
+      ),
+    })
+    .optional(),
   sources: z.array(z.object({ kind: text, lastPull: text.nullable(), tieOut: text, step: text })),
   connections: z.array(
     z.object({

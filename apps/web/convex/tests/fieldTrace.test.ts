@@ -115,6 +115,137 @@ async function finish(t: T, runId: string) {
 }
 
 describe("exact Field calculation evidence", () => {
+  it("pins coordinator flags and counts before same-version decisions and later findings", async () => {
+    const t = backend();
+    const initial = await seed(t);
+    const ids = await t.run(async (ctx) => {
+      const row = await ctx.db.query("snapshots").first();
+      if (!row) throw new Error("Missing snapshot");
+      const common = {
+        companyId: initial.companyId,
+        snapshotId: row._id,
+        version: 1,
+        kind: "duplicate" as const,
+        severity: "high" as const,
+        summary: "Original flag",
+        status: "open" as const,
+        refs: [],
+        detectedAt: new Date().toISOString(),
+      };
+      const first = await ctx.db.insert("findings", {
+        ...common,
+        findingId: "saved-first",
+        escalated: true,
+      });
+      const second = await ctx.db.insert("findings", {
+        ...common,
+        findingId: "saved-second",
+        escalated: false,
+      });
+      return { first, second, snapshotId: row._id };
+    });
+    await finish(t, initial.runId);
+    const { runId } = await t.mutation(api.fieldAnalyst.run, { companyId: initial.companyId });
+    const scope = { companyId: initial.companyId, runId };
+    const before = await t.query(internal.fieldCoordinator.input, { runId });
+    expect(before?.input.snapshot).toMatchObject({ openFlags: 2, openEscalations: 1 });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("findings", ids.first, {
+        status: "approved",
+        escalated: false,
+        summary: "Changed after start",
+      });
+      await ctx.db.patch("findings", ids.second, { escalated: true, severity: "low" });
+      for (const version of [1, 2])
+        await ctx.db.insert("findings", {
+          companyId: scope.companyId,
+          snapshotId: ids.snapshotId,
+          version,
+          findingId: `late-v${version}`,
+          kind: "conflict",
+          severity: "high",
+          summary: "Late flag",
+          status: "open",
+          refs: [],
+          escalated: true,
+          detectedAt: new Date().toISOString(),
+        });
+    });
+    expect(await t.query(internal.fieldCoordinator.input, { runId })).toEqual(before);
+    await finish(t, runId);
+    const trace = await t.query(api.fieldTrace.get, scope);
+    expect(trace).toMatchObject({
+      inputs: {
+        coordinatorFindings: { openFlags: 2, openEscalations: 1, flags: before?.input.flags },
+      },
+    });
+    await t.run((ctx) =>
+      ctx.db.patch("findings", ids.second, { status: "rejected", escalated: false }),
+    );
+    expect(await t.query(api.fieldTrace.get, scope)).toEqual(trace);
+  });
+
+  it("does not substitute current findings when an older input bundle lacks coordinator pins", async () => {
+    const t = backend();
+    const scope = await seed(t);
+    await t.run(async (ctx) => {
+      const run = await ctx.db.query("analystRuns").first();
+      if (!run?.traceInputs) throw new Error("Missing pinned inputs");
+      const pins: Record<string, unknown> = JSON.parse(run.traceInputs);
+      pins.coordinatorFindings = undefined;
+      await ctx.db.patch("analystRuns", run._id, { traceInputs: JSON.stringify(pins) });
+    });
+    await expect(t.query(internal.fieldCoordinator.input, { runId: scope.runId })).rejects.toThrow(
+      "coordinator findings were not pinned",
+    );
+    expect((await t.query(api.fieldTrace.get, scope))?.limitations.join(" ")).toContain(
+      "coordinator findings were not pinned",
+    );
+    await finish(t, scope.runId);
+    expect((await t.query(api.fieldTrace.get, scope))?.limitations.join(" ")).toContain(
+      "coordinator findings were not pinned",
+    );
+    // A receipt saved before this repair also lacks the new field and limitation message.
+    await t.run(async (ctx) => {
+      const run = await ctx.db.query("analystRuns").first();
+      if (!run?.traceReceipt) throw new Error("Missing saved receipt");
+      const receipt = FieldTraceSchema.parse(JSON.parse(run.traceReceipt));
+      receipt.limitations = [];
+      await ctx.db.patch("analystRuns", run._id, { traceReceipt: JSON.stringify(receipt) });
+    });
+    const legacy = await t.query(api.fieldTrace.get, scope);
+    expect(legacy?.inputs?.coordinatorFindings).toBeUndefined();
+    expect(legacy?.limitations.join(" ")).toContain("coordinator findings were not pinned");
+  });
+
+  it("refuses a coordinator count that would omit open findings beyond the pin limit", async () => {
+    const t = backend();
+    const scope = await seed(t);
+    await finish(t, scope.runId);
+    await t.run(async (ctx) => {
+      const snapshot = await ctx.db.query("snapshots").first();
+      if (!snapshot) throw new Error("Missing snapshot");
+      for (let i = 0; i < 201; i++)
+        await ctx.db.insert("findings", {
+          companyId: scope.companyId,
+          snapshotId: snapshot._id,
+          version: 1,
+          findingId: `flag-${i}`,
+          kind: "duplicate",
+          severity: "low",
+          summary: "Recorded flag",
+          status: "open",
+          refs: [],
+          escalated: false,
+          detectedAt: new Date().toISOString(),
+        });
+    });
+    await expect(t.mutation(api.fieldAnalyst.run, { companyId: scope.companyId })).rejects.toThrow(
+      "Too many open findings to pin safely",
+    );
+    expect(await t.run((ctx) => ctx.db.query("analystRuns").collect())).toHaveLength(1);
+  });
+
   it("pins the model, rules, company and observed snapshot before forecast and advisor work", async () => {
     const t = backend();
     const scope = await seed(t);

@@ -3,6 +3,7 @@ import { CompanyModelSchema, ConstraintSchema, SnapshotSchema } from "@domino/co
 import { operatingProvenance } from "@domino/sim";
 import { ConvexError, v } from "convex/values";
 import { z } from "zod";
+import { MAX_COORDINATOR_FLAGS } from "../../../packages/agents/src/fieldCreao";
 import {
   type FieldTrace,
   type FieldTraceCandidate,
@@ -19,6 +20,10 @@ const MAX_OPERATIONS = 400;
 const MAX_SCENARIOS = 20;
 const MAX_CANDIDATES = 80;
 const MAX_RECEIPT_BYTES = 600_000;
+const MAX_OPEN_FINDINGS = 200;
+const SEVERITY = { high: 0, medium: 1, low: 2 } as const;
+const MISSING_COORDINATOR_FINDINGS =
+  "Legacy run: coordinator findings were not pinned. Current flags and counts are not substituted.";
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 const candidateList = z.array(FieldTraceCandidateSchema);
 
@@ -54,6 +59,32 @@ export async function pinInputs(
     .take(65);
   if (sources.length > 64 || connections.length > 64)
     throw new Error("Too many source receipts to pin safely");
+  const open = await ctx.db
+    .query("findings")
+    .withIndex("by_companyId_and_status", (q) => q.eq("companyId", companyId).eq("status", "open"))
+    .order("desc")
+    .take(MAX_OPEN_FINDINGS + 1);
+  // Counts must describe the complete captured set, not silently undercount a truncated read.
+  if (open.length > MAX_OPEN_FINDINGS)
+    throw new Error("Too many open findings to pin safely (maximum 200)");
+  const coordinatorFindings = {
+    openFlags: open.length,
+    openEscalations: open.filter((finding) => finding.escalated).length,
+    flags: [...open]
+      .sort(
+        (a, b) =>
+          SEVERITY[a.severity] - SEVERITY[b.severity] ||
+          (a.findingId < b.findingId ? -1 : a.findingId > b.findingId ? 1 : 0),
+      )
+      .slice(0, MAX_COORDINATOR_FLAGS)
+      .map(({ findingId, kind, severity, summary, escalated }) => ({
+        findingId,
+        kind,
+        severity,
+        summary,
+        escalated,
+      })),
+  };
   const selection = company.operatingDemo;
   const provenance = selection ? operatingProvenance(selection, 1) : null;
   const recordCounts = Object.fromEntries(
@@ -81,6 +112,7 @@ export async function pinInputs(
     },
     model: { id: model._id, version: model.version, data: CompanyModelSchema.parse(model.data) },
     constraints: constraints.map((row) => ConstraintSchema.parse(row.data)),
+    coordinatorFindings,
     sources: sources.map(({ kind, lastPull, tieOut, step }) => ({ kind, lastPull, tieOut, step })),
     connections: connections.map(
       ({ tool, status, lastSyncAt, counts, recordsIn, recordsOut, checksOk, checksTotal }) => ({
@@ -258,6 +290,7 @@ async function collectTrace(ctx: Reader, run: Doc<"analystRuns">): Promise<Field
     limitations.push(
       "Legacy run: model, rules, company label and source provenance were not pinned. Current company data is not substituted.",
     );
+  if (!inputs?.coordinatorFindings) limitations.push(MISSING_COORDINATOR_FINDINGS);
   if (!run.traceReceipt && run.status !== "running")
     limitations.push(
       "Legacy run: no immutable terminal receipt was recorded. Available exact-run rows may be incomplete.",
@@ -420,6 +453,11 @@ export const get = query({
     const trace = run.traceReceipt
       ? FieldTraceSchema.parse(JSON.parse(run.traceReceipt))
       : FieldTraceSchema.parse(JSON.parse(bounded(await collectTrace(ctx, run))));
+    if (
+      !trace.inputs?.coordinatorFindings &&
+      !trace.limitations.includes(MISSING_COORDINATOR_FINDINGS)
+    )
+      trace.limitations.push(MISSING_COORDINATOR_FINDINGS);
     if (
       trace.run.companyId !== args.companyId ||
       trace.run.runId !== args.runId ||
