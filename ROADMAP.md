@@ -15,6 +15,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | C0 queue takeover | Claude lead | Codex checkpoint finished (clean tree at 16a3a56) | Lead owns ROADMAP.md/HANDOFF.md and dispatch from 2026-10-24; Codex CLI 0.159.2 logged in for audits |
 | G6/G7/G8a/G8/S1/U1 | Prior workers; Codex audit | Prior gates | Accepted grouped map, frozen knowledge, scenario contracts, early product UI; feature checkpoint 0f87ed2, prior 1,185 tests/build/browser |
 | D0 required-loop design | Codex; independent design auditor | Latest user scope | Reuse inventory, supported SEC JSON boundary, exact S4 and evaluation recipe reviewed; 1fce04a. Data/candidate seals and improvement are not done |
+| L0 contracts | Claude worker; Codex audit/integration | Accepted S3 | Integrated d4e24d9. [Final audit](kb/reviews/L0-06e1c98-codex-final.md) ACCEPT; [integration](kb/reviews/L0-integration-d4e24d9.md) 1,251 uncached tests, 5 typechecks, lint 265 files (Turbo keychain fallback to direct runs). Lead reran contracts 338 pass |
 | S3 quarterly scenario engine | Claude implementation; Codex audit/integration | Accepted S1 | Integrated at 16a3a56. [Independent audit](kb/reviews/S3-repair-5ecae8a-audit.md): 54 focused tests and 14 probes. Combined uncached preview check passed 1,208 tests, typechecks and lint. S4 persistence and U2 UI remain separate gates |
 
 ## Ready
@@ -29,7 +30,6 @@ Paused checkpoint: L0/E0 implementation workers have finished their final repair
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Codex integration onto preview | L0-learning-contracts / ../domino-L0 | Codex merges 06e1c98 into preview and runs combined check | [Final audit ACCEPT](kb/reviews/L0-06e1c98-codex-final.md): no findings, 338 contracts tests, 318 probes. Done only after integrated combined check |
 
 ## Review
 
