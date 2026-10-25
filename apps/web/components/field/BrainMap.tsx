@@ -11,14 +11,25 @@ import {
   ReactFlow,
   useNodesState,
   useReactFlow,
-  useStore,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ArrowDownLeft, ArrowUpRight, Check, Download, RefreshCw, X } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  List,
+  Network,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { animate, motion, useReducedMotion } from "motion/react";
 import {
   type CSSProperties,
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -30,10 +41,10 @@ import { AGENT_KIND_LABEL, AgentIcon, type AgentKind } from "../icons/AgentIcon"
 import { TOOL_CATEGORY_LABEL, ToolIcon } from "../icons/ToolIcon";
 import { ToolLogo } from "../icons/ToolLogo";
 import { VENDORS, type VendorId } from "../icons/vendors";
-import { STATUS_LABEL } from "../investigate/graph";
 import type { CanvasStatus } from "../investigate/types";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page";
+import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
 import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import {
@@ -41,6 +52,7 @@ import {
   type BrainNode,
   PULSE_SECONDS,
   type Pulse,
+  type SavedState,
   type ToolChip,
   activityFor,
   buildBrainGraph,
@@ -48,13 +60,26 @@ import {
   collapsedInstances,
   finishedAge,
   freshOperations,
+  hasWork,
+  idleAgents,
   instanceNodeId,
   isAgent,
   isWorking,
+  mapCounts,
   neighbors,
   pulsesFor,
+  toolChips,
+  withSavedState,
 } from "./graph";
-import { type Box, type MapLayout, type Route, type Stack, layoutMap } from "./map-layout";
+import {
+  type Box,
+  IDLE_CLUSTER,
+  type Lane,
+  type MapLayout,
+  type Route,
+  type Stack,
+  layoutMap,
+} from "./map-layout";
 import {
   AnomalyPicker,
   AutoIngestToggle,
@@ -99,9 +124,24 @@ type CardData = View & {
   /** Cards in the lower part of the web open their hover card upward, so it is not cut off. */
   above: boolean;
 };
-type StackData = View & { type: "stack"; stack: Stack; titles: string[]; dimmed: boolean };
-type MapNode = Node<CardData, "card"> | Node<StackData, "stack">;
-type RouteData = { route: Route; pulses: Pulse[]; active: boolean; dimmed: boolean };
+type StackData = View & {
+  type: "stack";
+  stack: Stack;
+  titles: string[];
+  dimmed: boolean;
+  onToggle: (clusterId: string) => void;
+};
+type LaneData = { type: "lane"; lane: Lane; label: string; count: string };
+type MapNode = Node<CardData, "card"> | Node<StackData, "stack"> | Node<LaneData, "lane">;
+type RouteData = {
+  route: Route;
+  pulses: Pulse[];
+  /** On the selected or hovered card's path: the only blue lines. */
+  active: boolean;
+  /** A step is travelling this line now. */
+  busy: boolean;
+  dimmed: boolean;
+};
 type MapEdge = Edge<RouteData, "route">;
 
 const flowStyle = {
@@ -122,7 +162,15 @@ const KIND_LABEL: Record<BrainNode["kind"], string> = {
   output: "Output",
 };
 
-const kindOf = (node: BrainNode): AgentKind => node.agentKind ?? "domino";
+const LANE_LABEL: Record<Lane["id"], string> = {
+  source: "Data sources",
+  agent: "Agents",
+  output: "Outputs",
+};
+
+/** Any agent kind the log records (Claude, CREAO, ...) keeps its own logo; unknown is Domino. */
+const kindOf = (node: BrainNode): AgentKind =>
+  node.agentKind && Object.hasOwn(AGENT_KIND_LABEL, node.agentKind) ? node.agentKind : "domino";
 const kindLabel = (node: BrainNode) =>
   isAgent(node)
     ? node.kind === "subagent"
@@ -133,8 +181,13 @@ const kindLabel = (node: BrainNode) =>
       : KIND_LABEL[node.kind];
 
 const LIFECYCLE_LABEL = { spawned: "Starting", working: "Working", done: "Done", failed: "Failed" };
-const stateLabel = (node: BrainNode) =>
-  node.lifecycle ? LIFECYCLE_LABEL[node.lifecycle] : STATUS_LABEL[node.status];
+const AGENT_STATUS: Record<CanvasStatus, string> = {
+  idle: "Not used yet",
+  queued: "Waiting",
+  running: "Working",
+  succeeded: "Done",
+  failed: "Failed",
+};
 const stateOf = (node: BrainNode): CanvasStatus =>
   node.lifecycle
     ? node.lifecycle === "done"
@@ -142,13 +195,33 @@ const stateOf = (node: BrainNode): CanvasStatus =>
       : node.lifecycle === "failed"
         ? "failed"
         : "running"
-    : node.status;
+    : node.status === "idle" && hasWork(node)
+      ? "succeeded"
+      : node.status;
+/** The status word every card shows: "Working", "Done", "Failed"; sources say "Read". */
+const stateLabel = (node: BrainNode) => {
+  if (node.lifecycle) return LIFECYCLE_LABEL[node.lifecycle];
+  const s = stateOf(node);
+  if (node.kind === "source")
+    return s === "failed" ? "Read failed" : hasWork(node) ? "Read" : "Not read yet";
+  if (node.kind === "output")
+    return s === "failed" ? "Failed" : hasWork(node) ? "Ready" : "None yet";
+  return AGENT_STATUS[s];
+};
 
+/** Restrained meaning: green for done, red for failed, plain text otherwise. Never the blue. */
+const STATUS_TEXT: Record<CanvasStatus, string> = {
+  idle: "text-muted-foreground",
+  queued: "text-muted-foreground",
+  running: "text-foreground",
+  succeeded: "text-safe",
+  failed: "text-destructive",
+};
 const DOT: Record<CanvasStatus, string> = {
-  idle: "bg-muted-foreground/35",
-  queued: "bg-clay",
-  running: "bg-[hsl(var(--primary-ink))]",
-  succeeded: "bg-[hsl(var(--safe))]",
+  idle: "bg-muted-foreground/40",
+  queued: "bg-muted-foreground",
+  running: "bg-foreground",
+  succeeded: "bg-safe",
   failed: "bg-destructive",
 };
 
@@ -163,6 +236,23 @@ function StatusDot({ status, className }: { status: CanvasStatus; className?: st
         className,
       )}
     />
+  );
+}
+
+/** Dot plus status word, e.g. "Working". */
+function StatusText({ node, className }: { node: BrainNode; className?: string }) {
+  const s = stateOf(node);
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 font-medium",
+        STATUS_TEXT[s],
+        className,
+      )}
+    >
+      <StatusDot status={s} />
+      {stateLabel(node)}
+    </span>
   );
 }
 
@@ -195,6 +285,12 @@ function lastLine(node: { operations: FieldOperation[]; lastAt?: string }, now: 
   return node.operations.length ? timeAgo(node.lastAt, now) : "No work yet";
 }
 
+/** Outputs lead with what is saved; sources with when they were last read. */
+function sideLine(node: BrainNode, now: number) {
+  if (node.kind === "output") return node.saved ?? lastLine(node, now);
+  return node.operations.length ? timeAgo(node.lastAt, now) : (node.saved ?? "No work yet");
+}
+
 const HIDDEN_HANDLE = "!pointer-events-none !opacity-0 !min-h-0 !min-w-0 !size-px !border-0";
 
 function Handles() {
@@ -217,48 +313,31 @@ function Handles() {
 }
 
 const CARD =
-  "relative rounded-xl border bg-card text-card-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.05)] transition-[box-shadow,border-color,opacity] duration-300";
-const GLOW =
-  "border-[hsl(var(--primary-ink)/0.55)] shadow-[0_0_0_4px_hsl(var(--primary-ink)/0.12),0_8px_24px_-12px_hsl(var(--primary-ink)/0.5)]";
-const SELECTED = "border-foreground/40 shadow-[0_0_0_3px_hsl(var(--foreground)/0.08)]";
+  "relative rounded-lg border bg-card text-card-foreground shadow-xs transition-[border-color,opacity] duration-300";
+/** A new event touched this card: a quiet border change, no glow. */
+const LIT = "border-foreground/35";
+/** Blue marks only the selected card and its links. */
+const SELECTED = "border-[hsl(var(--primary-ink))] ring-1 ring-[hsl(var(--primary-ink))]";
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card";
 
-/** The ring around a working agent: it breathes outward, or holds still with reduced motion. */
-function WorkingRing({ radius }: { radius: number }) {
-  const reduced = useReducedMotion();
-  const ring =
-    "pointer-events-none absolute -inset-[3px] border-2 border-[hsl(var(--primary-ink))]";
-  if (reduced)
-    return (
-      <span
-        aria-hidden="true"
-        className={cn(ring, "opacity-50")}
-        style={{ borderRadius: radius }}
-      />
-    );
-  return (
-    <motion.span
-      aria-hidden="true"
-      className={ring}
-      style={{ borderRadius: radius }}
-      initial={{ opacity: 0.55, scale: 1 }}
-      animate={{ opacity: [0.55, 0], scale: [1, 1.07] }}
-      transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeOut" }}
-    />
-  );
-}
+/** Hover summaries open on keyboard focus too. */
+const hoverOn = (onHover: View["onHover"], id: string) => ({
+  onFocus: () => onHover(id),
+  onBlur: () => onHover(null),
+  "data-open-id": id,
+});
 
 function CardNode({ data }: NodeProps<Node<CardData, "card">>) {
   const reduced = useReducedMotion();
   const { node, box, enter, leaving, dimmed, onHover, lit, selected } = data;
   const glowing = lit.has(node.id);
-  const working = isWorking(node);
-  const done = node.lifecycle === "done";
+  const done =
+    node.lifecycle === "done" || (node.kind === "subagent" && stateOf(node) === "succeeded");
   const hoverChip = data.chips.find((c) => c.id === data.hovered);
   const showHover =
     (data.hovered === node.id || hoverChip) && selected !== (hoverChip?.id ?? node.id);
-  const opacity = leaving ? 0 : dimmed ? 0.4 : done && node.kind === "subagent" ? 0.62 : 1;
+  const opacity = leaving ? 0 : dimmed ? 0.4 : 1;
   return (
     <motion.div
       initial={enter && !reduced ? { opacity: 0, scale: 0.6 } : false}
@@ -273,11 +352,10 @@ function CardNode({ data }: NodeProps<Node<CardData, "card">>) {
       style={{ width: box.w, height: box.h }}
     >
       <Handles />
-      {working ? <WorkingRing radius={box.depth ? 13 : 15} /> : null}
       <div
         className={cn(
           CARD,
-          glowing && GLOW,
+          glowing && LIT,
           selected === node.id && SELECTED,
           "h-full overflow-hidden",
         )}
@@ -310,8 +388,9 @@ function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
         type="button"
         onClick={() => data.onOpen(node.id)}
         aria-label={openLabel(node)}
+        {...hoverOn(data.onHover, node.id)}
         className={cn(
-          "nodrag nopan flex h-[60px] w-full items-center gap-3 rounded-[inherit] px-3 text-left",
+          "nodrag nopan flex h-16 w-full items-center gap-3 rounded-[inherit] px-3 text-left",
           FOCUS,
         )}
       >
@@ -320,17 +399,20 @@ function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
           <span className="flex items-center gap-2">
             <span className="truncate text-sm font-medium leading-5">{node.title}</span>
             {data.running > 0 ? (
-              <span className="shrink-0 rounded-full bg-[hsl(var(--primary-ink)/0.1)] px-1.5 text-[11px] font-medium leading-4 text-[hsl(var(--primary-ink))] tabular-nums">
-                {data.running} running
+              <span className="shrink-0 rounded-md border px-1.5 text-xs font-medium leading-5 tabular-nums">
+                {data.running} {data.running === 1 ? "helper" : "helpers"} working
               </span>
             ) : null}
           </span>
-          <span className="flex items-center gap-1.5 truncate text-xs leading-4 text-muted-foreground">
-            <StatusDot status={stateOf(node)} />
+          <span className="flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+            <StatusText node={node} />
+            <span aria-hidden="true">·</span>
             <span className="truncate">
               {working && node.currentTask
                 ? node.currentTask
-                : `${AGENT_KIND_LABEL[kindOf(node)]} · ${lastLine(node, now)}`}
+                : hasWork(node)
+                  ? lastLine(node, now)
+                  : AGENT_KIND_LABEL[kindOf(node)]}
             </span>
           </span>
         </span>
@@ -338,7 +420,7 @@ function AgentBody({ node, data }: { node: BrainNode; data: CardData }) {
       {data.chips.length ? (
         <ul
           aria-label={`Tools ${node.title} used`}
-          className="grid grid-cols-2 gap-1.5 border-t px-2.5 py-2.5"
+          className="grid grid-cols-2 gap-2 border-t px-2.5 py-2.5"
         >
           {data.chips.map((chip) => (
             <li key={chip.id} className="min-w-0">
@@ -359,12 +441,13 @@ function ChipButton({ chip, data, ownerId }: { chip: ToolChip; data: CardData; o
       onClick={() => data.onOpen(chip.id)}
       onMouseEnter={() => data.onHover(chip.id)}
       onMouseLeave={() => data.onHover(ownerId)}
+      {...hoverOn(data.onHover, chip.id)}
       aria-label={`${chip.label}, ${chip.tools.length} ${chip.tools.length === 1 ? "tool" : "tools"}, ${chip.calls} ${chip.calls === 1 ? "call" : "calls"}. Open details.`}
       className={cn(
-        "nodrag nopan flex h-[26px] w-full items-center gap-1.5 rounded-md border bg-background px-1.5 text-left text-xs transition-colors duration-300 hover:bg-muted",
+        "nodrag nopan flex h-7 w-full items-center gap-1.5 rounded-md border bg-background px-1.5 text-left text-xs transition-colors duration-300 hover:bg-muted",
         FOCUS,
-        lit && "border-[hsl(var(--primary-ink)/0.4)] bg-[hsl(var(--primary-ink)/0.08)]",
-        data.selected === chip.id && "bg-muted",
+        lit && "border-foreground/35",
+        data.selected === chip.id && "border-[hsl(var(--primary-ink))] bg-muted",
       )}
       style={lit ? { transitionDelay: `${data.lit.get(chip.id)}s` } : undefined}
     >
@@ -389,37 +472,36 @@ function InstanceBody({ node, data, done }: { node: BrainNode; data: CardData; d
     ? [describeTool(lastTool.tool ?? "", lastTool.toolCategory).category]
     : [];
   const working = isWorking(node);
+  const detail = working || done ? node.currentTask : (node.currentTask ?? node.brief);
   return (
     <button
       type="button"
       onClick={() => data.onOpen(node.id)}
       aria-label={openLabel(node)}
+      {...hoverOn(data.onHover, node.id)}
       className={cn(
-        "nodrag nopan relative flex h-full w-full items-center gap-2.5 rounded-[inherit] px-2.5 text-left",
+        "nodrag nopan relative flex h-full w-full items-center gap-2.5 rounded-[inherit] px-3 text-left",
         FOCUS,
       )}
     >
-      <NodeIcon node={node} size={26} />
+      <NodeIcon node={node} size={28} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-medium leading-5">{node.title}</span>
-          {done ? (
-            <Check aria-hidden="true" className="size-3.5 shrink-0 text-[hsl(var(--safe))]" />
-          ) : null}
+          <span className="truncate text-sm font-medium leading-5">{node.title}</span>
           <span aria-hidden="true" className="ml-auto flex shrink-0 items-center gap-1">
             {categories.map((c) => (
-              <ToolIcon key={c} category={c} size={12} className="text-muted-foreground" />
+              <ToolIcon key={c} category={c} size={13} className="text-muted-foreground" />
             ))}
           </span>
         </span>
-        <span className="block truncate text-[11px] leading-4 text-muted-foreground">
-          {working
-            ? (node.currentTask ?? stateLabel(node))
-            : done
-              ? "Finished"
-              : node.lifecycle === "failed"
-                ? "Failed"
-                : (node.currentTask ?? node.brief)}
+        <span className="flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+          <StatusText node={node} />
+          {detail ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="truncate">{detail}</span>
+            </>
+          ) : null}
         </span>
       </span>
       {node.progress !== undefined ? (
@@ -444,6 +526,7 @@ function SideBody({ node, data }: { node: BrainNode; data: CardData }) {
       type="button"
       onClick={() => data.onOpen(node.id)}
       aria-label={openLabel(node)}
+      {...hoverOn(data.onHover, node.id)}
       className={cn(
         "nodrag nopan flex h-full w-full items-center gap-3 rounded-[inherit] px-3 text-left",
         FOCUS,
@@ -451,25 +534,34 @@ function SideBody({ node, data }: { node: BrainNode; data: CardData }) {
     >
       <NodeIcon node={node} size={30} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium leading-5">{node.title}</span>
-        <span className="flex items-center gap-1.5 truncate text-xs leading-4 text-muted-foreground">
-          <StatusDot status={node.status} />
+        <span className="flex items-baseline gap-1.5">
+          <span className="truncate text-sm font-medium leading-5">{node.title}</span>
           {node.kind === "source" ? (
-            <>
-              {node.subtitle}
-              <span aria-hidden="true">·</span>
-            </>
+            <span className="truncate text-xs text-muted-foreground">{node.subtitle}</span>
           ) : null}
-          <span className="truncate">{lastLine(node, now)}</span>
+        </span>
+        <span className="flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+          <StatusText node={node} />
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{sideLine(node, now)}</span>
         </span>
       </span>
     </button>
   );
 }
 
-function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
-  const { stack, titles, dimmed, onOpen, onHover, hovered } = data;
+/** "8 completed helpers" or "2 agents not used yet". */
+export function stackLabel(stack: Stack): string {
   const n = stack.members.length;
+  return stack.clusterId === IDLE_CLUSTER
+    ? `${n} ${n === 1 ? "agent" : "agents"} not used yet`
+    : `${n} completed ${n === 1 ? "helper" : "helpers"}`;
+}
+
+function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
+  const { stack, titles, dimmed, onToggle, onHover, hovered } = data;
+  const label = stackLabel(stack);
+  const Chevron = stack.expanded ? ChevronDown : ChevronRight;
   return (
     <motion.div
       animate={{ opacity: dimmed ? 0.4 : 1 }}
@@ -479,45 +571,49 @@ function StackNode({ data }: NodeProps<Node<StackData, "stack">>) {
       className="relative"
     >
       <Handles />
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-2 -bottom-1.5 h-full rounded-xl border bg-card/70"
-      />
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-1 -bottom-[3px] h-full rounded-xl border bg-card/90"
-      />
-      <motion.button
-        key={n}
+      <button
         type="button"
-        initial={{ scale: 1.06 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.3 }}
-        onClick={() => onOpen(stack.id)}
-        aria-label={`${n} finished ${n === 1 ? "agent" : "agents"}. Open the list.`}
+        onClick={() => onToggle(stack.clusterId)}
+        aria-expanded={Boolean(stack.expanded)}
+        aria-label={`${label}. ${stack.expanded ? "Fold them away" : "Show them on the map"}.`}
+        {...hoverOn(onHover, stack.id)}
         className={cn(
           CARD,
-          "nodrag nopan flex h-full w-full items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground",
+          "nodrag nopan flex h-full w-full items-center gap-2 px-3 text-left text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
           FOCUS,
-          data.selected === stack.id && SELECTED,
         )}
       >
-        <Check aria-hidden="true" className="size-3.5 text-[hsl(var(--safe))]" />+{n} finished
-      </motion.button>
-      {hovered === stack.id && data.selected !== stack.id ? (
-        <div
-          role="tooltip"
-          className="pointer-events-none absolute left-0 top-full z-20 mt-3 w-56 rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-[0_12px_32px_-12px_hsl(var(--foreground)/0.25)]"
-        >
-          <p className="text-muted-foreground">Finished and folded away</p>
-          <p className="mt-1 leading-5">
+        <Chevron aria-hidden="true" className="size-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{stack.expanded ? `Fold ${label}` : label}</span>
+        {stack.clusterId === IDLE_CLUSTER ? null : (
+          <Check aria-hidden="true" className="size-4 shrink-0 text-safe" />
+        )}
+      </button>
+      {hovered === stack.id && !stack.expanded ? (
+        <div role="tooltip" className={cn(TOOLTIP, "left-0 top-full mt-2 w-64")}>
+          <p className="text-xs text-muted-foreground">
+            {stack.clusterId === IDLE_CLUSTER ? "No recorded work yet" : "Finished and folded away"}
+          </p>
+          <p className="mt-1 text-[13px] leading-5">
             {titles.slice(-6).join(", ")}
             {titles.length > 6 ? ` and ${titles.length - 6} more` : ""}
           </p>
-          <p className="mt-1 text-muted-foreground">Click for the list</p>
+          <p className="mt-1 text-xs text-muted-foreground">Press to show them on the map</p>
         </div>
       ) : null}
     </motion.div>
+  );
+}
+
+function LaneNode({ data }: NodeProps<Node<LaneData, "lane">>) {
+  return (
+    <h3
+      className="flex items-baseline gap-2 truncate text-[13px] font-semibold leading-5 text-foreground"
+      style={{ width: data.lane.w }}
+    >
+      {data.label}
+      <span className="font-normal text-muted-foreground">{data.count}</span>
+    </h3>
   );
 }
 
@@ -585,22 +681,25 @@ function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; ab
         </p>
       ) : !isAgent(node) ? (
         <p className="mt-2 text-xs">
+          {node.saved ? `${node.saved}. ` : ""}
           {node.operations.length
-            ? `${node.operations.length} recorded, most recent ${timeAgo(node.lastAt, now)}`
-            : "No recorded work yet"}
+            ? `${node.operations.length} in the loaded events, most recent ${timeAgo(node.lastAt, now)}`
+            : node.saved
+              ? "None in the loaded events"
+              : "No recorded work yet"}
         </p>
       ) : null}
-      <p className="mt-1 text-xs text-muted-foreground">Click for details</p>
+      <p className="mt-1 text-xs text-muted-foreground">Press for details</p>
     </div>
   );
 }
 
 const TOOLTIP =
-  "pointer-events-none absolute left-3 z-20 w-72 rounded-xl border bg-popover p-3 text-left text-popover-foreground shadow-[0_12px_32px_-12px_hsl(var(--foreground)/0.25)]";
+  "pointer-events-none absolute left-3 z-20 w-72 rounded-lg border bg-popover p-3 text-left text-popover-foreground shadow-md";
 
 function DemoActorTag() {
   return (
-    <span className="shrink-0 rounded border border-dashed px-1 text-[10px] leading-4 text-muted-foreground">
+    <span className="shrink-0 rounded border px-1 text-xs leading-4 text-muted-foreground">
       demo actor
     </span>
   );
@@ -610,7 +709,7 @@ const ROUTE_LOOK: Record<Route["kind"], { stroke: string; width: number; dash?: 
   feeds: { stroke: "hsl(var(--foreground) / 0.16)", width: 1.25 },
   produces: { stroke: "hsl(var(--foreground) / 0.12)", width: 1.25 },
   handoff: { stroke: "hsl(var(--foreground) / 0.2)", width: 1.25 },
-  message: { stroke: "hsl(var(--primary-ink) / 0.35)", width: 1.25, dash: "3 4" },
+  message: { stroke: "hsl(var(--foreground) / 0.28)", width: 1.25, dash: "3 4" },
   uses: { stroke: "transparent", width: 0 },
 };
 
@@ -619,7 +718,11 @@ function RouteEdge({ id, data }: EdgeProps<MapEdge>) {
   if (!data) return null;
   const { route, pulses, active, dimmed } = data;
   const look = ROUTE_LOOK[route.kind];
-  const stroke = active ? "hsl(var(--primary-ink) / 0.8)" : look.stroke;
+  const stroke = active
+    ? "hsl(var(--primary-ink) / 0.8)"
+    : data.busy
+      ? "hsl(var(--foreground) / 0.35)"
+      : look.stroke;
   // Paths glide with their cards when the web re-settles (CSS `d`; browsers without it jump).
   const glide = reduced
     ? undefined
@@ -678,36 +781,80 @@ function PulseDot({ pulse, path }: { pulse: Pulse; path: string }) {
   );
 }
 
-const nodeTypes = { card: CardNode, stack: StackNode };
+const nodeTypes = { card: CardNode, stack: StackNode, lane: LaneNode };
 const edgeTypes = { route: RouteEdge };
 
-/** Re-fit only when the web outgrows what was fitted, so it does not zoom on every change. */
-function FitOnGrow({ width, height }: { width: number; height: number }) {
+/**
+ * Zoom for fitting. On desktop the map holds 100% so the smallest label stays 12px; it centres
+ * on the current run and the rest is a pan away. A phone's optional map view fits everything.
+ */
+const fitZoom = (narrow: boolean) =>
+  narrow ? { minZoom: 0.3, maxZoom: 1 } : { minZoom: 1, maxZoom: 1 };
+
+/**
+ * Centres the current run: on load, when the web changes size, and whenever the map's box
+ * resizes (window, docked panel). Camera moves are instant with reduced motion.
+ */
+function AutoFit({
+  box,
+  focusIds,
+  sizeKey,
+  narrow,
+}: {
+  box: RefObject<HTMLDivElement | null>;
+  focusIds: string[];
+  sizeKey: string;
+  narrow: boolean;
+}) {
   const { fitView } = useReactFlow();
-  const fitted = useRef<{ w: number; h: number } | null>(null);
+  const reduced = useReducedMotion();
+  const fit = useRef<() => void>(() => {});
+  fit.current = () => {
+    void fitView({
+      ...(focusIds.length && { nodes: focusIds.map((id) => ({ id })) }),
+      padding: 0.06,
+      ...fitZoom(narrow),
+      duration: reduced ? 0 : 300,
+    });
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refit only when the web's size class changes, not on every new event.
   useEffect(() => {
-    if (!fitted.current) {
-      fitted.current = { w: width, h: height };
-      return;
-    }
-    if (width <= fitted.current.w + 24 && height <= fitted.current.h + 24) return;
-    fitted.current = { w: width, h: height };
-    const id = requestAnimationFrame(() => fitView({ padding: 0.04, maxZoom: 1, duration: 400 }));
+    const id = requestAnimationFrame(() => fit.current());
     return () => cancelAnimationFrame(id);
-  }, [width, height, fitView]);
-  // The pane narrows when the details panel docks beside it (or the window resizes): refit so
-  // the Outputs lane stays in view instead of hiding under the panel.
-  const pane = useStore((s) => s.width);
-  const paneSeen = useRef<number | null>(null);
+  }, [sizeKey, narrow]);
   useEffect(() => {
-    if (!pane) return;
-    const before = paneSeen.current;
-    paneSeen.current = pane;
-    if (before === null || Math.abs(before - pane) < 24) return;
-    const id = requestAnimationFrame(() => fitView({ padding: 0.04, maxZoom: 1, duration: 300 }));
-    return () => cancelAnimationFrame(id);
-  }, [pane, fitView]);
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let seen = { w: el.clientWidth, h: el.clientHeight };
+    let frame = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      if (Math.abs(width - seen.w) < 8 && Math.abs(height - seen.h) < 8) return;
+      seen = { w: width, h: height };
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => fit.current());
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [box]);
   return null;
+}
+
+/** True below 640px. False on the server and first paint, then follows the viewport. */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return narrow;
 }
 
 /** Demo only: the scripted swarm ticks on a timer. Live data never mixes with it. */
@@ -739,9 +886,36 @@ export function BrainMap() {
   );
   const now = useNow(500);
   const reduced = useReducedMotion();
-  const graph = useMemo(() => buildBrainGraph(operations ?? []), [operations]);
+  const narrow = useNarrow();
+  const [mobileMap, setMobileMap] = useState(false);
+  const logGraph = useMemo(() => buildBrainGraph(operations ?? []), [operations]);
+  // Saved state, so outputs and sources read before the loaded events still count.
+  const savedKey = JSON.stringify({
+    sources: data.status?.sources,
+    booksVersions: data.status?.counts.snapshots,
+    flags: data.findings
+      ? {
+          total: data.findings.length,
+          open: data.findings.filter((f) => f.status === "open").length,
+        }
+      : undefined,
+  } satisfies SavedState);
+  const graph = useMemo(
+    () => withSavedState(logGraph, JSON.parse(savedKey) as SavedState),
+    [logGraph, savedKey],
+  );
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const onToggle = useCallback(
+    (clusterId: string) =>
+      setExpanded((cur) => {
+        const next = new Set(cur);
+        if (!next.delete(clusterId)) next.add(clusterId);
+        return next;
+      }),
+    [],
+  );
 
   // Finished copies fade, then fold into their cluster's stack. Keys keep the layout memo stable.
   // The copy a person is pointing at or reading about stays put until they move on.
@@ -770,8 +944,15 @@ export function BrainMap() {
     [collapsedKey],
   );
   const leaving = useMemo(() => new Set(leavingKey ? leavingKey.split(" ") : []), [leavingKey]);
-  const layout = useMemo(() => layoutMap(graph, { collapsed }), [graph, collapsed]);
+  const idleKey = idleAgents(graph)
+    .filter((id) => !held(id))
+    .join(" ");
+  const layout = useMemo(
+    () => layoutMap(graph, { collapsed, expanded, idle: idleKey ? idleKey.split(" ") : [] }),
+    [graph, collapsed, expanded, idleKey],
+  );
 
+  const mapBox = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<MapNode>([]);
   const [pulses, setPulses] = useState<Pulse[]>([]);
   const [lit, setLit] = useState<ReadonlyMap<string, number>>(new Map());
@@ -849,6 +1030,15 @@ export function BrainMap() {
 
   const onOpen = useCallback((id: string) => setSelected((cur) => (cur === id ? null : id)), []);
   const onHover = useCallback((id: string | null) => setHovered(id), []);
+  const counts = useMemo(() => mapCounts(graph), [graph]);
+  const laneCount = useMemo(() => {
+    const total = (kind: BrainNode["kind"]) => graph.nodes.filter((n) => n.kind === kind).length;
+    return {
+      source: `${counts.sources} of ${total("source")} read`,
+      agent: `${counts.agents} with recorded work`,
+      output: `${counts.outputs} of ${total("output")} ready`,
+    };
+  }, [graph, counts]);
 
   useEffect(() => {
     const view: View = { lit, hovered, selected, onOpen, onHover };
@@ -898,6 +1088,7 @@ export function BrainMap() {
         stack,
         titles: stack.members.map((m) => graph.nodes.find((n) => n.id === m)?.title ?? m),
         dimmed: focus.id !== null && !focus.related.has(stack.id),
+        onToggle,
         ...view,
       },
       draggable: false,
@@ -906,7 +1097,17 @@ export function BrainMap() {
       zIndex: hovered === stack.id ? 20 : 2,
       style: { pointerEvents: "all" },
     }));
-    const next = [...cards, ...stacks];
+    const lanes: MapNode[] = layout.lanes.map((lane) => ({
+      id: `lane:${lane.id}`,
+      type: "lane",
+      position: { x: lane.x, y: lane.y },
+      data: { type: "lane", lane, label: LANE_LABEL[lane.id], count: laneCount[lane.id] },
+      draggable: false,
+      selectable: false,
+      focusable: false,
+      zIndex: 0,
+    }));
+    const next = [...lanes, ...cards, ...stacks];
     setNodes((current) => {
       const known = new Map(current.map((n) => [n.id, n]));
       return next.map((n) => {
@@ -925,6 +1126,8 @@ export function BrainMap() {
     selected,
     onOpen,
     onHover,
+    onToggle,
+    laneCount,
     setNodes,
     clusterOf,
   ]);
@@ -943,7 +1146,8 @@ export function BrainMap() {
           data: {
             route,
             pulses: mine,
-            active: mine.length > 0 || touches,
+            active: touches,
+            busy: mine.length > 0,
             dimmed: focus.id !== null && !touches,
           },
           focusable: false,
@@ -960,29 +1164,45 @@ export function BrainMap() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
 
-  const detailStack = selected ? layout.stacks.find((s) => s.id === selected) : undefined;
-  const detailNode =
-    selected && !detailStack ? graph.nodes.find((n) => n.id === ownerOf(selected)) : undefined;
+  const detailNode = selected ? graph.nodes.find((n) => n.id === ownerOf(selected)) : undefined;
   const detailChip = selected?.includes("|")
     ? layout.chips.get(ownerOf(selected))?.find((c) => c.id === selected)
     : undefined;
 
+  // Desktop panel focus: move to the panel heading on open, back to what opened it on close.
+  // On phones the Sheet (a dialog) traps and restores focus itself.
+  const panel = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const returnTo = useRef<HTMLElement | null>(null);
+  const openId = useRef<string | null>(null);
+  useEffect(() => {
+    if (narrow) return;
+    if (selected) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && !panel.current?.contains(active))
+        returnTo.current = active;
+      openId.current = selected;
+      heading.current?.focus({ preventScroll: true });
+      return;
+    }
+    const was = openId.current;
+    openId.current = null;
+    if (!was) return;
+    const back = returnTo.current?.isConnected
+      ? returnTo.current
+      : document.querySelector<HTMLElement>(`[data-open-id="${CSS.escape(was)}"]`);
+    back?.focus({ preventScroll: true });
+    returnTo.current = null;
+  }, [selected, narrow]);
+
   const agents = graph.nodes.filter(isAgent);
   const working = agents.filter(isWorking);
-  const finished = agents.filter((n) => n.kind === "subagent" && n.lifecycle === "done").length;
-  const messages = agents.reduce((sum, n) => sum + n.messages.length, 0) / 2;
   const coordinator = [...agents]
     .map((a) => ({
       a,
       kids: working.filter((w) => w.kind === "subagent" && clusterOf.get(w.id) === a.id),
     }))
     .sort((x, y) => y.kids.length - x.kids.length)[0];
-  const worked = (n: BrainNode) => n.operations.length > 0;
-  const counts = {
-    agents: agents.filter(worked).length,
-    sources: graph.nodes.filter((n) => n.kind === "source" && worked(n)).length,
-    outputs: graph.nodes.filter((n) => n.kind === "output" && worked(n)).length,
-  };
   const latest = operations?.length
     ? operations.reduce((a, b) => (byTime(a, b) <= 0 ? b : a))
     : undefined;
@@ -998,18 +1218,58 @@ export function BrainMap() {
               : plural(coordinator.kids.length, "agent");
           return `${coordinator.a.title} is running ${what} in parallel`;
         })()
-      : working.length
-        ? `${plural(working.length, "agent")} working now`
+      : counts.working
+        ? `${plural(counts.working, "agent")} working now`
         : counts.agents && counts.outputs
           ? `${plural(counts.agents, "agent")} turned ${plural(counts.sources, "data source")} into ${plural(counts.outputs, "output")}`
           : counts.agents
             ? `${plural(counts.agents, "agent")} read ${plural(counts.sources, "data source")}; no outputs yet`
             : "No agent has recorded work yet";
-  const kindsShown = [...new Set(agents.map(kindOf))];
+  // Activity counts come from the loaded events only; say so.
+  const loaded = data.operations?.length ?? 0;
+  const scope =
+    data.source === "live" ? `in the latest ${plural(loaded, "event")}` : "in this demo session";
+  const flags = data.findings;
+  const openFlags = flags?.filter((f) => f.status === "open").length ?? 0;
+  const versions = data.status?.counts.snapshots ?? 0;
+  // The map centres on the current run: clusters with an agent working now, else the cluster
+  // of the agent that recorded the latest step.
+  const currentRoot = (() => {
+    const busy = working.map((n) => clusterOf.get(n.id) ?? n.id);
+    if (busy.length) return new Set(busy);
+    const last = latest
+      ? agents.find(
+          (n) => n.operations.some((o) => o.id === latest.id) || n.messages.includes(latest),
+        )
+      : undefined;
+    return new Set(last ? [clusterOf.get(last.id) ?? last.id] : []);
+  })();
+  const focusIds = layout.clusters
+    .filter((c) => currentRoot.has(c.id))
+    .flatMap((c) => c.members)
+    .concat(layout.stacks.filter((s) => currentRoot.has(s.clusterId)).map((s) => s.id));
+  const sizeKey = `${Math.round(layout.width / 120)}x${Math.round(layout.height / 120)}`;
+  const visibleAgents = agents.filter((n) => layout.boxes.has(n.id));
+  const kindsShown = [...new Set((visibleAgents.length ? visibleAgents : agents).map(kindOf))];
   const vendorsShown = [
     ...new Set(graph.nodes.flatMap((n) => (n.kind === "source" && n.vendor ? [n.vendor] : []))),
   ];
   const apifyUsed = graph.nodes.some((n) => n.kind === "tool" && n.tool?.category === "apify");
+  const messageLines = layout.routes.some((r) => r.kind === "message");
+  const showList = narrow && !mobileMap;
+
+  const detail = detailNode ? (
+    <DetailPanel
+      node={detailNode}
+      chip={detailChip}
+      chips={layout.chips.get(detailNode.id) ?? []}
+      graph={graph}
+      onClose={() => setSelected(null)}
+      onSelect={setSelected}
+      headingRef={heading}
+      inSheet={narrow}
+    />
+  ) : null;
 
   return (
     <div className="space-y-5">
@@ -1028,127 +1288,168 @@ export function BrainMap() {
             : "Work appears here as soon as it is recorded."
         }
       />
-      <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-        <span>
-          <strong className="font-semibold tabular-nums">{working.length}</strong>{" "}
-          <span className="text-muted-foreground">working now</span>
-        </span>
-        <span>
-          <strong className="font-semibold tabular-nums">{finished}</strong>{" "}
-          <span className="text-muted-foreground">copies finished</span>
-        </span>
-        <span>
-          <strong className="font-semibold tabular-nums">{Math.round(messages)}</strong>{" "}
-          <span className="text-muted-foreground">messages between agents</span>
-        </span>
-      </p>
+      <div className="space-y-1 text-sm">
+        <p className="flex flex-wrap gap-x-5 gap-y-1">
+          <span>
+            <strong className="font-semibold tabular-nums">{counts.working}</strong>{" "}
+            <span className="text-muted-foreground">working now</span>
+          </span>
+          <span>
+            <strong className="font-semibold tabular-nums">{counts.completedHelpers}</strong>{" "}
+            <span className="text-muted-foreground">completed helpers</span>
+          </span>
+          <span>
+            <strong className="font-semibold tabular-nums">{counts.messages}</strong>{" "}
+            <span className="text-muted-foreground">messages between agents</span>
+          </span>
+          <span className="text-muted-foreground">{scope}</span>
+        </p>
+        <p className="flex flex-wrap gap-x-5 gap-y-1">
+          <span>
+            <strong className="font-semibold tabular-nums">{versions}</strong>{" "}
+            <span className="text-muted-foreground">
+              {versions === 1 ? "books version" : "books versions"} saved
+            </span>
+          </span>
+          {flags ? (
+            <span>
+              <strong className="font-semibold tabular-nums">{flags.length}</strong>{" "}
+              <span className="text-muted-foreground">
+                {flags.length === 1 ? "flag" : "flags"} for review, {openFlags} open
+              </span>
+            </span>
+          ) : null}
+          <span className="text-muted-foreground">all time</span>
+        </p>
+      </div>
       <MapActions />
-      <div
-        className={cn(
-          "relative flex overflow-hidden rounded-lg border bg-card shadow-xs",
-          // Cards glide when the web re-settles. A media query, so server and client agree.
-          "motion-safe:[&_.react-flow__node]:transition-transform motion-safe:[&_.react-flow__node]:duration-500",
-        )}
-        // Tall enough for the web at the screen's width, never taller than the screen.
-        style={{
-          height: `max(360px, min(calc(100dvh - 240px), ${Math.max(layout.height * 0.75, 560)}px, calc(${(layout.height / Math.max(layout.width, 1)).toFixed(3)} * (100vw - 32px) + 48px)))`,
-        }}
-      >
-        <div className="relative min-w-0 flex-1">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onPaneClick={() => setSelected(null)}
-            colorMode="light"
-            style={flowStyle}
-            fitView
-            fitViewOptions={{ padding: 0.04, maxZoom: 1 }}
-            minZoom={0.25}
-            maxZoom={1.6}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            nodesFocusable={false}
-            edgesFocusable={false}
-            elementsSelectable={false}
-            zoomOnScroll={false}
-            preventScrolling={false}
-            deleteKeyCode={null}
-            multiSelectionKeyCode={null}
-            selectionKeyCode={null}
-            proOptions={{ hideAttribution: true }}
+      {narrow ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium">{showList ? "Agents" : "Agent map"}</p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => setMobileMap((v) => !v)}
           >
-            <FitOnGrow width={layout.width} height={layout.height} />
-            <Controls
-              showInteractive={false}
-              position="bottom-left"
-              className="overflow-hidden rounded-lg border [&_.react-flow__controls-button]:size-8 [&_.react-flow__controls-button]:border-border"
-            />
-          </ReactFlow>
-          {data.source === "loading" ? (
-            <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
-              Loading the agent map...
-            </p>
+            {showList ? (
+              <Network aria-hidden="true" className="size-4" />
+            ) : (
+              <List aria-hidden="true" className="size-4" />
+            )}
+            {showList ? "Open map" : "Show list"}
+          </Button>
+        </div>
+      ) : null}
+      {showList ? (
+        <AgentList
+          graph={graph}
+          clusterOf={clusterOf}
+          loading={data.source === "loading"}
+          onOpen={setSelected}
+        />
+      ) : (
+        <div
+          ref={mapBox}
+          className={cn(
+            "relative flex overflow-hidden rounded-lg border bg-card shadow-xs",
+            // Cards glide when the web re-settles. A media query, so server and client agree.
+            "motion-safe:[&_.react-flow__node]:transition-transform motion-safe:[&_.react-flow__node]:duration-500",
+          )}
+          style={{ height: "max(420px, min(calc(100dvh - 240px), 760px))" }}
+        >
+          <div className="relative min-w-0 flex-1">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onPaneClick={() => setSelected(null)}
+              colorMode="light"
+              style={flowStyle}
+              fitView
+              fitViewOptions={{ padding: 0.06, ...fitZoom(narrow) }}
+              minZoom={0.25}
+              maxZoom={1.6}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              nodesFocusable={false}
+              edgesFocusable={false}
+              elementsSelectable={false}
+              zoomOnScroll={false}
+              preventScrolling={false}
+              deleteKeyCode={null}
+              multiSelectionKeyCode={null}
+              selectionKeyCode={null}
+              proOptions={{ hideAttribution: true }}
+            >
+              <AutoFit box={mapBox} focusIds={focusIds} sizeKey={sizeKey} narrow={narrow} />
+              <Controls
+                showInteractive={false}
+                position="bottom-left"
+                fitViewOptions={{ padding: 0.06, duration: reduced ? 0 : 300 }}
+                className="overflow-hidden rounded-lg border shadow-xs [&_.react-flow__controls-button]:size-8 [&_.react-flow__controls-button]:border-border"
+              />
+            </ReactFlow>
+            {data.source === "loading" ? (
+              <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+                Loading the agent map...
+              </p>
+            ) : null}
+          </div>
+          {detail && !narrow ? (
+            // Docks beside the map; the map refits into the space left (ResizeObserver).
+            <div ref={panel} className="w-[360px] shrink-0 border-l bg-card">
+              {detail}
+            </div>
           ) : null}
         </div>
-        {detailNode || detailStack ? (
-          <>
-            {/* On wide screens the panel docks beside the map and the map refits into the space
-                left, so no lane is hidden. Narrower, it slides over the map above a backdrop. */}
-            <button
-              type="button"
-              tabIndex={-1}
-              aria-label="Close details"
-              onClick={() => setSelected(null)}
-              className="absolute inset-0 z-10 cursor-default bg-foreground/15 lg:hidden"
-            />
-            <div className="absolute inset-y-0 right-0 z-20 w-[min(24rem,100%)] border-l bg-card shadow-lg lg:static lg:z-auto lg:w-[22rem] lg:shrink-0 lg:shadow-none xl:w-[24rem]">
-              {detailStack ? (
-                <StackPanel
-                  stack={detailStack}
-                  graph={graph}
-                  now={now}
-                  onClose={() => setSelected(null)}
-                  onSelect={setSelected}
-                />
-              ) : detailNode ? (
-                <DetailPanel
-                  node={detailNode}
-                  chip={detailChip}
-                  chips={layout.chips.get(detailNode.id) ?? []}
-                  graph={graph}
-                  onClose={() => setSelected(null)}
-                  onSelect={setSelected}
-                />
-              ) : null}
-            </div>
-          </>
-        ) : null}
-      </div>
-      <Legend kinds={kindsShown} vendors={vendorsShown} apify={apifyUsed} />
+      )}
+      {narrow ? (
+        <Sheet open={Boolean(detail)} onOpenChange={(open) => !open && setSelected(null)}>
+          <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-sm">
+            {detail}
+          </SheetContent>
+        </Sheet>
+      ) : null}
+      {showList ? null : (
+        <Legend
+          kinds={kindsShown}
+          vendors={vendorsShown}
+          apify={apifyUsed}
+          messages={messageLines}
+          motion={!reduced}
+        />
+      )}
     </div>
   );
 }
 
 const LEGEND_ORDER: AgentKind[] = ["domino", "claude", "creao", "system", "simulator", "person"];
 
+/** Only what the map shows right now. */
 function Legend({
   kinds,
   vendors,
   apify,
-}: { kinds: AgentKind[]; vendors: VendorId[]; apify: boolean }) {
+  messages,
+  motion: moving,
+}: {
+  kinds: AgentKind[];
+  vendors: VendorId[];
+  apify: boolean;
+  messages: boolean;
+  motion: boolean;
+}) {
   const group = "flex flex-wrap items-center gap-x-4 gap-y-2";
   const item = "inline-flex items-center gap-1.5";
   return (
     <div className="space-y-2 text-xs text-muted-foreground">
       <div className={group}>
         <span className="w-32 font-medium text-foreground">Who runs each agent</span>
-        {LEGEND_ORDER.filter(
-          (k) => kinds.includes(k) || ["domino", "claude", "creao", "system"].includes(k),
-        ).map((kind) => (
-          <span key={kind} className={cn(item, !kinds.includes(kind) && "opacity-60")}>
+        {LEGEND_ORDER.filter((k) => kinds.includes(k)).map((kind) => (
+          <span key={kind} className={item}>
             <AgentIcon kind={kind} size={18} />
             {AGENT_KIND_LABEL[kind]}
           </span>
@@ -1162,12 +1463,12 @@ function Legend({
             {VENDORS[v].name}
           </span>
         ))}
-        {vendors.includes("apify") ? null : (
-          <span className={cn(item, !apify && "opacity-60")}>
+        {apify && !vendors.includes("apify") ? (
+          <span className={item}>
             <ToolLogo vendor="apify" size={18} />
             Apify (demo actors)
           </span>
-        )}
+        ) : null}
       </div>
       <div className={group}>
         <span className="w-32 font-medium text-foreground">Lines</span>
@@ -1177,26 +1478,168 @@ function Legend({
           </svg>
           Data in, work handed off, results out
         </span>
-        <span className={item}>
-          <svg width="28" height="8" aria-hidden="true">
-            <path
-              d="M1 4h26"
-              stroke="hsl(var(--primary-ink) / 0.6)"
-              strokeWidth="1.5"
-              strokeDasharray="3 4"
-            />
-          </svg>
-          Messages between agents
-        </span>
-        <span className={item}>
-          <span
-            aria-hidden="true"
-            className="size-3 rounded-[4px] border-2 border-[hsl(var(--primary-ink))]"
-          />
-          Pulsing ring: working now
-        </span>
+        {messages ? (
+          <span className={item}>
+            <svg width="28" height="8" aria-hidden="true">
+              <path
+                d="M1 4h26"
+                stroke="hsl(var(--foreground) / 0.4)"
+                strokeWidth="1.5"
+                strokeDasharray="3 4"
+              />
+            </svg>
+            Messages between agents
+          </span>
+        ) : null}
+        {moving ? (
+          <span className={item}>
+            <span aria-hidden="true" className="size-2 rounded-full bg-[hsl(var(--primary-ink))]" />
+            A dot runs along a line when a new step is recorded
+          </span>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * Phones: the agents as a plain list, the default below 640px. Each row names the agent, its
+ * status, what it is doing, the tools it used and the sources it read. Completed helpers and
+ * agents not used yet fold under one line each.
+ */
+function AgentList({
+  graph,
+  clusterOf,
+  loading,
+  onOpen,
+}: {
+  graph: BrainGraph;
+  clusterOf: ReadonlyMap<string, string>;
+  loading: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const now = useNow();
+  if (loading) return <p className="text-sm text-muted-foreground">Loading the agents...</p>;
+  const agents = graph.nodes.filter(isAgent);
+  const idle = new Set(idleAgents(graph));
+  const roots = agents.filter((n) => n.kind === "agent" && !idle.has(n.id));
+  const helpersOf = (id: string) =>
+    agents.filter((n) => n.kind === "subagent" && (clusterOf.get(n.id) ?? n.parentId) === id);
+  const unused = agents.filter((n) => idle.has(n.id));
+  const completed = (n: BrainNode) =>
+    n.lifecycle ? n.lifecycle === "done" : stateOf(n) === "succeeded";
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y overflow-hidden rounded-lg border bg-card shadow-xs">
+        {roots.map((root) => {
+          const helpers = helpersOf(root.id);
+          const done = helpers.filter(completed);
+          const active = helpers.filter((n) => !completed(n));
+          return (
+            <li key={root.id}>
+              <AgentRow node={root} graph={graph} now={now} onOpen={onOpen} />
+              {active.length ? (
+                <ul aria-label={`Helpers ${root.title} started`} className="border-t bg-background">
+                  {active.map((n) => (
+                    <li key={n.id} className="pl-6">
+                      <AgentRow node={n} graph={graph} now={now} onOpen={onOpen} />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {done.length ? (
+                <details className="group border-t bg-background">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="size-4 transition-transform group-open:rotate-90"
+                    />
+                    {done.length} completed {done.length === 1 ? "helper" : "helpers"}
+                  </summary>
+                  <ul className="border-t">
+                    {done.map((n) => (
+                      <li key={n.id} className="pl-6">
+                        <AgentRow node={n} graph={graph} now={now} onOpen={onOpen} />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {unused.length ? (
+        <details className="group rounded-lg border bg-card shadow-xs">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+            <ChevronRight
+              aria-hidden="true"
+              className="size-4 transition-transform group-open:rotate-90"
+            />
+            {unused.length} {unused.length === 1 ? "agent" : "agents"} not used yet
+          </summary>
+          <ul className="divide-y border-t">
+            {unused.map((n) => (
+              <li key={n.id}>
+                <AgentRow node={n} graph={graph} now={now} onOpen={onOpen} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function AgentRow({
+  node,
+  graph,
+  now,
+  onOpen,
+}: {
+  node: BrainNode;
+  graph: BrainGraph;
+  now: number;
+  onOpen: (id: string) => void;
+}) {
+  const chips = toolChips(node);
+  const sources = neighbors(graph, node.id).from.filter((n) => n.kind === "source");
+  const task = node.currentTask ?? (hasWork(node) ? lastLine(node, now) : node.brief);
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(node.id)}
+      aria-label={openLabel(node)}
+      className={cn(
+        "flex min-h-11 w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted",
+        FOCUS,
+      )}
+    >
+      <NodeIcon node={node} size={28} />
+      <span className="min-w-0 flex-1 space-y-1">
+        <span className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <span className="text-sm font-medium">{node.title}</span>
+          <StatusText node={node} className="text-[13px]" />
+        </span>
+        <span className="block text-[13px] leading-5 text-muted-foreground">{task}</span>
+        {chips.length ? (
+          <span className="block text-xs text-muted-foreground">
+            Tools: {chips.map((c) => `${TOOL_CATEGORY_LABEL[c.category]} (${c.calls})`).join(", ")}
+          </span>
+        ) : null}
+        {sources.length ? (
+          <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            Reads
+            {sources.map((s) => (
+              <span key={s.id} className="inline-flex items-center gap-1">
+                <ToolLogo vendor={s.vendor ?? "generic"} size={16} />
+                {s.title}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </span>
+    </button>
   );
 }
 
@@ -1272,7 +1715,7 @@ function StatusPill({ status, label }: { status: CanvasStatus; label?: string })
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs">
       <StatusDot status={status} />
-      {label ?? STATUS_LABEL[status]}
+      {label ?? AGENT_STATUS[status]}
     </span>
   );
 }
@@ -1286,7 +1729,8 @@ function ActivityList({
   now: number;
   showAgent: boolean;
 }) {
-  if (!operations.length) return <p className="text-muted-foreground">Nothing recorded yet.</p>;
+  if (!operations.length)
+    return <p className="text-muted-foreground">Nothing in the loaded events.</p>;
   return (
     <ol className="space-y-3">
       {operations.map((op) => {
@@ -1403,6 +1847,13 @@ function MessageList({
   );
 }
 
+type PanelPlace = {
+  /** Receives focus when the desktop panel opens. */
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  /** Inside the phone Sheet: the Sheet supplies the title role and the close button. */
+  inSheet?: boolean;
+};
+
 function PanelShell({
   title,
   icon,
@@ -1410,6 +1861,8 @@ function PanelShell({
   pill,
   onClose,
   children,
+  headingRef,
+  inSheet,
 }: {
   title: string;
   icon: ReactNode;
@@ -1417,93 +1870,39 @@ function PanelShell({
   pill?: ReactNode;
   onClose: () => void;
   children: ReactNode;
-}) {
+} & PanelPlace) {
+  const titleClass = "break-words text-base font-semibold leading-6 focus:outline-none";
   return (
     <section
       aria-label={`${title} details`}
-      className="flex h-full flex-col overflow-hidden bg-card text-card-foreground"
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-card text-card-foreground"
     >
-      <div className="flex items-start gap-3 p-4">
+      <div className={cn("flex items-start gap-3 p-4", inSheet && "pr-12")}>
         {icon}
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{eyebrow}</p>
-          <h2 className="break-words text-base font-semibold leading-6">{title}</h2>
+          {inSheet ? (
+            <SheetTitle className={titleClass}>{title}</SheetTitle>
+          ) : (
+            <h2 ref={headingRef} tabIndex={-1} className={titleClass}>
+              {title}
+            </h2>
+          )}
           {pill ? <div className="mt-1.5">{pill}</div> : null}
         </div>
-        <Button
-          variant="ghost"
-          aria-label="Close details"
-          onClick={onClose}
-          className="-mr-2 -mt-2 size-9 p-0"
-        >
-          <X aria-hidden="true" className="size-4" />
-        </Button>
+        {inSheet ? null : (
+          <Button
+            variant="ghost"
+            aria-label="Close details"
+            onClick={onClose}
+            className="-mr-2 -mt-2 size-9 p-0"
+          >
+            <X aria-hidden="true" className="size-4" />
+          </Button>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </section>
-  );
-}
-
-function StackPanel({
-  stack,
-  graph,
-  now,
-  onClose,
-  onSelect,
-}: {
-  stack: Stack;
-  graph: BrainGraph;
-  now: number;
-  onClose: () => void;
-  onSelect: (id: string) => void;
-}) {
-  const owner = graph.nodes.find((n) => n.id === stack.clusterId);
-  const members = stack.members
-    .flatMap((id) => graph.nodes.find((n) => n.id === id) ?? [])
-    .reverse();
-  return (
-    <PanelShell
-      title={`${members.length} finished ${members.length === 1 ? "agent" : "agents"}`}
-      eyebrow={owner ? `Started by ${owner.title}` : "Finished agents"}
-      icon={
-        <span className="grid size-9 place-items-center rounded-lg border bg-background">
-          <Check aria-hidden="true" className="size-4 text-[hsl(var(--safe))]" />
-        </span>
-      }
-      onClose={onClose}
-    >
-      <p className="px-4 pb-3 text-sm leading-6 text-muted-foreground">
-        Copies that finished their task are folded here so the map stays readable. Their work and
-        messages are kept.
-      </p>
-      <Section title="Most recent first">
-        <ul className="space-y-1">
-          {members.map((n) => (
-            <li key={n.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(n.id)}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left hover:bg-muted",
-                  FOCUS,
-                )}
-              >
-                <NodeIcon node={n} size={22} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium">{n.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {n.currentTask ?? n.brief}
-                  </span>
-                </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {timeAgo(n.endedAt, now)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Section>
-    </PanelShell>
   );
 }
 
@@ -1514,6 +1913,8 @@ function DetailPanel({
   graph,
   onClose,
   onSelect,
+  headingRef,
+  inSheet,
 }: {
   node: BrainNode;
   chip?: ToolChip;
@@ -1521,7 +1922,7 @@ function DetailPanel({
   graph: BrainGraph;
   onClose: () => void;
   onSelect: (id: string) => void;
-}) {
+} & PanelPlace) {
   const now = useNow(1000);
   const ops = chip ? chip.operations : node.operations;
   const agent = isAgent(node);
@@ -1554,10 +1955,18 @@ function DetailPanel({
         />
       }
       onClose={onClose}
+      headingRef={headingRef}
+      inSheet={inSheet}
     >
       {chip ? null : (
         <p className="px-4 pb-3 text-sm leading-6 text-muted-foreground">{node.brief}</p>
       )}
+
+      {!chip && node.saved ? (
+        <Section title="Saved so far">
+          <p>{node.saved}</p>
+        </Section>
+      ) : null}
 
       {!chip && agent && (node.currentTask || time) ? (
         <Section title={working ? "Working on now" : "Last task"}>

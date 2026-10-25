@@ -13,6 +13,11 @@ export type FieldStatus = {
   week?: number;
   lastError?: string | null;
   openEscalations?: number;
+  /**
+   * Live only: each saved source row, keyed by brain map catalog id ("billing", "plaid").
+   * `lastPull` is the company date the data runs through, not a clock time.
+   */
+  sources?: { id: string; lastPull: string | null; step?: string | null; tieOut?: string | null }[];
 };
 
 /** Synthetic anomalies the mock feed can plant (field.advanceFeed `anomaly`). */
