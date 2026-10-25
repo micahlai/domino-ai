@@ -42,7 +42,8 @@ export function SyncCompany({ companyId }: { companyId: string }) {
 export type LatestImport =
   | { state: "not_field" }
   | { state: "loading" }
-  | { state: "none" }
+  /** replay: a fresh replay copy, whose Timeline starts empty rather than showing the original's. */
+  | { state: "none"; replay?: boolean }
   | {
       state: "ready";
       runId: string;
@@ -55,17 +56,23 @@ export type LatestImport =
 /** The latest Field import for a Timeline company id (a Field profile), if any. Live only. */
 export function useLatestImport(companyId: string): LatestImport {
   const operating = operatingSelectionFromWorldId(companyId);
-  const { companies } = useSelectedCompany();
-  const fieldId = companies?.find(
-    (c) => c.company === operating?.company && c.scenario === operating?.scenario,
-  )?.companyId as Id<"companies"> | undefined;
+  const { companies, selected } = useSelectedCompany();
+  // The selection's chosen replay copy has its own imports; otherwise the original company.
+  const record =
+    selected && selected.company === operating?.company && selected.scenario === operating?.scenario
+      ? selected
+      : companies?.find(
+          (c) =>
+            c.company === operating?.company && c.scenario === operating?.scenario && !c.replayOf,
+        );
+  const fieldId = record?.companyId as Id<"companies"> | undefined;
   const link = useQuery(
     api.fieldTimeline.latest,
     operating && fieldId ? { companyId: fieldId } : "skip",
   );
   if (!operating) return { state: "not_field" };
   if (companies === undefined || !fieldId || link === undefined) return { state: "loading" };
-  if (!link) return { state: "none" };
+  if (!link) return { state: "none", replay: !!record?.replayOf };
   return {
     state: "ready",
     runId: link.runId,
