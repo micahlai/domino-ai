@@ -1,5 +1,6 @@
 "use client";
 
+import { IconGallery } from "../icons/IconGallery";
 import { BrainMap } from "./BrainMap";
 import { ConnectView } from "./ConnectPage";
 import { WorkerPage } from "./WorkerPage";
@@ -21,6 +22,10 @@ export function FieldPlayground() {
         <section id="BrainMap" className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground">Brain map (/field/map)</h2>
           <BrainMap />
+        </section>
+        <section id="Icons" className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Icons (components/icons)</h2>
+          <IconGallery />
         </section>
         <section id="ConnectPage" className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground">

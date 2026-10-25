@@ -50,13 +50,52 @@ export const OTHER_ACTORS: Record<string, string> = {
 
 export type SourceProfile = { id: string; title: string; brief: string };
 
+/** Titles are the vendor each mock server imitates; the category comes from the vendor. */
 export const BUILT_IN_SOURCES: SourceProfile[] = [
-  { id: "billing", title: "Billing", brief: "Invoices and customer payments (mock server)." },
-  { id: "crm", title: "Customer records", brief: "Deals and expected renewals (mock server)." },
-  { id: "cards", title: "Card spending", brief: "Company card charges (mock server)." },
-  { id: "books", title: "Accounting books", brief: "Bills and journal entries (mock server)." },
-  { id: "payroll", title: "Payroll", brief: "Pay runs and dates (mock server)." },
-  { id: "bank", title: "Bank", brief: "Bank balance and transactions (Capital One Nessie)." },
+  {
+    id: "billing",
+    title: "Stripe",
+    brief: "Invoices, customer payments and payouts (mock Stripe server).",
+  },
+  { id: "crm", title: "HubSpot", brief: "Deals and expected renewals (mock HubSpot server)." },
+  { id: "cards", title: "Ramp", brief: "Company card charges and bills paid (mock Ramp server)." },
+  {
+    id: "books",
+    title: "QuickBooks",
+    brief: "Bills and the books' cash accounts (mock QuickBooks server).",
+  },
+  { id: "payroll", title: "Gusto", brief: "Pay runs and their dates (mock Gusto server)." },
+  {
+    id: "bank",
+    title: "Capital One",
+    brief: "Bank balance and transactions (Capital One Nessie sandbox).",
+  },
+];
+
+/** What the agents produce. Always shown, like the built-in agents; idle until the log says so. */
+export type OutputProfile = { id: string; title: string; brief: string };
+
+export const BUILT_IN_OUTPUTS: OutputProfile[] = [
+  {
+    id: "books",
+    title: "Books versions",
+    brief: "Each save is a new version of the weekly books. Older versions are kept.",
+  },
+  {
+    id: "flags",
+    title: "Flags for review",
+    brief: "Possible problems in the new entries. A person approves or dismisses each one.",
+  },
+  {
+    id: "forecast",
+    title: "Cash forecast",
+    brief: "The 13-week cash forecast and risks, computed by the engine from the saved books.",
+  },
+  {
+    id: "export",
+    title: "Weekly export",
+    brief: "The weekly books and open flags, packaged for a simulation run.",
+  },
 ];
 
 /** Stable key for an agent or source name as the backend writes it ("Audit agent" -> "audit"). */
