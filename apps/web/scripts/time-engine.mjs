@@ -20,7 +20,9 @@ console.log("company | single mutation | split load / engine / write | branches,
 for (const { id, name } of ids) {
   try {
     const { single, split } = run("dev/engineTiming:recompute", { companyId: id });
-    const one = single.error ? `${single.ms}ms FAILED (${single.error.slice(0, 60)})` : `${single.ms}ms`;
+    const one = single.error
+      ? `${single.ms}ms FAILED (${single.error.slice(0, 60)})`
+      : `${single.ms}ms`;
     console.log(
       `${name} | ${one} | ${split.loadMs} / ${split.engineMs} / ${split.writeMs}ms${split.stale ? " STALE" : ""} | ${split.branches}, ${Math.round(split.bytes / 1024)} KB`,
     );
