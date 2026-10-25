@@ -35,6 +35,7 @@ GENERIC = [
     ("brainmap", "brain-circuit", UI),
     ("tools", "plug", UI),
     ("timeline", "messages-square", UI),
+    ("customers", "users", UI),
     ("tryit", "flask-conical", UI),
     ("backtest", "history", UI),
     ("queries", "radio", CONVEX),

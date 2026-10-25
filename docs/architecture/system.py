@@ -22,11 +22,12 @@ Facts were checked against the code on field/main 7d6787e (2026-10-25):
   - vendors: apps/mocks (synthetic Stripe/HubSpot/Ramp/QuickBooks/Gusto shapes), served
     in-process (convex/connectors/inProcess.ts); bank via Capital One Nessie sandbox
   - schema: convex/schemas/{field,timeline,legacy}.schema.ts
-  - learning: field.decide stores the person's confirm / dismiss in `approvals`. The forecast
-    reads the company model's per-customer payment delays (engine recurring-revenue.ts,
-    schedule.ts). Scoped, versioned, revocable learned rules (engine learned-rules.ts) are built
-    and tested in the engine, but no Convex function turns decisions into rules or applies them
-    yet, so "becomes a rule" and "applied on the next run" are drawn dashed.
+  - learning (field/main 5c2e16f): convex/fieldLearning.ts turns flag confirm / dismiss and
+    suggestion accept / decline into scoped rules in the learnedRules table (engine
+    field-learning.ts over learned-rules.ts); later audit and advisor runs apply eligible rules
+    with receipts. The forecast reads the company model's per-customer payment delays (engine
+    recurring-revenue.ts). Pages: Customers (convex/fieldCustomers.ts), "What Domino learned"
+    on the Worker (components/field/worker/LearnedSection.tsx).
 """
 
 from __future__ import annotations
@@ -72,12 +73,13 @@ BOXES = {
     "agents": (670, 427, 1200, 855),
     "storage": (1225, 427, 1490, 855),
     "learning": (670, 875, 1490, 1075),
-    "frontend": (1530, 160, 1790, 1095),
-    "users": (1815, 505, 1975, 720),
+    "frontend": (1530, 160, 1770, 1095),
+    "users": (1800, 595, 1970, 800),
+    "stack": (30, 760, 380, 1095),
 }
 # Icon centers (column nodes) or node centers (row and panel nodes), top-down.
 ICON_AT = {
-    "header": (1000, 78), "vendors": (205, 330), "stack": (205, 925),
+    "header": (1000, 78), "vendors": (205, 330), "stack": (205, 935),
     "nessie": (205, 600), "crs": (205, 670),
     "risk": (752, 245), "cash": (935, 245),
     "apify": (1170, 245), "creao": (1300, 245), "claude": (1430, 245),
@@ -85,9 +87,9 @@ ICON_AT = {
     "ingest": (752, 505), "analyst": (935, 505), "advisors": (1115, 505), "audit": (935, 755),
     "mutations": (1357, 505), "tables": (1357, 640), "queries": (1357, 775),
     "delays": (1185, 918), "rules": (935, 985), "decisions": (1357, 985),
-    "brain": (1660, 270), "tryit": (1660, 440), "timeline": (1660, 610),
-    "dashboard": (1660, 775), "worker": (1660, 985),
-    "user": (1895, 610),
+    "brain": (1650, 265), "customers": (1650, 409), "tryit": (1650, 553),
+    "timeline": (1650, 697), "dashboard": (1650, 841), "worker": (1650, 985),
+    "user": (1885, 697),
 }
 ROW_NODES = {"nessie", "crs", "http", "clock", "delays", "header", "vendors", "stack"}
 
@@ -118,20 +120,23 @@ def row_label(tile: str, title: str, note: str) -> str:
             f'{text(title, note, TITLE_PT - 2)}</TD></TR></TABLE>')
 
 
-def grid_label(logos: list[tuple[str, str]], cols: int, size: float, title: str, note: str,
-               border: str, fill: str) -> str:
+def grid_label(logos: list[tuple[str, str]], cols: int, size: float, title: str = "",
+               note: str = "", border: str = "", fill: str = "", caption_pt: float = NOTE_PT,
+               spacing: int = 9) -> str:
     def cell(tile: str, caption: str) -> str:
         return (f'<TD><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="1"><TR>{img(tile, size)}'
-                f'</TR><TR><TD><FONT POINT-SIZE="{NOTE_PT}" FACE="{FONT} Medium" COLOR="{INK}">'
+                f'</TR><TR><TD><FONT POINT-SIZE="{caption_pt}" FACE="{FONT} Medium" COLOR="{INK}">'
                 f'{escape(caption)}</FONT></TD></TR></TABLE></TD>')
 
     rows = [logos[i:i + cols] for i in range(0, len(logos), cols)]
     body = "".join("<TR>" + "".join(cell(*n) for n in row)
                    + "<TD></TD>" * (cols - len(row)) + "</TR>" for row in rows)
     head = (f'<TR><TD COLSPAN="{cols}" ALIGN="LEFT" BALIGN="LEFT">'
-            f'{text(title, note, BOX_PT - 2)}</TD></TR>')
-    return (f'<TABLE BORDER="2" COLOR="{border}" BGCOLOR="{fill}" STYLE="ROUNDED" '
-            f'CELLBORDER="0" CELLSPACING="9" CELLPADDING="3">{head}{body}</TABLE>')
+            f'{text(title, note, BOX_PT - 2)}</TD></TR>' if title else "")
+    frame = (f'BORDER="2" COLOR="{border}" BGCOLOR="{fill}" STYLE="ROUNDED"' if border
+             else 'BORDER="0"')
+    return (f'<TABLE {frame} CELLBORDER="0" CELLSPACING="{spacing}" CELLPADDING="3">'
+            f'{head}{body}</TABLE>')
 
 
 def header_label() -> str:
@@ -139,8 +144,7 @@ def header_label() -> str:
     gap = '<FONT POINT-SIZE="17">      </FONT>'
     items = gap.join(item.format(f=FONT, c=c, t=t, line=line) for c, t, line in [
         (DATA_IN, "data in", "━━"), (AI, "AI calls", "━━"), (RESULT, "results to the UI", "━━"),
-        (CONTROL, "people and triggers", "━━"), (LEARN, "learning loop", "━━"),
-        (MUTED, "dashed: built in the engine, not wired into the live app yet", "╍╍")])
+        (CONTROL, "people and triggers", "━━"), (LEARN, "learning loop", "━━")])
     return (f'<TABLE BORDER="0" CELLSPACING="4"><TR><TD><FONT POINT-SIZE="40" FACE="{FONT} Bold" '
             f'COLOR="{INK}">Domino system architecture</FONT></TD></TR><TR><TD>'
             f'<FONT POINT-SIZE="19" FACE="{FONT}" COLOR="{MUTED}">From simulated books to a live '
@@ -294,17 +298,16 @@ def routes(g: Layout) -> list[tuple[str, str, Edge]]:
                                       L("mutations", 16)], "flags", (1100, 733), RESULT)),
         ("mutations", "tables", route([B("mutations"), T("tables")], "", None, RESULT)),
         ("tables", "queries", route([B("tables"), T("queries")], "", None, RESULT)),
-        ("queries", "dashboard", route([R("queries"), L("dashboard")], "live updates",
-                                       (1508, 761), RESULT)),
-        ("user", "timeline", route([L("user"), R("timeline")], "review · ask", (1777, 596),
-                                   CONTROL)),
-        # Learning loop.
-        ("worker", "decisions", route([L("worker"), R("decisions")], "confirm · dismiss",
-                                      (1508, 971), LEARN)),
+        ("queries", "dashboard", route([R("queries"), (1514, 775), (1514, 841), L("dashboard")],
+                                       "live updates", (1452, 761), RESULT)),
+        ("user", "timeline", route([L("user"), R("timeline")], "", None, CONTROL)),
+        # Learning loop: every decision becomes a scoped rule the next run applies.
+        ("worker", "decisions", route([L("worker"), R("decisions")], "confirm · approve · dismiss",
+                                      (1500, 971), LEARN)),
         ("decisions", "rules", route([L("decisions"), R("rules")], "becomes a rule",
-                                     (1150, 971), LEARN, dashed=True)),
+                                     (1150, 971), LEARN)),
         ("rules", "audit", route([T("rules"), B("audit")], "applied on the next run",
-                                 (1030, 860), LEARN, dashed=True)),
+                                 (1030, 860), LEARN)),
         ("delays", "analyst", route([T("delays"), (1185, 610), (958, 610), B("analyst", 23)],
                                     "payment delays", (1075, 596), LEARN)),
     ]
@@ -334,15 +337,15 @@ def build(out: Path, formats: list[str], sizes: dict[str, tuple[float, float]] |
     with Diagram("", filename=str(out), show=False, outformat=formats,
                  graph_attr=graph_attr) as diagram:
         put("header", header_label())
-        put("stack", grid_label([
-            ("nextjs", "Next.js 16"), ("react", "React 19"), ("tailwind", "Tailwind"),
-            ("convex", "Convex"), ("typescript", "TypeScript"), ("pnpm", "pnpm"),
-            ("turborepo", "Turborepo"), ("vitest", "Vitest"), ("biome", "Biome"),
-            ("vercel", "Vercel"), ("anthropic", "Claude"), ("creao", "CREAO"),
-            ("apify", "Apify"), ("capitalone", "Nessie"), ("crs", "CRS"),
-        ], cols=5, size=36, title="Tech stack",
-            note="pnpm monorepo · apps/web · apps/mocks · packages/*",
-            border="#E2E8F0", fill="#FFFFFF"))
+        with Cluster("stack", graph_attr=box("stack", "Tech stack", "pnpm monorepo",
+                                             "#FFFFFF", "#CBD5E1")):
+            put("stack", grid_label([
+                ("nextjs", "Next.js 16"), ("react", "React 19"), ("tailwind", "Tailwind"),
+                ("typescript", "TypeScript"), ("convex", "Convex"), ("vercel", "Vercel"),
+                ("pnpm", "pnpm"), ("turborepo", "Turborepo"), ("vitest", "Vitest"),
+                ("biome", "Biome"), ("anthropic", "Claude"), ("creao", "CREAO"),
+                ("apify", "Apify"), ("capitalone", "Nessie"), ("crs", "CRS"),
+            ], cols=5, size=38, caption_pt=13.5, spacing=7))
 
         with Cluster("sources", graph_attr=box("sources", "Data sources", "", "#F8FAFC", "#CBD5E1")):
             put("vendors", grid_label([
@@ -388,15 +391,16 @@ def build(out: Path, formats: list[str], sizes: dict[str, tuple[float, float]] |
                                                     "#FFFBEB", "#FCD34D")):
                 row("delays", "delays", "Payment delays", "per customer · used by the forecast")
                 col("rules", "rules", "Learned rules", "scoped · versioned · revocable")
-                col("decisions", "decisions", "Decisions", "confirm · dismiss")
+                col("decisions", "decisions", "Decisions", "flags: confirm · dismiss\nfixes: approve · dismiss")
 
         with Cluster("frontend", graph_attr=box("frontend", "Frontend", "", "#F8FAFC", "#94A3B8",
                                                 logos=("nextjs", "react", "tailwind"))):
             col("brain", "brainmap", "Brain map", "+ Connected tools")
+            col("customers", "customers", "Customers", "payment behavior + risk")
             col("tryit", "tryit", "Try it", "+ 2U backtest")
             col("timeline", "timeline", "Timeline", "+ Ask Domino")
             col("dashboard", "dashboard", "Dashboard")
-            col("worker", "worker", "Worker", "suggestions · risks · flags")
+            col("worker", "worker", "Worker", "suggestions · risks · flags\n+ What Domino learned")
 
         with Cluster("users", graph_attr=box("users", "Users", "", "#F8FAFC", "#CBD5E1")):
             col("user", "user", "Finance lead", "or Judge, in a browser")
