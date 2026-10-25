@@ -10,7 +10,7 @@ import {
   catalogKey,
 } from "./catalog";
 import { GROUP_LABEL, type ToolInfo, describeTool } from "./tool-names";
-import type { FieldOperation, OperationKind } from "./types";
+import { type AgentLifecycle, type FieldOperation, type OperationKind, isLifecycle } from "./types";
 
 // Brain map model: built only from the operation log plus the built-in catalog. Pure and
 // deterministic so it is easy to test; map-layout.ts adds positions, the React layer motion.
@@ -19,7 +19,7 @@ import type { FieldOperation, OperationKind } from "./types";
 // kept as a node (for its details) but drawn as a chip inside the agent card that used it.
 
 export type BrainKind = "agent" | "subagent" | "tool" | "source" | "output";
-export type EdgeKind = "feeds" | "handoff" | "uses" | "produces";
+export type EdgeKind = "feeds" | "handoff" | "message" | "uses" | "produces";
 
 export type BrainNode = {
   id: string;
@@ -28,8 +28,10 @@ export type BrainNode = {
   brief: string;
   instructions?: string;
   status: CanvasStatus;
-  /** Operations that touched this node, oldest first. */
+  /** Operations that touched this node, oldest first. Messages are kept apart. */
   operations: FieldOperation[];
+  /** Agents only: messages this agent sent or received, oldest first. */
+  messages: FieldOperation[];
   lastAt?: string;
   /** Agent id that started this sub-agent. */
   parentId?: string;
@@ -43,6 +45,16 @@ export type BrainNode = {
   tool?: ToolInfo & { raw: string };
   /** Outputs only: which tool category produces it, for the icon. */
   category?: ToolCategory;
+  /** Agent copies: the instance id ("forecaster#3") and its role ("forecaster"). */
+  instanceId?: string;
+  role?: string;
+  /** Agents with status rows: spawned, working, done or failed. */
+  lifecycle?: AgentLifecycle;
+  currentTask?: string;
+  /** When the agent was started and when it finished, from its status rows. */
+  startedAt?: string;
+  endedAt?: string;
+  progress?: number;
 };
 
 export type BrainEdge = { id: string; source: string; target: string; kind: EdgeKind };
@@ -61,7 +73,8 @@ export const isAgent = (n: BrainNode) => n.kind === "agent" || n.kind === "subag
 export function toCanvasStatus(status: string | undefined): CanvasStatus {
   const s = (status ?? "").toLowerCase();
   if (!s) return "idle";
-  if (["running", "started", "in_progress", "pending"].includes(s)) return "running";
+  if (["running", "started", "in_progress", "pending", "spawned", "working"].includes(s))
+    return "running";
   if (["queued", "waiting"].includes(s)) return "queued";
   if (["failed", "error", "rejected_by_system"].includes(s)) return "failed";
   return "succeeded";
@@ -113,7 +126,9 @@ const NO_OUTPUT = new Set(["field.tieout"]);
 export function outputOf(op: FieldOperation): string | undefined {
   if (op.tool) {
     const key = op.tool.trim().toLowerCase();
-    return NO_OUTPUT.has(key) ? undefined : OUTPUT_OF_CATEGORY[describeTool(key).category];
+    return NO_OUTPUT.has(key)
+      ? undefined
+      : OUTPUT_OF_CATEGORY[describeTool(key, op.toolCategory).category];
   }
   return OUTPUT_OF_KIND[op.kind];
 }
@@ -125,11 +140,30 @@ const OUTPUT_CATEGORY: Record<string, ToolCategory> = {
   export: "export",
 };
 
+/** A log reference to an agent, an instance id ("forecaster#3") or a name ("Analyst"), -> node id. */
+export function instanceNodeId(ref: string): string {
+  const key = ref.trim().toLowerCase();
+  return key.includes("#") ? `agent:${key.replace(/\s+/g, "-")}` : agentNodeId(ref);
+}
+
+/** The agent node an operation belongs to: its running copy when the log names one. */
+export const opAgentId = (op: FieldOperation) =>
+  op.instanceId ? instanceNodeId(op.instanceId) : agentNodeId(op.agent);
+
+/** "forecaster#3" + "Forecaster" -> "Forecaster 3". */
+function instanceTitle(ref: string, name?: string): string {
+  const [role = "", n] = ref.split("#");
+  const base = name && !name.includes("#") ? name : humanize(role);
+  return n ? `${base} ${n}` : humanize(name ?? ref);
+}
+
+const BUILT_IN_IDS = new Set(BUILT_IN_AGENTS.map((a) => `agent:${a.id}`));
+
 export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
   const ops = [...operations].sort(byTime);
   const nodes = new Map<string, BrainNode>();
   const edges = new Map<string, BrainEdge>();
-  const agentOfOp = new Map(ops.map((op) => [op.id, agentNodeId(op.agent)]));
+  const agentOfOp = new Map(ops.map((op) => [op.id, opAgentId(op)]));
 
   for (const agent of BUILT_IN_AGENTS)
     nodes.set(`agent:${agent.id}`, {
@@ -140,6 +174,7 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
       instructions: agent.instructions,
       status: "idle",
       operations: [],
+      messages: [],
       agentKind: "domino",
     });
   for (const source of BUILT_IN_SOURCES) {
@@ -151,6 +186,7 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
       brief: source.brief,
       status: "idle",
       operations: [],
+      messages: [],
       vendor,
       subtitle: VENDORS[vendor].category,
     });
@@ -163,40 +199,108 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
       brief: output.brief,
       status: "idle",
       operations: [],
+      messages: [],
       category: OUTPUT_CATEGORY[output.id] ?? "other",
     });
 
-  const touch = (id: string, op: FieldOperation, make: () => Omit<BrainNode, "operations">) => {
-    const node = nodes.get(id) ?? { ...make(), operations: [] };
+  const touch = (
+    id: string,
+    op: FieldOperation,
+    make: () => Omit<BrainNode, "operations" | "messages">,
+  ) => {
+    const node = nodes.get(id) ?? { ...make(), operations: [], messages: [] };
     node.operations.push(op);
     node.lastAt = op.at;
     node.status = toCanvasStatus(op.status);
     nodes.set(id, node);
+    return node;
   };
   const link = (source: string, target: string, kind: EdgeKind) => {
     const id = edgeId(source, target);
+    // Two agents share one link, whichever way their messages and handoffs go.
+    const pair = kind === "handoff" || kind === "message";
+    if (pair && edges.has(edgeId(target, source))) return;
     if (!edges.has(id)) edges.set(id, { id, source, target, kind });
+  };
+  /** An agent named only by reference (a message, a parent): known name, or a new idle node. */
+  const ensureAgent = (id: string, ref: string, op?: FieldOperation) => {
+    const found = nodes.get(id);
+    if (found) return found;
+    const key = id.slice("agent:".length);
+    const node: BrainNode = {
+      id,
+      kind: "agent",
+      title: instanceTitle(ref),
+      brief: OTHER_ACTORS[key] ?? "An agent recorded in the activity log.",
+      status: "idle",
+      operations: [],
+      messages: [],
+      agentKind: agentKindOf(key, op),
+      ...(ref.includes("#") && { instanceId: ref, role: ref.split("#")[0] }),
+    };
+    nodes.set(id, node);
+    return node;
   };
 
   for (const op of ops) {
-    const agent = agentNodeId(op.agent);
-    const key = agentKey(op.agent);
-    const parentAgent = op.parentId ? agentOfOp.get(op.parentId) : undefined;
+    if (op.kind === "message") {
+      const fromRef = op.from ?? op.instanceId ?? op.agent;
+      const from = ensureAgent(instanceNodeId(fromRef), fromRef, op);
+      const to = op.to ? ensureAgent(instanceNodeId(op.to), op.to) : undefined;
+      for (const n of to && to !== from ? [from, to] : [from]) {
+        n.messages.push(op);
+        n.lastAt = op.at;
+      }
+      if (to && to.id !== from.id) link(from.id, to.id, "message");
+      continue;
+    }
+    const agent = opAgentId(op);
+    const key = agent.slice("agent:".length);
+    const parentAgent = op.parentAgentId
+      ? ensureAgent(instanceNodeId(op.parentAgentId), op.parentAgentId).id
+      : op.parentId
+        ? agentOfOp.get(op.parentId)
+        : undefined;
     const sub = parentAgent && parentAgent !== agent ? parentAgent : undefined;
-    touch(agent, op, () => ({
+    const node = touch(agent, op, () => ({
       id: agent,
       kind: sub ? "subagent" : "agent",
-      title: humanize(op.agent),
+      title: op.instanceId ? instanceTitle(op.instanceId, op.agent) : humanize(op.agent),
       brief: sub
         ? `Started by ${nodes.get(sub)?.title ?? "another agent"} to handle part of its work.`
-        : (OTHER_ACTORS[key] ?? "An agent recorded in the activity log."),
+        : (OTHER_ACTORS[catalogKey(op.agent, BUILT_IN_AGENTS)] ??
+          "An agent recorded in the activity log."),
       status: "idle",
       parentId: sub,
       agentKind: agentKindOf(key, op),
+      ...(op.instanceId && { instanceId: op.instanceId, role: op.instanceId.split("#")[0] }),
     }));
-    const node = nodes.get(agent);
-    if (node && op.actor && (op.actor === "agent:claude" || op.actor === "agent:creao"))
+    // Named first by a message or as someone's parent, then started by a parent: a helper.
+    if (sub && node.kind === "agent" && !BUILT_IN_IDS.has(node.id)) {
+      node.kind = "subagent";
+      node.parentId = sub;
+      node.brief = `Started by ${nodes.get(sub)?.title ?? "another agent"} to handle part of its work.`;
+    }
+    if (op.instanceId && op.agent && !op.agent.includes("#"))
+      node.title = instanceTitle(op.instanceId, op.agent);
+    if (op.agentKind) node.agentKind = op.agentKind;
+    else if (op.actor === "agent:claude" || op.actor === "agent:creao")
       node.agentKind = agentKindOf(key, op);
+    if (op.instructions) node.instructions = op.instructions;
+    if (op.currentTask) node.currentTask = op.currentTask;
+    if (typeof op.progress === "number") node.progress = Math.max(0, Math.min(1, op.progress));
+    if (isLifecycle(op.status)) {
+      const running = op.status === "spawned" || op.status === "working";
+      const ended = node.lifecycle === "done" || node.lifecycle === "failed";
+      // A long-lived agent that finished and starts again begins a new run.
+      if (running && (!node.startedAt || ended)) {
+        node.startedAt = op.at;
+        node.endedAt = undefined;
+      }
+      if (!running) node.endedAt = op.at;
+      if (op.status === "done" && node.progress !== undefined) node.progress = 1;
+      node.lifecycle = op.status;
+    }
     if (sub) link(sub, agent, "handoff");
     if (op.source) {
       const source = sourceNodeId(op.source);
@@ -214,12 +318,12 @@ export function buildBrainGraph(operations: FieldOperation[]): BrainGraph {
     }
     if (op.tool) {
       const tool = toolNodeId(op.tool);
-      const info = describeTool(op.tool);
+      const info = describeTool(op.tool, op.toolCategory);
       touch(tool, op, () => ({
         id: tool,
         kind: "tool",
         title: info.label,
-        brief: "A tool an agent called.",
+        brief: info.demoActor ? "An Apify demo actor an agent called." : "A tool an agent called.",
         status: "idle",
         tool: { ...info, raw: op.tool ?? "" },
       }));
@@ -265,7 +369,7 @@ export function toolChips(agent: BrainNode): ToolChip[] {
   const chips = new Map<string, ToolChip>();
   for (const op of agent.operations) {
     if (!op.tool) continue;
-    const info = describeTool(op.tool);
+    const info = describeTool(op.tool, op.toolCategory);
     const id = chipId(agent.id, info.group);
     const chip = chips.get(id) ?? {
       id,
@@ -283,7 +387,7 @@ export function toolChips(agent: BrainNode): ToolChip[] {
     chip.operations.push(op);
     chip.status = toCanvasStatus(op.status);
     chip.lastAt = op.at;
-    if (chip.tools.length > 1) chip.label = GROUP_LABEL[info.category] ?? chip.label;
+    if (chip.tools.length > 1 || info.category === "apify") chip.label = GROUP_LABEL[info.category];
     chips.set(id, chip);
   }
   return [...chips.values()];
@@ -291,7 +395,7 @@ export function toolChips(agent: BrainNode): ToolChip[] {
 
 /** The chip an operation lights up, if it called a tool. */
 export function chipOf(op: FieldOperation): string | undefined {
-  return op.tool ? chipId(agentNodeId(op.agent), describeTool(op.tool).group) : undefined;
+  return op.tool ? chipId(opAgentId(op), describeTool(op.tool, op.toolCategory).group) : undefined;
 }
 
 /**
@@ -299,13 +403,15 @@ export function chipOf(op: FieldOperation): string | undefined {
  * off to it) into the agent, then the agent into the output it produced.
  */
 export function pulsePath(op: FieldOperation, graph: BrainGraph): string[] {
-  const agent = agentNodeId(op.agent);
+  if (op.kind === "message") return [];
+  const agent = opAgentId(op);
   const parent = op.parentId
     ? graph.nodes.find((n) => isAgent(n) && n.operations.some((o) => o.id === op.parentId))
     : undefined;
   const path: string[] = [];
+  const boss = op.parentAgentId ? instanceNodeId(op.parentAgentId) : parent?.id;
   if (op.source) path.push(edgeId(sourceNodeId(op.source), agent));
-  else if (parent && parent.id !== agent) path.push(edgeId(parent.id, agent));
+  else if (boss && boss !== agent) path.push(edgeId(boss, agent));
   const output = outputOf(op);
   if (output) path.push(edgeId(agent, outputNodeId(output)));
   const drawn = new Set(graph.edges.filter((e) => e.kind !== "uses").map((e) => e.id));
@@ -331,13 +437,30 @@ export function freshOperations(
   return { seen: next, fresh };
 }
 
-export type Pulse = { key: string; edgeId: string; delay: number };
+/** One dot on one link. `reverse` runs it target -> source (a reply on a shared agent link). */
+export type Pulse = { key: string; edgeId: string; delay: number; reverse?: boolean };
+
+/** The agent link a message travels, and which way, if both agents are drawn and linked. */
+export function messageRoute(
+  op: FieldOperation,
+  graph: BrainGraph,
+): { edgeId: string; reverse: boolean } | undefined {
+  if (op.kind !== "message" || !op.to) return undefined;
+  const from = instanceNodeId(op.from ?? op.instanceId ?? op.agent);
+  const to = instanceNodeId(op.to);
+  const ids = new Set(graph.edges.map((e) => e.id));
+  if (ids.has(edgeId(from, to))) return { edgeId: edgeId(from, to), reverse: false };
+  if (ids.has(edgeId(to, from))) return { edgeId: edgeId(to, from), reverse: true };
+  return undefined;
+}
 export const PULSE_SECONDS = 0.9;
 
 /** One dot per link of each new operation; later hops wait for earlier ones. */
 export function pulsesFor(fresh: FieldOperation[], graph: BrainGraph): Pulse[] {
   const pulses: Pulse[] = [];
   fresh.forEach((op, i) => {
+    const message = messageRoute(op, graph);
+    if (message) pulses.push({ key: `${op.id}:m`, ...message, delay: i * 0.3 * PULSE_SECONDS });
     pulsePath(op, graph).forEach((id, hop) => {
       pulses.push({ key: `${op.id}:${hop}`, edgeId: id, delay: (i * 0.3 + hop) * PULSE_SECONDS });
     });
@@ -353,8 +476,14 @@ export function activityFor(fresh: FieldOperation[]): Map<string, number> {
     const mark = (id: string | undefined, extra = 0) => {
       if (id && !active.has(id)) active.set(id, delay + extra);
     };
-    mark(agentNodeId(op.agent), op.source || op.parentId ? PULSE_SECONDS * 0.8 : 0);
-    mark(chipOf(op), op.source || op.parentId ? PULSE_SECONDS * 0.8 : 0);
+    if (op.kind === "message") {
+      mark(instanceNodeId(op.from ?? op.instanceId ?? op.agent));
+      if (op.to) mark(instanceNodeId(op.to), PULSE_SECONDS * 0.8);
+      return;
+    }
+    const handed = op.source || op.parentId || op.parentAgentId;
+    mark(opAgentId(op), handed ? PULSE_SECONDS * 0.8 : 0);
+    mark(chipOf(op), handed ? PULSE_SECONDS * 0.8 : 0);
     if (op.source) mark(sourceNodeId(op.source));
   });
   return active;
@@ -375,4 +504,26 @@ export function toolOwners(graph: BrainGraph, toolId: string): BrainNode[] {
   return graph.edges
     .filter((e) => e.kind === "uses" && e.target === toolId)
     .flatMap((e) => graph.nodes.find((n) => n.id === e.source) ?? []);
+}
+
+/** Agents running now: a working lifecycle, or (older logs) a running status. */
+export const isWorking = (n: BrainNode) =>
+  isAgent(n) &&
+  (n.lifecycle ? n.lifecycle === "spawned" || n.lifecycle === "working" : n.status === "running");
+
+/** Ms since a finished agent copy finished, or undefined while it runs (or has no lifecycle). */
+export function finishedAge(n: BrainNode, now: number): number | undefined {
+  if (n.kind !== "subagent" || n.lifecycle !== "done" || !n.endedAt) return undefined;
+  const at = Date.parse(n.endedAt);
+  return Number.isNaN(at) ? undefined : Math.max(0, now - at);
+}
+
+/** Finished agent copies that have faded out: the map folds them into a "+N finished" stack. */
+export function collapsedInstances(graph: BrainGraph, now: number, graceMs: number): Set<string> {
+  const out = new Set<string>();
+  for (const n of graph.nodes) {
+    const age = finishedAge(n, now);
+    if (age !== undefined && age >= graceMs) out.add(n.id);
+  }
+  return out;
 }

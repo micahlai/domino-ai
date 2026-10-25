@@ -1,319 +1,414 @@
-import { type BrainGraph, type BrainNode, type ToolChip, isAgent, toolChips } from "./graph";
+import {
+  type BrainGraph,
+  type BrainNode,
+  type EdgeKind,
+  type ToolChip,
+  isAgent,
+  toolChips,
+} from "./graph";
 
-// Deterministic three-lane layout for the brain map: positions, sizes and every link's route.
-// Links are orthogonal with rounded corners and consistent ports: sources enter an agent's left
-// port, outputs leave its right port, and a manager's link to its helper runs down a tree rail.
-// Each agent's sources (and outputs) are placed as one block next to it, below the previous
-// agent's port, so links into different agents never share a trunk or cross.
+// Deterministic web layout for the brain map. Every top-level agent is the center of a cluster;
+// the copies and helpers it started sit on a ring around it, and finished copies fold into one
+// "+N finished" stack in that cluster. The coordinator (Analyst) cluster sits in the middle and
+// the other clusters are pushed out around it, each along its own fixed direction, until nothing
+// overlaps. Data sources form a column on the left, outputs a column on the right. No randomness
+// and no simulation: the same graph always gives the same positions.
 
 export type Box = { x: number; y: number; w: number; h: number; depth: number };
 export type Point = { x: number; y: number };
-export type Route = { id: string; source: string; target: string; points: Point[]; path: string };
-export type Lane = { id: "source" | "agent" | "output"; title: string; x: number; w: number };
+export type Route = {
+  id: string;
+  source: string;
+  target: string;
+  kind: EdgeKind;
+  /** Start, control point(s), end. */
+  points: Point[];
+  path: string;
+};
+/** Finished agent copies of one cluster, folded into a single card. */
+export type Stack = { id: string; clusterId: string; members: string[]; box: Box };
+export type Cluster = { id: string; members: string[]; bounds: Box };
 export type MapLayout = {
   boxes: Map<string, Box>;
   routes: Route[];
   chips: Map<string, ToolChip[]>;
-  lanes: Lane[];
+  stacks: Stack[];
+  clusters: Cluster[];
   width: number;
   height: number;
 };
 
-export const LANES: Lane[] = [
-  { id: "source", title: "Data sources", x: 0, w: 232 },
-  { id: "agent", title: "Agents", x: 352, w: 312 },
-  { id: "output", title: "Outputs", x: 784, w: 232 },
-];
-const [SOURCE_LANE, AGENT_LANE, OUTPUT_LANE] = LANES as [Lane, Lane, Lane];
+export const ROOT_W = 256;
+export const ROOT_HEADER_H = 60;
+export const PILL_H = 26;
+export const PILL_GAP = 6;
+export const PILL_PAD = 10;
+export const INSTANCE_W = 184;
+export const INSTANCE_H = 58;
+export const STACK_W = 140;
+export const STACK_H = 34;
+export const SIDE_W = 204;
+export const SIDE_H = 52;
+const SIDE_GAP = 12;
+/** Horizontal room between the side columns and the web, for the links to curve through. */
+const SIDE_MARGIN = 110;
+const CLUSTER_GAP = 52;
+const CHILD_GAP = 14;
+/** Rings hold at least this many slots, so a cluster keeps its size while copies come and go. */
+const MIN_RING = 8;
+const PAD = 8;
 
-/** First card row; the lane header sits above it. */
-export const TOP = 56;
-export const SOURCE_H = 56;
-export const OUTPUT_H = 56;
-export const ITEM_GAP = 12;
-export const AGENT_HEADER_H = 60;
-export const CHIP_H = 28;
-export const CHIP_PAD = 8;
 /** Port height on a card: the middle of its header row. */
-export const PORT_Y = 28;
-const INDENT = 28;
-const ROOT_GAP = 24;
-const CHILD_GAP = 12;
-/** Offset of the trunk for links that are not an item's main link. */
-const SECONDARY = 14;
-const RADIUS = 10;
+export const PORT_Y = 30;
 
-export const agentHeight = (chips: number) =>
-  AGENT_HEADER_H + (chips > 0 ? chips * CHIP_H + CHIP_PAD * 2 + 1 : 0);
+/** Chips sit two per row under an agent's header. */
+export const rootHeight = (chips: number) =>
+  ROOT_HEADER_H +
+  2 + // card border
+  (chips > 0
+    ? 1 + PILL_PAD * 2 + Math.ceil(chips / 2) * PILL_H + (Math.ceil(chips / 2) - 1) * PILL_GAP
+    : 0);
 
-/** Agents top to bottom: each manager directly followed by its helpers (depth first). */
-function agentOrder(graph: BrainGraph): { node: BrainNode; depth: number }[] {
+/** Fixed directions (degrees, 0 = right, 90 = down) for clusters around the center one. */
+const DIRECTIONS = [-150, 150, -30, 30, -90, 90, 180, 0, -120, 120, -60, 60];
+
+const late = (n: BrainNode) =>
+  n.agentKind === "system" || n.agentKind === "simulator" || n.agentKind === "person" ? 1 : 0;
+
+/** Top-level agent each agent belongs to: helpers and copies join their topmost starter. */
+export function clusterRoots(graph: BrainGraph): Map<string, string> {
+  const agents = new Map(graph.nodes.filter(isAgent).map((n) => [n.id, n]));
+  const root = new Map<string, string>();
+  const find = (n: BrainNode, seen: Set<string>): string => {
+    const parent = n.kind === "subagent" && n.parentId ? agents.get(n.parentId) : undefined;
+    if (!parent || seen.has(parent.id)) return n.id;
+    seen.add(n.id);
+    return find(parent, seen);
+  };
+  for (const n of agents.values()) root.set(n.id, find(n, new Set()));
+  return root;
+}
+
+type Local = { id: string; cx: number; cy: number; w: number; h: number; depth: number };
+
+const hit = (a: Local, b: Local, gap: number) =>
+  Math.abs(a.cx - b.cx) * 2 < a.w + b.w + gap * 2 &&
+  Math.abs(a.cy - b.cy) * 2 < a.h + b.h + gap * 2;
+
+/** One cluster in its own coordinates: the root at (0, 0), its copies on a ring around it. */
+function layoutCluster(rootId: string, rootH: number, items: Local[]): Local[] {
+  const root: Local = { id: rootId, cx: 0, cy: 0, w: ROOT_W, h: rootH, depth: 0 };
+  if (items.length === 0) return [root];
+  if (items.length <= 2) {
+    // One or two helpers sit side by side under their manager.
+    const y = rootH / 2 + 26 + INSTANCE_H / 2;
+    const step = INSTANCE_W + CHILD_GAP;
+    return [
+      root,
+      ...items.map((it, i) => ({ ...it, cx: (i - (items.length - 1) / 2) * step, cy: y })),
+    ];
+  }
+  const slots = Math.max(items.length, MIN_RING);
+  // Spread the items over the slots so a half-full ring is still balanced.
+  const slotOf = (i: number) => Math.round((i * slots) / items.length) % slots;
+  const place = (rx: number, ry: number) =>
+    items.map((it, i) => {
+      const a = (-90 + (slotOf(i) * 360) / slots) * (Math.PI / 180);
+      return { ...it, cx: Math.round(rx * Math.cos(a)), cy: Math.round(ry * Math.sin(a)) };
+    });
+  // Size the ring for every slot, filled or not, so it does not breathe as copies come and go.
+  const probe = (rx: number, ry: number) =>
+    Array.from({ length: slots }, (_, k) => {
+      const a = (-90 + (k * 360) / slots) * (Math.PI / 180);
+      return {
+        id: `slot${k}`,
+        cx: Math.round(rx * Math.cos(a)),
+        cy: Math.round(ry * Math.sin(a)),
+        w: INSTANCE_W,
+        h: INSTANCE_H,
+        depth: 1,
+      };
+    });
+  let rx = ROOT_W / 2 + INSTANCE_W / 2 + 28;
+  let ry = rootH / 2 + INSTANCE_H / 2 + 24;
+  for (let guard = 0; guard < 200; guard++) {
+    const ring = probe(rx, ry);
+    const clash = ring.some(
+      (s, i) => hit(s, root, CHILD_GAP) || ring.some((t, j) => j > i && hit(s, t, CHILD_GAP)),
+    );
+    if (!clash) break;
+    rx += 12;
+    ry += 8;
+  }
+  return [root, ...place(rx, ry)];
+}
+
+const boundsOf = (items: Local[]) => {
+  const x0 = Math.min(...items.map((i) => i.cx - i.w / 2));
+  const y0 = Math.min(...items.map((i) => i.cy - i.h / 2));
+  const x1 = Math.max(...items.map((i) => i.cx + i.w / 2));
+  const y1 = Math.max(...items.map((i) => i.cy + i.h / 2));
+  return { x0, y0, x1, y1 };
+};
+
+export type LayoutOptions = {
+  /** Finished agent copies to fold into their cluster's "+N finished" stack. */
+  collapsed?: ReadonlySet<string>;
+};
+
+export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLayout {
+  const collapsed = options.collapsed ?? new Set<string>();
+  const chips = new Map<string, ToolChip[]>();
+  for (const n of graph.nodes) if (isAgent(n)) chips.set(n.id, toolChips(n));
+
+  // Clusters, in graph order (built-ins first), with plain code and people last.
+  const roots = clusterRoots(graph);
   const agents = graph.nodes.filter(isAgent);
-  const parent = new Map<string, string>();
-  for (const e of graph.edges)
-    if (e.kind === "handoff" && !parent.has(e.target) && e.source !== e.target)
-      parent.set(e.target, e.source);
-  const late = (n: BrainNode) =>
-    n.agentKind === "system" || n.agentKind === "simulator" || n.agentKind === "person" ? 1 : 0;
-  const roots = agents
-    .filter((n) => !parent.has(n.id) || !agents.some((a) => a.id === parent.get(n.id)))
+  const rootNodes = agents
+    .filter((n) => roots.get(n.id) === n.id)
     .map((n, i) => ({ n, i }))
     .sort((a, b) => late(a.n) - late(b.n) || a.i - b.i)
     .map(({ n }) => n);
-  const out: { node: BrainNode; depth: number }[] = [];
-  const seen = new Set<string>();
-  const visit = (node: BrainNode, depth: number) => {
-    if (seen.has(node.id)) return;
-    seen.add(node.id);
-    out.push({ node, depth });
-    for (const child of agents) if (parent.get(child.id) === node.id) visit(child, depth + 1);
-  };
-  for (const root of roots) visit(root, 0);
-  // A handoff cycle has no root; show what is left at the top level rather than drop it.
-  for (const node of agents) visit(node, 0);
-  return out;
-}
+  const center =
+    rootNodes.find((n) => n.id === "agent:analyst") ??
+    [...rootNodes].sort(
+      (a, b) =>
+        agents.filter((x) => roots.get(x.id) === b.id).length -
+        agents.filter((x) => roots.get(x.id) === a.id).length,
+    )[0];
 
-/** Stack items next to the agents they connect to: one block per agent, in agent order. */
-function placeSide(
-  items: BrainNode[],
-  primaryOf: (id: string) => string | undefined,
-  agentRank: Map<string, number>,
-  portY: Map<string, number>,
-  itemH: number,
-): Map<string, number> {
-  const rank = (id: string) => {
-    const p = primaryOf(id);
-    return p === undefined ? Number.POSITIVE_INFINITY : (agentRank.get(p) ?? 1e9);
-  };
-  const sorted = items
-    .map((n, i) => ({ n, i }))
-    .sort((a, b) => rank(a.n.id) - rank(b.n.id) || a.i - b.i);
-  const groups: { agent?: string; ids: string[] }[] = [];
-  for (const { n } of sorted) {
-    const agent = primaryOf(n.id);
-    const last = groups.at(-1);
-    if (last && last.agent === agent) last.ids.push(n.id);
-    else groups.push({ agent, ids: [n.id] });
+  const locals = new Map<string, Local[]>();
+  const stacks: Stack[] = [];
+  for (const root of rootNodes) {
+    const members = agents.filter((n) => n.id !== root.id && roots.get(n.id) === root.id);
+    const folded = members.filter((n) => collapsed.has(n.id)).map((n) => n.id);
+    const items: Local[] = members
+      .filter((n) => !collapsed.has(n.id))
+      .map((n) => ({ id: n.id, cx: 0, cy: 0, w: INSTANCE_W, h: INSTANCE_H, depth: 1 }));
+    const stackId = `stack:${root.id}`;
+    if (folded.length) items.push({ id: stackId, cx: 0, cy: 0, w: STACK_W, h: STACK_H, depth: 1 });
+    locals.set(root.id, layoutCluster(root.id, rootHeight(chips.get(root.id)?.length ?? 0), items));
+    if (folded.length)
+      stacks.push({
+        id: stackId,
+        clusterId: root.id,
+        members: folded,
+        box: { x: 0, y: 0, w: STACK_W, h: STACK_H, depth: 1 },
+      });
   }
-  const ys = new Map<string, number>();
-  let cursor = TOP;
-  let floor = TOP;
-  for (const g of groups) {
-    const height = g.ids.length * itemH + (g.ids.length - 1) * ITEM_GAP;
-    const port = g.agent ? portY.get(g.agent) : undefined;
-    let start = port === undefined ? cursor : port - height / 2;
-    // Below the previous block and strictly below the previous agent's port: trunks never meet.
-    start = Math.max(start, cursor, floor);
-    g.ids.forEach((id, i) => ys.set(id, start + i * (itemH + ITEM_GAP)));
-    cursor = start + height + ITEM_GAP;
-    if (port !== undefined) floor = Math.max(floor, port + ITEM_GAP);
-  }
-  return ys;
-}
 
-export function layoutMap(graph: BrainGraph): MapLayout {
-  const boxes = new Map<string, Box>();
-  const chips = new Map<string, ToolChip[]>();
-
-  // Agents lane.
-  const order = agentOrder(graph);
-  const agentRank = new Map(order.map((a, i) => [a.node.id, i]));
-  const portY = new Map<string, number>();
-  let y = TOP;
-  order.forEach(({ node, depth }, i) => {
-    const mine = toolChips(node);
-    chips.set(node.id, mine);
-    if (i > 0) y += depth > 0 ? CHILD_GAP : ROOT_GAP;
-    const indent = Math.min(depth, 3) * INDENT;
-    const h = agentHeight(mine.length);
-    boxes.set(node.id, { x: AGENT_LANE.x + indent, y, w: AGENT_LANE.w - indent, h, depth });
-    portY.set(node.id, y + PORT_Y);
-    y += h;
+  // Place clusters: the center one at the origin, the rest pushed out along fixed directions.
+  type Rect = { x0: number; y0: number; x1: number; y1: number };
+  const placed: Rect[] = [];
+  const offset = new Map<string, Point>();
+  const overlapsAny = (r: Rect) =>
+    placed.some(
+      (p) =>
+        r.x0 < p.x1 + CLUSTER_GAP &&
+        p.x0 < r.x1 + CLUSTER_GAP &&
+        r.y0 < p.y1 + CLUSTER_GAP &&
+        p.y0 < r.y1 + CLUSTER_GAP,
+    );
+  const order = center ? [center, ...rootNodes.filter((n) => n !== center)] : rootNodes;
+  order.forEach((root, i) => {
+    const b = boundsOf(locals.get(root.id) ?? []);
+    const deg =
+      i === 0
+        ? 0
+        : (DIRECTIONS[(i - 1) % DIRECTIONS.length] ?? 0) +
+          7 * Math.floor((i - 1) / DIRECTIONS.length);
+    const a = (deg * Math.PI) / 180;
+    // A wide screen: spread clusters further sideways than up and down.
+    const dx = Math.cos(a);
+    const dy = Math.sin(a) * 0.9;
+    let d = 0;
+    let at: Point = { x: 0, y: 0 };
+    for (let guard = 0; guard < 2000; guard++) {
+      at = { x: Math.round(dx * d), y: Math.round(dy * d) };
+      const r = { x0: at.x + b.x0, y0: at.y + b.y0, x1: at.x + b.x1, y1: at.y + b.y1 };
+      if (i === 0 || !overlapsAny(r)) {
+        placed.push(r);
+        break;
+      }
+      d += 8;
+    }
+    offset.set(root.id, at);
   });
 
-  // Side lanes: each item's main agent is the highest one it links to.
-  const drawn = graph.edges.filter((e) => e.kind !== "uses");
-  const primary = (links: { item: string; agent: string }[]) => {
-    const best = new Map<string, string>();
-    for (const { item, agent } of links) {
-      const current = best.get(item);
-      if (!agentRank.has(agent)) continue;
-      if (current === undefined || (agentRank.get(agent) ?? 0) < (agentRank.get(current) ?? 0))
-        best.set(item, agent);
+  const boxes = new Map<string, Box>();
+  const clusters: Cluster[] = [];
+  for (const root of order) {
+    const at = offset.get(root.id) ?? { x: 0, y: 0 };
+    const items = locals.get(root.id) ?? [];
+    for (const it of items) {
+      const box = {
+        x: at.x + it.cx - it.w / 2,
+        y: at.y + it.cy - it.h / 2,
+        w: it.w,
+        h: it.h,
+        depth: it.depth,
+      };
+      const stack = stacks.find((s) => s.id === it.id);
+      if (stack) stack.box = box;
+      else boxes.set(it.id, box);
     }
-    return best;
-  };
-  const feeds = drawn.filter((e) => e.kind === "feeds");
-  const produces = drawn.filter((e) => e.kind === "produces");
-  const sourceMain = primary(feeds.map((e) => ({ item: e.source, agent: e.target })));
-  const outputMain = primary(produces.map((e) => ({ item: e.target, agent: e.source })));
-  const sources = graph.nodes.filter((n) => n.kind === "source");
-  const outputs = graph.nodes.filter((n) => n.kind === "output");
-  const sy = placeSide(sources, (id) => sourceMain.get(id), agentRank, portY, SOURCE_H);
-  const oy = placeSide(outputs, (id) => outputMain.get(id), agentRank, portY, OUTPUT_H);
-  for (const n of sources)
-    boxes.set(n.id, {
-      x: SOURCE_LANE.x,
-      y: sy.get(n.id) ?? TOP,
-      w: SOURCE_LANE.w,
-      h: SOURCE_H,
-      depth: 0,
+    const b = boundsOf(items);
+    clusters.push({
+      id: root.id,
+      members: items.map((i) => i.id).filter((id) => !id.startsWith("stack:")),
+      bounds: { x: at.x + b.x0, y: at.y + b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0, depth: 0 },
     });
-  for (const n of outputs)
-    boxes.set(n.id, {
-      x: OUTPUT_LANE.x,
-      y: oy.get(n.id) ?? TOP,
-      w: OUTPUT_LANE.w,
-      h: OUTPUT_H,
-      depth: 0,
-    });
+  }
 
-  // Routes.
-  const leftBus = (SOURCE_LANE.x + SOURCE_LANE.w + AGENT_LANE.x) / 2;
-  const rightBus = (AGENT_LANE.x + AGENT_LANE.w + OUTPUT_LANE.x) / 2;
+  // Side columns, each item next to the agents it links to.
+  const web = {
+    x0: Math.min(0, ...clusters.map((c) => c.bounds.x)),
+    x1: Math.max(0, ...clusters.map((c) => c.bounds.x + c.bounds.w)),
+    y0: Math.min(0, ...clusters.map((c) => c.bounds.y)),
+    y1: Math.max(0, ...clusters.map((c) => c.bounds.y + c.bounds.h)),
+  };
+  const drawn = graph.edges.filter((e) => e.kind !== "uses");
+  const column = (kind: "source" | "output", x: number) => {
+    const items = graph.nodes.filter((n) => n.kind === kind);
+    const partnerY = (id: string) => {
+      const ys = drawn
+        .filter((e) => (kind === "source" ? e.source === id : e.target === id))
+        .flatMap((e) => boxes.get(kind === "source" ? e.target : e.source) ?? [])
+        .map((b) => b.y + Math.min(PORT_Y, b.h / 2));
+      return ys.length ? Math.min(...ys) : Number.POSITIVE_INFINITY;
+    };
+    const sorted = items
+      .map((n, i) => ({ n, i, y: partnerY(n.id) }))
+      .sort((a, b) => a.y - b.y || a.i - b.i);
+    const height = items.length * SIDE_H + Math.max(0, items.length - 1) * SIDE_GAP;
+    const linked = sorted.filter((s) => Number.isFinite(s.y));
+    const mid = linked.length
+      ? linked.reduce((sum, s) => sum + s.y, 0) / linked.length
+      : (web.y0 + web.y1) / 2;
+    const top = Math.min(Math.max(mid - height / 2, web.y0), Math.max(web.y0, web.y1 - height));
+    sorted.forEach(({ n }, i) =>
+      boxes.set(n.id, { x, y: top + i * (SIDE_H + SIDE_GAP), w: SIDE_W, h: SIDE_H, depth: 0 }),
+    );
+  };
+  column("source", web.x0 - SIDE_MARGIN - SIDE_W);
+  column("output", web.x1 + SIDE_MARGIN);
+
+  // Shift everything so the top-left corner is (PAD, PAD).
+  const all = [...boxes.values(), ...stacks.map((s) => s.box)];
+  const minX = Math.min(...all.map((b) => b.x));
+  const minY = Math.min(...all.map((b) => b.y));
+  const shift = (b: Box) => {
+    b.x = Math.round(b.x - minX + PAD);
+    b.y = Math.round(b.y - minY + PAD);
+  };
+  for (const b of boxes.values()) shift(b);
+  for (const s of stacks) shift(s.box);
+  for (const c of clusters) shift(c.bounds);
+
   const routes: Route[] = [];
   for (const e of drawn) {
     const a = boxes.get(e.source);
     const b = boxes.get(e.target);
     if (!a || !b) continue;
-    let points: Point[];
-    if (e.kind === "feeds") {
-      const bus = leftBus + (sourceMain.get(e.source) === e.target ? 0 : SECONDARY);
-      const from = { x: a.x + a.w, y: a.y + a.h / 2 };
-      const to = { x: b.x, y: b.y + PORT_Y };
-      points = [from, { x: bus, y: from.y }, { x: bus, y: to.y }, to];
-    } else if (e.kind === "produces") {
-      const bus = rightBus - (outputMain.get(e.target) === e.source ? 0 : SECONDARY);
-      const from = { x: a.x + a.w, y: a.y + PORT_Y };
-      const to = { x: b.x, y: b.y + b.h / 2 };
-      points = [from, { x: bus, y: from.y }, { x: bus, y: to.y }, to];
-    } else {
-      // Manager -> helper: down a rail just inside the manager's left edge, then into the helper.
-      const rail = a.x + INDENT / 2;
-      const to = { x: b.x, y: b.y + PORT_Y };
-      points =
-        b.x > rail
-          ? [{ x: rail, y: a.y + a.h }, { x: rail, y: to.y }, to]
-          : [
-              { x: a.x + a.w / 2, y: a.y + a.h },
-              { x: a.x + a.w / 2, y: b.y },
-            ];
-    }
-    points = simplify(points);
-    routes.push({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      points,
-      path: roundedPath(points),
-    });
+    routes.push(routeFor(e.id, e.source, e.target, e.kind, a, b));
   }
 
-  let height = TOP;
-  for (const b of boxes.values()) height = Math.max(height, b.y + b.h);
-  return {
-    boxes,
-    routes,
-    chips,
-    lanes: LANES,
-    width: OUTPUT_LANE.x + OUTPUT_LANE.w,
-    height: height + 24,
-  };
-}
-
-/** Drop repeated and collinear points, so a straight link is one segment. */
-function simplify(points: Point[]): Point[] {
-  const out: Point[] = [];
-  for (const p of points) {
-    const last = out.at(-1);
-    if (last && Math.abs(last.x - p.x) < 0.5 && Math.abs(last.y - p.y) < 0.5) continue;
-    const prev = out.at(-2);
-    if (last && prev) {
-      const sameX = Math.abs(prev.x - last.x) < 0.5 && Math.abs(last.x - p.x) < 0.5;
-      const sameY = Math.abs(prev.y - last.y) < 0.5 && Math.abs(last.y - p.y) < 0.5;
-      if (sameX || sameY) out.pop();
-    }
-    out.push(p);
+  let width = 0;
+  let height = 0;
+  for (const b of [...boxes.values(), ...stacks.map((s) => s.box)]) {
+    width = Math.max(width, b.x + b.w);
+    height = Math.max(height, b.y + b.h);
   }
-  return out;
+  return { boxes, routes, chips, stacks, clusters, width: width + PAD, height: height + PAD };
 }
 
-/** SVG path through orthogonal points with rounded corners. */
-export function roundedPath(points: Point[], radius = RADIUS): string {
-  if (points.length === 0) return "";
-  const [first, ...rest] = points as [Point, ...Point[]];
-  let d = `M${first.x},${first.y}`;
-  for (let i = 0; i < rest.length; i++) {
-    const corner = rest[i] as Point;
-    const prev = points[i] as Point;
-    const next = rest[i + 1];
-    if (!next) {
-      d += ` L${corner.x},${corner.y}`;
-      break;
-    }
-    const inLen = Math.hypot(corner.x - prev.x, corner.y - prev.y);
-    const outLen = Math.hypot(next.x - corner.x, next.y - corner.y);
-    const r = Math.min(radius, inLen / 2, outLen / 2);
-    const a = {
-      x: corner.x - ((corner.x - prev.x) / inLen) * r,
-      y: corner.y - ((corner.y - prev.y) / inLen) * r,
-    };
-    const b = {
-      x: corner.x + ((next.x - corner.x) / outLen) * r,
-      y: corner.y + ((next.y - corner.y) / outLen) * r,
-    };
-    d += ` L${a.x},${a.y} Q${corner.x},${corner.y} ${b.x},${b.y}`;
-  }
-  return d;
-}
+const r1 = (v: number) => Math.round(v * 10) / 10;
+const fmt = (p: Point) => `${r1(p.x)},${r1(p.y)}`;
 
-type Segment = { a: Point; b: Point };
-const segments = (points: Point[]): Segment[] =>
-  points.slice(1).map((b, i) => ({ a: points[i] as Point, b }));
-const between = (v: number, p: number, q: number) => v > Math.min(p, q) && v < Math.max(p, q);
-const overlap = (p1: number, q1: number, p2: number, q2: number) =>
-  Math.min(Math.max(p1, q1), Math.max(p2, q2)) - Math.max(Math.min(p1, q1), Math.min(p2, q2)) > 0;
-
-function segmentsMeet(s: Segment, t: Segment): boolean {
-  const sH = s.a.y === s.b.y;
-  const tH = t.a.y === t.b.y;
-  if (sH && tH) return s.a.y === t.a.y && overlap(s.a.x, s.b.x, t.a.x, t.b.x);
-  if (!sH && !tH) return s.a.x === t.a.x && overlap(s.a.y, s.b.y, t.a.y, t.b.y);
-  const [h, v] = sH ? [s, t] : [t, s];
-  return between(v.a.x, h.a.x, h.b.x) && between(h.a.y, v.a.y, v.b.y);
+/** Where the line from a box's center toward `toward` leaves the box. */
+function exitPoint(b: Box, toward: Point): Point {
+  const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  const dx = toward.x - c.x;
+  const dy = toward.y - c.y;
+  if (dx === 0 && dy === 0) return c;
+  const t = Math.min(
+    dx === 0 ? Number.POSITIVE_INFINITY : b.w / 2 / Math.abs(dx),
+    dy === 0 ? Number.POSITIVE_INFINITY : b.h / 2 / Math.abs(dy),
+  );
+  return { x: c.x + dx * t, y: c.y + dy * t };
 }
 
 /**
- * Pairs of links that cross or run on top of each other. Links that share an end node are
- * bundled on purpose (one trunk into one port), so they are not counted.
+ * Light curves. Sources and outputs use a horizontal S-curve into an agent's header port; links
+ * between agents bow slightly to one side so a pair's link never hides under a straight line.
  */
-export function crossings(layout: MapLayout): [string, string][] {
-  const found: [string, string][] = [];
-  const { routes } = layout;
-  for (let i = 0; i < routes.length; i++)
-    for (let j = i + 1; j < routes.length; j++) {
-      const r = routes[i] as Route;
-      const q = routes[j] as Route;
-      const shared = [r.source, r.target].some((id) => id === q.source || id === q.target);
-      if (shared) continue;
-      const hit = segments(r.points).some((s) =>
-        segments(q.points).some((t) => segmentsMeet(s, t)),
-      );
-      if (hit) found.push([r.id, q.id]);
-    }
-  return found;
+function routeFor(
+  id: string,
+  source: string,
+  target: string,
+  kind: EdgeKind,
+  a: Box,
+  b: Box,
+): Route {
+  if (kind === "feeds" || kind === "produces") {
+    const from =
+      kind === "feeds"
+        ? { x: a.x + a.w, y: a.y + a.h / 2 }
+        : { x: a.x + a.w, y: a.y + Math.min(PORT_Y, a.h / 2) };
+    const to =
+      kind === "feeds"
+        ? { x: b.x, y: b.y + Math.min(PORT_Y, b.h / 2) }
+        : { x: b.x, y: b.y + b.h / 2 };
+    const k = Math.max(48, Math.abs(to.x - from.x) * 0.45);
+    const c1 = { x: from.x + k, y: from.y };
+    const c2 = { x: to.x - k, y: to.y };
+    return {
+      id,
+      source,
+      target,
+      kind,
+      points: [from, c1, c2, to],
+      path: `M${fmt(from)} C${fmt(c1)} ${fmt(c2)} ${fmt(to)}`,
+    };
+  }
+  const ca = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
+  const cb = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  const from = exitPoint(a, cb);
+  const to = exitPoint(b, ca);
+  const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+  const bend = Math.min(56, len * (kind === "handoff" ? 0.08 : 0.16));
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+  const control = {
+    x: mid.x - ((to.y - from.y) / len) * bend,
+    y: mid.y + ((to.x - from.x) / len) * bend,
+  };
+  return {
+    id,
+    source,
+    target,
+    kind,
+    points: [from, control, to],
+    path: `M${fmt(from)} Q${fmt(control)} ${fmt(to)}`,
+  };
 }
 
-/** Card pairs that overlap on screen. */
-export function overlaps(layout: MapLayout): [string, string][] {
+/** Card pairs that overlap on screen, stacks included. */
+export function overlaps(layout: MapLayout, gap = 0): [string, string][] {
   const found: [string, string][] = [];
-  const all = [...layout.boxes.entries()];
+  const all: [string, Box][] = [
+    ...layout.boxes.entries(),
+    ...layout.stacks.map((s): [string, Box] => [s.id, s.box]),
+  ];
   for (let i = 0; i < all.length; i++)
     for (let j = i + 1; j < all.length; j++) {
       const [ia, a] = all[i] as [string, Box];
       const [ib, b] = all[j] as [string, Box];
-      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)
+      if (
+        a.x < b.x + b.w + gap &&
+        b.x < a.x + a.w + gap &&
+        a.y < b.y + b.h + gap &&
+        b.y < a.y + a.h + gap
+      )
         found.push([ia, ib]);
     }
   return found;

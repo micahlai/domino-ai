@@ -19,7 +19,8 @@ import {
   toCanvasStatus,
   toolChips,
 } from "./graph";
-import { crossings, layoutMap, overlaps } from "./map-layout";
+import { clusterRoots, layoutMap, overlaps } from "./map-layout";
+import { initialSwarm, swarmStep } from "./swarm-demo";
 import { describeTool } from "./tool-names";
 import type { FieldOperation } from "./types";
 
@@ -274,15 +275,19 @@ function sampleGraphs(): [string, BrainGraph][] {
   add({ agent: "Mock feed", kind: "feed", tool: "mock.plant" });
   add({ agent: "Reviewer", kind: "decision" });
   graphs.push(["live-shaped log", buildBrainGraph(live)]);
+  // The demo swarm mid-round: 8 forecasters working, a finished round of history.
+  let swarm = initialSwarm(Date.parse("2026-10-31T10:00:00Z"));
+  for (let i = 0; i < 12; i++)
+    swarm = swarmStep(swarm, new Date(Date.parse("2026-10-31T10:00:00Z") + i * 1100).toISOString());
+  graphs.push(["demo swarm", buildBrainGraph([...demo.operations, ...swarm.ops])]);
   return graphs;
 }
 
 describe("map layout", () => {
   for (const [name, graph] of sampleGraphs()) {
-    it(`draws ${name} with no crossing links and no overlapping cards`, () => {
+    it(`draws ${name} with no overlapping cards, even with room to spare`, () => {
       const layout = layoutMap(graph);
-      expect(crossings(layout)).toEqual([]);
-      expect(overlaps(layout)).toEqual([]);
+      expect(overlaps(layout, 8)).toEqual([]);
       // Every drawn link has a route; tools are never separate cards.
       expect(layout.routes).toHaveLength(graph.edges.filter((e) => e.kind !== "uses").length);
       expect([...layout.boxes.keys()].some((id) => id.startsWith("tool:"))).toBe(false);
@@ -295,15 +300,83 @@ describe("map layout", () => {
         expect(chipped).toContain(tool.id);
     });
 
-    it(`nests helpers in ${name} directly under their manager`, () => {
+    it(`keeps helpers in ${name} in their manager's cluster, close to it`, () => {
       const layout = layoutMap(graph);
+      const roots = clusterRoots(graph);
       for (const helper of graph.nodes.filter((n) => n.kind === "subagent")) {
+        const cluster = layout.clusters.find((c) => c.members.includes(helper.id));
+        expect(cluster?.id).toBe(roots.get(helper.id));
         const own = layout.boxes.get(helper.id);
-        const boss = layout.boxes.get(helper.parentId ?? "");
-        expect(own && boss && own.x > boss.x && own.y > boss.y).toBe(true);
+        if (!own) throw new Error("missing box");
+        // Inside its own cluster's area and clear of every other cluster's area.
+        const inside = (b: { x: number; y: number; w: number; h: number }) =>
+          own.x >= b.x && own.y >= b.y && own.x + own.w <= b.x + b.w && own.y + own.h <= b.y + b.h;
+        const touches = (b: { x: number; y: number; w: number; h: number }) =>
+          own.x < b.x + b.w && b.x < own.x + own.w && own.y < b.y + b.h && b.y < own.y + own.h;
+        expect(cluster && inside(cluster.bounds)).toBe(true);
+        for (const other of layout.clusters.filter((c) => c !== cluster))
+          expect(touches(other.bounds)).toBe(false);
       }
     });
+
+    it(`puts sources left of every agent and outputs right of them in ${name}`, () => {
+      const layout = layoutMap(graph);
+      const box = (n: { id: string }) => layout.boxes.get(n.id);
+      const agents = graph.nodes.filter(isAgent).flatMap((n) => box(n) ?? []);
+      const left = Math.min(...agents.map((b) => b.x));
+      const right = Math.max(...agents.map((b) => b.x + b.w));
+      for (const s of graph.nodes.filter((n) => n.kind === "source"))
+        expect((box(s)?.x ?? 0) + (box(s)?.w ?? 0)).toBeLessThan(left);
+      for (const o of graph.nodes.filter((n) => n.kind === "output"))
+        expect(box(o)?.x ?? 0).toBeGreaterThan(right);
+    });
   }
+
+  it("puts the coordinator in the middle with its copies on a ring around it", () => {
+    const graph = sampleGraphs()[3]?.[1] as BrainGraph;
+    const layout = layoutMap(graph);
+    const analyst = layout.boxes.get("agent:analyst");
+    const copies = graph.nodes.filter(
+      (n) => n.parentId === "agent:analyst" && n.role === "forecaster",
+    );
+    expect(copies.length).toBeGreaterThanOrEqual(8);
+    if (!analyst) throw new Error("no analyst");
+    const cx = analyst.x + analyst.w / 2;
+    const cy = analyst.y + analyst.h / 2;
+    const sides = new Set(
+      copies
+        .flatMap((n) => layout.boxes.get(n.id) ?? [])
+        .map((b) => `${b.x + b.w / 2 < cx}${b.y + b.h / 2 < cy}`),
+    );
+    expect(sides.size).toBe(4);
+    // The analyst cluster is the one nearest the middle of all agent clusters.
+    const centers = layout.clusters.map((c) => ({
+      id: c.id,
+      x: c.bounds.x + c.bounds.w / 2,
+      y: c.bounds.y + c.bounds.h / 2,
+    }));
+    const mx = centers.reduce((s, c) => s + c.x, 0) / centers.length;
+    const my = centers.reduce((s, c) => s + c.y, 0) / centers.length;
+    const nearest = [...centers].sort(
+      (a, b) => Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my),
+    )[0];
+    expect(nearest?.id).toBe("agent:analyst");
+  });
+
+  it("folds finished copies into one stack per cluster without overlaps", () => {
+    const graph = sampleGraphs()[3]?.[1] as BrainGraph;
+    const finished = graph.nodes.filter((n) => n.lifecycle === "done" && n.kind === "subagent");
+    expect(finished.length).toBeGreaterThanOrEqual(9);
+    const layout = layoutMap(graph, { collapsed: new Set(finished.map((n) => n.id)) });
+    expect(layout.stacks).toHaveLength(1);
+    expect(layout.stacks[0]).toMatchObject({ clusterId: "agent:analyst" });
+    expect(layout.stacks[0]?.members.length).toBe(finished.length);
+    for (const n of finished) expect(layout.boxes.has(n.id)).toBe(false);
+    expect(
+      layout.routes.some((r) => finished.some((n) => n.id === r.source || n.id === r.target)),
+    ).toBe(false);
+    expect(overlaps(layout, 8)).toEqual([]);
+  });
 
   it("draws one link per source -> agent pair", () => {
     const graph = sampleGraphs()[2]?.[1] as BrainGraph;
@@ -313,11 +386,18 @@ describe("map layout", () => {
   });
 
   it("is deterministic", () => {
-    const graph = sampleGraphs()[1]?.[1] as BrainGraph;
-    const a = layoutMap(graph);
-    const b = layoutMap(graph);
-    expect([...a.boxes]).toEqual([...b.boxes]);
-    expect(a.routes).toEqual(b.routes);
+    for (const [, graph] of sampleGraphs()) {
+      const a = layoutMap(graph);
+      // Same log delivered in a different order (newest first, as field.log pages it).
+      const ops = new Map(
+        graph.nodes.flatMap((n) => [...n.operations, ...n.messages]).map((o) => [o.id, o]),
+      );
+      const b = layoutMap(buildBrainGraph([...ops.values()].reverse()));
+      expect([...a.boxes].sort()).toEqual([...b.boxes].sort());
+      expect([...a.routes].sort((x, y) => x.id.localeCompare(y.id))).toEqual(
+        [...b.routes].sort((x, y) => x.id.localeCompare(y.id)),
+      );
+    }
   });
 });
 

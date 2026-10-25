@@ -1,4 +1,4 @@
-import type { ToolCategory } from "../icons/ToolIcon";
+import { TOOL_CATEGORY_LABEL, type ToolCategory } from "../icons/ToolIcon";
 import { VENDORS, vendorFor } from "../icons/vendors";
 
 // Raw tool ids from the activity log (convex/fieldJobs.ts, convex/field.ts, convex/connections.ts
@@ -10,6 +10,8 @@ export type ToolInfo = {
   category: ToolCategory;
   /** Chips with the same group collapse into one ("Read data · 6") inside an agent card. */
   group: string;
+  /** Apify actors here are demo actors: they return canned pages, not live scrapes. */
+  demoActor?: boolean;
 };
 
 const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
@@ -35,7 +37,14 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "sim.advanceweek": { label: "New entries (demo feed)", category: "simulate" },
   "sim.createcompany": { label: "Create demo company", category: "simulate" },
   "mock.plant": { label: "Plant test anomaly", category: "simulate" },
+  read_snapshot: { label: "Read saved books", category: "read" },
+  check_limit: { label: "Check the lender's limit", category: "audit" },
+  rank_scenarios: { label: "Rank events by risk", category: "forecast" },
+  draft_events: { label: "Draft what-if events", category: "other" },
 };
+
+const CATEGORIES = new Set<string>(Object.keys(TOOL_CATEGORY_LABEL));
+const isCategory = (c: string | undefined): c is ToolCategory => CATEGORIES.has(c ?? "");
 
 const GUESS: [RegExp, ToolCategory][] = [
   [/consent|connect/, "connect"],
@@ -49,7 +58,7 @@ const GUESS: [RegExp, ToolCategory][] = [
 ];
 
 function humanize(id: string): string {
-  const last = id.split(".").at(-1) ?? id;
+  const last = id.split(/[./]/).at(-1) ?? id;
   const words = last
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
@@ -58,26 +67,36 @@ function humanize(id: string): string {
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Tool";
 }
 
-/** Read and connect tools collapse per agent; everything else keeps its own chip. */
-const groupOf = (category: ToolCategory, key: string) =>
-  category === "read" || category === "connect" ? `category:${category}` : `tool:${key}`;
+/** One chip per category on an agent card; the panel lists the tools inside. */
+const groupOf = (category: ToolCategory) => `category:${category}`;
 
-export function describeTool(raw: string): ToolInfo {
+/**
+ * Raw tool id (and the log's category, when it records one) -> label, category and chip group.
+ * Apify actors ("apify.website-content-crawler", category "apify") get their own Apify group.
+ */
+export function describeTool(raw: string, category?: string): ToolInfo {
   const key = raw.trim().toLowerCase();
+  if (category === "apify" || key.startsWith("apify.") || key.startsWith("apify/"))
+    return { label: humanize(raw), category: "apify", group: groupOf("apify"), demoActor: true };
   const known = KNOWN[key];
-  if (known) return { ...known, group: groupOf(known.category, key) };
+  if (known) return { ...known, group: groupOf(known.category) };
+  if (isCategory(category)) return { label: humanize(raw), category, group: groupOf(category) };
   const consent = /^([a-z0-9-]+)\.consent$/.exec(key);
   if (consent) {
     const vendor = vendorFor(consent[1]);
     const name = vendor === "generic" ? humanize(consent[1] ?? "") : VENDORS[vendor].name;
-    return { label: `Connect ${name}`, category: "connect", group: groupOf("connect", key) };
+    return { label: `Connect ${name}`, category: "connect", group: groupOf("connect") };
   }
-  const category = GUESS.find(([re]) => re.test(key))?.[1] ?? "other";
-  return { label: humanize(raw), category, group: groupOf(category, key) };
+  const guess = GUESS.find(([re]) => re.test(key))?.[1] ?? "other";
+  return { label: humanize(raw), category: guess, group: groupOf(guess) };
 }
 
 /** Label for a collapsed chip of several tools of one category. */
-export const GROUP_LABEL: Partial<Record<ToolCategory, string>> = {
+export const GROUP_LABEL: Record<ToolCategory, string> = {
+  ...TOOL_CATEGORY_LABEL,
   read: "Read data",
   connect: "Connect tools",
+  audit: "Checks",
+  forecast: "Forecast tools",
+  apify: "Apify actors",
 };

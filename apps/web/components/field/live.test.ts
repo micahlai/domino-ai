@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildBrainGraph, pulsePath } from "./graph";
-import { type LiveLogRow, type LiveStatus, toOperations, toStatus } from "./live";
+import { buildBrainGraph, isWorking, pulsePath, pulsesFor, toolChips } from "./graph";
+import {
+  type LiveLogRow,
+  type LiveStatus,
+  type SwarmLogFields,
+  toOperations,
+  toStatus,
+} from "./live";
 
 let n = 0;
-const row = (over: Partial<LiveLogRow> & { action: string }): LiveLogRow =>
+const row = (over: Partial<LiveLogRow> & SwarmLogFields & { action: string }): LiveLogRow =>
   ({
     _id: `log_${++n}`,
     _creationTime: n,
@@ -98,5 +104,101 @@ describe("live log mapping", () => {
       counts: { sources: 1, snapshots: 2, openFindings: 3 },
       lastError: "boom",
     });
+  });
+
+  it("maps swarm rows: copies, parents, status steps, messages and Apify tools", () => {
+    const rows = [
+      row({
+        action: "agent.spawned",
+        agent: "field.analyst",
+        agentKind: "domino",
+        status: "working",
+        currentTask: "Test events",
+      }),
+      ...[1, 2, 3].map((i) =>
+        row({
+          action: "agent.spawned",
+          agent: "field.forecaster",
+          agentInstanceId: `forecaster#${i}`,
+          parentAgentId: "field.analyst",
+          status: "spawned",
+          currentTask: `Event ${i}`,
+        }),
+      ),
+      row({
+        action: "agent.message",
+        kind: "message",
+        agent: "field.analyst",
+        from: "field.analyst",
+        to: "forecaster#2",
+        summary: "Run event 2",
+      }),
+      row({
+        action: "agent.working",
+        agent: "field.forecaster",
+        agentInstanceId: "forecaster#2",
+        status: "working",
+        progress: 0.5,
+        currentTask: "Event 2",
+      }),
+      row({
+        action: "agent.message",
+        kind: "message",
+        agent: "field.forecaster",
+        agentInstanceId: "forecaster#2",
+        from: "forecaster#2",
+        to: "field.analyst",
+        summary: "Week 5 low",
+      }),
+      row({
+        action: "agent.done",
+        agent: "field.forecaster",
+        agentInstanceId: "forecaster#2",
+        status: "done",
+      }),
+      row({
+        action: "research.pulled",
+        agent: "field.research",
+        agentKind: "creao",
+        tool: "apify.website-content-crawler",
+        toolCategory: "apify",
+      }),
+    ].reverse();
+    const ops = toOperations(rows);
+    expect(ops[1]).toMatchObject({
+      instanceId: "forecaster#1",
+      parentAgentId: "Analyst",
+      status: "spawned",
+      kind: "spawn",
+    });
+    expect(ops[4]).toMatchObject({ kind: "message", from: "Analyst", to: "forecaster#2" });
+    const graph = buildBrainGraph(ops);
+    const node = (id: string) => graph.nodes.find((n) => n.id === id);
+    expect(node("agent:forecaster#2")).toMatchObject({
+      kind: "subagent",
+      parentId: "agent:analyst",
+      title: "Forecaster 2",
+      lifecycle: "done",
+      progress: 1,
+      currentTask: "Event 2",
+    });
+    expect(node("agent:forecaster#2")?.messages).toHaveLength(2);
+    expect(node("agent:forecaster#1") && isWorking(node("agent:forecaster#1") as never)).toBe(true);
+    // One shared link per pair: the spawn link carries both messages, the reply backwards.
+    expect(
+      graph.edges
+        .filter((e) => e.source.includes("forecaster#2") || e.target.includes("forecaster#2"))
+        .map((e) => `${e.kind} ${e.id}`),
+    ).toEqual(["handoff agent:analyst->agent:forecaster#2"]);
+    const pulses = pulsesFor([ops[4], ops[6]] as never, graph);
+    expect(pulses.map((p) => [p.edgeId, p.reverse])).toEqual([
+      ["agent:analyst->agent:forecaster#2", false],
+      ["agent:analyst->agent:forecaster#2", true],
+    ]);
+    const research = node("agent:research-agent");
+    expect(research?.agentKind).toBe("creao");
+    expect(research && toolChips(research).map((c) => [c.label, c.category])).toEqual([
+      ["Apify actors", "apify"],
+    ]);
   });
 });

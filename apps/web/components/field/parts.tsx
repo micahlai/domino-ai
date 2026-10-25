@@ -35,6 +35,7 @@ export const OPERATION_LABEL: Record<OperationKind, string> = {
   decision: "Decision",
   export: "Exported",
   spawn: "Started helper",
+  message: "Message",
 };
 
 /** "just now", "4 min ago", then a date. Re-renders every 30 s so labels stay true. */

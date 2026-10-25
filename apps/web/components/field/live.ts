@@ -1,6 +1,12 @@
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "../../convex/_generated/api";
-import type { FieldFinding, FieldOperation, FieldStatus, OperationKind } from "./types";
+import {
+  type FieldFinding,
+  type FieldOperation,
+  type FieldStatus,
+  type OperationKind,
+  isLifecycle,
+} from "./types";
 
 // Pure mapping from the real field.* records (convex/field.ts) into the Field UI view types.
 // Only fields the backend actually writes are used; nothing here invents work or numbers.
@@ -9,12 +15,44 @@ export type LiveStatus = NonNullable<FunctionReturnType<typeof api.field.status>
 export type LiveLogRow = FunctionReturnType<typeof api.field.log>["page"][number];
 export type LiveFinding = FunctionReturnType<typeof api.field.findings>[number];
 
+/**
+ * Agent swarm fields the log is gaining (field/swarm lane). Optional and read defensively, so
+ * rows written before them, or by a backend without them, map exactly as before.
+ */
+export type SwarmLogFields = {
+  agentInstanceId?: string;
+  agentKind?: string;
+  parentAgentId?: string;
+  /** "message" for agent -> agent messages. */
+  kind?: string;
+  from?: string;
+  to?: string;
+  /** Lifecycle step: spawned, working, done or failed. */
+  status?: string;
+  currentTask?: string;
+  toolCategory?: string;
+  progress?: number;
+  instructions?: string;
+};
+type SwarmRow = LiveLogRow & SwarmLogFields;
+
+const AGENT_KINDS = new Set(["domino", "claude", "creao", "system"]);
+const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : undefined);
+/** A log agent reference: field ids keep their friendly names ("field.audit" -> "Audit agent"). */
+const agentRef = (v: unknown) => {
+  const s = str(v);
+  return s && !s.includes("#") ? liveAgentName(s) : s;
+};
+
 /** Log agent ids -> names the brain map catalog knows (see catalog.ts). */
 const AGENT_NAME: Record<string, string> = {
   "field.ingest": "Ingestion agent",
   "field.audit": "Audit agent",
   "mock.feed": "Mock feed",
   "field.worker": "Reviewer",
+  "field.analyst": "Analyst",
+  "field.forecaster": "Forecaster",
+  "field.research": "Research agent",
 };
 
 /**
@@ -47,6 +85,8 @@ export const liveAgentName = (agent: string | undefined, actor = "") =>
 export const liveSourceName = (source: string) => SOURCE_NAME[source] ?? source;
 
 export function operationKind(action: string): OperationKind {
+  if (action === "agent.message" || action.endsWith(".message")) return "message";
+  if (action === "agent.spawned") return "spawn";
   if (action.startsWith("feed.")) return "feed";
   if (action === "ingest.pulled") return "pull";
   if (action === "ingest.mapped" || action === "ingest.reconciled") return "map";
@@ -58,6 +98,8 @@ export function operationKind(action: string): OperationKind {
 }
 
 function operationStatus(action: string): string {
+  const step = /^agent\.(spawned|working|done|failed)$/.exec(action)?.[1];
+  if (step) return step;
   if (/failed$/i.test(action)) return "failed";
   if (action === "ingest.started") return "running";
   return "succeeded";
@@ -74,10 +116,14 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
   );
   const runStart = new Map<string, LiveLogRow>();
   for (const row of sorted) if (row.runId && !runStart.has(row.runId)) runStart.set(row.runId, row);
-  return sorted.map((row) => {
+  return sorted.map((plain) => {
+    const row = plain as SwarmRow;
     const first = row.runId ? runStart.get(row.runId) : undefined;
     const parentId =
       first && first._id !== row._id && first.agent !== row.agent ? first._id : undefined;
+    const kind = row.kind === "message" ? "message" : operationKind(row.action);
+    const status = isLifecycle(row.status) ? row.status : operationStatus(row.action);
+    const agentKind = str(row.agentKind);
     return {
       id: row._id,
       at: row.at,
@@ -86,8 +132,18 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
       actor: row.actor,
       ...(row.tool && { tool: row.tool }),
       ...(row.source && { source: liveSourceName(row.source) }),
-      kind: operationKind(row.action),
-      status: operationStatus(row.action),
+      ...(str(row.agentInstanceId) && { instanceId: str(row.agentInstanceId) }),
+      ...(agentKind &&
+        AGENT_KINDS.has(agentKind) && { agentKind: agentKind as FieldOperation["agentKind"] }),
+      ...(agentRef(row.parentAgentId) && { parentAgentId: agentRef(row.parentAgentId) }),
+      ...(agentRef(row.from) && { from: agentRef(row.from) }),
+      ...(agentRef(row.to) && { to: agentRef(row.to) }),
+      ...(str(row.currentTask) && { currentTask: str(row.currentTask) }),
+      ...(str(row.toolCategory) && { toolCategory: str(row.toolCategory) }),
+      ...(str(row.instructions) && { instructions: str(row.instructions) }),
+      ...(typeof row.progress === "number" && { progress: row.progress }),
+      kind,
+      status,
       summary: row.summary ?? row.action,
       inputs: { action: row.action, actor: row.actor, ...(row.runId && { runId: row.runId }) },
       ...(row.refs.length > 0 && { outputs: { refs: row.refs } }),
