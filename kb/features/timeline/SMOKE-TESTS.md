@@ -10,8 +10,8 @@ TL1–TL5 are ready locally on **TL5-checkpoint**. App: http://127.0.0.1:3107. U
 | TL3 questions | Evidence answers, natural-language event/rule proposals, confirmation, missing-input clarification and failure receipts | Ready locally |
 | TL4 saved sessions | Nested events, exact question/result links, paginated catalog and quiet reopen | Ready locally |
 | TL5 complete flow | Full journey below, desktop and phone | Accepted locally |
-| TL6 financial output handoff | Health/risk/chart data for Field's dashboard through agreed seam | Follow-on |
-| TL7 automatic analysis | Bounded risk/response generation and engine scoring | Follow-on |
+| TL6 financial output handoff | Exact saved health/risk/chart JSON; Field adoption separate | Ready locally on TL7-checkpoint,3108 |
+| TL7 automatic analysis | Reviewed bounded risk/response generation and engine scoring | Accepted locally on TL7-checkpoint,3108 |
 | TL8 rejoin | Evidence-based financial-state branch rejoin | Follow-on |
 
 ## Try the complete flow
@@ -36,3 +36,27 @@ Fixed supported wording uses the bounded grammar. Other wording can use the opti
 Cash floors check Sunday closing usable cash within these 13 weeks. Runway uses the engine's forecast cash-use method; an unavailable value remains unknown. Bill rules use allowed late days after the targeted bill's due date. Daily floors, category budgets and headcount constraints remain unsupported. Imported schedule markers keep their original dates and do not add cash; scenario effects appear in the saved financial values.
 
 The shared Timeline navigation opens the older `/c/kestrel` prototype. Use the saved weekly links above for this checkpoint. Real Field exchange and dashboard integration remain separate gates.
+
+## TL6–TL7 separate preview
+
+Keep TL5 on3107. [Open saved TL7 analysis](http://127.0.0.1:3108/c/kestrel/timeline/analysis?runId=timeline%3Aworkspace%2F34e274c86109c6f434eeff7114d415336e07e802&analysisId=timeline%3Aanalysis%2F10be46715ec93bb3e2ea52f5c7a3a3f5120891d8abbfd0f63fb121554dee46f8).
+
+1. Inspect the Acme risk, its25% assumption and existing$11,000 cash-rule shortfall.
+2. Select **Preview: Offer 2% for early payment of inv_nw_q4**. Low point becomes$2,760,000 week Dec28,2026; gain$71,000. Read the discount terms and resolved rule receipt.
+3. Open the saved response timeline; reload. Same forecast and rule versions return.
+4. **Read financial output JSON** shows saved health/chart/scenario data, with no calculation. Unknown runway remains null.
+5. To test a fresh job, review source/rules, check confirmation and **Start analysis**. Progress ends in a saved receipt; prior attempts remain in history. Opening the page alone starts nothing.
+6. Inspect the weighted scenario index scope: it is not a survival probability and applies no responses. Use the props playground at http://127.0.0.1:3108/playground/timeline-analysis for controlled failed/partial/retry states.
+
+This checkpoint intentionally rejects analysis on plans that already contain events. Field dashboard adoption and TL8 remain separate. [Detailed acceptance](TL7-acceptance.md).
+
+## Saved scenarios sidebar and chart comparisons (3108 only)
+
+[Open the updated timeline](http://127.0.0.1:3108/c/kestrel/timeline?runId=timeline%3Aworkspace%2F34e274c86109c6f434eeff7114d415336e07e802). TL5 stays unchanged on3107.
+
+1. In **Saved scenarios**, the current run is highlighted. On narrow screens, open **Browse saved scenarios**. Search by name; duplicate names include save times.
+2. Check **Compare on timeline** for a risk and response. The current scenario stays highlighted, with at most three muted comparison curves and linked legends. Other comparison boxes disable at the limit.
+3. Open a scenario name or chart legend to inspect that exact saved run. **Clear comparisons** removes optional curves without changing the current forecast.
+4. **Browse all company scenarios** opens the existing paginated catalog. The sidebar covers this imported baseline only, capped at100 entries; it states when entries may be omitted.
+
+[Acceptance and screenshots](TL7S-acceptance.md). Comparison selection is local to the open page; saved financial results persist.

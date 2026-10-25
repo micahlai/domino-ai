@@ -4,6 +4,7 @@ import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "../../ui/badge";
+import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { AncestryPanel } from "./CatalogPanel";
 import { EventForm } from "./EventForm";
@@ -17,10 +18,12 @@ import {
   WeekDetail,
   WhenDate,
 } from "./RunPanels";
+import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
 import { eventFromItem, eventOptions } from "./drafts";
 import type { Outcome } from "./requests";
+import { type ScenarioComparisons, comparisonIds, readComparison } from "./scenarioComparisons";
 
 export type WorkspaceActions = QuestionActions & {
   reviseRules: (constraints: Constraint[], note: string) => Promise<Outcome>;
@@ -37,6 +40,7 @@ export type WorkspaceViewProps = {
   actions: WorkspaceActions;
   /** Why writes are unavailable here (for example a fixture or no service connection). */
   disabled?: string;
+  comparisons?: ScenarioComparisons;
 };
 
 const KIND = { baseline: "Imported baseline", rules: "Rules changed", scenario: "Scenario" };
@@ -50,6 +54,7 @@ export function WorkspaceView({
   resultRef,
   actions,
   disabled,
+  comparisons,
 }: WorkspaceViewProps) {
   const b = run.baseline;
   const low = run.forecast.lowPoint;
@@ -60,7 +65,39 @@ export function WorkspaceView({
     const item = b.seed.scheduledItems.find((i) => i.id === selectedItemId);
     return item ? eventFromItem(item, options) : undefined;
   }, [b.seed, selectedItemId, options]);
-  const parentForecast = parent?.state === "ready" ? parent.value.forecast : null;
+  const [localComparisonIds, setLocalComparisonIds] = useState<string[]>(
+    run.parentRunId ? [run.parentRunId] : [],
+  );
+  const selection = comparisons ?? {
+    ids: localComparisonIds,
+    reads: run.parentRunId && parent ? { [run.parentRunId]: parent } : {},
+    onChange: setLocalComparisonIds,
+  };
+  const selectedIds = comparisonIds(selection.ids, run.runId);
+  const curves = selectedIds.flatMap((id) => {
+    const saved = selection.reads[id];
+    const read = saved?.state === "ready" ? readComparison(saved.value, run, id) : saved;
+    return read?.state === "ready"
+      ? [
+          {
+            runId: id,
+            label: read.value.label || "Untitled scenario",
+            href: actions.hrefFor(id),
+            forecast: read.value.forecast,
+            parent: id === run.parentRunId,
+          },
+        ]
+      : [];
+  });
+  const sidebar = (
+    <ScenarioSidebar
+      run={run}
+      graph={graph}
+      comparisons={{ ...selection, ids: selectedIds }}
+      hrefFor={actions.hrefFor}
+      catalogHref={actions.catalogHref}
+    />
+  );
   const limits = run.constraints.flatMap((c) =>
     c.kind === "min_cash" && Number.isSafeInteger(c.limit)
       ? [{ id: c.id, label: c.label, cents: c.limit }]
@@ -82,6 +119,12 @@ export function WorkspaceView({
           >
             All saved scenarios
           </Link>
+          <Link
+            href={analysisHref(run.companyId, run.runId)}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Review risk analysis
+          </Link>
           <Badge variant="outline">{KIND[run.kind]}</Badge>
           <span>Saved {formatSavedAt(run.savedAt)}, read only</span>
         </div>
@@ -99,12 +142,24 @@ export function WorkspaceView({
         ) : null}
       </header>
 
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 max-w-full space-y-6 lg:col-span-2">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside className="hidden min-w-0 rounded-lg border p-4 xl:block">{sidebar}</aside>
+        <div className="min-w-0 max-w-full space-y-6">
+          <details className="rounded-lg border p-4 xl:hidden">
+            <summary className="cursor-pointer text-sm font-medium">
+              Browse saved scenarios · {selectedIds.length} selected
+            </summary>
+            <div className="mt-4">{sidebar}</div>
+          </details>
+          <p className="text-xs text-muted-foreground" data-testid="comparison-count">
+            Open scenario highlighted · {curves.length} saved{" "}
+            {curves.length === 1 ? "comparison" : "comparisons"} shown. Dashed limits belong to the
+            open scenario; other curves keep their own saved rules.
+          </p>
           <WorkspaceChart
             history={b.history}
             forecast={run.forecast}
-            parent={parentForecast}
+            comparisons={curves}
             items={b.seed.scheduledItems}
             limits={limits}
             breachedWeeks={run.receipts.flatMap((receipt) =>
@@ -130,33 +185,33 @@ export function WorkspaceView({
             <AncestryPanel graph={graph} runId={run.runId} hrefFor={actions.hrefFor} />
           </div>
           <Provenance run={run} resultRef={resultRef} />
-        </div>
-        <div className="min-w-0 max-w-full space-y-6">
-          <QuestionsPanel
-            questions={questions}
-            selectedWeek={selectedWeek}
-            selectedItemId={selectedItemId}
-            onClearContext={() => {
-              setSelectedWeek(null);
-              setSelectedItemId(null);
-            }}
-            actions={actions}
-            disabled={disabled}
-          />
-          <EventForm
-            firstWeek={firstWeek}
-            invoices={options.invoices}
-            bills={options.bills}
-            suggestion={suggestion}
-            onRun={actions.simulate}
-            disabled={disabled}
-          />
-          <RuleEditor
-            constraints={run.constraints}
-            bills={options.bills}
-            onSave={actions.reviseRules}
-            disabled={disabled}
-          />
+          <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-3">
+            <QuestionsPanel
+              questions={questions}
+              selectedWeek={selectedWeek}
+              selectedItemId={selectedItemId}
+              onClearContext={() => {
+                setSelectedWeek(null);
+                setSelectedItemId(null);
+              }}
+              actions={actions}
+              disabled={disabled}
+            />
+            <EventForm
+              firstWeek={firstWeek}
+              invoices={options.invoices}
+              bills={options.bills}
+              suggestion={suggestion}
+              onRun={actions.simulate}
+              disabled={disabled}
+            />
+            <RuleEditor
+              constraints={run.constraints}
+              bills={options.bills}
+              onSave={actions.reviseRules}
+              disabled={disabled}
+            />
+          </div>
         </div>
       </div>
     </article>

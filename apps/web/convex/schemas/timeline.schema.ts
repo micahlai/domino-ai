@@ -10,6 +10,7 @@
 //   log stay Field-owned. Weekly state arrives as WeeklySeedV1 JSON text.
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
+import { timelineAnalysesTable } from "../timeline/analysis/table";
 import { companyId } from "./legacy.schema";
 
 export const timelineTables = {
@@ -167,4 +168,5 @@ export const timelineTables = {
   })
     .index("by_company_and_requestId", ["companyId", "requestId"])
     .index("by_company_and_runId", ["companyId", "runId"]),
+  timelineAnalyses: timelineAnalysesTable,
 } as const;

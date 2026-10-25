@@ -11,6 +11,13 @@ export type ChartProps = {
   forecast: Forecast;
   /** Parent node's saved forecast, drawn faintly for comparison. */
   parent?: Forecast | null;
+  comparisons?: {
+    runId: string;
+    label: string;
+    href: string;
+    forecast: Forecast;
+    parent?: boolean;
+  }[];
   items: ScheduledItem[];
   /** Saved minimum-cash limits, drawn as dashed lines. */
   limits: { id: string; label: string; cents: number }[];
@@ -38,6 +45,7 @@ export function WorkspaceChart(p: ChartProps) {
     ...p.history.map((h) => h.usable),
     ...weeks.map((w) => w.usable),
     ...(p.parent?.weeks.map((w) => w.usable) ?? []),
+    ...(p.comparisons?.flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)) ?? []),
     ...p.limits.map((l) => l.cents),
   ];
   const y = scaleLinear()
@@ -116,7 +124,7 @@ export function WorkspaceChart(p: ChartProps) {
           {past.length > 1 ? (
             <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
           ) : null}
-          {parentLine.length > 1 ? (
+          {parentLine.length > 1 && !p.comparisons ? (
             <path
               d={draw(lastPast ? [lastPast, ...parentLine] : parentLine) ?? ""}
               fill="none"
@@ -126,6 +134,21 @@ export function WorkspaceChart(p: ChartProps) {
               data-testid="parent-line"
             />
           ) : null}
+          {(p.comparisons ?? []).slice(0, 3).map((entry, index) => {
+            const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
+            return (
+              <path
+                key={entry.runId}
+                d={draw(lastPast ? [lastPast, ...points] : points) ?? ""}
+                fill="none"
+                className="stroke-muted-foreground opacity-50"
+                strokeWidth={1.25}
+                strokeDasharray={index === 0 ? "5 3" : index === 1 ? "2 4" : "8 3 2 3"}
+                data-testid={entry.parent ? "parent-line" : "comparison-line"}
+                pointerEvents="none"
+              />
+            );
+          })}
           <path
             d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
             fill="none"
@@ -186,6 +209,26 @@ export function WorkspaceChart(p: ChartProps) {
               </g>
             );
           })}
+          {(p.comparisons ?? []).slice(0, 3).map((entry) => {
+            const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
+            const path = draw(lastPast ? [lastPast, ...points] : points) ?? "";
+            return (
+              <a
+                key={entry.runId}
+                href={entry.href}
+                aria-label={`Open saved scenario: ${entry.label}`}
+              >
+                <title>{`${entry.label} · saved forecast`}</title>
+                <path
+                  d={path}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={10}
+                  pointerEvents="stroke"
+                />
+              </a>
+            );
+          })}
           {selectedIndex >= 0 ? (
             <line
               x1={x(off + selectedIndex)}
@@ -208,12 +251,35 @@ export function WorkspaceChart(p: ChartProps) {
           <span className="mr-1 inline-block h-0.5 w-4 bg-primary align-middle" />
           This scenario
         </span>
-        {p.parent ? (
+        {p.parent && !p.comparisons ? (
           <span>
             <span className="mr-1 inline-block w-4 border-t border-dashed border-muted-foreground align-middle" />
             Scenario it started from
           </span>
         ) : null}
+        {(p.comparisons ?? []).slice(0, 3).map((entry, index) => (
+          <a
+            key={entry.runId}
+            href={entry.href}
+            className="inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline"
+            aria-label={`Open saved scenario: ${entry.label}`}
+          >
+            <svg width="18" height="4" aria-hidden="true" className="shrink-0">
+              <line
+                x1="0"
+                y1="2"
+                x2="18"
+                y2="2"
+                className="stroke-muted-foreground"
+                strokeDasharray={index === 0 ? "5 3" : index === 1 ? "2 4" : "8 3 2 3"}
+              />
+            </svg>
+            <span className="max-w-48 truncate" title={entry.label}>
+              {entry.label}
+            </span>
+            {entry.parent ? " (started from)" : ""}
+          </a>
+        ))}
         <span>
           <span className="mr-1 text-clay">▲</span>
           Original imported schedule (item count; does not move with scenario changes)

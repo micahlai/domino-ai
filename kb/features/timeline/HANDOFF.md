@@ -1,5 +1,18 @@
 # Timeline handoff
 
+## 2026-10-24: saved scenario sidebar and chart comparisons
+
+- Done: user-requested saved-scenario sidebar, family search/current nesting, mobile picker and up to three optional real saved chart curves; open/compare controls are separate. Integrated only on TL7-checkpoint. [Acceptance](TL7S-acceptance.md) and screenshots record1948 tests, five typechecks, lint385, production build, independent49+5 probes and actual desktop/mobile flow.
+- Fixed: live browser caught unstable Convex comparison subscriptions; memoized primitive selection IDs repair is verified through actual connected navigation, keyboard comparison and clearing.
+- Preserved: TL5 remains597fcc0 on3107/3240 with smoke tab open. New preview3108 in separate tab. No TL5/main/lane-main merge, push, dashboard/backend/shared/engine changes. Field adoption and TL8 remain separate.
+
+## 2026-10-24: TL6–TL7 isolated background work
+
+- User requests TL6/TL7 while keeping TL5 smoke test open, then explicitly forbids merging into TL5 until told. TL5 stays597fcc0 in ../domino-timeline with its existing3107/3240 preview.
+- New integration TL7-checkpoint; separate TL6-handoff, TL7-analysis-backend and TL7-analysis-ui workers. Codex only; capped3 implementation workers. Interface/cards committed before launch. No dashboard/shared-contract/root-schema/engine/peer edits.
+- Proposed TL6 versioned financial JSON read interface does not change WeeklyResultRefV1. Field adoption remains a joint gate. TL7 initially analyzes baseline/rule-only runs without cumulative events, because shared stressTest lacks ancestor input. Ambiguous/synthetic risk chances remain labelled assumptions.
+- Verification and new writes use separate3108/3250/3251 services/data; never TL5. TL6/TL7 accepted locally: 1,942 tests, five typechecks, lint381, Convex typecheck/build, independent backend10 probes, actual API22 checks and browser/phone flow pass. [Acceptance](TL7-acceptance.md) records scope, limits and screenshots. Field adoption remains separate; TL8 not started.
+
 ## 2026-10-24: TL5 accepted locally
 
 - Done: TL1C–TL5 integrated on TL5-checkpoint. Codex repaired/reviewed backend, UI and questions in parallel; immutable constraints/events, evidence questions, confirmed language proposals, nested scenarios and saved catalog work. [Acceptance](TL5-acceptance.md) records exact scope and evidence; [smoke guide](SMOKE-TESTS.md) has working links.

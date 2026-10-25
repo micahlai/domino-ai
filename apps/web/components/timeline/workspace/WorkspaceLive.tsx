@@ -38,6 +38,7 @@ import {
 } from "./api";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
+import { comparisonIds, readComparison } from "./scenarioComparisons";
 
 export const CATALOG_PAGE_SIZE = 20;
 
@@ -174,16 +175,41 @@ function RunReady({
       graph: { query: graphRef, args: { companyId, baselineRunId: run.baselineRunId } },
       questions: { query: listQuestionsRef, args: runKey },
       resultRef: { query: resultRefRef, args: runKey },
-      ...(run.parentRunId
-        ? { parent: { query: getRunRef, args: { companyId, runId: run.parentRunId } } }
-        : {}),
     }),
-    [companyId, run.baselineRunId, run.parentRunId, runKey],
+    [companyId, run.baselineRunId, runKey],
   );
   const raw = useQueries(queries) as Record<string, unknown>;
-  const parent = run.parentRunId
-    ? readRun(raw.parent, { companyId, runId: run.parentRunId })
-    : null;
+  const graph = readGraph(raw.graph, { companyId, baselineRunId: run.baselineRunId });
+  const [chosenComparisons, setChosenComparisons] = useState<string[] | null>(null);
+  const defaults = run.parentRunId
+    ? [run.parentRunId]
+    : graph.state === "ready"
+      ? graph.value
+          .filter((entry) => entry.parentRunId === run.runId)
+          .slice(0, 1)
+          .map((entry) => entry.runId)
+      : [];
+  const selectedComparisons = comparisonIds(chosenComparisons ?? defaults, run.runId);
+  const [firstComparison, secondComparison, thirdComparison] = selectedComparisons;
+  // Convex stores subscription callbacks by query-bag identity and updates state during render
+  // when they change. Memoize on these bounded ID values, not the freshly parsed graph array.
+  const comparisonQueries = useMemo(
+    () =>
+      Object.fromEntries(
+        [firstComparison, secondComparison, thirdComparison]
+          .filter((id): id is string => id !== undefined)
+          .map((id, i) => [`comparison${i}`, { query: getRunRef, args: { companyId, runId: id } }]),
+      ),
+    [companyId, firstComparison, secondComparison, thirdComparison],
+  );
+  const comparisonRaw = useQueries(comparisonQueries) as Record<string, unknown>;
+  const comparisonReads: Record<string, Read<import("./api").WorkspaceRun>> = {};
+  let comparisonIndex = 0;
+  for (const id of selectedComparisons) {
+    comparisonReads[id] = readComparison(comparisonRaw[`comparison${comparisonIndex++}`], run, id);
+  }
+
+  const parent = run.parentRunId ? (comparisonReads[run.parentRunId] ?? null) : null;
 
   const simulate = useMutation(simulateRef);
   const revise = useMutation(reviseConstraintsRef);
@@ -316,7 +342,12 @@ function RunReady({
     <WorkspaceView
       run={run}
       parent={parent}
-      graph={readGraph(raw.graph, { companyId, baselineRunId: run.baselineRunId })}
+      graph={graph}
+      comparisons={{
+        ids: selectedComparisons,
+        reads: comparisonReads,
+        onChange: setChosenComparisons,
+      }}
       questions={readQuestions(raw.questions, runKey) as Read<QuestionReceipt[]>}
       resultRef={readResultRef(raw.resultRef)}
       actions={actions}
