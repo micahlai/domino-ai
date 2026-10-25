@@ -1,14 +1,14 @@
 # Field lane handoff, Oct 25
 
-## Active map stability fix
+## Completed map stability fix
 - Branch `merge/field-map-stability-20261025` in `../domino-merge`, base `aac6de6`; current field/main was already pushed.
 - Reproduced with existing scripted agent updates in frontend-only preview3138: latest summary24/48/24px causes map top326/350/326px. scrollY remains0; map height478px and camera unchanged. Trace `/tmp/field-map-before.json`.
 - Implemented only in BrainMap.tsx: reserve two activity lines, clamp longer summaries, retain full text in DOM and hover title. Browser regression now passes80 samples/7 messages at map top350px, summary48px, scrollY0. Independent read-only review found no blocker.63 focused map tests, web tsc, changed-file Biome and production webpack build pass. No full-suite rerun.
-- Next: fast-forward and push field/main, verify the live map, stop frontend-only preview3138. Live3114/3260 remain running. Evidence: `/tmp/field-map-before.json`, `/tmp/field-map-after.json`, `/tmp/field-map-assert.cjs`, `/tmp/field-map-fixed-preview.png`.
+- Code `b07c8c5` was fast-forwarded and pushed to field/main. Live3114 map verified connected with fixed48px activity space and full message preserved. The existing Next process remained running. Frontend-only preview3138 is being stopped. Evidence: `/tmp/field-map-before.json`, `/tmp/field-map-after.json`, `/tmp/field-map-assert.cjs`, `/tmp/field-map-fixed-preview.png`, `/tmp/field-map-fixed-live.png`.
 
 ## State
 - Lead: Codex, taking over from Claude under Jayden's explicit authorization. This wave is finished and pushed to `field/main` in `../domino-field`. Integration happened only in `../domino-merge`, branch `merge/field-codex-20261025`, starting from `8dbba79`. Main remains `694ab2a`.
-- Release code: `92ac4ac` includes all four feature merges and the final hydration fix. Documentation commits may follow it.
+- Release code: `b07c8c5` includes all four feature merges, hydration repair and reproduced map stability fix. Documentation commits may follow it.
 - Live demo: `http://127.0.0.1:3114`, local Convex3260/3261, both from `../domino-field/apps/web`. Next PID30980, persistent terminal session16152, log `/tmp/domino-field-next-3114.log`. Original Convex PID55917 remains running. The initial detached Next launch exited before binding; the persistent launch is confirmed listening.
 - Next was restarted with a fresh `.next` after the large fast-forward. Live verification passed: `/field`, `/judge`, `/c/kestrel/timeline` HTTP200; suggestions and toolbox queries respond on3260. The live browser renders connected data; the hydration repair enables Open in timeline with no new console errors. Screenshot `/tmp/field-live-release.png`.
 - Isolated judge3130/3290/3291, Timeline3140/3294/3295, and integration3138/3298/3299 test servers were stopped. Their data was preserved. Never touch3102/3210/3214 or the friend's3107/3240/3241.
@@ -49,8 +49,7 @@
 - Integer cents; pure engine; AI never computes money; a person approves actions; Domino never moves money. No secrets printed/committed, no destructive Git or data operations without asking Jayden.
 
 ## Next exact step and queue
-1. Reproduce Jayden's new agent-map bug at `/field/map`: the document shifts vertically as agents update. Measure document scroll position and map/container geometry during updates, then fix the smallest demonstrated cause. Do not claim this is fixed by the Timeline-button hydration repair. No map layout code changed for this new report.
-2. Convex priority2: Workpool for swarms, rate-limiter and action-cache components; priority3 Workflow for ingestion. Current swarms use bounded app scheduling, not those components.
-3. Osprey storyline: possible request to start OK and flip At risk on day9. TL8 rejoin stays the friend's lane.
-4. CRS stays on hold. Mana: Jayden makes the demo video. Tracks: Hyphenate, Convex, CREAO, Apify, Capital One Nessie; Anthropic public-benefit and Coinbase skipped.
+1. Convex priority2: Workpool for swarms, rate-limiter and action-cache components; priority3 Workflow for ingestion. Current swarms use bounded app scheduling, not those components.
+2. Osprey storyline: possible request to start OK and flip At risk on day9. TL8 rejoin stays the friend's lane.
+3. CRS stays on hold. Mana: Jayden makes the demo video. Tracks: Hyphenate, Convex, CREAO, Apify, Capital One Nessie; Anthropic public-benefit and Coinbase skipped.
 - User requested orchestrator mode. Global Codex subagent cap5 was saved in `~/.codex/config.toml`; the active session still exposed three worker slots. No Codex restart was performed.

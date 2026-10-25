@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-25 Field map stability fixed
+- Done: reproduced24px page movement caused by activity-summary wrapping; reserved two summary lines in BrainMap only. Full message stays in DOM and hover title. Code b07c8c5 pushed to field/main.80 browser samples across7 messages remained fixed;63 focused tests, web tsc, Biome and webpack build pass. Live3114 map verified, existing server kept running.
+- Next: prior Field queue in features/field/HANDOFF.md. No backend, camera or main changes; no full-suite rerun.
+
 ## 2026-10-25 Codex Field integration
 - Done: took over five worktrees; convex-depth already merged. Finished and committed remaining work, independently reviewed swarm durability/version/caching fixes, merged the four branches in order in domino-merge. Isolated backend and browser decision smoke passed; one real synthetic CREAO advisor request validated.
 - Done: combined1,901 tests/typechecks/lint/build pass; field/main fast-forwarded/pushed; Next3114 restarted and live3260 APIs/pages verified. Final hydration guard passed focused23 tests/web tsc/lint/build and fresh browser. CREAO advisor enabled after explicit user approval.
