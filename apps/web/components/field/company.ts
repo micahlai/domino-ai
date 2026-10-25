@@ -58,10 +58,15 @@ const validCompany = (value: string | null): value is OperatingCompanyId =>
 const validScenario = (value: string | null): value is OperatingScenarioId =>
   OPERATING_SCENARIOS.some((item) => item.id === value);
 
-function read(): OperatingSelection {
-  if (typeof window === "undefined") return DEFAULT_OPERATING_SELECTION;
-  const query = new URLSearchParams(window.location.search);
-  const path = window.location.pathname;
+type SelectionStore = Pick<Storage, "getItem" | "setItem">;
+
+export function resolveOperatingSelection(
+  path: string,
+  search: string,
+  storedCompany: string | null,
+  storedScenario: string | null,
+): { selection: OperatingSelection; explicit: boolean } {
+  const query = new URLSearchParams(search);
   const routePart =
     path.match(/^\/c\/([^/]+)\/timeline(?:\/|$)/)?.[1] ??
     path.match(/^\/c\/(operating\/[^/]+\/[^/]+)\/timeline(?:\/|$)/)?.[1];
@@ -71,6 +76,23 @@ function read(): OperatingSelection {
   } catch {
     // Malformed address cannot override the stored or default selection.
   }
+  const company = query.get("company");
+  const scenario = query.get("scenario");
+  return {
+    selection: {
+      company: validCompany(company)
+        ? company
+        : (route?.company ?? (validCompany(storedCompany) ? storedCompany : "2u")),
+      scenario: validScenario(scenario)
+        ? scenario
+        : (route?.scenario ?? (validScenario(storedScenario) ? storedScenario : "baseline")),
+    },
+    explicit: validCompany(company) || validScenario(scenario) || route !== null,
+  };
+}
+
+function read(): OperatingSelection {
+  if (typeof window === "undefined") return DEFAULT_OPERATING_SELECTION;
   let storedCompany: string | null = null;
   let storedScenario: string | null = null;
   try {
@@ -79,16 +101,30 @@ function read(): OperatingSelection {
   } catch {
     // URL and the 2U baseline default still work without storage.
   }
-  const company = query.get("company");
-  const scenario = query.get("scenario");
-  return {
-    company: validCompany(company)
-      ? company
-      : (route?.company ?? (validCompany(storedCompany) ? storedCompany : "2u")),
-    scenario: validScenario(scenario)
-      ? scenario
-      : (route?.scenario ?? (validScenario(storedScenario) ? storedScenario : "baseline")),
-  };
+  return resolveOperatingSelection(
+    window.location.pathname,
+    window.location.search,
+    storedCompany,
+    storedScenario,
+  ).selection;
+}
+
+/** Adopt a valid deep link so later navigation without query parameters keeps its selection. */
+export function adoptExplicitOperatingSelection(
+  path: string,
+  search: string,
+  storage: SelectionStore,
+): OperatingSelection | null {
+  const resolved = resolveOperatingSelection(
+    path,
+    search,
+    storage.getItem(COMPANY_KEY),
+    storage.getItem(SCENARIO_KEY),
+  );
+  if (!resolved.explicit) return null;
+  storage.setItem(COMPANY_KEY, resolved.selection.company);
+  storage.setItem(SCENARIO_KEY, resolved.selection.scenario);
+  return resolved.selection;
 }
 
 // useSyncExternalStore requires the same object identity until a selection changes.
@@ -143,8 +179,21 @@ export function FieldCompanyOverride({
   return createElement(OverrideContext.Provider, { value: { companyId, name } }, children);
 }
 
-export const useOperatingSelection = (): OperatingSelection =>
-  useSyncExternalStore(subscribe, snapshot, () => DEFAULT_OPERATING_SELECTION);
+export const useOperatingSelection = (): OperatingSelection => {
+  const selection = useSyncExternalStore(subscribe, snapshot, () => DEFAULT_OPERATING_SELECTION);
+  useEffect(() => {
+    try {
+      adoptExplicitOperatingSelection(
+        window.location.pathname,
+        window.location.search,
+        window.localStorage,
+      );
+    } catch {
+      // The current URL still works if the browser blocks storage.
+    }
+  }, []);
+  return selection;
+};
 /** Fixture-only helper for playgrounds and the old judge sandbox. */
 export const useSelectedProfile = (): ProfileId => DEFAULT_FIELD_COMPANY;
 export const useSelectedCompanyName = (): string => {
