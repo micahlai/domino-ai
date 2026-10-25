@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "convex/react";
 import {
   ArrowUpRight,
   Check,
@@ -8,48 +9,49 @@ import {
   Download,
   FileOutput,
   History,
-  Inbox,
-  Link2,
   RefreshCw,
-  X,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { verifyWeeklySeedText } from "../../lib/feature-boundary/verify";
 import { cn } from "../../lib/utils";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Input } from "../ui/input";
 import { PageHeader } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
 import { OpenInTimeline } from "./OpenInTimeline";
-import { useSelectedCompanyName } from "./company";
+import { useSelectedCompany, useSelectedCompanyName, useSelectedProfile } from "./company";
+import { type DashboardData, DashboardDataProvider, useDashboard } from "./dashboard/data";
+import type { AnalystLatest } from "./dashboard/risks";
 import { useFieldData } from "./data";
-import {
-  LARGE_CENTS,
-  describeFinding,
-  findingExplanation,
-  formatDay,
-  humanizeText,
-  relatedFlags,
-} from "./finding-text";
+import { formatDay, humanizeText } from "./finding-text";
 import { byTime } from "./graph";
 import { EmptyRow, Panel } from "./panel";
 import {
   AnomalyPicker,
   AutoIngestToggle,
   DataLabel,
-  FINDING_LABEL,
   OPERATION_LABEL,
-  SEVERITY_BADGE,
-  SEVERITY_LABEL,
   clock,
   timeAgo,
   useNow,
 } from "./parts";
-import type { Anomaly, Decision, FieldFinding, FieldOperation } from "./types";
+import type { Anomaly, FieldFinding, FieldOperation } from "./types";
+import type { DecideSuggestion, SuggestionsState } from "./worker/SuggestionsSection";
+import { WorkerSections } from "./worker/WorkerSections";
+import { introLine } from "./worker/format";
+import { type WatchedRisk, watchedRisks } from "./worker/risks";
+import type { EffectContext } from "./worker/suggestions";
+import { useDemoSuggestions, useLiveSuggestions } from "./worker/useSuggestions";
+
+// The worker page: "Here's what needs you", in three sections and this order:
+// 1. Suggestions to accept or decline, 2. Risks we're watching, 3. Flags to review.
+// Read-only apart from the decisions a person records; Domino never moves money.
+
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 type Busy = "feed" | "ingest" | "export" | null;
 type Runner = {
@@ -81,138 +83,172 @@ function useRunner(): Runner {
 }
 
 export function WorkerPage() {
+  // The dashboard's provider: the same summary, Timeline run (TL6/TL7) and sample events.
+  return (
+    <DashboardDataProvider>{CONVEX_URL ? <LiveWorker /> : <DemoWorker />}</DashboardDataProvider>
+  );
+}
+
+function LiveWorker() {
+  const dashboard = useDashboard();
+  const { companyId } = useSelectedCompany();
+  const latest = useQuery(
+    api.fieldAnalyst.latest,
+    companyId ? { companyId: companyId as Id<"companies"> } : "skip",
+  );
+  const suggestions = useLiveSuggestions(companyId);
+  return (
+    <WorkerBody
+      dashboard={dashboard}
+      latest={latest ?? undefined}
+      suggestions={suggestions.state}
+      onDecide={suggestions.decide}
+    />
+  );
+}
+
+function DemoWorker() {
+  const dashboard = useDashboard();
+  const view = viewOf(dashboard);
+  const suggestions = useDemoSuggestions(
+    dashboard.result === undefined ? undefined : view,
+    useSelectedProfile(),
+  );
+  return (
+    <WorkerBody
+      dashboard={dashboard}
+      latest={undefined}
+      suggestions={suggestions.state}
+      onDecide={suggestions.decide}
+    />
+  );
+}
+
+const viewOf = (d: DashboardData) => (d.result?.ok ? d.result.view : null);
+
+/** Lowest cash in the plan and in each scenario, for a suggestion's before and after. */
+export function effectContext(d: DashboardData, risks: WatchedRisk[]): EffectContext {
+  const view = viewOf(d);
+  const scenarios: EffectContext["scenarios"] = new Map();
+  for (const r of risks)
+    if (r.low && !scenarios.has(r.id)) scenarios.set(r.id, { ...r.low, title: r.title });
+  return {
+    baseline: view?.lowest ? { cents: view.lowest.usable, week: view.lowest.weekStart } : null,
+    scenarios,
+    minimum: view?.lenderMinimum?.cents ?? null,
+  };
+}
+
+function WorkerBody({
+  dashboard,
+  latest,
+  suggestions,
+  onDecide,
+}: {
+  dashboard: DashboardData;
+  latest: AnalystLatest | undefined;
+  suggestions: SuggestionsState;
+  onDecide: DecideSuggestion;
+}) {
   const data = useFieldData();
   const company = useSelectedCompanyName();
   const now = useNow();
   const runner = useRunner();
   const [seed, setSeed] = useState<string | null>(null);
-  const open = data.findings?.filter((f) => f.status === "open") ?? [];
-  const decided = data.findings?.filter((f) => f.status !== "open") ?? [];
-  const related = relatedFlags(open);
-  const headline = !data.findings
-    ? "Loading the review queue"
-    : open.length === 0
-      ? "Nothing needs your review right now"
-      : `${open.length} ${open.length === 1 ? "flag needs" : "flags need"} your review`;
+  const risks = useMemo(
+    () => watchedRisks({ timeline: dashboard.timeline, latest, view: viewOf(dashboard) }),
+    [dashboard, latest],
+  );
+  const context = useMemo(() => effectContext(dashboard, risks), [dashboard, risks]);
+  const risksLoading = dashboard.result === undefined;
   const disabled = data.source === "loading" || data.needsSetup || runner.busy !== null;
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-4">
-      <PageHeader
-        eyebrow={
-          <span className="flex flex-wrap items-center gap-2">
-            {company}
-            <DataLabel />
-          </span>
-        }
-        title={headline}
-        description="You decide every flag. Domino only reads your tools and never moves money."
-        actions={
-          <>
-            <Button
-              disabled={disabled}
-              onClick={() =>
-                runner.run(
-                  "ingest",
-                  data.actions.ingestNow,
-                  data.source === "live"
-                    ? "Checking every tool now. New flags appear below as they land."
-                    : "Checked every tool.",
-                )
-              }
-            >
-              <RefreshCw
-                aria-hidden="true"
-                className={cn(
-                  runner.busy === "ingest" && "animate-spin motion-reduce:animate-none",
-                )}
-              />
-              Check latest data
-            </Button>
-            <Button
-              variant="outline"
-              disabled={disabled}
-              onClick={() =>
-                runner.run(
-                  "export",
-                  async () => setSeed(await data.actions.exportSeed()),
-                  "Seed exported for a simulation.",
-                )
-              }
-            >
-              <FileOutput aria-hidden="true" />
-              Export seed
-            </Button>
-            <OpenInTimeline variant="outline" />
-          </>
-        }
+    <div className="mx-auto max-w-[1040px] space-y-8">
+      <div className="space-y-4">
+        <PageHeader
+          eyebrow={<DataLabel />}
+          title={company}
+          description={introLine({
+            suggestions:
+              suggestions.kind === "ready"
+                ? suggestions.list.filter((s) => s.status === "open").length
+                : suggestions.kind === "loading"
+                  ? null
+                  : 0,
+            risks: risksLoading ? null : risks.filter((r) => r.status !== "holds").length,
+            flags: data.findings ? data.findings.filter((f) => f.status === "open").length : null,
+          })}
+          actions={
+            <>
+              <Button
+                disabled={disabled}
+                onClick={() =>
+                  runner.run(
+                    "ingest",
+                    data.actions.ingestNow,
+                    data.source === "live"
+                      ? "Checking every tool now. New flags appear below as they land."
+                      : "Checked every tool.",
+                  )
+                }
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  className={cn(
+                    runner.busy === "ingest" && "animate-spin motion-reduce:animate-none",
+                  )}
+                />
+                Check latest data
+              </Button>
+              <Button
+                variant="outline"
+                disabled={disabled}
+                onClick={() =>
+                  runner.run(
+                    "export",
+                    async () => setSeed(await data.actions.exportSeed()),
+                    "Seed exported for a simulation.",
+                  )
+                }
+              >
+                <FileOutput aria-hidden="true" />
+                Export seed
+              </Button>
+            </>
+          }
+        />
+        <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_300px]">
+          <StatusLine now={now} runner={runner} />
+          <DemoControls runner={runner} disabled={disabled} />
+        </div>
+        {data.needsSetup ? <SetupCard /> : null}
+      </div>
+
+      <WorkerSections
+        suggestions={suggestions}
+        context={context}
+        onDecide={onDecide}
+        risks={risks}
+        risksLoading={risksLoading}
+        timelineAction={<OpenInTimeline variant="outline" label="Open in timeline" />}
+        findings={data.findings}
+        now={now}
       />
 
-      <StatusLine now={now} runner={runner} />
-      {data.needsSetup ? <SetupCard /> : null}
-
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
-        <div className="min-w-0 space-y-4">
-          <Panel
-            aria-labelledby="queue-title"
-            level="h2"
-            title={<span id="queue-title">Review queue</span>}
-            description="Confirm a flag if it is a real problem. Dismiss it if it is fine."
-            aside={
-              data.findings ? (
-                <Badge variant={open.length > 0 ? "warning" : "secondary"}>
-                  {open.length} open
-                </Badge>
-              ) : null
-            }
+      <ActivityFeed
+        operations={data.operations}
+        now={now}
+        aside={
+          <Link
+            href="/field/map"
+            className="inline-flex min-h-11 items-center gap-1 rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
           >
-            {!data.findings ? (
-              <div className="space-y-3 p-4" aria-busy="true">
-                <p className="text-sm text-muted-foreground">Loading the review queue...</p>
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : open.length === 0 ? (
-              <EmptyRow icon={<Inbox />}>
-                No open flags. New ones show up here when the audit agent finds something.
-              </EmptyRow>
-            ) : (
-              <ul className="divide-y">
-                <AnimatePresence initial={false}>
-                  {open.map((finding) => (
-                    <FindingCard
-                      key={finding.id}
-                      finding={finding}
-                      now={now}
-                      related={(related.get(finding.id) ?? []).flatMap((id) => {
-                        const other = open.find((f) => f.id === id);
-                        return other ? [other] : [];
-                      })}
-                    />
-                  ))}
-                </AnimatePresence>
-              </ul>
-            )}
-          </Panel>
-          {decided.length > 0 ? <DecidedList findings={decided} /> : null}
-        </div>
-        <div className="min-w-0 space-y-4">
-          <DemoControls runner={runner} disabled={disabled} />
-          <ActivityFeed
-            operations={data.operations}
-            now={now}
-            aside={
-              <Link
-                href="/field/map"
-                className="inline-flex min-h-11 items-center gap-1 rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
-              >
-                Brain map
-                <ArrowUpRight aria-hidden="true" className="size-3.5" />
-              </Link>
-            }
-          />
-        </div>
-      </div>
+            Brain map
+            <ArrowUpRight aria-hidden="true" className="size-3.5" />
+          </Link>
+        }
+      />
       <SeedDialog text={seed} demo={data.source === "demo"} onClose={() => setSeed(null)} />
     </div>
   );
@@ -324,9 +360,9 @@ function DemoControls({ runner, disabled }: { runner: Runner; disabled: boolean 
   return (
     <details className="group overflow-hidden rounded-lg border bg-card text-sm shadow-xs">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-        <span>
+        <span className="min-w-0">
           Demo controls
-          <span className="ml-2 text-[13px] font-normal text-muted-foreground">
+          <span className="block text-xs font-normal text-muted-foreground">
             Synthetic entries only
           </span>
         </span>
@@ -439,223 +475,6 @@ function SeedDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** A DOM id for a flag; finding ids can carry ":" and ",". */
-const flagDomId = (id: string) => `flag-${id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-/** The primary amount sits next to the name, so the fact line skips it. */
-const PRIMARY_FACT = new Set(["Amount", "Now"]);
-
-function FindingCard({
-  finding,
-  now,
-  related,
-}: { finding: FieldFinding; now: number; related: FieldFinding[] }) {
-  const { actions, decideError } = useFieldData();
-  const reduced = useReducedMotion();
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState<Decision | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const view = describeFinding(finding);
-  const { explanation, suggestedCheck } = findingExplanation(finding);
-  const primary = view.facts.find((f) => PRIMARY_FACT.has(f.label));
-  const rest = view.facts.filter((f) => f !== primary);
-  const high = finding.severity === "high";
-  const large = view.amountCents !== null && Math.abs(view.amountCents) >= LARGE_CENTS;
-  async function decide(decision: Decision) {
-    setBusy(decision);
-    setError(null);
-    try {
-      await actions.decide({ findingId: finding.id, decision, note: note.trim() });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save the decision.");
-      setBusy(null);
-    }
-  }
-  const shownError = error ?? (decideError?.findingId === finding.id ? decideError.message : null);
-  const noteId = `note-${finding.id}`;
-  const domId = flagDomId(finding.id);
-  return (
-    <motion.li
-      id={domId}
-      layout={!reduced}
-      initial={reduced ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={reduced ? { opacity: 0 } : { opacity: 0, x: 24 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      aria-labelledby={`${domId}-title`}
-      className={cn(
-        "relative scroll-mt-20 bg-card px-4 py-4",
-        high &&
-          "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-destructive",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 id={`${domId}-title`} className="text-[15px] font-semibold leading-6">
-            {view.counterparty ?? FINDING_LABEL[finding.kind]}
-          </h3>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <Badge variant={SEVERITY_BADGE[finding.severity]}>
-              {SEVERITY_LABEL[finding.severity]}
-            </Badge>
-            {view.counterparty ? <span>{FINDING_LABEL[finding.kind]}</span> : null}
-            <span>Found {timeAgo(finding.detectedAt, now)}</span>
-            {finding.escalated ? <span>Escalated to you</span> : null}
-          </div>
-        </div>
-        {primary ? (
-          <p className="shrink-0 text-right">
-            <span
-              className={cn(
-                "block font-semibold tabular-nums tracking-[-0.01em]",
-                high || large ? "text-lg leading-6" : "text-[15px] leading-6",
-              )}
-            >
-              {primary.value}
-            </span>
-            {rest.length > 0 ? (
-              <span className="block text-xs tabular-nums text-muted-foreground">
-                {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-      </div>
-
-      <p className="mt-2 text-sm leading-6">{view.headline}</p>
-      {!primary && rest.length > 0 ? (
-        <p className="mt-1 text-[13px] tabular-nums text-muted-foreground">
-          {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
-        </p>
-      ) : null}
-      {explanation ? (
-        <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
-          <span className="font-medium text-foreground">Why it matters: </span>
-          {explanation}
-        </p>
-      ) : null}
-      {suggestedCheck ? (
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-          <span className="font-medium text-foreground">Suggested check: </span>
-          {suggestedCheck}
-        </p>
-      ) : null}
-
-      {related.length > 0 ? (
-        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-          <Link2 aria-hidden="true" className="size-3.5" />
-          Shares a record with
-          {related.map((other) => (
-            <a
-              key={other.id}
-              href={`#${flagDomId(other.id)}`}
-              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
-            >
-              {describeFinding(other).counterparty ?? FINDING_LABEL[other.kind]}
-            </a>
-          ))}
-        </p>
-      ) : null}
-
-      {finding.refs.length > 0 ? (
-        <details className="group mt-2 text-[13px]">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0 [&::-webkit-details-marker]:hidden">
-            <ChevronRight
-              aria-hidden="true"
-              className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-            />
-            View records ({finding.refs.length})
-          </summary>
-          <ul className="mt-1.5 flex flex-wrap gap-1.5">
-            {finding.refs.map((ref) => (
-              <li key={ref}>
-                <code className="rounded border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-foreground">
-                  {ref}
-                </code>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-
-      <div className="mt-3 space-y-1.5">
-        <label htmlFor={noteId} className="block text-[13px] font-medium">
-          Note <span className="font-normal text-muted-foreground">(optional)</span>
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Input
-            id={noteId}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={500}
-            placeholder="Why you decided this"
-            className="h-11 sm:h-9 sm:flex-1"
-          />
-          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
-            <Button disabled={busy !== null} onClick={() => decide("approved")}>
-              <Check aria-hidden="true" />
-              Confirm issue
-            </Button>
-            <Button variant="outline" disabled={busy !== null} onClick={() => decide("rejected")}>
-              <X aria-hidden="true" />
-              Dismiss flag
-            </Button>
-          </div>
-        </div>
-      </div>
-      {shownError ? <p className="mt-2 text-sm text-destructive">{shownError}</p> : null}
-    </motion.li>
-  );
-}
-
-function DecidedList({ findings }: { findings: FieldFinding[] }) {
-  return (
-    <details className="group overflow-hidden rounded-lg border bg-card text-sm shadow-xs">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-        <span>
-          Decided
-          <span className="ml-2 font-normal text-muted-foreground">
-            {findings.length} {findings.length === 1 ? "flag" : "flags"}
-          </span>
-        </span>
-        <span className="text-[13px] font-normal text-muted-foreground group-open:hidden">
-          Show
-        </span>
-        <span className="hidden text-[13px] font-normal text-muted-foreground group-open:inline">
-          Hide
-        </span>
-      </summary>
-      <ul className="divide-y border-t">
-        {findings.map((f) => {
-          const view = describeFinding(f);
-          return (
-            <li
-              key={f.id}
-              className="grid gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[96px_minmax(0,1fr)]"
-            >
-              <div>
-                <Badge variant={f.status === "approved" ? "success" : "secondary"}>
-                  {f.status === "approved" ? "Confirmed" : "Dismissed"}
-                </Badge>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {view.counterparty
-                    ? `${view.counterparty} · ${FINDING_LABEL[f.kind]}`
-                    : FINDING_LABEL[f.kind]}
-                </p>
-                <p className="mt-0.5 leading-6">{view.headline}</p>
-                {f.note ? (
-                  <p className="mt-1 text-[13px] text-muted-foreground">Note: {f.note}</p>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </details>
   );
 }
 
