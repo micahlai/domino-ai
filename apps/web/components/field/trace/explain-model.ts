@@ -38,7 +38,14 @@ export const fullDay = (iso: string | null | undefined) =>
   iso ? formatFullDate(iso.slice(0, 10)) : null;
 
 export type Fact = { text: string; money?: Money | null };
-export type Logo = { vendor: string; label: string };
+export type Logo = {
+  vendor: string;
+  label: string;
+  /** One plain line on what this tool supplied ("Billing · ties out · pulled Oct 20, 2026"). */
+  line?: string;
+  /** Saved cross-tool check: true ties out, false does not, absent when none was saved. */
+  ok?: boolean;
+};
 
 export type Step = {
   headline: string;

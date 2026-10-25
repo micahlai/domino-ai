@@ -19,7 +19,6 @@ import {
 // Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
 // harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
 // case study opens from the company switcher.
-const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
 /** Timeline's own routes (TL7): /c/<company>/timeline and its analysis page. */
 const TIMELINE = /^\/c\/(?:[^/]+|operating\/[^/]+\/[^/]+)\/timeline(\/|$)/;
 const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
@@ -40,9 +39,9 @@ const primaryLinks = (profile: string) => [
   {
     href: `/c/${profile}/timeline`,
     label: "Timeline",
-    on: (p: string) => under(p, "/c") && !SIMULATIONS.test(p),
+    on: (p: string) => under(p, "/c"),
   },
-  { href: "/simulations", label: "Simulations", on: (p: string) => SIMULATIONS.test(p) },
+  // /simulations (saved-run catalog) stays reachable by URL; Timeline already lists scenarios.
   // Judge sandbox: a fresh simulated company to try scenarios on.
   { href: "/judge", label: "Try it", on: (p: string) => under(p, "/judge") },
 ];

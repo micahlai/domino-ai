@@ -9,8 +9,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: { default: "Domino — See what comes next", template: "%s · Domino" },
-  description: "See which cash problems could start a chain reaction. Try fixes before you decide.",
+  title: { default: "Domino · Cash risk for finance teams", template: "%s · Domino" },
+  description: "Find the cash risks that could cascade, and model fixes before you decide.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

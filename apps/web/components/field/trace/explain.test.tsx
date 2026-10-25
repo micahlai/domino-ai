@@ -264,6 +264,6 @@ describe("Field run explanation", () => {
     expect(html).toContain("Stays above");
     expect(html).toContain('title="$439,715,120.17"');
     expect(html).toContain("<summary");
-    expect(html).toContain("Details");
+    expect(html).toContain("Technical details");
   });
 });

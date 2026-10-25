@@ -22,7 +22,7 @@ export const OPEN_IN_TIMELINE_NOTE =
 
 export function OpenInTimeline({
   variant = "default",
-  label = "Open in Timeline",
+  label = "Open in forecast",
   className,
 }: {
   variant?: "default" | "outline";

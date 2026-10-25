@@ -24,7 +24,7 @@ export function TimelineBridge({ companyId }: { companyId: string }) {
         <span className="font-medium text-foreground">{company.name}</span>{" "}
         {CONVEX_URL ? <LatestBooks /> : "(backend unavailable)"}
       </p>
-      <OpenInTimeline variant="outline" label="Open the latest books in Timeline" />
+      <OpenInTimeline variant="outline" label="Open latest books in forecast" />
     </div>
   );
 }
