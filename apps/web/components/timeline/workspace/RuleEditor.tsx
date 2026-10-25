@@ -52,8 +52,9 @@ export function RuleEditor({ constraints, bills, onSave, disabled }: RuleEditorP
   return (
     <Panel title="Cash rules to check" testId="rule-editor">
       <p className="text-xs text-muted-foreground">
-        Rules are checked every week of the forecast. Saving creates a new scenario; the imported
-        baseline and earlier scenarios never change.
+        Cash minimums are checked at Sunday close, runway against forecast average monthly cash use,
+        and bills against their payment deadlines. Checks cover these 13 weeks, not daily cash
+        compliance. Saving creates a new scenario; earlier scenarios never change.
       </p>
       {drafts.length === 0 ? <p className="text-sm text-muted-foreground">No rules yet.</p> : null}
       <ul className="space-y-3">

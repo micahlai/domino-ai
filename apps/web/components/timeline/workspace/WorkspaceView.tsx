@@ -103,6 +103,9 @@ export function WorkspaceView({
             parent={parentForecast}
             items={b.seed.scheduledItems}
             limits={limits}
+            breachedWeeks={run.receipts.flatMap((receipt) =>
+              receipt.status === "breached" && receipt.weekStart ? [receipt.weekStart] : [],
+            )}
             selectedWeek={selectedWeek}
             onSelectWeek={(w) => {
               setSelectedWeek(w);

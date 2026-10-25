@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AncestryPanel, CatalogList } from "./CatalogPanel";
 import { QuestionsPanel, mergeReceipts } from "./QuestionsPanel";
+import { ReceiptsPanel, WeekDetail } from "./RunPanels";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
   type CatalogEntry,
@@ -73,6 +74,93 @@ describe("readRun boundary", () => {
     expect(readRun(nested, key).state).toBe("unusable");
   });
 
+  it("reopens supported fractional rules, model values and discount percentages", () => {
+    const run = clone(fixtureScenario);
+    const runway = { ...clone(fixtureRule), kind: "min_runway_months" as const, limit: 4.5 };
+    run.constraints.push(runway);
+    run.baseline.constraints.push(runway);
+    run.baseline.model.customerDelayDays.acme = { mean: 2.5, p90: 7.5, samples: 4 };
+    const discount = {
+      kind: "discount_early_pay" as const,
+      invoiceId: "inv_acme_2027",
+      percent: 2.5,
+      payOn: "2026-11-18",
+    };
+    run.ownChanges.push(discount);
+    run.changes.push(discount);
+    run.receipts.push({
+      ...clone(run.receipts[0]!),
+      constraintId: runway.id,
+      kind: "min_runway_months",
+      unit: "months",
+      limit: 4.5,
+      value: null,
+      shortfall: null,
+    });
+    expect(readRun(run, key).state).toBe("ready");
+  });
+
+  it.each([0.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects unsafe or fractional cents %s at each local money boundary",
+    (money) => {
+      const probes = [
+        (r: typeof fixtureScenario) => {
+          r.forecast.lowPoint.usable = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.constraints[0]!.limit = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.receipts[0]!.value = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.receipts[0]!.shortfall = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.comparison!.weekly[0]!.usableDelta = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.baseline.history[0]!.usable = money;
+        },
+        (r: typeof fixtureScenario) => {
+          r.baseline.model.recurringSpend = [{ label: "Cost", amount: money, everyDays: 7 }];
+        },
+        (r: typeof fixtureScenario) => {
+          r.ownChanges = [{ kind: "add_cash", date: "2026-11-18", label: "Cash", amount: money }];
+        },
+        (r: typeof fixtureScenario) => {
+          r.changes = [
+            {
+              kind: "shift_hire",
+              label: "Hire",
+              monthlyCost: money,
+              fromDate: "2026-11-18",
+              toDate: "2026-11-25",
+            },
+          ];
+        },
+      ];
+      for (const corrupt of probes) {
+        const run = clone(fixtureScenario);
+        corrupt(run);
+        expect(readRun(run, key).state).toBe("unusable");
+      }
+    },
+  );
+
+  it("rejects silently stripped nested baseline fields and nonfinite fractional fields", () => {
+    const run = clone(fixtureScenario);
+    Object.assign(run.baseline.model, { unexpected: 1 });
+    expect(readRun(run, key).state).toBe("unusable");
+    const nonfinite = clone(fixtureScenario);
+    nonfinite.constraints.push({
+      ...clone(fixtureRule),
+      kind: "min_runway_months",
+      limit: Number.POSITIVE_INFINITY,
+    });
+    expect(readRun(nonfinite, key).state).toBe("unusable");
+  });
+
   it("rejects inconsistent lineage and comparisons", () => {
     const orphan = { ...clone(fixtureScenario), parentRunId: null };
     expect(readRun(orphan, key).state).toBe("unusable");
@@ -126,6 +214,31 @@ describe("catalog, graph and questions boundaries", () => {
     expect(readQuestion(broken, qKey)).toBeUndefined();
     const stray = { ...clone(fixtureQuestions[0]), rawProviderText: "..." };
     expect(readQuestion(stray, qKey)).toBeUndefined();
+  });
+
+  it("accepts fractional runway and discount proposals without weakening cents checks", () => {
+    const proposal = clone(fixtureQuestions[1]!);
+    if (!proposal.proposal) throw new Error("fixture");
+    proposal.proposal.constraints = [
+      { ...clone(fixtureRule), kind: "min_runway_months", limit: 4.5 },
+    ];
+    proposal.proposal.changes = [
+      { kind: "discount_early_pay", invoiceId: "inv_acme_2027", percent: 1.5, payOn: "2026-11-18" },
+    ];
+    const context = { companyId: proposal.companyId, runId: proposal.runId };
+    expect(readQuestion(proposal, context)).toBeDefined();
+    for (const amount of [0.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const unsafe = clone(proposal);
+      unsafe.proposal!.changes = [
+        { kind: "remove_cash", amount, label: "Expense", date: "2026-11-18" },
+      ];
+      expect(readQuestion(unsafe, context)).toBeUndefined();
+      unsafe.proposal!.changes = [];
+      unsafe.proposal!.constraints = [{ ...clone(fixtureRule), limit: amount }];
+      expect(readQuestion(unsafe, context)).toBeUndefined();
+    }
+    Object.assign(proposal.proposal.constraints[0]!.evidence, { unknown: true });
+    expect(readQuestion(proposal, context)).toBeUndefined();
   });
 
   it("parses the result pointer text strictly", () => {
@@ -329,6 +442,40 @@ describe("workspace view", () => {
     const html = render();
     expect(fixtureBaseline.history).toHaveLength(26);
     expect(html.match(/data-testid="chart-week-/g)).toHaveLength(13);
+  });
+
+  it("keeps forecast styling neutral and marks only saved breach weeks", () => {
+    const clean = render(fixtureRoot);
+    expect(clean).toMatch(/class="stroke-primary"[^>]*data-testid="forecast-line"/);
+    expect(clean).not.toContain('data-breached="true"');
+    expect(clean).not.toContain("stroke-safe");
+    expect(clean).not.toContain("fill-safe");
+    const breached = render();
+    expect(breached.match(/data-breached="true"/g)).toHaveLength(1);
+    expect(breached).toContain("Week with a saved rule breach");
+  });
+
+  it("states the 13-week and original-schedule scope and group attribution", () => {
+    const run = clone(fixtureScenario);
+    run.receipts[0]!.actionLabels = ["Atlas expense", "Cash injection"];
+    const receipts = renderToStaticMarkup(<ReceiptsPanel run={run} />);
+    expect(receipts).toContain("Scenario inputs checked together: Atlas expense; Cash injection");
+    expect(receipts).toContain("does not attribute the breach to an individual input");
+    expect(receipts).toContain("Sunday closing usable cash");
+    expect(render(fixtureRules)).toContain("No breach found in these 13 weeks");
+    expect(render(fixtureRules)).not.toContain("Meets the rule");
+    expect(render()).toContain(
+      "Original imported schedule (item count; does not move with scenario changes)",
+    );
+    const detail = renderToStaticMarkup(
+      <WeekDetail
+        run={run}
+        weekStart={run.forecast.weeks[0]!.weekStart}
+        selectedItemId={null}
+        onSelectItem={() => undefined}
+      />,
+    );
+    expect(detail).toContain("These items keep their original weeks");
   });
 
   it("starts every confirmation unchecked and every write disabled", () => {

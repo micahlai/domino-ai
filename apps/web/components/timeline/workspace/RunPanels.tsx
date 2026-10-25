@@ -58,7 +58,7 @@ export function WeekDetail({
     return (
       <Panel title="Chosen week" testId="week-detail">
         <p className="text-sm text-muted-foreground">
-          Choose a week on the chart to see its numbers and scheduled items.
+          Choose a week on the chart to see its saved numbers and original imported schedule.
         </p>
       </Panel>
     );
@@ -91,8 +91,12 @@ export function WeekDetail({
           </div>
         ))}
       </dl>
+      <p className="text-xs text-muted-foreground">
+        Original imported schedule. These items keep their original weeks; scenario changes are
+        reflected in the saved cash numbers above.
+      </p>
       {items.length ? (
-        <ul className="space-y-1" aria-label="Scheduled in this week">
+        <ul className="space-y-1" aria-label="Original schedule for this week">
           {items.map((it) => {
             const selected = it.id === selectedItemId;
             return (
@@ -113,7 +117,7 @@ export function WeekDetail({
           })}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">No scheduled items land in this week.</p>
+        <p className="text-xs text-muted-foreground">No items were imported for this week.</p>
       )}
     </Panel>
   );
@@ -156,15 +160,15 @@ export function ComparisonPanel({ run }: { run: WorkspaceRun }) {
 
 const STATUS: Record<RuleReceipt["status"], { text: string; tone: "bad" | "ok" | "plain" }> = {
   breached: { text: "Outside the rule", tone: "bad" },
-  clear: { text: "Meets the rule", tone: "ok" },
+  clear: { text: "No breach found in these 13 weeks", tone: "plain" },
   beyond_horizon: { text: "Beyond the 13 weeks", tone: "plain" },
   unable: { text: "Cannot be checked", tone: "plain" },
 };
 const RELATION: Record<RuleReceipt["relation"], string> = {
   new: "New in this scenario",
   pre_existing: "Already outside the rule in the scenario it started from",
-  resolved: "Fixed in this scenario",
-  clear: "Meets the rule here and before",
+  resolved: "Earlier breach no longer found in these 13 weeks",
+  clear: "No breach found in either saved 13-week forecast",
   outside_horizon: "Falls after the forecast ends",
   unable: "The saved data is not enough to check it",
 };
@@ -178,9 +182,14 @@ function measure(unit: RuleReceipt["unit"], v: number): string {
 export function ReceiptsPanel({ run }: { run: WorkspaceRun }) {
   return (
     <Panel title="Cash rules" testId="receipts">
+      <p className="text-xs text-muted-foreground">
+        Cash minimums use Sunday closing usable cash. Runway uses the forecast’s average monthly
+        cash use. Bill rules check the allowed payment deadline. These checks cover the saved
+        13-week forecast; they do not establish daily cash compliance.
+      </p>
       {run.receipts.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No cash rules are set for this scenario, so none can be broken.
+          No cash rules are set for this scenario. No rule check has been made.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -226,7 +235,10 @@ export function ReceiptsPanel({ run }: { run: WorkspaceRun }) {
                   ) : null}
                 </p>
                 {r.actionLabels.length ? (
-                  <p className="text-xs">Linked to: {r.actionLabels.join("; ")}</p>
+                  <p className="text-xs">
+                    Scenario inputs checked together: {r.actionLabels.join("; ")}. This check does
+                    not attribute the breach to an individual input.
+                  </p>
                 ) : null}
                 {r.evidence.length ? (
                   <details className="text-xs">

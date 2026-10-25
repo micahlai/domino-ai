@@ -14,6 +14,8 @@ export type ChartProps = {
   items: ScheduledItem[];
   /** Saved minimum-cash limits, drawn as dashed lines. */
   limits: { id: string; label: string; cents: number }[];
+  /** Only saved rule receipts may mark a week as breached. */
+  breachedWeeks?: string[];
   selectedWeek: string | null;
   onSelectWeek: (weekStart: string) => void;
 };
@@ -61,6 +63,7 @@ export function WorkspaceChart(p: ChartProps) {
   const selectedIndex = weeks.findIndex((w) => w.weekStart === p.selectedWeek);
   const low = p.forecast.lowPoint;
   const lowIndex = weeks.findIndex((w) => w.weekStart === low.weekStart);
+  const breachedWeeks = new Set(p.breachedWeeks ?? []);
 
   return (
     <figure className="space-y-3" data-testid="workspace-chart">
@@ -126,12 +129,14 @@ export function WorkspaceChart(p: ChartProps) {
           <path
             d={draw(lastPast ? [lastPast, ...future] : future) ?? ""}
             fill="none"
-            className="stroke-safe"
+            className="stroke-primary"
+            data-testid="forecast-line"
             strokeWidth={2.5}
           />
           {weeks.map((w, i) => {
             const pt = future[i] as Point;
             const selected = i === selectedIndex;
+            const breached = breachedWeeks.has(w.weekStart);
             const count = itemsByWeek.get(w.weekStart) ?? 0;
             return (
               <g key={w.weekStart}>
@@ -152,12 +157,14 @@ export function WorkspaceChart(p: ChartProps) {
                   cy={pt.y}
                   r={selected ? 6 : i === lowIndex ? 5 : 3}
                   className={
-                    selected
-                      ? "fill-safe stroke-foreground"
-                      : i === lowIndex
-                        ? "fill-[#D991A8]"
-                        : "fill-safe"
+                    breached
+                      ? `fill-[#D991A8]${selected ? " stroke-foreground" : ""}`
+                      : selected
+                        ? "fill-primary stroke-foreground"
+                        : "fill-primary"
                   }
+                  data-testid={`forecast-point-${w.weekStart}`}
+                  data-breached={breached}
                   pointerEvents="none"
                 />
                 {count ? (
@@ -198,7 +205,7 @@ export function WorkspaceChart(p: ChartProps) {
           Recorded usable cash
         </span>
         <span>
-          <span className="mr-1 inline-block h-0.5 w-4 bg-safe align-middle" />
+          <span className="mr-1 inline-block h-0.5 w-4 bg-primary align-middle" />
           This scenario
         </span>
         {p.parent ? (
@@ -209,8 +216,14 @@ export function WorkspaceChart(p: ChartProps) {
         ) : null}
         <span>
           <span className="mr-1 text-clay">▲</span>
-          Scheduled items in that week (count, not added up)
+          Original imported schedule (item count; does not move with scenario changes)
         </span>
+        {breachedWeeks.size ? (
+          <span data-testid="breach-legend">
+            <span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#D991A8]" />
+            Week with a saved rule breach
+          </span>
+        ) : null}
       </figcaption>
       <label className="block space-y-1 text-sm">
         <span className="text-muted-foreground">Choose a forecast week</span>
@@ -229,7 +242,7 @@ export function WorkspaceChart(p: ChartProps) {
             const w = weeks[Number(e.target.value)];
             if (w) p.onSelectWeek(w.weekStart);
           }}
-          className="w-full accent-[#68B99E]"
+          className="w-full accent-primary"
           data-testid="week-range"
         />
       </label>

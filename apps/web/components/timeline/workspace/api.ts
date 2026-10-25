@@ -1,12 +1,15 @@
 import {
+  type Change,
   ChangeSchema,
+  type Constraint,
   ConstraintSchema,
   DominoSchema,
+  type Forecast,
   ForecastSchema,
   ISODateSchema,
   OperationSummaryV1Schema,
   type WeeklyResultRefV1,
-  exactBoundarySchema,
+  canonicalJson,
   parseWeeklyResultRefJson,
 } from "@domino/contracts";
 import type { PaginationOptions, PaginationResult } from "convex/server";
@@ -82,6 +85,61 @@ const Text = z.string().min(1);
 const RunKind = z.enum(["baseline", "rules", "scenario"]);
 const Timestamp = z.string().datetime({ offset: true });
 
+// ---------- Exact local parsing ----------
+
+type Path = (string | number)[];
+type Money = [Path, number];
+
+/**
+ * Exact read of a Timeline-local projection. Unknown or silently stripped fields fail (the input
+ * must equal the parsed output, canonically), but shared schemas keep their own number rules:
+ * fractional runway months, learned delay means or discount percentages stay valid. Money is
+ * checked field by field as safe integer cents, because a blanket integer rule would reject
+ * supported fractions.
+ */
+function exactLocal<T extends z.ZodTypeAny>(schema: T, money: (v: z.output<T>) => Money[]) {
+  return z.unknown().transform((raw, ctx): z.output<T> => {
+    const fail = (path: Path, message: string): never => {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path, message, fatal: true });
+      return z.NEVER;
+    };
+    const r: z.SafeParseReturnType<unknown, z.output<T>> = schema.safeParse(raw);
+    if (!r.success) {
+      for (const i of r.error.issues) ctx.addIssue({ ...i, fatal: true });
+      return z.NEVER;
+    }
+    let same = false;
+    try {
+      // canonicalJson also rejects NaN, Infinity, cycles and non-plain objects.
+      same = canonicalJson(raw) === canonicalJson(r.data);
+    } catch {
+      return fail([], "not plain JSON data");
+    }
+    if (!same) return fail([], "field is not part of the local interface");
+    for (const [path, v] of money(r.data))
+      if (!Number.isSafeInteger(v)) return fail(path, "money must be safe integer cents");
+    return r.data;
+  });
+}
+
+const changeMoney = (c: Change, at: Path): Money[] =>
+  c.kind === "add_cash" || c.kind === "remove_cash"
+    ? [[[...at, "amount"], c.amount]]
+    : c.kind === "shift_hire"
+      ? [[[...at, "monthlyCost"], c.monthlyCost]]
+      : [];
+const changesMoney = (cs: Change[], at: Path) => cs.flatMap((c, i) => changeMoney(c, [...at, i]));
+const constraintsMoney = (cs: Constraint[], at: Path): Money[] =>
+  cs.flatMap((c, i) => (c.kind === "min_cash" ? [[[...at, i, "limit"], c.limit] as Money] : []));
+const forecastMoney = (f: Forecast, at: Path): Money[] => [
+  ...f.weeks.flatMap((w, i) =>
+    (["opening", "inflow", "outflow", "closing", "usable"] as const).map(
+      (k): Money => [[...at, "weeks", i, k], w[k]],
+    ),
+  ),
+  [[...at, "lowPoint", "usable"], f.lowPoint.usable],
+];
+
 export const RunResultSchema = z
   .object({ companyId: Text, runId: Text, created: z.boolean() })
   .strict();
@@ -138,8 +196,47 @@ const WorkspaceRunObject = z
     operation: OperationSummaryV1Schema,
   })
   .strict();
-/** Exact: an unknown or silently stripped field makes the whole record unusable. */
-export const WorkspaceRunSchema = exactBoundarySchema(WorkspaceRunObject);
+type RunObject = z.output<typeof WorkspaceRunObject>;
+function runMoney(r: RunObject): Money[] {
+  const b = r.baseline;
+  return [
+    ...forecastMoney(r.forecast, ["forecast"]),
+    ...constraintsMoney(r.constraints, ["constraints"]),
+    ...changesMoney(r.ownChanges, ["ownChanges"]),
+    ...changesMoney(r.changes, ["changes"]),
+    ...r.receipts.flatMap((x, i): Money[] =>
+      x.unit !== "cents"
+        ? []
+        : (["limit", "value", "shortfall"] as const).flatMap((k): Money[] => {
+            const v = x[k];
+            return v === null ? [] : [[["receipts", i, k], v]];
+          }),
+    ),
+    ...(r.comparison
+      ? [
+          [["comparison", "lowPointDelta"], r.comparison.lowPointDelta] as Money,
+          ...r.comparison.weekly.map(
+            (w, i): Money => [["comparison", "weekly", i, "usableDelta"], w.usableDelta],
+          ),
+        ]
+      : []),
+    ...forecastMoney(b.forecast, ["baseline", "forecast"]),
+    ...constraintsMoney(b.constraints, ["baseline", "constraints"]),
+    ...b.history.flatMap((h, i): Money[] => [
+      [["baseline", "history", i, "closing"], h.closing],
+      [["baseline", "history", i, "usable"], h.usable],
+    ]),
+    ...b.pastEvents.flatMap((e, i): Money[] =>
+      e.amount === undefined ? [] : [[["baseline", "pastEvents", i, "amount"], e.amount]],
+    ),
+    ...b.model.recurringSpend.map(
+      (x, i): Money => [["baseline", "model", "recurringSpend", i, "amount"], x.amount],
+    ),
+    // The weekly seed is parsed by its own exact shared seam schema.
+  ];
+}
+/** Exact: an unknown or silently stripped field, or unsafe cents, makes the record unusable. */
+export const WorkspaceRunSchema = exactLocal(WorkspaceRunObject, runMoney);
 export type WorkspaceRun = z.infer<typeof WorkspaceRunObject>;
 
 const CatalogEntryObject = z
@@ -156,7 +253,9 @@ const CatalogEntryObject = z
     constraintVersion: Text,
   })
   .strict();
-export const CatalogEntrySchema = exactBoundarySchema(CatalogEntryObject);
+export const CatalogEntrySchema = exactLocal(CatalogEntryObject, (e) => [
+  [["lowPointCents"], e.lowPointCents],
+]);
 export type CatalogEntry = z.infer<typeof CatalogEntryObject>;
 
 const CatalogPageSchema = z
@@ -204,7 +303,14 @@ const QuestionReceiptObject = z
     if ((q.status === "proposal") !== (q.proposal !== null))
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["proposal"], message: "mismatch" });
   });
-export const QuestionReceiptSchema = exactBoundarySchema(QuestionReceiptObject);
+export const QuestionReceiptSchema = exactLocal(QuestionReceiptObject, (q) =>
+  q.proposal
+    ? [
+        ...changesMoney(q.proposal.changes, ["proposal", "changes"]),
+        ...constraintsMoney(q.proposal.constraints ?? [], ["proposal", "constraints"]),
+      ]
+    : [],
+);
 export type QuestionReceipt = z.infer<typeof QuestionReceiptObject>;
 
 export type Read<T> =
