@@ -40,6 +40,14 @@ import {
   workspaceLinkFromSearch,
 } from "./api";
 import { NewerBooksNotice, fieldCompanyOf, useLatestImport } from "./books";
+import {
+  ForecastSaveGuard,
+  type SavedForecasts,
+  acceptedSelection,
+  consumeForecast,
+  forecastReadyToReveal,
+  queueForecast,
+} from "./forecastReveal";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
 import {
@@ -204,6 +212,14 @@ function RunReady({
   const raw = useQueries(queries) as Record<string, unknown>;
   const graph = readGraph(raw.graph, { companyId, baselineRunId: run.baselineRunId });
   const shown = useShownScenarios();
+  const [saveGuard] = useState(() => new ForecastSaveGuard());
+  saveGuard.setContext({ companyId, runId: params.get("runId") ?? run.runId });
+  useEffect(() => {
+    saveGuard.activate();
+    return () => saveGuard.dispose();
+  }, [saveGuard]);
+  const [savedForecasts, setSavedForecasts] = useState<SavedForecasts>({});
+  const [omittedAncestors, setOmittedAncestors] = useState(0);
   const baseRunId =
     run.kind === "baseline"
       ? run.runId
@@ -242,6 +258,9 @@ function RunReady({
       id === run.runId
         ? { state: "ready", value: run }
         : readComparison(comparisonRaw[`comparison:${id}`], run, id);
+    const checked = comparisonReads[id];
+    if (savedForecasts[id] && checked?.state === "ready" && checked.value.parentRunId !== run.runId)
+      comparisonReads[id] = { state: "unusable" };
   }
   const parent = run.parentRunId ? (comparisonReads[run.parentRunId] ?? null) : null;
 
@@ -250,29 +269,25 @@ function RunReady({
   const link = useMutation(linkQuestionRef);
   const runs = useLedger();
 
-  async function write(
-    call: () => Promise<unknown>,
-    navigate: boolean,
-    showResult = false,
-  ): Promise<Outcome> {
+  function showSavedForecast(resultRunId: string) {
+    if (!saveGuard.matches(runKey)) return;
+    const entries = familyEntries(run, graph);
+    setSavedForecasts((current) => queueForecast(current, resultRunId));
+    setOmittedAncestors(
+      acceptedSelection([], resultRunId, run.runId, entries, baseRunId ?? "").omittedAncestors,
+    );
+    shown.set(
+      (ids) => acceptedSelection(ids, resultRunId, run.runId, entries, baseRunId ?? "").ids,
+    );
+  }
+
+  async function write(call: () => Promise<unknown>): Promise<Outcome> {
+    const context = saveGuard.capture();
     try {
       const parsed = RunResultSchema.safeParse(await call());
       if (!parsed.success || parsed.data.companyId !== companyId)
         return { ok: false, message: UNUSABLE_ANSWER };
-      if (showResult && !shown.ids.includes(parsed.data.runId)) {
-        // The new run is not in the family list yet; its parent is the open run, shown first.
-        const withParent =
-          run.runId === baseRunId
-            ? shown.ids
-            : (showWithAncestors(
-                shown.ids,
-                run.runId,
-                familyEntries(run, graph),
-                baseRunId ?? "",
-              ) ?? shown.ids);
-        shown.set([...withParent, parsed.data.runId]);
-      }
-      if (navigate) router.push(workspaceHref(companyId, { runId: parsed.data.runId }));
+      if (saveGuard.allows(context)) showSavedForecast(parsed.data.runId);
       return { ok: true, runId: parsed.data.runId };
     } catch (e) {
       return { ok: false, message: describeWriteError(e) };
@@ -284,8 +299,6 @@ function RunReady({
     changes: Change[],
     constraints: Constraint[] | null,
     constraintNote: string | null,
-    navigate: boolean,
-    show = false,
   ) {
     const changesJson = JSON.stringify(changes);
     const constraintsJson = constraints ? JSON.stringify(constraints) : undefined;
@@ -298,20 +311,17 @@ function RunReady({
       constraintNote,
     ]);
     const requestId = runs.idFor(payload);
-    return write(
-      () =>
-        simulate({
-          companyId,
-          parentRunId: run.runId,
-          requestId,
-          label,
-          changesJson,
-          reviewed: true,
-          ...(constraintsJson !== undefined ? { constraintsJson } : {}),
-          ...(constraintNote !== null ? { constraintNote } : {}),
-        }),
-      navigate,
-      show,
+    return write(() =>
+      simulate({
+        companyId,
+        parentRunId: run.runId,
+        requestId,
+        label,
+        changesJson,
+        reviewed: true,
+        ...(constraintsJson !== undefined ? { constraintsJson } : {}),
+        ...(constraintNote !== null ? { constraintNote } : {}),
+      }),
     );
   }
 
@@ -331,45 +341,82 @@ function RunReady({
     catalogHref: allScenariosHref(companyId),
     hrefFor: (id) => workspaceHref(companyId, { runId: id }),
     // A new what-if is drawn in its own color; the page stays on the run it was built on.
-    simulate: (label, changes) => runScenario(label, changes, null, null, false, true),
+    simulate: (label, changes) => runScenario(label, changes, null, null),
     buildOn: (id) => router.replace(workspaceHref(companyId, { runId: id }), { scroll: false }),
     reviseRules: (constraints, note) => {
       const constraintsJson = JSON.stringify(constraints);
       const requestId = runs.idFor(JSON.stringify(["rules", run.runId, constraintsJson, note]));
-      return write(
-        () =>
-          revise({
-            companyId,
-            parentRunId: run.runId,
-            requestId,
-            constraintsJson,
-            note,
-            reviewed: true,
-          }),
-        true,
+      return write(() =>
+        revise({
+          companyId,
+          parentRunId: run.runId,
+          requestId,
+          constraintsJson,
+          note,
+          reviewed: true,
+        }),
       );
     },
     confirmProposal: (q: QuestionReceipt) =>
       confirmQuestionProposal(q, runKey, runs, {
-        revise: (args) => write(() => revise(args), false),
-        simulate: (args) => write(() => simulate(args), false, true),
+        revise: (args) => write(() => revise(args)),
+        simulate: (args) => write(() => simulate(args)),
         relink,
       }),
     relink,
   };
 
+  const waitingReads = Object.entries(savedForecasts).filter(
+    ([id, status]) =>
+      status === "waiting" &&
+      selectedComparisons.includes(id) &&
+      comparisonReads[id]?.state !== "ready",
+  );
+  const waitingNotice = waitingReads.length
+    ? waitingReads.some(([id]) => comparisonReads[id]?.state !== "loading")
+      ? "The scenario is saved, but its forecast could not be displayed. Reopen it from Saved scenarios."
+      : "Reading the new saved forecast..."
+    : undefined;
+  const visibleGraph =
+    graph.state === "ready"
+      ? {
+          ...graph,
+          value: selectedComparisons.reduce((entries, id) => {
+            const read = comparisonReads[id];
+            return read?.state === "ready"
+              ? familyEntries(read.value, { state: "ready", value: entries })
+              : entries;
+          }, graph.value),
+        }
+      : graph;
+
   return (
     <WorkspaceView
       run={run}
       parent={parent}
-      graph={graph}
+      graph={visibleGraph}
       comparisons={{
         ids: selectedComparisons,
         reads: comparisonReads,
-        onChange: shown.set,
+        onChange: (ids) => {
+          setOmittedAncestors(0);
+          shown.set(ids);
+        },
         colors: shown.colors,
+        revealRunIds: Object.entries(savedForecasts).flatMap(([runId, status]) =>
+          status === "waiting" &&
+          forecastReadyToReveal({ runId, parentRunId: run.runId }, run, comparisonReads[runId])
+            ? [runId]
+            : [],
+        ),
+        onReveal: (runId) => setSavedForecasts((current) => consumeForecast(current, runId)),
       }}
       baseRunId={baseRunId}
+      forecastNotice={
+        omittedAncestors > 0
+          ? "Showing the new forecast and its 5 nearest parent scenarios. Earlier parents stay saved; the chart shows up to 6 scenario lines."
+          : waitingNotice
+      }
       questions={readQuestions(raw.questions, runKey) as Read<QuestionReceipt[]>}
       resultRef={readResultRef(raw.resultRef)}
       actions={actions}
@@ -377,7 +424,9 @@ function RunReady({
         selectedWeek: params.get("selectedWeek") ?? undefined,
         selectedItemId: params.get("selectedItemId") ?? undefined,
       }}
-      chat={(context) => <ChatSidebarLive run={run} {...context} />}
+      chat={(context) => (
+        <ChatSidebarLive run={run} {...context} onSavedForecast={showSavedForecast} />
+      )}
       initialAssistant={params.get("conversationId") ? "chat" : undefined}
       risksHref={
         latest.state === "ready" && latest.runId === run.runId && latest.analysisId

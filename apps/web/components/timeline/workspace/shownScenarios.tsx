@@ -1,6 +1,14 @@
 "use client";
 
-import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  type SetStateAction,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { assignColors } from "./scenarioComparisons";
 
 /**
@@ -11,14 +19,21 @@ type Shown = {
   /** Shown run ids in color-slot order. */
   ids: string[];
   colors: Record<string, number>;
-  set: (ids: string[]) => void;
+  set: (ids: SetStateAction<string[]>) => void;
 };
 
 const ShownContext = createContext<Shown | null>(null);
 
 export function ShownScenariosProvider({ children }: { children: ReactNode }) {
   const [colors, setColors] = useState<Record<string, number>>({});
-  const set = useCallback((ids: string[]) => setColors((prev) => assignColors(prev, ids)), []);
+  const set = useCallback(
+    (ids: SetStateAction<string[]>) =>
+      setColors((prev) => {
+        const current = Object.keys(prev).sort((a, b) => (prev[a] ?? 0) - (prev[b] ?? 0));
+        return assignColors(prev, typeof ids === "function" ? ids(current) : ids);
+      }),
+    [],
+  );
   const value = useMemo(
     () => ({
       ids: Object.keys(colors).sort((a, b) => (colors[a] ?? 0) - (colors[b] ?? 0)),
@@ -34,7 +49,14 @@ export function ShownScenariosProvider({ children }: { children: ReactNode }) {
 export function useShownScenarios(): Shown {
   const shared = useContext(ShownContext);
   const [colors, setColors] = useState<Record<string, number>>({});
-  const set = useCallback((ids: string[]) => setColors((prev) => assignColors(prev, ids)), []);
+  const set = useCallback(
+    (ids: SetStateAction<string[]>) =>
+      setColors((prev) => {
+        const current = Object.keys(prev).sort((a, b) => (prev[a] ?? 0) - (prev[b] ?? 0));
+        return assignColors(prev, typeof ids === "function" ? ids(current) : ids);
+      }),
+    [],
+  );
   const local = useMemo(
     () => ({
       ids: Object.keys(colors).sort((a, b) => (colors[a] ?? 0) - (colors[b] ?? 0)),

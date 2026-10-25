@@ -36,7 +36,7 @@ export type DecideSuggestion = (
   decision: SuggestionDecision,
   note: string,
 ) => Promise<void>;
-export type SimulateSuggestion = (suggestion: Suggestion) => Promise<void>;
+export type SimulateSuggestion = (suggestion: Suggestion, note: string) => Promise<void>;
 
 export const NEVER_MOVES_MONEY = "Approving adds the fix to the plan. Domino never moves money.";
 
@@ -197,7 +197,7 @@ function SuggestionCard({
     setBusy("simulate");
     setError(null);
     try {
-      await onSimulate(s);
+      await onSimulate(s, note);
     } catch (e) {
       const data = e instanceof ConvexError ? (e.data as { message?: unknown }) : null;
       setError(

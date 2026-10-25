@@ -1,6 +1,7 @@
-/** Turn one frozen Field suggestion into saved, editable Timeline runs. No provider calls. */
+/** Open frozen Worker comparison runs and an inspectable Ask Domino thread. No provider calls. */
 import { canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
+import { z } from "zod";
 import { api, internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { sha256 } from "./fieldJobs";
@@ -11,6 +12,7 @@ type Result = {
   rootRunId: string;
   scenarioRunId: string;
   fixRunId: string;
+  conversationId: string;
   route: string;
   reused: boolean;
   scenarioLow: { cents: number; weekStart: string };
@@ -19,10 +21,10 @@ type Result = {
 
 type Saved = { companyId: string; runId: string; created: boolean };
 const hash = async (value: unknown) => (await sha256(canonicalJson(value))).slice(0, 48);
-const routeFor = (companyId: string, runId: string) =>
-  `/c/${encodeURIComponent(companyId)}/timeline?${new URLSearchParams({ runId })}`;
+const routeFor = (companyId: string, runId: string, conversationId: string) =>
+  `/c/${encodeURIComponent(companyId)}/timeline?${new URLSearchParams({ runId, conversationId })}#timeline-chat`;
 
-/** Explicit click saves the pinned baseline, risk scenario, then fix child in that order. */
+/** Explicit viewing saves the pinned baseline, risk, fix and context without accepting it. */
 export const simulate = action({
   args: {
     companyId: v.id("companies"),
@@ -31,8 +33,14 @@ export const simulate = action({
     fixKind: v.string(),
     suggestionId: v.string(),
     snapshotVersion: v.number(),
+    note: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<Result> => {
+    const optionalNote = z
+      .string()
+      .max(500)
+      .parse(args.note ?? "");
+    const { note: _note, ...identity } = args;
     const savedInputs: {
       seedJson: string;
       contentHash: string;
@@ -53,7 +61,7 @@ export const simulate = action({
       periodStart: string | null;
       periodEnd: string | null;
       reportedAt: string | null;
-    } = await ctx.runQuery(internal.fieldTimeline.suggestionInputs, args);
+    } = await ctx.runQuery(internal.fieldTimeline.suggestionInputs, identity);
     const sourcePeriod =
       savedInputs.provenanceLabel && savedInputs.periodStart && savedInputs.periodEnd
         ? ` ${savedInputs.provenanceLabel}: reconstructed ledger period ${savedInputs.periodStart} to ${savedInputs.periodEnd}${savedInputs.reportedAt ? `, public report ${savedInputs.reportedAt}` : ""}.`
@@ -64,7 +72,7 @@ export const simulate = action({
       scenarioId: args.scenarioId,
       fixKind: args.fixKind,
     })}`;
-    const description = `${sourcePeriod ? `${sourcePeriod.trim()} ` : ""}${savedInputs.illustrative ? "Illustrative " : ""}Field books and rules pinned for this analyst run, snapshot version ${savedInputs.snapshotVersion}, as of ${savedInputs.asOf}. Review by choosing Simulate this option. The cash floor and any credit line are simulation assumptions, not a reported facility. Nothing is paid or moved.`;
+    const description = `${sourcePeriod ? `${sourcePeriod.trim()} ` : ""}${savedInputs.illustrative ? "Illustrative " : ""}Field books and rules pinned for this analyst run, snapshot version ${savedInputs.snapshotVersion}, as of ${savedInputs.asOf}. Saved for comparison by choosing Show on Timeline; this does not accept the suggestion. The cash floor and any credit line are simulation assumptions, not a reported facility. Nothing is paid or moved.`;
     if (origin.length >= 2000) throw new Error("The saved suggestion identity is too long");
     const note = `${description.slice(0, 1999 - origin.length)}\n${origin}`;
     const baselineKey = await hash({
@@ -138,13 +146,27 @@ export const simulate = action({
       fixSaved.parentRunId !== scenario.runId
     )
       throw new Error("Saved Timeline comparison could not be verified");
+    const chat = await ctx.runMutation(internal.timeline.chat.beginWorker, {
+      fieldCompanyId: args.companyId,
+      fieldRunId: args.runId,
+      scenarioId: args.scenarioId,
+      fixKind: args.fixKind,
+      suggestionId: args.suggestionId,
+      snapshotVersion: args.snapshotVersion,
+      companyId: baseline.companyId,
+      runId: fix.runId,
+      scenarioRunId: scenario.runId,
+      requestId: `field.option.chat.${await hash({ fixKey, note: optionalNote })}`,
+      note: optionalNote,
+    });
     return {
       timelineCompanyId: baseline.companyId,
       baselineRunId: baseline.runId,
       rootRunId: root.runId,
       scenarioRunId: scenario.runId,
       fixRunId: fix.runId,
-      route: routeFor(baseline.companyId, fix.runId),
+      conversationId: chat.conversationId,
+      route: routeFor(baseline.companyId, fix.runId, chat.conversationId),
       reused: !baseline.created && !root.created && !scenario.created && !fix.created,
       scenarioLow: {
         cents: riskSaved.forecast.lowPoint.usable,

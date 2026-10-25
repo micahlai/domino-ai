@@ -117,7 +117,9 @@ export async function requestChat(
 export class ChatNavigationGuard {
   private context = "";
   private active = true;
+  private revision = 0;
   setContext(context: string) {
+    if (context !== this.context) this.revision++;
     this.context = context;
   }
   activate() {
@@ -125,12 +127,13 @@ export class ChatNavigationGuard {
   }
   dispose() {
     this.active = false;
+    this.revision++;
   }
   capture() {
-    return this.context;
+    return `${this.revision}:${this.context}`;
   }
   allows(context: string) {
-    return this.active && context === this.context;
+    return this.active && context === this.capture();
   }
 }
 

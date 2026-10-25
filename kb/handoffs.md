@@ -1,3 +1,14 @@
+## 2026-10-25 Codex Worker to contextual Timeline
+- Done: separate codex/worker-timeline-context worktree from origin/main 0f2874f. Worker actions are Decline / Show on Timeline; notes persist through decisions or context chats. Exact frozen risk/fix forecasts and sources open in Ask Domino, with no implicit acceptance or provider call on opening.
+- Checks: full pnpm check passes 2,741 tests, typechecks and lint; separate Convex tsc passes. Props browser confirms note/context handoff and declined-note history. Mocked action tests exercise actual saved run/chat APIs, retry reuse, identity checks and untrusted-note rejection. Details: features/field/WORKER-TIMELINE-CHAT.md.
+- Limits: this branch is not merged into main or claude-timeline-chat. Existing Ask Domino answers remain bounded; broad advisory narration is unchanged. No new backend deployment, environment copy, schema change or user-runtime restart. Root-owned frontend-only preview is 3126; existing production runtimes/data preserved.
+- UI follow-up: synchronized TL13's single Ask Domino open/collapse toggle, removing both duplicate close buttons. Existing 100 workspace tests and final full pnpm check (2,741 tests/typechecks/lint) pass; desktop/phone browser verification uses the same patch in the Timeline checkout. Temporary root-owned frontend-only preview 3126 stopped after props verification.
+
+## 2026-10-25 Codex combined Timeline and Worker main integration
+- Done: merged claude-timeline-chat 5fbd13e and codex/worker-timeline-context dbc4d55 over origin/main 0f2874f in isolated codex/merge-timeline-worker. Retained main's simplified chat layout and existing Field features; combined optimistic user messages, once-only saved-forecast reveal, bounded chart annotations, single sidebar toggle and frozen Worker context.
+- Review: independent read-only integration audit found no blockers. Combined props browser verifies Worker note/context and Timeline single control. Full pnpm check passes 2,755 tests, package typechecks and lint742files. Independent Convex TypeScript and webpack production build pass. Both source tips are ancestors of the combined result.
+- Limits: no production backend deployment, data reset, provider call or existing runtime restart. Temporary frontend-only preview3127 stopped after verification. User explicitly authorized main integration; prior branch-isolation notes are historical.
+
 ## 2026-10-25 Saved suggestion journey live
 - Done: af76dda pushed; Next3114 restarted, Convex3260 watcher recovered after locked dependency install with data preserved. Live2U Late payments analysis completed; primary Simulate opened exact saved risk/fix comparison, required label and How links. Existing baseline91-day history preserved. Isolated3138/3298 stopped.
 - Runtime: Next92582/session61687; Convex94703/watcher94604/session28954. Checks/build reused from the checked candidate. No main/protected-port/data changes. Optional Try-it/map polish remains queued. See features/field/HANDOFF.md and /tmp/field-suggestion-live-3114.png.
@@ -17,6 +28,15 @@
 - Next: authorized field/main fast-forward/push, Next3114 restart, one live verification, isolated3138/3298 stop. Main/protected ports/data preserved. Exact evidence and limitations: features/field/HANDOFF.md.
 
 # Handoffs
+
+## 2026-10-25 Codex TL13 single chat control
+- Done: Ask Domino now opens/collapses the mounted sidebar; removed the standalone header icon and inner close icon. Its text remains visible on phones, expanded/controls state stays accessible, and Escape restores focus to the toggle.
+- Browser: one named toggle and zero duplicate close controls; desktop and actual 390px phone tests retain a typed draft across collapse/reopen and focus the input when opening. Same two-file change synchronized to codex/worker-timeline-context. Existing workspace tests/typechecks/lint and final full pnpm check (2,534 tests) pass.
+
+## 2026-10-25 Codex TL12 in-place forecasts and chat
+- Done: accepted chat/manual/question/rule scenarios select themselves without navigating, wait for validated saved data, and draw once. Chat Send clears the composer and shows the user bubble immediately; exact retry payloads and acknowledgement deduplication remain intact. Nearby cash-minimum labels use bounded separate lanes and full expandable receipt text.
+- Checks: full pnpm check passes (2,534 tests, typechecks, lint); final playground addition passes web typecheck/lint. Live manual save kept URL/editor, selected the new run and mounted its animation. Live chat showed the pending bubble with an empty composer, then one acknowledged user turn. Chat acceptance also kept URL, fractional time window (18.333333–38) and cash range; its new scenario was checked and the reveal path mounted. Crowded fixture has eight non-overlapping measured text bounds at 1440px and 390px.
+- Runtime: current Timeline frontend is http://127.0.0.1:3000, existing local Convex backend on 3212. The backend root message is not the app. Existing user runtimes/data preserved. Worker contextual handoff is separately isolated on codex/worker-timeline-context, not merged here or into main.
 
 ## 2026-10-25 Codex TL11 timeline layout
 - Done: consolidated session layout, continuous pan/grid, vertical key and branch-focus work on claude-timeline-chat. Feature handoff: features/timeline/HANDOFF.md; scope: features/timeline/TL11-layout.md.

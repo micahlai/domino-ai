@@ -13,6 +13,7 @@ import {
   demoSuggestions,
   fixSentence,
   isNotDeployed,
+  readSimulationResult,
   roomLine,
   scenarioTitle,
   simulationArgs,
@@ -34,6 +35,31 @@ const row = (over: Record<string, unknown> = {}) => ({
 const suggestion = (over: Record<string, unknown> = {}) => toSuggestion(row(over)) as Suggestion;
 
 describe("worker formatting", () => {
+  it("preserves notes for Timeline and rejects unsafe navigation results", () => {
+    const note = "  Keep the optional note exactly.\n  ";
+    expect(simulationArgs("company/one", suggestion(), note).note).toBe(note);
+    expect(() => simulationArgs("company/one", suggestion(), "x".repeat(501))).toThrow();
+    const result = {
+      timelineCompanyId: "kestrel",
+      baselineRunId: "base",
+      rootRunId: "root",
+      scenarioRunId: "risk",
+      fixRunId: "fix",
+      conversationId: "chat",
+      reused: false,
+      scenarioLow: { cents: 100, weekStart: "2026-11-02" },
+      fixLow: { cents: 200, weekStart: "2026-11-02" },
+      route: "/c/kestrel/timeline?runId=fix&conversationId=chat#timeline-chat",
+    };
+    expect(readSimulationResult(result)).toEqual(result);
+    for (const route of [
+      "https://example.com",
+      "/c/other/timeline?runId=fix&conversationId=chat#timeline-chat",
+      "/c/kestrel/timeline?runId=risk&conversationId=chat#timeline-chat",
+    ])
+      expect(() => readSimulationResult({ ...result, route })).toThrow();
+    expect(() => readSimulationResult({ ...result, conversationId: undefined })).toThrow();
+  });
   it("formats money and dates without throwing on bad backend values", () => {
     expect(money(120_000_000)).toBe("$1.2M");
     expect(money(-33_000_000)).toBe("−$330K");
