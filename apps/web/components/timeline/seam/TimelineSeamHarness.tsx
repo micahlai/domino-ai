@@ -13,6 +13,7 @@ import { CASE_ID } from "../../historical/live";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { BaselineLive } from "../baseline/BaselineLive";
+import { WorkspacePlayground } from "../workspace/WorkspacePlayground";
 import { TimelineBackendSmoke } from "./TimelineBackendSmoke";
 import { WeeklySeedPanel } from "./WeeklySeedPanel";
 import { seedView } from "./seedView";
@@ -43,6 +44,14 @@ export function TimelineSeamHarness() {
   return (
     <div className="space-y-6">
       <BaselineLive />
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Timeline workspace (fixtures)</h2>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          The saved-scenario workspace drawn from labelled fixtures. Nothing here is saved or
+          calculated; the live workspace is at /c/[companyId]/timeline.
+        </p>
+        <WorkspacePlayground />
+      </section>
       <TimelineBackendSmoke caseId={CASE_ID} />
       <WeeklySeedPanel />
       <section className="space-y-3">

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { Skeleton } from "../../ui/skeleton";
+import { workspaceHref } from "../workspace/api";
 import { type BaselineDraft, BaselineImportForm } from "./BaselineImportForm";
 import { SavedBaselineState } from "./SavedBaselineView";
 import {
@@ -132,6 +133,13 @@ function Connected() {
           data-testid="baseline-link"
         >
           Link to this saved forecast
+        </Link>
+        <Link
+          href={workspaceHref(stableKey.companyId, { baselineRunId: stableKey.runId })}
+          className="ml-4 inline-block text-sm text-primary underline-offset-4 hover:underline"
+          data-testid="workspace-link"
+        >
+          Open in the Timeline workspace
         </Link>
       </div>
     ) : undefined;
