@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { DEFAULT_STYLE, styleInitScript } from "@/lib/style-registry";
+import { themeInitScript } from "@/lib/theme-script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -15,11 +16,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    // data-style is set by the inline script before paint, so React must not reset it on hydrate.
+    // data-style and the dark class are set by inline scripts before paint, so React must not reset it on hydrate.
     <html lang="en" className={inter.variable} data-style={DEFAULT_STYLE} suppressHydrationWarning>
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant script built from the style registry; no user input reaches it */}
         <script dangerouslySetInnerHTML={{ __html: styleInitScript }} />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant script with a fixed storage key; no user input reaches it */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React hydrates. */}
       <body className="font-sans" suppressHydrationWarning>
