@@ -14,6 +14,7 @@ import {
 } from "react";
 import { api } from "../../convex/_generated/api";
 import { weeklyFixtureText } from "../../lib/feature-boundary/verify";
+import { useSelectedCompany } from "./company";
 import {
   type DemoState,
   demoAdvanceFeed,
@@ -62,8 +63,12 @@ export function FieldDataProvider({ children }: { children: ReactNode }) {
 
 function LiveData({ children }: { children: ReactNode }) {
   const client = useConvex();
-  // field.status with no companyId follows the newest live feed.
-  const status = useQuery(api.field.status, {});
+  // Every field.* read follows the company picked in the top bar.
+  const picked = useSelectedCompany();
+  const status = useQuery(
+    api.field.status,
+    picked.companyId ? { companyId: picked.companyId } : picked.companyId === null ? {} : "skip",
+  );
   const companyId = status?.companyId;
   const open = useQuery(api.field.findings, companyId ? { companyId, status: "open" } : "skip");
   const approved = useQuery(
@@ -81,7 +86,7 @@ function LiveData({ children }: { children: ReactNode }) {
   const ingestNow = useMutation(api.field.ingestNow);
   const advanceFeed = useMutation(api.field.advanceFeed);
   const setAutoIngest = useMutation(api.field.setAutoIngest);
-  const setup = useMutation(api.field.setup);
+  const setupAll = useMutation(api.field.setupAll);
   const actions = useMemo<FieldActions>(() => {
     const need = () => {
       if (!companyId) throw new Error("Connect the mock sources first");
@@ -101,12 +106,12 @@ function LiveData({ children }: { children: ReactNode }) {
         await setAutoIngest({ companyId: need(), enabled });
       },
       setup: async () => {
-        await setup({});
+        await setupAll({});
       },
       exportSeed: async () =>
         (await client.query(api.field.exportSeed, { companyId: need() })).json,
     };
-  }, [client, companyId, decide, ingestNow, advanceFeed, setAutoIngest, setup]);
+  }, [client, companyId, decide, ingestNow, advanceFeed, setAutoIngest, setupAll]);
   const loaded = log.status !== "LoadingFirstPage";
   const operations = useMemo(
     () => (loaded ? toOperations(log.results) : undefined),

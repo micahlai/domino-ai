@@ -56,7 +56,7 @@ const BATCHES: Batch[] = [
   {
     sources: [
       { id: "payroll", entries: 1, note: "1 new pay run" },
-      { id: "bank", entries: 4, note: "4 new bank transactions" },
+      { id: "plaid", entries: 4, note: "4 new bank transactions" },
     ],
     finding: {
       kind: "unusual_amount",
@@ -87,7 +87,7 @@ const BATCHES: Batch[] = [
   {
     sources: [
       { id: "books", entries: 2, note: "2 new bills" },
-      { id: "bank", entries: 1, note: "1 new bank transaction" },
+      { id: "plaid", entries: 1, note: "1 new bank transaction" },
     ],
     finding: {
       kind: "conflict",
@@ -305,7 +305,7 @@ export function initialDemoState(historyAt = "2026-10-30T16:00:00-07:00"): DemoS
     nextBatch: 0,
     nextOp: 1,
   };
-  const sources = ["billing", "crm", "cards", "books", "payroll", "bank"];
+  const sources = ["billing", "crm", "cards", "books", "payroll", "plaid"];
   const first = record(
     base,
     [

@@ -44,6 +44,8 @@ import type * as history from "../history.js";
 import type * as investigation from "../investigation.js";
 import type * as investigationCatalog from "../investigationCatalog.js";
 import type * as lib_computed from "../lib/computed.js";
+import type * as lib_connectionRows from "../lib/connectionRows.js";
+import type * as lib_fieldCompanies from "../lib/fieldCompanies.js";
 import type * as lib_parse from "../lib/parse.js";
 import type * as lib_publish from "../lib/publish.js";
 import type * as lib_records from "../lib/records.js";
@@ -98,6 +100,8 @@ declare const fullApi: ApiFromModules<{
   investigation: typeof investigation;
   investigationCatalog: typeof investigationCatalog;
   "lib/computed": typeof lib_computed;
+  "lib/connectionRows": typeof lib_connectionRows;
+  "lib/fieldCompanies": typeof lib_fieldCompanies;
   "lib/parse": typeof lib_parse;
   "lib/publish": typeof lib_publish;
   "lib/records": typeof lib_records;

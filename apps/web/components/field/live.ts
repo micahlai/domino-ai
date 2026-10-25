@@ -18,10 +18,10 @@ const AGENT_NAME: Record<string, string> = {
 };
 
 /**
- * Source kinds in the log -> catalog source ids. Field ingest writes mock server kinds (crm,
- * books, nessie); the Connect page writes connector ids (hubspot, qbo, gusto). Both name the
- * same vendor, so they land on one node. Plaid stays its own node: it is a different way in to
- * the bank than the Capital One Nessie feed.
+ * Source kinds in the log -> catalog source ids. Field ingest and the Connect page write
+ * connector ids (stripe, hubspot, qbo, gusto, ramp, plaid); older logs carry mock server kinds
+ * (crm, books, nessie). Both name the same vendor, so they land on one node. The bank is read
+ * through Plaid; old Capital One Nessie rows keep their own node.
  */
 const SOURCE_NAME: Record<string, string> = {
   stripe: "billing",

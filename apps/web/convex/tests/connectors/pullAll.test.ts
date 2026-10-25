@@ -1,4 +1,5 @@
 import type { Snapshot } from "@domino/contracts";
+import { PROFILE_IDS } from "@domino/sim";
 import { describe, expect, it } from "vitest";
 import { inProcessFetcher } from "../../connectors/inProcess";
 import { type ConnectionInput, pullAll } from "../../connectors/pullAll";
@@ -160,6 +161,29 @@ describe("pullAll over the vendor mocks (sim Kestrel)", () => {
     const r = await pullAll({ fetcher, companyId: served.companyId, connections: connected() });
     expect(r.checks.filter((c) => !c.ok).map((c) => c.ref)).toEqual([`po_${deposit.id}`]);
   });
+});
+
+describe("pullAll over every picker profile", () => {
+  it.each(PROFILE_IDS)(
+    "%s: six tools rebuild the served snapshot and every tie-out holds",
+    async (profile) => {
+      let w = newWorld(1, profile);
+      w = nextWorld(w);
+      const served = servedSnapshot(w, emptyOverlay());
+      const r = await pullAll({
+        fetcher: inProcessFetcher(served),
+        companyId: served.companyId,
+        connections: connected(),
+      });
+      expect(r.snapshotError).toBeNull();
+      expect(sorted(r.snapshot)).toEqual(sorted(served));
+      // Payroll leaves the bank as net pay and taxes: the run ties out to their sum.
+      expect(
+        r.checks.filter((c) => c.name === "Gusto payroll = bank debit").length,
+      ).toBeGreaterThan(0);
+      expect(r.checks.filter((c) => !c.ok)).toEqual([]);
+    },
+  );
 });
 
 describe("Plaid transactions/sync cursor", () => {
