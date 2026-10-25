@@ -27,8 +27,15 @@ const SOURCE_NAME: Record<string, string> = {
   nessie: "bank",
 };
 
-export const liveAgentName = (agent: string | undefined) =>
-  agent ? (AGENT_NAME[agent] ?? agent) : "Unknown";
+/** Rows written by shared engine code carry no agent; name them by actor instead. */
+const ACTOR_NAME: Record<string, string> = {
+  engine: "Engine",
+  connector: "Connector",
+  person: "Reviewer",
+};
+
+export const liveAgentName = (agent: string | undefined, actor = "") =>
+  agent ? (AGENT_NAME[agent] ?? agent) : (ACTOR_NAME[actor] ?? "Unknown");
 export const liveSourceName = (source: string) => SOURCE_NAME[source] ?? source;
 
 export function operationKind(action: string): OperationKind {
@@ -36,7 +43,7 @@ export function operationKind(action: string): OperationKind {
   if (action === "ingest.pulled") return "pull";
   if (action === "ingest.mapped" || action === "ingest.reconciled") return "map";
   if (action === "ingest.snapshotWritten") return "snapshot";
-  if (action.startsWith("ingest.recompute")) return "forecast";
+  if (/recompute/i.test(action)) return "forecast";
   if (action.startsWith("audit.")) return "audit";
   if (action.startsWith("escalation.")) return "decision";
   return "run";
@@ -66,7 +73,8 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
     return {
       id: row._id,
       at: row.at,
-      agent: liveAgentName(row.agent),
+      seq: row._creationTime,
+      agent: liveAgentName(row.agent, row.actor),
       ...(row.tool && { tool: row.tool }),
       ...(row.source && { source: liveSourceName(row.source) }),
       kind: operationKind(row.action),

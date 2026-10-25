@@ -31,6 +31,7 @@ import {
   PULSE_SECONDS,
   type Pulse,
   buildBrainGraph,
+  byTime,
   freshOperations,
   layoutBrain,
   neighbors,
@@ -321,7 +322,7 @@ export function BrainMap() {
     sources: graph.nodes.filter((n) => n.kind === "source").length,
   };
   const latest = data.operations?.length
-    ? data.operations.reduce((a, b) => (Date.parse(b.at) >= Date.parse(a.at) ? b : a))
+    ? data.operations.reduce((a, b) => (byTime(a, b) <= 0 ? b : a))
     : undefined;
 
   return (
@@ -337,7 +338,7 @@ export function BrainMap() {
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
             {latest
-              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary}`
+              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
               : "No recorded work yet."}{" "}
             A moving dot means an operation was just recorded on that link.
           </p>

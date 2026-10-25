@@ -42,7 +42,9 @@ export function toCanvasStatus(status: string | undefined): CanvasStatus {
 }
 
 export const byTime = (a: FieldOperation, b: FieldOperation) =>
-  a.at === b.at ? a.id.localeCompare(b.id) : Date.parse(a.at) - Date.parse(b.at);
+  a.at === b.at
+    ? (a.seq ?? 0) - (b.seq ?? 0) || a.id.localeCompare(b.id)
+    : Date.parse(a.at) - Date.parse(b.at);
 
 function humanize(name: string) {
   const words = name.replace(/[_-]+/g, " ").trim();
@@ -185,12 +187,19 @@ const COLUMN_X: Record<BrainKind, number> = { source: 0, agent: 340, subagent: 6
 const ROW = 140;
 const COLUMN_TOP: Record<BrainKind, number> = { source: 0, agent: ROW, subagent: ROW / 2, tool: 0 };
 
+/** Tools wrap into extra columns so a long tool list does not shrink the whole map. */
+const TOOL_ROWS = 6;
+const TOOL_COLUMN = 240;
+
 export function layoutBrain(nodes: BrainNode[]): Map<string, { x: number; y: number }> {
   const used: Record<BrainKind, number> = { source: 0, agent: 0, subagent: 0, tool: 0 };
   const positions = new Map<string, { x: number; y: number }>();
   for (const node of nodes) {
-    const row = used[node.kind]++;
-    positions.set(node.id, { x: COLUMN_X[node.kind], y: COLUMN_TOP[node.kind] + row * ROW });
+    const n = used[node.kind]++;
+    const wrap = node.kind === "tool";
+    const row = wrap ? n % TOOL_ROWS : n;
+    const x = COLUMN_X[node.kind] + (wrap ? Math.floor(n / TOOL_ROWS) * TOOL_COLUMN : 0);
+    positions.set(node.id, { x, y: COLUMN_TOP[node.kind] + row * ROW });
   }
   return positions;
 }

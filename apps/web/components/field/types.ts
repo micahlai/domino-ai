@@ -44,6 +44,8 @@ export type FieldOperation = {
   id: string;
   /** ISO timestamp the operation was recorded. */
   at: string;
+  /** Write order, to break ties: rows from one backend transaction share the same `at`. */
+  seq?: number;
   agent: string;
   tool?: string;
   source?: string;

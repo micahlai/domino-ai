@@ -351,7 +351,7 @@ function SeedDialog({
         </p>
         <pre
           aria-label="Weekly seed JSON text"
-          className="max-h-[50vh] overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-5"
+          className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-all rounded-md border bg-muted/40 p-3 font-mono text-xs leading-5"
         >
           {text}
         </pre>
