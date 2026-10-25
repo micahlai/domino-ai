@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "id": "field:seed/twou-2023q3-v1",
+  "exportedAt": "2026-10-24T12:00:00Z",
+  "company": {
+    "cik": "0001459417",
+    "name": "2U, Inc."
+  },
+  "provenance": "evidence",
+  "snapshotRef": {
+    "id": "field:snapshot/twou-2023q3-v1",
+    "contentHash": "691c60f0a42843c4d7b50330a323a40f0f5ebbed200e983eb42e2b7d14d1c11b"
+  },
+  "snapshot": {
+    "schemaVersion": 1,
+    "id": "field:snapshot/twou-2023q3-v1",
+    "cik": "0001459417",
+    "sourceSignature": "historical_case:twou-2023-cash-v1",
+    "cutoff": "2023-11-10T23:59:59-05:00",
+    "sourcePackageIds": ["twou-2023-cash-v1"],
+    "mappingReceiptIds": [],
+    "reconciliations": [],
+    "rules": [],
+    "case": {
+      "id": "twou-2023-cash-v1",
+      "companyName": "2U, Inc.",
+      "provenance": "evidence",
+      "currency": "USD",
+      "sources": [
+        {
+          "id": "S7",
+          "title": "2U Reports Results for Third Quarter 2023",
+          "url": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+          "publishedAt": "2023-11-09T16:01:00-05:00",
+          "timezone": "America/New_York",
+          "period": {
+            "kind": "duration",
+            "start": "2023-07-01",
+            "end": "2023-09-30"
+          },
+          "retrievedOn": "2026-10-24",
+          "contentHash": "c1c9486e9a337b4b28b4980a8db86f10ddf8617dc9cbbc90a7209e98daee7e4f"
+        }
+      ],
+      "facts": [
+        {
+          "kind": "reported",
+          "id": "F01",
+          "metric": "cash_and_equivalents",
+          "period": {
+            "kind": "instant",
+            "date": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": 4114100000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Balance Sheets (in thousands), September 30, 2023 column, row 'Cash and cash equivalents'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F02",
+          "metric": "restricted_cash",
+          "period": {
+            "kind": "instant",
+            "date": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": 1271000000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Balance Sheets (in thousands), September 30, 2023 column, row 'Restricted cash'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F03",
+          "metric": "cash_including_restricted",
+          "period": {
+            "kind": "instant",
+            "date": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": 5385100000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Statements of Cash Flows (in thousands), Nine Months Ended September 30, 2023 column, row 'Cash, cash equivalents and restricted cash, end of period'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F05",
+          "metric": "operating_cash_flow",
+          "period": {
+            "kind": "duration",
+            "start": "2023-01-01",
+            "end": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": -1752000000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Statements of Cash Flows (in thousands), Nine Months Ended September 30, 2023 column, row 'Net cash used in operating activities'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F06",
+          "metric": "investing_cash_flow",
+          "period": {
+            "kind": "duration",
+            "start": "2023-01-01",
+            "end": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": -3657600000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Statements of Cash Flows (in thousands), Nine Months Ended September 30, 2023 column, row 'Net cash used in investing activities'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F07",
+          "metric": "financing_cash_flow",
+          "period": {
+            "kind": "duration",
+            "start": "2023-01-01",
+            "end": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": -7351300000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Statements of Cash Flows (in thousands), Nine Months Ended September 30, 2023 column, row 'Net cash used in financing activities'",
+          "reportedScale": "thousands"
+        },
+        {
+          "kind": "reported",
+          "id": "F08",
+          "metric": "fx_effect_on_cash",
+          "period": {
+            "kind": "duration",
+            "start": "2023-01-01",
+            "end": "2023-09-30"
+          },
+          "currency": "USD",
+          "cents": -111800000,
+          "availableAt": "2023-11-09T16:01:00-05:00",
+          "sourceId": "S7",
+          "locator": "S7 Condensed Consolidated Statements of Cash Flows (in thousands), Nine Months Ended September 30, 2023 column, row 'Effect of exchange rate changes on cash'",
+          "reportedScale": "thousands"
+        }
+      ],
+      "assumptions": [
+        {
+          "id": "AS-FIN0",
+          "label": "synthetic",
+          "description": "Analyst assumption: net financing cash flow is zero for 2023-10-01 to 2023-12-31. The nine-month financing outflow is not carried forward.",
+          "basisFactIds": ["F07"],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 0
+          },
+          "effectiveFrom": "2023-10-01",
+          "dependsOn": [],
+          "feasibleAtCutoff": "yes",
+          "selectedAfterReveal": false
+        },
+        {
+          "id": "AS-FX0",
+          "label": "synthetic",
+          "description": "Analyst assumption: exchange-rate effect on cash is zero for 2023-10-01 to 2023-12-31.",
+          "basisFactIds": ["F08"],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 0
+          },
+          "effectiveFrom": "2023-10-01",
+          "dependsOn": [],
+          "feasibleAtCutoff": "yes",
+          "selectedAfterReveal": false
+        },
+        {
+          "id": "AS-RESTRICTED",
+          "label": "synthetic",
+          "description": "Analyst assumption: restricted cash stays at its 2023-09-30 balance. Cash outside restricted cash is a modeled estimate under this assumption, never an observation.",
+          "basisFactIds": ["F02"],
+          "value": {
+            "unit": "cents",
+            "low": 1271000000,
+            "high": 1271000000
+          },
+          "effectiveFrom": "2023-10-01",
+          "dependsOn": [],
+          "feasibleAtCutoff": "yes",
+          "selectedAfterReveal": false
+        },
+        {
+          "id": "A1",
+          "label": "counterfactual",
+          "description": "HYPOTHETICAL second cost action decided at the cutoff. Not a company plan; feasibility unknown. Ranges are analyst bounds, not derived from a disclosed figure, and no prior action is taken to show that savings would be linear or realised. Value is cash savings before 2023-12-31: zero, because the earliest first benefit (92 days; up to 184 in the analyst range) falls after the 51 days left. Later savings (analyst scale only: USD 13.75M to 27.5M a year gross) are not quantified here.",
+          "basisFactIds": [],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 0
+          },
+          "effectiveFrom": "2023-11-11",
+          "dependsOn": [],
+          "feasibleAtCutoff": "unknown",
+          "selectedAfterReveal": false,
+          "oneTimeCost": {
+            "unit": "cents",
+            "low": 137500000,
+            "high": 715000000
+          },
+          "benefitLagDays": 92
+        },
+        {
+          "id": "A1-DOWNSIDE",
+          "label": "counterfactual",
+          "description": "HYPOTHETICAL downside to A1: share of gross savings lost to lower revenue or extra attrition cost, 0 to 50% of the upper gross range (USD 0 to 13.75M a year). Falls after 2023-12-31, timing unknown, excluded from in-window figures.",
+          "basisFactIds": [],
+          "value": {
+            "unit": "cents",
+            "low": 0,
+            "high": 1375000000
+          },
+          "effectiveFrom": "2023-11-11",
+          "dependsOn": ["A1"],
+          "feasibleAtCutoff": "unknown",
+          "selectedAfterReveal": false
+        }
+      ]
+    },
+    "roles": [
+      {
+        "role": "usable_cash",
+        "status": "validated",
+        "factId": "F01"
+      },
+      {
+        "role": "total_cash",
+        "status": "validated",
+        "factId": "F03"
+      },
+      {
+        "role": "restricted_cash",
+        "status": "validated",
+        "factId": "F02"
+      },
+      {
+        "role": "operating_ytd",
+        "status": "validated",
+        "factId": "F05"
+      },
+      {
+        "role": "investing_ytd",
+        "status": "validated",
+        "factId": "F06"
+      },
+      {
+        "role": "financing_ytd",
+        "status": "validated",
+        "factId": "F07"
+      },
+      {
+        "role": "fx_ytd",
+        "status": "validated",
+        "factId": "F08"
+      }
+    ],
+    "completeness": "complete",
+    "contentHash": "691c60f0a42843c4d7b50330a323a40f0f5ebbed200e983eb42e2b7d14d1c11b"
+  },
+  "quarterBridge": {
+    "knowledgeCutoff": "2023-11-10T23:59:59-05:00",
+    "originBalanceDate": "2023-09-30",
+    "targetDate": "2023-12-31",
+    "roleFacts": {
+      "usable_cash": "F01",
+      "total_cash": "F03",
+      "operating_ytd": "F05",
+      "investing_ytd": "F06"
+    },
+    "financingAssumptionId": "AS-FIN0",
+    "fxAssumptionId": "AS-FX0",
+    "methodAssumptionIds": ["AS-RESTRICTED"]
+  },
+  "pins": {
+    "boundaryVersion": "1.0.0",
+    "hashScheme": "sha256/domino-canonical-json-v1",
+    "snapshotSchemaVersion": 1,
+    "method": {
+      "id": "quarterly_cash_bridge",
+      "version": "0.1.0"
+    }
+  },
+  "readiness": {
+    "status": "forecast_ready"
+  },
+  "postHoc": false,
+  "contentHash": "ec648c0c49a46a489346ab628df57adc26fd17de49b67aab5dbcc147cd9fe2ef"
+}
