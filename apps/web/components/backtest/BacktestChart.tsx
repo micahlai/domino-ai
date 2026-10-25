@@ -27,6 +27,8 @@ const STYLE = {
   counterfactual: { color: ACCENT, dash: undefined, width: 3 },
 } as const;
 
+const LEGEND = ["forecast", "actual", "counterfactual"] as const;
+
 function useWidth(initial = 760) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(initial);
@@ -64,7 +66,7 @@ export function BacktestChart({
 }) {
   const [ref, width] = useWidth();
   const height = 320;
-  const m = { top: 34, right: 112, bottom: 52, left: 64 };
+  const m = { top: 34, right: 168, bottom: 52, left: 64 };
   const all = lines.flatMap((l) => l.points);
   const dates = [...new Set([...all.map((p) => p.date), cutoff])].sort();
   const x = scaleUtc()
@@ -96,22 +98,24 @@ export function BacktestChart({
   return (
     <div ref={ref} className="w-full">
       <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted-foreground">
-        {lines.map((l) => (
-          <li key={l.id} className="flex items-center gap-2">
-            <svg width="28" height="10" aria-hidden="true">
-              <line
-                x1="0"
-                x2="28"
-                y1="5"
-                y2="5"
-                stroke={STYLE[l.id].color}
-                strokeWidth={STYLE[l.id].width}
-                strokeDasharray={STYLE[l.id].dash}
-              />
-            </svg>
-            {l.label}
-          </li>
-        ))}
+        {[...lines]
+          .sort((a, b) => LEGEND.indexOf(a.id) - LEGEND.indexOf(b.id))
+          .map((l) => (
+            <li key={l.id} className="flex items-center gap-2">
+              <svg width="28" height="10" aria-hidden="true">
+                <line
+                  x1="0"
+                  x2="28"
+                  y1="5"
+                  y2="5"
+                  stroke={STYLE[l.id].color}
+                  strokeWidth={STYLE[l.id].width}
+                  strokeDasharray={STYLE[l.id].dash}
+                />
+              </svg>
+              {l.label}
+            </li>
+          ))}
       </ul>
       <svg
         width={width}

@@ -636,8 +636,7 @@ function StepActual({ state }: { state: Extract<ScreenState, { kind: "ready" }> 
             {outcome.comparisons.map((c) => {
               const p = preds.find((x) => x.id === c.predictionId);
               if (!p) return null;
-              const when =
-                p.kind === "nowcast" ? "Nov 10, 2023 (cutoff)" : "Q4 2023 (Oct 1 to Dec 31)";
+              const when = p.kind === "nowcast" ? "Nov 10, 2023 (cutoff)" : "Q4 2023 end (Dec 31)";
               return (
                 <TableRow key={c.id}>
                   <TableCell>{when}</TableCell>
@@ -754,9 +753,11 @@ function StepCounterfactual({
       description="Actual reported path plus the engine-computed effect of the chosen suggestion, applied from the cutoff."
     >
       <div className="space-y-4">
-        <Badge variant="warning" className="text-[13px]">
-          {COUNTERFACTUAL_LABEL}
-        </Badge>
+        <div>
+          <Badge variant="warning" className="text-[13px]">
+            {COUNTERFACTUAL_LABEL}
+          </Badge>
+        </div>
         <Segmented
           label="Suggestion to simulate"
           name="backtest-suggestion"
