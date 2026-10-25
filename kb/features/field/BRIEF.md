@@ -1,57 +1,23 @@
-# Jayden owns Company Knowledge and Agent Workspace
+# Field (Jayden): ingestion agent, audit, brain map, worker page
 
-This is your full feature. Steer your own lead agent continuously, with your own internal checklist and bounded helpers. Source: ../../spec/independent-feature-lanes.md. Long-lived work starts only after P0 readiness passes. Friend owns Timeline/Simulations independently; do not make his internal task queue yours.
+Vision: ../../spec/weekly-product-vision-2026-10-24.md. Supersedes the SEC-quarterly Field brief (kept in git history). Lean: ship working features fast, real behavior over polish.
 
-## What you are building
+## Build
 
-A trustworthy company investigation workspace. A user adds supported company sources, resolves ambiguity, asks questions and watches a persistent map grow from REAL work. Sources, tools, specialists, knowledge and outputs are inspectable. Feedback changes later eligible behavior, not just stored text. The workspace remains coherent without the friend's latest timeline UI.
+1. **Mock data feed.** Revive the parked mock server (branch E2a-mock-sources 29de286; billing/CRM/cards/books/payroll) and the pure `advanceWeek` (E1b 9ab358a) on this branch. Add a "new entries arrive" control that advances the feed. Nessie bank via mock or recorded fixture if no key.
+2. **Always-on ingestion agent.** Bounded Convex scheduled job polls the feed, maps and normalizes new entries into a new `snapshots` version (reuse L1 mapping-receipt pattern, L2 exact-cent reconciliation). Every ingest is a recorded operation in `log`. Never real money APIs, never moves money.
+3. **Audit.** Detect duplicates, conflicts, unusual amounts/timing and missing expected items; store as findings/escalations.
+4. **Brain map.** Reuse the agent-canvas shell (components/investigate) with a new weekly adapter: agents, sub-agents, tools, data sources from real backend records; animate only recorded exchanges and spawns; hover brief, click detail (instructions, tool calls, reasoning summary, connections, inputs/outputs). CREAO only through the verified app-scoped gate; otherwise show built-in agents honestly.
+5. **Worker page.** Escalations to review and decide (writes `approvals`), launch an analysis, request a simulation (hands Timeline a WeeklySeedV1).
 
-You own its UI, source/knowledge backend, agent execution and learning/evaluation work. The existing grouped map is the starting point, not something to replace. Motion represents actual recorded operations; no fake agents, tools or traffic to make it look alive.
+## Seam
 
-## Complete journey
+Export `WeeklySeedV1` (packages/contracts weekly-boundary.ts) as JSON text: ingested snapshot + scheduled items + findings. Consume `WeeklyResultRefV1` to link results and show health. Test against the frozen fixtures; never import Timeline-private files (`node apps/web/scripts/lane-imports.mjs`).
 
-1. Import an authorized supported SEC package without company-specific code patches. Identify schema, normalize exact values, retain provenance/availability and ask about unsupported/missing input rather than inventing it. Keep the bounded source format honest.
-2. Detect duplicate/agreement/timing/definition/true conflicts. Retain candidates, block affected roles, apply explicit authority or a dated human resolution, and show the rationale/totals/source trail.
-3. Persist a versioned CompanyKnowledgeSnapshot. Inspector shows facts, derivations, assumptions, gaps, source dates and versions. Frozen old snapshots/runs stay readable.
-4. User asks an investigation question. A bounded real coordinator selects permitted work when the verified CREAO gate is available; source/tool/specialist jobs produce durable statuses, actual dependencies and inspectable outputs. Preserve unknown/failed states and app-authored instruction versions. No undisclosed hidden-agent claims.
-5. Show actual work on the growing agent field and in the conversation. Reopen quietly; backend jobs and results are durable while the backend is running. Keep the financial impact chain separate from execution dependencies.
-6. Accept/reject a correction, store a scoped validated rule, then apply it to later eligible work with a visible change receipt. Prove unrelated-company isolation, no historical backdating, revocation and rollback without editing earlier snapshots.
-7. Export a valid TimelineSeedV1 and consume a TimelineResultRefV1/OperationSummaryV1 to create links or read-only output nodes. Use the frozen peer harness while your friend's branch evolves; existing curated forecast tools remain usable. Do not build a competing timeline/financial-run store.
+## Owns
 
-## You own
+Tables: companies, sources, snapshots, models, constraints, approvals, log, plus investigation*. Engine/agents: ingestion, mapping, reconciliation, audit, learned rules. UI: worker page, brain map, connect/ingest views. Shared contracts/schema composition change only by a joint checkpoint.
 
-- Onboarding, mapping, reconciliation, knowledge persistence/inspector, feedback rules and their schemas/functions/UI inside the Field namespace.
-- Agent workspace/conversation/map, coordinator/specialist/provider boundary and agent-job operations. Verified old app-scoped CREAO only; human handles secrets, no paid fallback or unbounded calls.
-- New pure normalizer/reconciler/rule/candidate-method engine modules and protected evaluation stewardship. Preserve the existing baseline/model freeze; do not edit Timeline-owned UI/persistence.
-- Your branch roadmap/tasks, browser evidence and feature handoff under this directory.
+## Done
 
-Existing L1/L2/L3/L5/C2 cards become your internal subprojects. Their safety/acceptance still applies, but the old single global dispatcher and one-UI-writer arrangement are superseded after P0. Read the exact ownership table. Routine new functions/files/UI in your domain are yours to decide. Shared seam/core/dependency changes go in boundary-requests.md for a deliberate checkpoint.
-
-## Independent inputs and backend
-
-Use your own local backend/database. Development source packages and explicit synthetic conflict fixtures are available; labels remain truthful. A peer result fixture tests the timeline seam only. Your ingestion/reconciliation/rule persistence and actual operation records must work through your real backend, not fixture substitutions.
-
-Do not wait for the friend to produce normalized company knowledge. Conversely, do not make him depend on an unfinished live source system: the seed export contract is the handoff. Read-only output links can use the frozen Timeline result fixture in independent testing and the actual Timeline after the later merge.
-
-## Your checklist
-
-- [ ] Verify P0 base, contract fixture hashes and exact namespace ownership.
-- [ ] Complete generic supported-source normalization with mapping receipts and real gap behavior.
-- [ ] Complete source reconciliation and reproducible provenance/tie-out.
-- [ ] Complete scoped rules and later-work feedback application/reversal.
-- [ ] Complete durable knowledge/backend operations and the inspector.
-- [ ] Complete real coordinator/isolation/input/binding verification and bounded execution; keep unavailable behavior honest until it passes.
-- [ ] Wire the existing growing map/conversation to actual operation/knowledge records.
-- [ ] Export/validate the timeline seed and consume the stable result-reference contract.
-- [ ] Finish your branch checks/build/browser/reopen tests and demo.
-- [ ] Complete the protected evaluator/candidate seal and actual L4 experiment under the fixed protocol.
-
-## Learning/evaluation is a real gate
-
-You own E1 and L4, using the existing frozen protocol. Both methods consume the same reconciled origin inputs, test labels stay with evaluator custody, and candidate versions are fixed before opening test outcomes. A working evaluator, improved mapping or a lower development error is not proof of improved forecasting. Negative or incomplete evidence leaves L4 unmet. No guarantee of a positive result; do not redefine the test after seeing it.
-
-## Done means
-
-A real supported company/source package completes mapping -> resolution -> durable knowledge -> real investigation operations -> feedback -> later eligible rule application -> valid timeline export, with honest missing/error/unknown behavior and read-only reopen. Source/hash/cutoff/owner/cross-company corruption and concurrency checks pass. Actual bounded CREAO execution/isolation and required L4 evidence are separately recorded; fixtures do not close those gates. Your UI/backend operate with the friend's frozen peer fixture, without needing his current branch. Final merged-product acceptance happens later.
-
-Return branch/commit, exact checks, screenshots, supported inputs, missing authority/access, empirical results and boundary proposals. Do not call the whole product complete because this branch compiles.
+New mock entries appear -> agent ingests -> audit flags an anomaly -> it shows on the map and in the worker page -> a decision is recorded -> a seed is exported and Timeline shows the 13-week effect. Real backend, reopen works, tests pass.
