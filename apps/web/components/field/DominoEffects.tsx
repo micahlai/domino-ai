@@ -101,7 +101,13 @@ export function DominoEffects({
                 ` · not saved: ${n.error ?? "unknown reason"}`
               )}
             </p>
-            <p className="text-xs text-muted-foreground">{n.reason}</p>
+            <p className="text-xs text-muted-foreground">
+              {n.estimate.source === "ai"
+                ? `AI estimate ${Math.round(n.estimate.probability * 100)}%: ${n.estimate.reason}`
+                : "Rule-based"}
+              {" · "}
+              {n.reason}
+            </p>
             {tree(n.id, nodes)}
           </li>
         ))}
@@ -146,8 +152,9 @@ export function DominoEffects({
             tree(null, state.view.nodes)
           )}
           <p className="text-xs text-muted-foreground">
-            Likelihoods are stated judgments from standard practice, not probabilities. Each branch
-            is saved as a scenario; nothing is paid or moved.
+            AI estimates are Claude's judgment of how people react, picked from the engine's list;
+            rule-based likelihoods are stated judgments from standard practice. The engine computes
+            every number. Each branch is saved as a scenario; nothing is paid or moved.
           </p>
         </div>
       ) : null}
