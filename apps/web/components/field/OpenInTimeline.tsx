@@ -55,6 +55,8 @@ function LiveOpen({
     try {
       const r = await open({ companyId, reviewed: true });
       router.push(r.route);
+      // The button can stay mounted (Timeline pages keep it above the run), so clear the state.
+      setPending(false);
     } catch (e) {
       const data = e instanceof ConvexError ? (e.data as { message?: unknown }) : null;
       setError(
