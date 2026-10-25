@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-25: separate chat implementation
+
+- User requests conversational rule/scenario creation with back-and-forth clarification in a separate worktree. TL9-chat-checkpoint owns integration, TL9-chat-backend/TL9-chat-ui workers are scoped by fixed interface/cards. No shared math/contracts/root schema/dashboard/Field edits.
+- New isolated3109/3260/3261 local backend/app uses explicitly reviewed labelled synthetic Kestrel neutral seed. No copied env/provider keys/database. [Pending acceptance](TL9-acceptance.md). Messages build typed pending fields; explicit reviewed confirmation alone saves through existing workspace.
+- Published origin/TL7-checkpoint1140c26 and3107 smoke data remain unchanged. No TL9 merge/push authorized or performed. TL8 rejoin remains separate.
+
 ## 2026-10-25: publish partner merge checkpoint
 
 - User authorizes pushing the accepted Timeline work for partner merge on another computer. Publish TL5-checkpoint, with source0db7f2d and [partner pickup](PARTNER-PICKUP.md). No main/Field merge.

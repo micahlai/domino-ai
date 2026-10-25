@@ -52,3 +52,7 @@ Revised before any implementation launch to prioritize the clarified user journe
 On2026-10-25 the user authorized merging the accepted TL7 checkpoint into TL5-checkpoint (merge4ce834b). The3107 smoke preview now includes TL6/TL7/sidebar and retains its existing data. Older isolation holds are superseded by this explicit merge request. TL6/TL7 implementation and local acceptance are complete; [acceptance evidence](TL7-acceptance.md) records 1,942 tests, live API and desktop/phone verification. Cards TL6/TL7B/TL7U and TL6-TL7-interface.md define the delivered scope. Field keeps dashboard ownership; its adoption of the proposed JSON output interface is separate. TL8 remains follow-on.
 
 TL5 uses the pinned, explicitly labelled Kestrel peer fixture and reviewed neutral assumptions. Real Field export integration is a separate gate; this acceptance does not claim production authentication, live ingestion or action execution. Main and timeline/main remain unchanged. Shared requests live in [boundary-requests.md](boundary-requests.md); pickup details live in [HANDOFF.md](HANDOFF.md).
+
+## Separate conversational follow-up (TL9)
+
+User requested chat-based supported rule/scenario drafting with short clarification replies on2026-10-25. [Fixed interface](TL9-chat-interface.md) and [acceptance](TL9-acceptance.md) define a separate TL9-chat-checkpoint worktree, isolated3109/3260 runtime and reviewed save. Work is in progress and is not part of the published TL7-checkpoint merge. TL8 retains its original branch-rejoin scope.
