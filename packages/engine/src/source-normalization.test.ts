@@ -418,6 +418,31 @@ describe("SYNTHETIC: tag ambiguity and components", () => {
     expect(role(r, "restricted_cash")).toMatchObject({ reason: "unresolved_conflict" });
   });
 
+  // Audit repro: a rejected sub-cent current row listed before the valid one.
+  const rejectedFirst = (totalVal: string): Row[] => [
+    { tag: "RestrictedCashCurrent", val: "0.001" },
+    ...replace("CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents", { val: totalVal }),
+  ];
+
+  it("sums only validated components: a rejected row cannot stand in for one", async () => {
+    // Valid components 150 + 50 = 200 dollars; total 1050.50 - usable 1000.50 = 50 dollars.
+    const forward = await snapOf([rejectedFirst("1050.50")]);
+    const reverse = await snapOf([[...rejectedFirst("1050.50")].reverse()]);
+    for (const r of [forward, reverse])
+      expect(role(r, "restricted_cash")).toMatchObject({
+        status: "blocked",
+        reason: "unresolved_conflict",
+      });
+  });
+
+  it("gives the same restricted cash in either row order", async () => {
+    // Valid components 150 + 50 = 200 dollars = 1200.50 - 1000.50 -> 20000 cents.
+    const forward = await snapOf([rejectedFirst("1200.50")]);
+    const reverse = await snapOf([[...rejectedFirst("1200.50")].reverse()]);
+    expect(cents(forward, "restricted_cash")).toBe(20_000);
+    expect(cents(reverse, "restricted_cash")).toBe(20_000);
+  });
+
   it("does not sum components across filings", async () => {
     const r = await snapOf([
       [
@@ -450,6 +475,33 @@ describe("SYNTHETIC: fiscal calendar must be evidenced", () => {
     const r = await snap(source, CUTOFF);
     expect(r.ok).toBe(false);
     expect(r.ok ? "" : r.errors.join()).toMatch(/fiscal year ends 0630/);
+  });
+});
+
+describe("SYNTHETIC: fiscal calendar tamper", () => {
+  it("ignores a fiscalYearEnd property set beside the package", async () => {
+    const { source } = await read(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+    const forged = { ...source, fiscalYearEnd: "1231" } as SecSource;
+    const r = await snap(forged, CUTOFF, [
+      "usable_cash",
+      "total_cash",
+      "operating_ytd",
+      "investing_ytd",
+    ]);
+    expect(r.ok ? "" : r.errors.join()).toMatch(/fiscal year ends 0630/);
+  });
+
+  it("rejects submissions bytes that do not match the package hash", async () => {
+    const { source } = await read(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+    const other = await read(); // same company, but its submissions say 1231
+    const r = await snap({ ...source, submissions: other.source.submissions }, CUTOFF);
+    expect(r.ok ? "" : r.errors.join()).toMatch(/do not match the package submissions hash/);
+  });
+
+  it("rejects a source without submissions bytes", async () => {
+    const { source } = await read();
+    const r = await snap({ package: source.package } as unknown as SecSource, CUTOFF);
+    expect(r.ok).toBe(false);
   });
 });
 

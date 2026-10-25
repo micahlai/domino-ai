@@ -175,17 +175,42 @@ export type SecSourceInput = {
   submissions: Uint8Array;
 };
 
-/** A validated package plus its fiscal calendar evidence, read from the hashed submissions. */
+/**
+ * A validated package plus the raw submissions bytes it hashes. The fiscal calendar is read
+ * from those bytes on every use, after the hash check, so it cannot be supplied separately.
+ */
 export type SecSource = {
   package: SourcePackage;
-  /** submissions.fiscalYearEnd exactly as written, for example "1231". */
-  fiscalYearEnd: string;
+  submissions: Uint8Array;
 };
 /** A raw row or filing left out of the package, with the reason. Nothing is dropped silently. */
 export type SkippedSource = { pointer: string; reason: string };
 export type ReadSecSource = { source: SecSource; skipped: SkippedSource[] };
 
 type Filing = SourcePackage["accessions"][number];
+
+/** submissions.fiscalYearEnd exactly as written ("MMDD"), or undefined when not evidenced. */
+function fiscalYearEndOf(sub: Json): string | undefined {
+  const fye = text(sub, "fiscalYearEnd");
+  return fye && /^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(fye) ? fye : undefined;
+}
+
+/** Fiscal year end from submissions bytes that must match the package's submissions hash. */
+async function evidencedFiscalYearEnd(
+  source: SecSource,
+  pkg: SourcePackage,
+): Promise<Result<string>> {
+  if (!(source.submissions instanceof Uint8Array))
+    return err("submissions bytes are required as fiscal calendar evidence");
+  if ((await sha256(source.submissions)) !== pkg.submissionsContentHash)
+    return err("submissions bytes do not match the package submissions hash");
+  const sub = parseJson(source.submissions, "submissions");
+  if (!sub.ok) return sub;
+  if (!isObject(sub.value) || text(sub.value, "cik") !== pkg.company.cik)
+    return err("submissions do not belong to the package company");
+  const fye = fiscalYearEndOf(sub.value);
+  return fye ? ok(fye) : err("submissions fiscalYearEnd is missing or malformed");
+}
 
 function readFilings(submissions: Json, retrievedAt: string, skipped: SkippedSource[]): Filing[] {
   const filings = isObject(submissions.filings) ? submissions.filings : {};
@@ -295,8 +320,7 @@ export async function readSecSource(input: SecSourceInput): Promise<Result<ReadS
     return err(
       `companyfacts CIK ${cik} differs from submissions CIK ${subCik}; never mix companies`,
     );
-  const fiscalYearEnd = text(sub, "fiscalYearEnd");
-  if (!fiscalYearEnd || !/^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(fiscalYearEnd))
+  if (!fiscalYearEndOf(sub))
     return err("submissions fiscalYearEnd is missing or malformed; the fiscal calendar is unknown");
   const name = text(sub, "name") ?? text(cf, "entityName");
   if (!name?.trim()) return err("company name is missing");
@@ -358,7 +382,7 @@ export async function readSecSource(input: SecSourceInput): Promise<Result<ReadS
   });
   if (!pkg.success)
     return err(...pkg.error.issues.map((i) => `package ${i.path.join(".")}: ${i.message}`));
-  return ok({ source: { package: pkg.data, fiscalYearEnd }, skipped });
+  return ok({ source: { package: pkg.data, submissions: input.submissions }, skipped });
 }
 
 // ---------- Record mapping ----------
@@ -572,9 +596,16 @@ function restricted(
   const atOrigin = cands.filter(
     (c) => c.eligible && samePeriod(c.record.period, origin) && c.record.accession === accession,
   );
-  const parts = COMPONENTS.map((tag) => atOrigin.filter((c) => c.record.tag === tag));
+  // Only validated rows count, each component exactly once, so row order cannot matter.
+  const valid = COMPONENTS.map((tag) =>
+    atOrigin.flatMap((c) =>
+      c.record.tag === tag && c.observation
+        ? [{ id: c.record.id, cents: c.observation.cents }]
+        : [],
+    ),
+  );
   const ambiguous = atOrigin.find((c) => c.receipt.status === "needs_input");
-  const missing = COMPONENTS.filter((_, i) => parts[i]?.filter((c) => c.observation).length !== 1);
+  const missing = COMPONENTS.filter((_, i) => valid[i]?.length !== 1);
   if (missing.length > 0)
     return ambiguous
       ? blocked(
@@ -587,7 +618,8 @@ function restricted(
           "missing_input",
           `${missing.join(", ")} not reported once in ${accession}; a missing component is never assumed zero`,
         );
-  const sum = parts.reduce((s, p) => s + BigInt(p[0]?.observation?.cents ?? 0), 0n);
+  const parts = valid.flat();
+  const sum = parts.reduce((s, p) => s + BigInt(p.cents), 0n);
   const diff = BigInt(total.fact.cents) - BigInt(usable.fact.cents);
   if (sum !== diff)
     return blocked(
@@ -607,7 +639,7 @@ function restricted(
       availableAt: total.fact.availableAt,
       derivedFrom: [total.fact.id, usable.fact.id],
       derivation: `total cash including restricted minus cash and equivalents, equal to ${parts
-        .map((p) => p[0]?.record.id)
+        .map((p) => p.id)
         .join(" + ")} in ${accession}`,
     },
   };
@@ -631,9 +663,11 @@ export async function companySnapshot(
   if (!TimestampSchema.safeParse(args.cutoff).success)
     return err("cutoff is not a timestamp with an explicit offset");
   if (args.roles.length === 0) return err("at least one role is required");
-  if (source.fiscalYearEnd !== "1231")
+  const fiscalYearEnd = await evidencedFiscalYearEnd(source, pkg);
+  if (!fiscalYearEnd.ok) return fiscalYearEnd;
+  if (fiscalYearEnd.value !== "1231")
     return err(
-      `fiscal year ends ${source.fiscalYearEnd}; only 1231 fiscal years have evidenced calendar quarters`,
+      `fiscal year ends ${fiscalYearEnd.value}; only 1231 fiscal years have evidenced calendar quarters`,
     );
 
   const cutoff = ms(args.cutoff);
