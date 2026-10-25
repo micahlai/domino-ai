@@ -37,7 +37,21 @@ import type * as resilience from "../resilience.js";
 import type * as risks from "../risks.js";
 import type * as sources from "../sources.js";
 import type * as timeline_baselines from "../timeline/baselines.js";
+import type * as timeline_questions from "../timeline/questions.js";
+import type * as timeline_questions_context from "../timeline/questions/context.js";
+import type * as timeline_questions_grammar from "../timeline/questions/grammar.js";
+import type * as timeline_questions_intent from "../timeline/questions/intent.js";
+import type * as timeline_questions_meaning from "../timeline/questions/meaning.js";
+import type * as timeline_questions_parse from "../timeline/questions/parse.js";
+import type * as timeline_questions_provider from "../timeline/questions/provider.js";
+import type * as timeline_questions_receipt from "../timeline/questions/receipt.js";
+import type * as timeline_questions_resolve from "../timeline/questions/resolve.js";
+import type * as timeline_questions_table from "../timeline/questions/table.js";
 import type * as timeline_refs from "../timeline/refs.js";
+import type * as timeline_workspace from "../timeline/workspace.js";
+import type * as timeline_workspaceInput from "../timeline/workspaceInput.js";
+import type * as timeline_workspaceRefs from "../timeline/workspaceRefs.js";
+import type * as timeline_workspaceRules from "../timeline/workspaceRules.js";
 import type * as week from "../week.js";
 
 import type {
@@ -76,7 +90,21 @@ declare const fullApi: ApiFromModules<{
   risks: typeof risks;
   sources: typeof sources;
   "timeline/baselines": typeof timeline_baselines;
+  "timeline/questions": typeof timeline_questions;
+  "timeline/questions/context": typeof timeline_questions_context;
+  "timeline/questions/grammar": typeof timeline_questions_grammar;
+  "timeline/questions/intent": typeof timeline_questions_intent;
+  "timeline/questions/meaning": typeof timeline_questions_meaning;
+  "timeline/questions/parse": typeof timeline_questions_parse;
+  "timeline/questions/provider": typeof timeline_questions_provider;
+  "timeline/questions/receipt": typeof timeline_questions_receipt;
+  "timeline/questions/resolve": typeof timeline_questions_resolve;
+  "timeline/questions/table": typeof timeline_questions_table;
   "timeline/refs": typeof timeline_refs;
+  "timeline/workspace": typeof timeline_workspace;
+  "timeline/workspaceInput": typeof timeline_workspaceInput;
+  "timeline/workspaceRefs": typeof timeline_workspaceRefs;
+  "timeline/workspaceRules": typeof timeline_workspaceRules;
   week: typeof week;
 }>;
 

@@ -1,15 +1,16 @@
 # Timeline local runtime
 
-Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL1-checkpoint` (checkpoint preview; `timeline/main` is the lane base).
+Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL5-checkpoint` (checkpoint preview; `timeline/main` is the lane base).
 
 - App: http://127.0.0.1:3107
-- Live computed timeline: http://127.0.0.1:3107/c/kestrel
+- Weekly saved timeline/catalog: http://127.0.0.1:3107/c/kestrel/timeline
+- Older computed prototype: http://127.0.0.1:3107/c/kestrel
 - Boundary/backend check: http://127.0.0.1:3107/playground/timeline-seam
 - Backend: http://127.0.0.1:3240; HTTP actions: http://127.0.0.1:3241
 
-The app's ignored `apps/web/.env.local` points only to this worktree's new anonymous local deployment and its synthetic computed company. No peer environment or provider secrets were copied. The home dashboard is still the shared shell placeholder; the live company screen is available through Timeline navigation.
+The app's ignored `apps/web/.env.local` points to this lane's anonymous local deployment. TL1–TL5 now support saved weekly imports, evidence questions, confirmed events/rules, nested scenarios and catalog/reopen. [Smoke tests](SMOKE-TESTS.md) link the accepted baseline and a saved breach example. The shared Timeline navigation still opens the older prototype; use the weekly route above or the baseline playground's workspace link.
 
-TL1 is now available at the boundary playground: load the weekly fixture, review the explicit neutral assumptions, save a baseline, and reopen/reload its result link. These saved imports live in Timeline-owned timelineBaselines, separately from the old computed `/c/kestrel` prototype. See [SMOKE-TESTS.md](SMOKE-TESTS.md) and [TL1 acceptance](TL1-acceptance.md). Field owns the dashboard component.
+The optional question language reader is configured on this local backend using the existing intended Anthropic key and `TIMELINE_QUESTIONS_MODEL=claude-sonnet-5-5`. No key is stored in source. Fixed wording works without a provider. Unrecognized wording without configuration produces a saved failure receipt; providers classify intent only, while code supplies financial values. One live provider intent/answer was verified. Field owns the dashboard component.
 
 ## Restart
 
@@ -36,4 +37,4 @@ pnpm exec convex run historical:getCase '{"caseId":"twou-2023-cash-v1"}'
 
 Verified at setup: second seed call returns `created:false`, browser seam query returns 2U with seven facts, weekly fixture hash verification succeeds, and `/c/kestrel` renders Kestrel Data (computed prototype) from live backend subscriptions. Add event/fix simulation are available; week advancement is not implemented.
 
-Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services were left running for the user. Saved weekly baseline imports work at TL1; conversational questions, editable constraints and weekly catalog remain separate implementation work.
+Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services were left running for the user. TL5 acceptance uses the labelled synthetic peer fixture; real Field exchange, production authentication, health handoff, automatic analysis and rejoin remain separate gates.

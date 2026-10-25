@@ -1,6 +1,6 @@
 # User-defined Timeline constraints
 
-Status: implementation requirements added from the user's 2026-10-24 request. This is planned scope, not an implemented editor or prompt endpoint. Delivery: ROADMAP TL1C, TL2-TL5.
+Status: editor, immutable rule revisions and evaluation receipts implemented on TL5-checkpoint. Prompt extraction and the question workflow are locally accepted through TL5. Evidence: [TL5 acceptance](TL5-acceptance.md). Delivery: ROADMAP TL1C, TL2–TL5.
 
 ## User experience
 

@@ -1,5 +1,14 @@
 # Timeline handoff
 
+## 2026-10-24: TL5 accepted locally
+
+- Done: TL1C–TL5 integrated on TL5-checkpoint. Codex repaired/reviewed backend, UI and questions in parallel; immutable constraints/events, evidence questions, confirmed language proposals, nested scenarios and saved catalog work. [Acceptance](TL5-acceptance.md) records exact scope and evidence; [smoke guide](SMOKE-TESTS.md) has working links.
+- Checks: 1,877 combined tests, five package typechecks, lint359, separate Convex typecheck and production build pass. Independent backend19 and question14 probes passed. Live API31 checks plus three rule checks; actual provider intent path; actual browser question/event/rule/nested/catalog/reload flow. Desktop1280 and phone390 screenshots saved in evidence/; no page overflow, final console error list empty.
+- Runtime: own Next3107 and anonymous Convex3240/3241 remain running. Optional language intent reader configured using existing intended backend key; no key in source or output. Shared navigation still opens the older prototype; use the weekly route/links in the smoke guide.
+- Decisions: ambiguous amount/direction/count/unsupported rule semantics clarify rather than reinterpret. Rule-only proposals use immutable rule revisions; event+rule proposals save atomically. Cash minima check Sunday close; multi-action receipts describe group attribution. All Timeline work uses Codex under user's explicit override.
+- Next: delivery through TL5 complete. TL6 health/risk/chart handoff needs a new scoped card and agreed seam with Field; TL7 automatic analysis and TL8 rejoin remain follow-on. Real Field export and production authorization remain separate gates.
+- Preserved: main, timeline/main, peer services/data, Dashboard.tsx, shared contracts/root schema/engine/styles. No push/PR/main merge. CLI-installed untracked helper guides remain local; do not accidentally commit them. Worker worktrees retained for review.
+
 ## 2026-10-24: Codex owns all Timeline work
 
 - Latest explicit user direction: "use codex for all of the timeline stuff." This overrides the earlier Claude-implementation/Codex-audit split for this lane. Codex now implements, audits and integrates Timeline; Field ownership is unchanged.

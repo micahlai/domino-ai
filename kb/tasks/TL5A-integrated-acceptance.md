@@ -7,6 +7,6 @@
 - **Notes:** Lead integrates reviewed worker branches on TL5-checkpoint only; latest user directs all Timeline work through Codex. No dashboard/Field/shared contracts/root schema/engine edits. Label fixtures and optional provider limitations; do not claim production auth. Record exact evidence and outstanding limits before marking TL5 accepted.
 
 ## Result
-- Done:
-- What changed:
-- Watch out:
+- Done: TL5 locally accepted; 3 real integrated journey tests, 31 live API checks plus 3 rule checks, actual optional provider intent, complete desktop/phone browser journey. Full 1,877 tests/typechecks/lint, Convex typecheck/build and lane inventory pass.
+- What changed: coreAcceptance.test.ts; CLI-generated API bindings; feature-local ROADMAP/HANDOFF/LOCAL/SMOKE-TESTS/CONSTRAINTS/TL5-acceptance; four durable browser screenshots.
+- Watch out: labelled fixture/local anonymous deployment only; bounded questions and Sunday cash checks. TL6–TL8 and real Field/production authorization remain separate. No dashboard/shared/main changes. Own services remain running.
