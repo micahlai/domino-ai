@@ -59,7 +59,8 @@ const LOADING: FieldData = {
 const FieldContext = createContext<FieldData>(LOADING);
 
 export function FieldDataProvider({ children }: { children: ReactNode }) {
-  if (!CONVEX_URL) return createElement(DemoData, { note: "Backend not configured", children });
+  if (!CONVEX_URL)
+    return createElement(DemoFieldData, { note: "Backend not configured", children });
   return createElement(ProbedData, null, children);
 }
 
@@ -79,7 +80,7 @@ function ProbedData({ children }: { children: ReactNode }) {
   }, [client]);
   if (probe === "live") return createElement(LiveData, null, children);
   if (probe === "missing")
-    return createElement(DemoData, { note: "Field backend not available yet", children });
+    return createElement(DemoFieldData, { note: "Field backend not available yet", children });
   return createElement(FieldContext.Provider, { value: LOADING }, children);
 }
 
@@ -123,8 +124,13 @@ function LiveData({ children }: { children: ReactNode }) {
   return createElement(FieldContext.Provider, { value }, children);
 }
 
-function DemoData({ note, children }: { note: string; children: ReactNode }) {
-  const [state, setState] = useState<DemoState>(initialDemoState);
+export function DemoFieldData({ note, children }: { note: string; children: ReactNode }) {
+  const [state, setState] = useState<DemoState>(() =>
+    // Whole minutes so the server and browser render the same history timestamps.
+    initialDemoState(
+      new Date(Math.floor(Date.now() / 60_000) * 60_000 - 3 * 3_600_000).toISOString(),
+    ),
+  );
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const apply = useCallback((change: (s: DemoState, now: string) => DemoState) => {

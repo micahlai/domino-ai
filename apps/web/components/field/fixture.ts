@@ -274,12 +274,13 @@ export function demoRecordExport(state: DemoState, now: string): DemoState {
   );
 }
 
-const HISTORY_AT = "2026-10-30T16:00:00-07:00";
-
-export function initialDemoState(): DemoState {
+/** Demo history is stamped a few hours before `historyAt` so "x ago" labels read naturally. */
+export function initialDemoState(historyAt = "2026-10-30T16:00:00-07:00"): DemoState {
+  const at = Date.parse(historyAt);
+  const HISTORY_AT = new Date(at).toISOString();
   const base: DemoState = {
     status: {
-      feed: { enabled: true, lastAdvanceAt: "2026-10-30T15:58:00-07:00" },
+      feed: { enabled: true, lastAdvanceAt: new Date(at - 120_000).toISOString() },
       ingest: { enabled: true, lastRunAt: HISTORY_AT, lastStatus: "ok" },
       counts: { sources: 0, snapshots: 0, openFindings: 0 },
     },
@@ -292,7 +293,7 @@ export function initialDemoState(): DemoState {
         summary:
           "Northwind expansion deal is marked won but is unsigned and has no invoice, so its cash is not scheduled.",
         refs: ["deal_nw_expansion"],
-        detectedAt: "2026-10-30T17:30:00-07:00",
+        detectedAt: new Date(at + 60_000).toISOString(),
         status: "open",
       },
     ],
