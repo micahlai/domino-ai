@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-24: Codex owns all Timeline work
+
+- Latest explicit user direction: "use codex for all of the timeline stuff." This overrides the earlier Claude-implementation/Codex-audit split for this lane. Codex now implements, audits and integrates Timeline; Field ownership is unchanged.
+- Claude original passes are committed. Its repair attempts hit a session cap; preserve partial backend/UI edits. Three Codex workers now finish TL2B-R1, TL2U-R1 and TL3Q-R1 in their existing separate checkpoint worktrees. Lead stays on TL5-checkpoint and verifies combined code/runtime/browser.
+- All core acceptance remains pending. See TL5-acceptance.md and /tmp/tl5-audit/review.md for reproduced boundary/meaning issues under repair.
+
 ## 2026-10-24: delivery extended through TL5
 
 - User authorizes implementation through TL5 and parallel workers. Lead integration uses TL5-checkpoint; three separate Claude worktrees implement backend, UI and questions. Codex audits/integrates; main and timeline/main unchanged.

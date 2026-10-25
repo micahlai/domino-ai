@@ -1,6 +1,6 @@
 # TL5 acceptance log
 
-Status: in implementation, not accepted. Scope: TL1C through TL5, user-authorized parallel workers, combined branch TL5-checkpoint. Starting point: accepted TL1 0b06882. Dashboard and TL6–TL8 remain separate.
+Status: in implementation, not accepted. Scope: TL1C through TL5, user-authorized parallel Codex workers (latest user direction replaces the earlier Claude-only implementation rule), combined branch TL5-checkpoint. Starting point: accepted TL1 0b06882. Dashboard and TL6–TL8 remain separate.
 
 ## Required evidence
 
