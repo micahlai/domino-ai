@@ -17,17 +17,20 @@ export interface AuditInput {
 
 type Kind = Finding["kind"];
 type Severity = Finding["severity"];
-type Draft = { kind: Kind; severity: Severity; summary: string; refs: string[] };
+/** One check's result before ids and ordering: what the audit swarm's checkers return. */
+export type AuditDraft = { kind: Kind; severity: Severity; summary: string; refs: string[] };
+type Draft = AuditDraft;
 
 /** A record reduced to what the checks compare: identity, money, date and who. */
-interface Row {
+export interface AuditRow {
   list: ListName;
   id: string;
   cents: number;
   date: string;
   who: string;
 }
-type ListName = "invoices" | "bills" | "bankTxns" | "cardTxns" | "payroll";
+type Row = AuditRow;
+export type ListName = "invoices" | "bills" | "bankTxns" | "cardTxns" | "payroll";
 
 const LABEL: Record<ListName, string> = {
   invoices: "invoice",
@@ -43,7 +46,7 @@ const VERY_UNUSUAL_RATIO = 10;
 /** A newly arrived posted record dated this many days before the last ingest is late. */
 const BACKDATE_DAYS = 14;
 
-function rows(s: Snapshot): Row[] {
+export function auditRows(s: Snapshot): Row[] {
   return [
     ...s.invoices.map((r) => ({
       list: "invoices" as const,
@@ -92,15 +95,16 @@ const groupBy = <T>(items: T[], key: (item: T) => string) => {
   return out;
 };
 
-const abs = (n: number) => (n < 0 ? -n : n);
+export const abs = (n: number) => (n < 0 ? -n : n);
 /** Upper median of integers: always one of the inputs, never a fraction. */
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
-const money = (cents: number) => {
+export const median = (values: number[]) =>
+  [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
+export const money = (cents: number) => {
   const a = abs(cents);
   return `${cents < 0 ? "-" : ""}$${(a - (a % 100)) / 100}.${String(a % 100).padStart(2, "0")}`;
 };
 
-function duplicates(all: Row[]): Draft[] {
+export function duplicates(all: Row[]): Draft[] {
   const out: Draft[] = [];
   const groups = groupBy(all, (r) => `${r.list}|${r.who}|${r.cents}|${r.date}`);
   for (const group of groups.values()) {
@@ -118,7 +122,7 @@ function duplicates(all: Row[]): Draft[] {
 }
 
 /** Fields a source must never rewrite once a record exists (amount and date are original). */
-function conflicts(current: Row[], previous: Row[]): Draft[] {
+export function conflicts(current: Row[], previous: Row[]): Draft[] {
   const out: Draft[] = [];
   const before = new Map(previous.map((r) => [`${r.list}|${r.id}`, r]));
   for (const r of current) {
@@ -140,7 +144,7 @@ function conflicts(current: Row[], previous: Row[]): Draft[] {
   return out;
 }
 
-function unusualAmounts(current: Row[], fresh: Set<string>): Draft[] {
+export function unusualAmounts(current: Row[], fresh: Set<string>): Draft[] {
   const out: Draft[] = [];
   const groups = groupBy(
     // Customer receipts vary by contract size, so only spending is compared.
@@ -165,7 +169,12 @@ function unusualAmounts(current: Row[], fresh: Set<string>): Draft[] {
   return out;
 }
 
-function unusualTiming(s: Snapshot, current: Row[], prev: Snapshot | null, fresh: Set<string>) {
+export function unusualTiming(
+  s: Snapshot,
+  current: Row[],
+  prev: Snapshot | null,
+  fresh: Set<string>,
+) {
   const out: Draft[] = [];
   for (const r of current) {
     if (!fresh.has(r.id) || (r.list !== "bankTxns" && r.list !== "cardTxns")) continue;
@@ -188,7 +197,7 @@ function unusualTiming(s: Snapshot, current: Row[], prev: Snapshot | null, fresh
   return out;
 }
 
-function missingExpected(s: Snapshot): Draft[] {
+export function missingExpected(s: Snapshot): Draft[] {
   const out: Draft[] = [];
   // Payroll cadence: a gap well beyond the usual interval means a run is missing.
   const runs = [...s.payroll].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -228,7 +237,7 @@ const ENDED_BILLING_HIGH_BPS = 400;
  * recurring billing a year are reported (high): ordinary small churn is not an anomaly.
  * Compared on integers only.
  */
-function endedBilling(s: Snapshot, prev: Snapshot | null): Draft[] {
+export function endedBilling(s: Snapshot, prev: Snapshot | null): Draft[] {
   if (!prev) return [];
   const plans = s.billingPlans ?? [];
   const before = new Map((prev.billingPlans ?? []).map((p) => [p.id, p]));
@@ -271,22 +280,39 @@ function findingId(d: Draft, taken: Set<string>): string {
   return id;
 }
 
-export function auditSnapshot({ snapshot, previous, detectedAt }: AuditInput): Finding[] {
-  const current = rows(snapshot);
-  const prior = previous ? rows(previous) : [];
+/** Records new since the previous version (by list and id). */
+export function freshIds(current: Row[], prior: Row[]): Set<string> {
   const seen = new Set(prior.map((r) => `${r.list}|${r.id}`));
-  const fresh = new Set(current.filter((r) => !seen.has(`${r.list}|${r.id}`)).map((r) => r.id));
-  const drafts = [
-    ...duplicates(current),
-    ...conflicts(current, prior),
-    ...unusualAmounts(current, fresh),
-    ...unusualTiming(snapshot, current, previous, fresh),
-    ...missingExpected(snapshot),
-    ...endedBilling(snapshot, previous),
-  ].map((d) => ({ ...d, refs: d.refs.slice(0, 64), summary: d.summary.slice(0, 500) }));
+  return new Set(current.filter((r) => !seen.has(`${r.list}|${r.id}`)).map((r) => r.id));
+}
+
+/** Clip, order by severity (stable) and give each draft its stable id. */
+export function finalizeFindings(drafts: Draft[], detectedAt: string): Finding[] {
+  const clipped = drafts.map((d) => ({
+    ...d,
+    refs: d.refs.slice(0, 64),
+    summary: d.summary.slice(0, 500),
+  }));
   const taken = new Set<string>();
-  return drafts
+  return clipped
     .map((d, i) => ({ d, i }))
     .sort((a, b) => SEVERITY[a.d.severity] - SEVERITY[b.d.severity] || a.i - b.i)
     .map(({ d }) => ({ id: findingId(d, taken), ...d, detectedAt }));
+}
+
+export function auditSnapshot({ snapshot, previous, detectedAt }: AuditInput): Finding[] {
+  const current = auditRows(snapshot);
+  const prior = previous ? auditRows(previous) : [];
+  const fresh = freshIds(current, prior);
+  return finalizeFindings(
+    [
+      ...duplicates(current),
+      ...conflicts(current, prior),
+      ...unusualAmounts(current, fresh),
+      ...unusualTiming(snapshot, current, previous, fresh),
+      ...missingExpected(snapshot),
+      ...endedBilling(snapshot, previous),
+    ],
+    detectedAt,
+  );
 }

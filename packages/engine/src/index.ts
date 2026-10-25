@@ -156,6 +156,32 @@ export const engine: Engine = {
 };
 /** Field weekly audit and 13-week scheduled items; engine-local, not part of Engine. */
 export { type AuditInput, auditSnapshot } from "./audit";
+export {
+  AUDIT_CHECKERS,
+  AUDIT_CHECKER_INFO,
+  type AuditCheckerId,
+  type CheckerResult,
+  OVERDUE_DAYS,
+  type SwarmAuditInput,
+  type TieOutFailure,
+  mergeAuditFindings,
+  runAuditCheck,
+} from "./audit-checks";
+export type { AuditDraft } from "./audit";
+/** Advisor swarm: candidate fixes for a scenario below the lender's minimum (pure). */
+export {
+  ADVISOR_FIXES,
+  type AdvisorCandidate,
+  type AdvisorEffect,
+  type AdvisorFixKind,
+  type AdvisorInput,
+  type ScenarioLow,
+  adviseFix,
+  advisorCandidates,
+  lenderMinimum,
+  rankAdvice,
+  scenarioLow,
+} from "./advisor";
 export { scheduledItems } from "./scheduled-items";
 /** Open invoice = not paid and not written off; the forecast projects only these. */
 export { isOpenInvoice } from "./schedule";
