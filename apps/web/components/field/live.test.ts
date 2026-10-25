@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildBrainGraph, pulsePath } from "./graph";
-import { type LiveLogRow, type LiveStatus, toOperations, toStatus } from "./live";
+import { buildBrainGraph, isWorking, pulsePath, pulsesFor, toolChips } from "./graph";
+import {
+  type LiveLogRow,
+  type LiveStatus,
+  type SwarmLogFields,
+  toOperations,
+  toStatus,
+} from "./live";
 
 let n = 0;
-const row = (over: Partial<LiveLogRow> & { action: string }): LiveLogRow =>
+const row = (over: Partial<LiveLogRow> & SwarmLogFields & { action: string }): LiveLogRow =>
   ({
     _id: `log_${++n}`,
     _creationTime: n,
@@ -98,5 +104,125 @@ describe("live log mapping", () => {
       counts: { sources: 1, snapshots: 2, openFindings: 3 },
       lastError: "boom",
     });
+  });
+
+  it("maps swarm rows: copies, parents, status steps, messages and Apify tools", () => {
+    const base = { actor: "engine" as const, runId: "run1" };
+    const forecaster = (
+      i: number,
+      over: Partial<LiveLogRow> & SwarmLogFields & { action: string },
+    ) =>
+      row({
+        ...base,
+        agent: `forecaster#${i}`,
+        agentId: `forecaster#${i}`,
+        parentAgentId: "analyst#1",
+        agentKind: "domino",
+        steps: 4,
+        ...over,
+      });
+    const rows = [
+      row({
+        ...base,
+        action: "analyst.working",
+        agent: "analyst#1",
+        agentId: "analyst#1",
+        agentKind: "domino",
+        event: "status",
+        status: "working",
+        currentTask: "Test events",
+      }),
+      ...[1, 2, 3].map((i) =>
+        forecaster(i, {
+          action: "agent.spawned",
+          event: "status",
+          status: "spawned",
+          currentTask: `Event ${i}`,
+        }),
+      ),
+      row({
+        ...base,
+        action: "agent.message",
+        agent: "analyst#1",
+        agentId: "analyst#1",
+        event: "message",
+        fromAgentId: "analyst#1",
+        toAgentId: "forecaster#2",
+        summary: "Run event 2",
+      }),
+      forecaster(2, {
+        action: "agent.working",
+        event: "status",
+        status: "working",
+        step: 2,
+        currentTask: "Event 2",
+      }),
+      forecaster(2, {
+        action: "agent.message",
+        event: "message",
+        fromAgentId: "forecaster#2",
+        toAgentId: "analyst#1",
+        summary: "Week 5 low",
+      }),
+      forecaster(2, { action: "agent.done", event: "status", status: "done", step: 4 }),
+      row({
+        ...base,
+        action: "agent.tool",
+        agent: "research#1",
+        agentId: "research#1",
+        parentAgentId: "analyst#1",
+        agentKind: "creao",
+        event: "tool",
+        tool: "apify/demo-news-search",
+        toolCategory: "apify",
+        toolLabel: "demo actor",
+        source: "apify",
+      }),
+    ].reverse();
+    const ops = toOperations(rows);
+    expect(ops[1]).toMatchObject({
+      instanceId: "forecaster#1",
+      parentAgentId: "Analyst",
+      status: "spawned",
+      kind: "spawn",
+    });
+    expect(ops[4]).toMatchObject({ kind: "message", from: "Analyst", to: "forecaster#2" });
+    expect(ops[5]?.progress).toBe(0.5);
+    // The top-level analyst#1 is the built-in Analyst; its copies stay instances.
+    expect(ops[0]).toMatchObject({ agent: "Analyst", status: "working" });
+    expect(ops[0]?.instanceId).toBeUndefined();
+    const graph = buildBrainGraph(ops);
+    const node = (id: string) => graph.nodes.find((n) => n.id === id);
+    expect(node("agent:forecaster#2")).toMatchObject({
+      kind: "subagent",
+      parentId: "agent:analyst",
+      title: "Forecaster 2",
+      lifecycle: "done",
+      progress: 1,
+      currentTask: "Event 2",
+    });
+    expect(node("agent:forecaster#2")?.messages).toHaveLength(2);
+    expect(node("agent:forecaster#1") && isWorking(node("agent:forecaster#1") as never)).toBe(true);
+    // One shared link per pair: the spawn link carries both messages, the reply backwards.
+    expect(
+      graph.edges
+        .filter((e) => e.source.includes("forecaster#2") || e.target.includes("forecaster#2"))
+        .map((e) => `${e.kind} ${e.id}`),
+    ).toEqual(["handoff agent:analyst->agent:forecaster#2"]);
+    const pulses = pulsesFor([ops[4], ops[6]] as never, graph);
+    expect(pulses.map((p) => [p.edgeId, p.reverse])).toEqual([
+      ["agent:analyst->agent:forecaster#2", false],
+      ["agent:analyst->agent:forecaster#2", true],
+    ]);
+    const research = node("agent:research#1");
+    expect(research).toMatchObject({ agentKind: "creao", kind: "subagent", title: "Research 1" });
+    expect(node("tool:apify/demo-news-search")?.tool).toMatchObject({
+      label: "News search",
+      demoActor: true,
+    });
+    expect(node("source:apify")).toMatchObject({ vendor: "apify" });
+    expect(research && toolChips(research).map((c) => [c.label, c.category])).toEqual([
+      ["Apify actors", "apify"],
+    ]);
   });
 });

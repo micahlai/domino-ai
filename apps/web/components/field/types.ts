@@ -35,7 +35,14 @@ export type OperationKind =
   | "forecast"
   | "decision"
   | "export"
-  | "spawn";
+  | "spawn"
+  | "message";
+
+/** Lifecycle of one running agent copy, as status rows record it. */
+export const AGENT_LIFECYCLE = ["spawned", "working", "done", "failed"] as const;
+export type AgentLifecycle = (typeof AGENT_LIFECYCLE)[number];
+export const isLifecycle = (s: string | undefined): s is AgentLifecycle =>
+  (AGENT_LIFECYCLE as readonly string[]).includes(s ?? "");
 
 /** Plain JSON values only: the panel prints them, it never interprets them. */
 export type OperationValues = Record<string, unknown>;
@@ -60,6 +67,23 @@ export type FieldOperation = {
   parentId?: string;
   /** Optional reasoning summary, shown in the side panel only when the backend provides it. */
   reasoning?: string;
+  /** One running copy of an agent ("forecaster#3"). Many copies of one agent can run at once. */
+  instanceId?: string;
+  /** Who runs the agent, when the log says so. */
+  agentKind?: "domino" | "claude" | "creao" | "system";
+  /** Instance id (or agent name) of the agent that started this one. */
+  parentAgentId?: string;
+  /** Message rows (kind "message"): sending and receiving agent, as instance ids or names. */
+  from?: string;
+  to?: string;
+  /** Status rows: what the agent is working on now. `status` holds the lifecycle step. */
+  currentTask?: string;
+  /** 0 to 1, when the agent reports how far along it is. */
+  progress?: number;
+  /** Tool category as the log records it ("apify" for Apify actors). */
+  toolCategory?: string;
+  /** Instructions the agent was started with, when the log records them. */
+  instructions?: string;
 };
 
 export type FindingStatus = "open" | "approved" | "rejected";

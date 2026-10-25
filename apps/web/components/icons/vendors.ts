@@ -9,6 +9,7 @@ export type VendorId =
   | "hubspot"
   | "plaid"
   | "capitalone"
+  | "apify"
   | "bank"
   | "generic";
 
@@ -29,6 +30,7 @@ export const VENDORS: Record<VendorId, Vendor> = {
   hubspot: { id: "hubspot", name: "HubSpot", category: "Deals", color: "#FF7A59" },
   plaid: { id: "plaid", name: "Plaid", category: "Bank", color: "#111111" },
   capitalone: { id: "capitalone", name: "Capital One", category: "Bank", color: "#004879" },
+  apify: { id: "apify", name: "Apify", category: "Web data", color: "#246DFF" },
   bank: { id: "bank", name: "Bank", category: "Bank", color: "#475569" },
   generic: { id: "generic", name: "Data source", category: "Data", color: "#64748B" },
 };
@@ -50,6 +52,7 @@ const ALIASES: Record<string, VendorId> = {
   capitalone: "capitalone",
   "capital-one": "capitalone",
   bank: "capitalone",
+  apify: "apify",
 };
 
 /** Any id or name the app uses for a source ("cards", "Ramp", "nessie") -> its vendor. */

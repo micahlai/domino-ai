@@ -23,6 +23,7 @@ export type ToolCategory =
   | "export"
   | "simulate"
   | "connect"
+  | "apify"
   | "other";
 
 export const TOOL_CATEGORY_LABEL: Record<ToolCategory, string> = {
@@ -34,6 +35,7 @@ export const TOOL_CATEGORY_LABEL: Record<ToolCategory, string> = {
   export: "Export",
   simulate: "Simulate",
   connect: "Connect",
+  apify: "Apify",
   other: "Tool",
 };
 
@@ -47,7 +49,7 @@ const ICON = {
   simulate: FlaskConical,
   connect: Plug,
   other: Wrench,
-} satisfies Record<ToolCategory, unknown>;
+} satisfies Record<Exclude<ToolCategory, "apify">, unknown>;
 
 export type ToolIconProps = {
   category: ToolCategory;
@@ -57,7 +59,34 @@ export type ToolIconProps = {
   tile?: boolean;
 };
 
+/** Apify actors show Apify's own mark (public/logos/apify.svg), in color, in place of a glyph. */
+function ApifyMark({ size, className }: { size: number; className?: string }) {
+  return (
+    <img
+      src="/logos/apify.svg"
+      alt=""
+      aria-hidden="true"
+      width={size}
+      height={size}
+      draggable={false}
+      className={cn("shrink-0", className)}
+    />
+  );
+}
+
 export function ToolIcon({ category, size = 14, className, tile }: ToolIconProps) {
+  if (category === "apify") {
+    if (!tile) return <ApifyMark size={size} className={className} />;
+    return (
+      <span
+        aria-hidden="true"
+        className={cn("inline-grid shrink-0 place-items-center border bg-background", className)}
+        style={{ width: size, height: size, borderRadius: Math.round(size * 0.28) }}
+      >
+        <ApifyMark size={Math.round(size * 0.58)} />
+      </span>
+    );
+  }
   const Icon = ICON[category];
   if (!tile)
     return (
