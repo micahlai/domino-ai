@@ -47,6 +47,8 @@ export type FieldOperation = {
   /** Write order, to break ties: rows from one backend transaction share the same `at`. */
   seq?: number;
   agent: string;
+  /** Who ran the step, as the log records it ("connector", "engine", "agent:claude", ...). */
+  actor?: string;
   tool?: string;
   source?: string;
   kind: OperationKind;

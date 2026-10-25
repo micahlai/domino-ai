@@ -17,13 +17,21 @@ const AGENT_NAME: Record<string, string> = {
   "field.worker": "Reviewer",
 };
 
-/** Source kinds in the log -> catalog source ids. */
+/**
+ * Source kinds in the log -> catalog source ids. Field ingest writes mock server kinds (crm,
+ * books, nessie); the Connect page writes connector ids (hubspot, qbo, gusto). Both name the
+ * same vendor, so they land on one node. Plaid stays its own node: it is a different way in to
+ * the bank than the Capital One Nessie feed.
+ */
 const SOURCE_NAME: Record<string, string> = {
   stripe: "billing",
   crm: "crm",
+  hubspot: "crm",
   ramp: "cards",
   books: "books",
+  qbo: "books",
   payroll: "payroll",
+  gusto: "payroll",
   nessie: "bank",
 };
 
@@ -75,6 +83,7 @@ export function toOperations(rows: LiveLogRow[]): FieldOperation[] {
       at: row.at,
       seq: row._creationTime,
       agent: liveAgentName(row.agent, row.actor),
+      actor: row.actor,
       ...(row.tool && { tool: row.tool }),
       ...(row.source && { source: liveSourceName(row.source) }),
       kind: operationKind(row.action),

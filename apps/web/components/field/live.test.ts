@@ -15,7 +15,7 @@ const row = (over: Partial<LiveLogRow> & { action: string }): LiveLogRow =>
   }) as LiveLogRow;
 
 describe("live log mapping", () => {
-  it("maps a real ingest run to source -> ingestion -> audit -> tool on the brain map", () => {
+  it("maps a real ingest run to source -> ingestion -> audit -> output on the brain map", () => {
     const rows = [
       row({ action: "ingest.started", agent: "field.ingest", runId: "r1", refs: ["manual"] }),
       row({
@@ -50,8 +50,28 @@ describe("live log mapping", () => {
     );
     expect(pulsePath(ops[2] as (typeof ops)[number], graph)).toEqual([
       "agent:ingestion->agent:audit",
-      "agent:audit->tool:engine.auditsnapshot",
+      "agent:audit->output:flags",
     ]);
+    expect(ops[2]?.actor).toBe("engine");
+  });
+
+  it("puts the Connect page's tools on the same vendor nodes as the mock feed", () => {
+    const rows = ["qbo", "gusto", "hubspot", "plaid"].map((tool) =>
+      row({
+        action: "connections.connected",
+        actor: "person",
+        agent: "field.ingest",
+        tool: `${tool}.consent`,
+        source: tool,
+      }),
+    );
+    const sources = toOperations(rows).map((o) => o.source);
+    expect(sources).toEqual(["books", "payroll", "crm", "plaid"]);
+    const graph = buildBrainGraph(toOperations(rows));
+    expect(graph.nodes.find((n) => n.id === "source:plaid")).toMatchObject({
+      title: "Plaid",
+      vendor: "plaid",
+    });
   });
 
   it("marks failures and reads lastAdvanceAt from the feed log", () => {
