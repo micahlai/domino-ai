@@ -33,6 +33,8 @@ import {
 import { sha256 } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 import { runStructured } from "./timeline/assistant/claude";
+import { companyContext } from "./timeline/assistant/context";
+import { brainContext } from "./timeline/chat/brain";
 import type { WorkspaceRun } from "./timeline/workspace";
 
 export type CascadeView = {
@@ -393,6 +395,10 @@ async function estimateReactions(
               customers: s.customers.length,
               asOf: s.asOf,
             },
+            // The saved books, weekly forecast, rules and learned payment behavior of this branch,
+            // plus what the other agents currently report: flags, research, recommendations.
+            books: companyContext(parent),
+            agentFindings: await agentFindings(ctx, fieldId, parent),
             scenario: req.event,
             branchLowestCash: `${money(req.lowPoint.usable)} in the week of ${req.lowPoint.weekStart}`,
             trigger: req.trigger.label,
@@ -453,6 +459,28 @@ async function estimateReactions(
     rows.push(
       row("failed", `Rule-based for '${req.trigger.label}': Claude answer unusable (${msg})`),
     );
+    return null;
+  }
+}
+
+/** The Brain map's current findings for the linked Field company, or null if unreadable. */
+async function agentFindings(ctx: ActionCtx, fieldId: Id<"companies">, parent: WorkspaceRun) {
+  try {
+    const snapshot = parent.baseline.seed.snapshot;
+    return await brainContext(ctx, {
+      status: "linked",
+      fieldCompanyId: fieldId,
+      via: "timeline_link",
+      frozen: {
+        seedId: parent.baseline.seed.id,
+        snapshotVersion: null,
+        asOf: snapshot.asOf,
+        linkedAt: null,
+        analystRunId: null,
+      },
+      currentFieldSnapshotVersion: null,
+    });
+  } catch {
     return null;
   }
 }
