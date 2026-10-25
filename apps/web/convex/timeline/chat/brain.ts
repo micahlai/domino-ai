@@ -2,6 +2,7 @@ import { makeFunctionReference } from "convex/server";
 import { z } from "zod";
 import { FieldTraceSchema } from "../../../lib/field-trace-contract";
 import type { WorkerChatContext } from "../../../lib/worker-chat-context";
+import type { Doc } from "../../_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../../_generated/server";
 import type { WorkspaceRun } from "../questions/context";
 
@@ -9,14 +10,19 @@ import type { WorkspaceRun } from "../questions/context";
  * Bridge from a Timeline chat to the Field Brain map that produced its books. The company is
  * resolved only from verified identities: the seed id written by field:exportSeed plus the
  * stored link with the same seed hash and baseline run, or an already validated Worker
- * handoff. Names, profiles and Timeline company ids are shared by replicas and never used.
+ * handoff. Names and profiles are shared by replicas and never used.
+ *
+ * Operating books are the one id-based link: the simulator writes the same operating world
+ * (`operating/<company>/<scenario>`) into both the Timeline books and the Field company's
+ * operatingDemo, so it is a shared identity, not a name. Only the original company of that
+ * world counts; replays and judge sandboxes copy it and are never used.
  */
 export const FieldSourceSchema = z.discriminatedUnion("status", [
   z
     .object({
       status: z.literal("linked"),
       fieldCompanyId: z.string(),
-      via: z.enum(["timeline_link", "worker_suggestion"]),
+      via: z.enum(["timeline_link", "worker_suggestion", "operating_world"]),
       frozen: z
         .object({
           seedId: z.string(),
@@ -33,6 +39,7 @@ export const FieldSourceSchema = z.discriminatedUnion("status", [
 ]);
 export type FieldSource = z.infer<typeof FieldSourceSchema>;
 const SEED_ID = /^field:weekly_seed\/(.+)-v\d+$/;
+const OPERATING_WORLD = /^operating\/([a-z0-9-]+)\/([a-z0-9-]+)$/;
 
 export async function resolveFieldSource(
   ctx: QueryCtx | MutationCtx,
@@ -73,12 +80,15 @@ export async function resolveFieldSource(
   }
   const match = SEED_ID.exec(seed.id);
   const company = match ? await feedVersion(match[1] ?? "") : undefined;
-  if (!match || !company)
+  if (!match || !company) {
+    const world = await operatingWorldSource(ctx, run, feedVersion);
+    if (world) return world;
     return {
       status: "missing",
       reason:
         "These Timeline books were not exported by a Field company, so no Brain map output is linked.",
     };
+  }
   const links = await ctx.db
     .query("timelineLinks")
     .withIndex("by_companyId", (q) => q.eq("companyId", company.companyId))
@@ -106,6 +116,49 @@ export async function resolveFieldSource(
       snapshotVersion: link.snapshotVersion,
       asOf: link.asOf,
       linkedAt: link.savedAt,
+      analystRunId: null,
+    },
+    currentFieldSnapshotVersion: company.version,
+  };
+}
+
+/** The original Field company simulating the same operating world as these books, if exactly one. */
+async function operatingWorldSource(
+  ctx: QueryCtx | MutationCtx,
+  run: WorkspaceRun,
+  feedVersion: (id: string) => Promise<{ companyId: string; version: number | null } | undefined>,
+): Promise<FieldSource | null> {
+  const world = OPERATING_WORLD.exec(run.companyId);
+  if (!world) return null;
+  type Demo = NonNullable<Doc<"companies">["operatingDemo"]>;
+  const rows = await ctx.db
+    .query("companies")
+    .withIndex("by_operating_demo", (q) =>
+      q
+        .eq("operatingDemo.company", world[1] as Demo["company"])
+        .eq("operatingDemo.scenario", world[2] as Demo["scenario"]),
+    )
+    .take(50);
+  const originals = rows.filter((c) => !c.replayOf && !c.judge);
+  if (originals.length !== 1)
+    return originals.length > 1
+      ? {
+          status: "missing",
+          reason: `More than one Field company simulates ${run.companyId}, so no single Brain map is attached.`,
+        }
+      : null;
+  const company = await feedVersion(originals[0]?._id ?? "");
+  if (!company) return null;
+  return {
+    status: "linked",
+    fieldCompanyId: company.companyId,
+    via: "operating_world",
+    frozen: {
+      seedId: run.baseline.seed.id,
+      // The books came from the simulator, not a Field snapshot, so no version is pinned.
+      snapshotVersion: null,
+      asOf: run.baseline.seed.snapshot.asOf,
+      linkedAt: null,
       analystRunId: null,
     },
     currentFieldSnapshotVersion: company.version,
