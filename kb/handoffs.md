@@ -1,3 +1,7 @@
+## 2026-10-25 Saved suggestion journey checked
+- Done: reviewed friend Timeline assistant/layout merged with exact frozen calculations, primary Simulate this option, saved risk/fix comparison, editable alternatives and clear provenance. Full2673 checks plus final51 focused UI checks, both tsc boundaries and final webpack build pass. Actual production2U edit/save/How journey passes; independent safety and financial identity reviews accept.
+- Next: field/main fast-forward/install/push, restart3114, refresh existing2U legacy suggestions with explicit analyst run, one liveverify and stop own isolated runtimes. Optional map/Try-it polish deferred; main/protected ports/data preserved. Details in features/field/HANDOFF.md.
+
 ## 2026-10-25 Current-company release live
 - Done: ed66ed3 pushed to field/main, Next3114 restarted (PID9707/session48498), live Asana6/6 connected verified. Primary current datasets use latest verified2026Q2 filings and explicit syntheticOct25 starting books. Isolated current-company dashboard/Timeline cash matches all13 weeks and low point.
 - Checks: reused passing full2588-test check, web/Convex tsc, Biome663 and webpack build; current-data source unchanged afterward. Evidence and active integration in features/field/HANDOFF.md.
