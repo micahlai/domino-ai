@@ -1,5 +1,10 @@
 # Timeline handoff
 
+## 2026-10-25: published checkpoint renamed TL7
+
+- User requested a clear name reflecting completedTL7 scope. Published merge branch is now TL7-checkpoint; partner should fetch/merge origin/TL7-checkpoint. Former remote TL5-checkpoint is superseded. Stable checkout remains ../domino-timeline with unchanged3107/3240 data.
+- Earlier isolated TL7 worktree branch renamed TL7-isolated-checkpoint to free the local name. This is only a branch-label change; accepted source and smoke behavior unchanged. Chat work stays separate.
+
 ## 2026-10-25: publish partner merge checkpoint
 
 - User authorizes pushing the accepted Timeline work for partner merge on another computer. Publish TL5-checkpoint, with source0db7f2d and [partner pickup](PARTNER-PICKUP.md). No main/Field merge.
