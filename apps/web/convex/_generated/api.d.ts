@@ -21,6 +21,7 @@ import type * as engine from "../engine.js";
 import type * as events from "../events.js";
 import type * as explanations from "../explanations.js";
 import type * as field from "../field.js";
+import type * as fieldDashboard from "../fieldDashboard.js";
 import type * as fieldFeed from "../fieldFeed.js";
 import type * as fieldJobs from "../fieldJobs.js";
 import type * as fieldSources from "../fieldSources.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   explanations: typeof explanations;
   field: typeof field;
+  fieldDashboard: typeof fieldDashboard;
   fieldFeed: typeof fieldFeed;
   fieldJobs: typeof fieldJobs;
   fieldSources: typeof fieldSources;
