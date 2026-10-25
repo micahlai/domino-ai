@@ -27,59 +27,64 @@ export function ChatPlayground() {
           </Button>
         ))}
       </div>
-      <WorkspaceView
-        key={mode}
-        run={fixtureChatRun}
-        parent={null}
-        graph={{ state: "ready", value: fixtureGraph }}
-        questions={{ state: "ready", value: [] }}
-        resultRef={{ state: "missing" }}
-        comparisons={{
-          ids: comparisonIds,
-          reads: {
-            [fixtureRoot.runId]: { state: "ready", value: fixtureRoot },
-            [fixtureRules.runId]: { state: "ready", value: fixtureRules },
-            [fixtureScenario.runId]: { state: "ready", value: fixtureScenario },
-          },
-          onChange: setComparisonIds,
-        }}
-        actions={{
-          catalogHref: "#",
-          hrefFor: (runId) => workspaceHref(fixtureChatRun.companyId, { runId }),
-          simulate: async () => ({ ok: false, message: "Fixture only: nothing was calculated." }),
-          reviseRules: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
-          ask: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
-          confirmProposal: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
-          relink: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
-        }}
-        chat={(context) => (
-          <ChatView
-            sidebar
-            {...context}
-            run={fixtureChatRun}
-            selected={
-              mode === "new"
-                ? null
-                : mode === "error"
-                  ? { state: "error" }
-                  : { state: "ready", value: receipt }
-            }
-            history={{
-              state: "ready",
-              value: [
-                fixtureChat,
-                { ...fixtureSaved, conversationId: "timeline:chat/saved-fixture" },
-              ],
-            }}
-            actions={{
-              write: async () => ({
-                ok: false,
-                message: "This is a visual fixture. Open a connected saved timeline to chat.",
-              }),
-            }}
-          />
-        )}
-      />
+      <div className="h-[calc(100dvh-14rem)] min-h-[36rem] overflow-hidden rounded-lg border">
+        <WorkspaceView
+          key={mode}
+          run={fixtureChatRun}
+          parent={null}
+          graph={{ state: "ready", value: fixtureGraph }}
+          questions={{ state: "ready", value: [] }}
+          resultRef={{ state: "missing" }}
+          comparisons={{
+            ids: comparisonIds,
+            reads: {
+              [fixtureRoot.runId]: { state: "ready", value: fixtureRoot },
+              [fixtureRules.runId]: { state: "ready", value: fixtureRules },
+              [fixtureScenario.runId]: { state: "ready", value: fixtureScenario },
+            },
+            onChange: setComparisonIds,
+          }}
+          actions={{
+            catalogHref: "#",
+            hrefFor: (runId) => workspaceHref(fixtureChatRun.companyId, { runId }),
+            simulate: async () => ({ ok: false, message: "Fixture only: nothing was calculated." }),
+            reviseRules: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
+            ask: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
+            confirmProposal: async () => ({
+              ok: false,
+              message: "Fixture only: nothing was saved.",
+            }),
+            relink: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
+          }}
+          chat={(context) => (
+            <ChatView
+              sidebar
+              {...context}
+              run={fixtureChatRun}
+              selected={
+                mode === "new"
+                  ? null
+                  : mode === "error"
+                    ? { state: "error" }
+                    : { state: "ready", value: receipt }
+              }
+              history={{
+                state: "ready",
+                value: [
+                  fixtureChat,
+                  { ...fixtureSaved, conversationId: "timeline:chat/saved-fixture" },
+                ],
+              }}
+              actions={{
+                write: async () => ({
+                  ok: false,
+                  message: "This is a visual fixture. Open a connected saved timeline to chat.",
+                }),
+              }}
+            />
+          )}
+        />
+      </div>
     </div>
   );
 }

@@ -1,10 +1,36 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { WorkspaceChart } from "./WorkspaceChart";
-import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
+import {
+  cashScale,
+  dateTicks,
+  formatAxisCash,
+  panWeekWindow,
+  visibleDateTicks,
+} from "./chartScales";
 import { fixtureBaseline, fixtureScenario } from "./fixtures";
 
 describe("timeline scale guides", () => {
+  it("pans continuously between saved weeks and clamps without changing the window span", () => {
+    expect(panWeekWindow(4, 14, 0.125, 38)).toEqual([4.125, 14.125]);
+    expect(panWeekWindow(4.125, 14.125, -0.025, 38)[0]).toBeCloseTo(4.1);
+    expect(panWeekWindow(4, 14, -100, 38)).toEqual([0, 10]);
+    expect(panWeekWindow(4, 14, 100, 38)).toEqual([28, 38]);
+  });
+
+  it("keeps grid dates anchored to saved week indices during fractional panning", () => {
+    const dates = fixtureBaseline.history.map((week) => week.weekStart);
+    const before = visibleDateTicks(dates, 2, 14, 5);
+    const after = visibleDateTicks(dates, 2.25, 14.25, 5);
+    expect(after).toEqual(before);
+    expect(after.map((tick) => tick.index)).toEqual([3, 6, 9, 12]);
+    expect(
+      after.every((tick) => Number.isInteger(tick.index) && tick.date === dates[tick.index]),
+    ).toBe(true);
+    const narrow = visibleDateTicks(dates, 3.25, 15.25, 5);
+    expect(narrow.map((tick) => tick.index)).toEqual([6, 9, 12, 15]);
+  });
+
   it("keeps negative, positive and zero cash in the plot with safe integer-cent ticks", () => {
     const { scale, ticks } = cashScale([-250_000_000, 0, 360_000_000], [268, 38]);
     expect(scale(-250_000_000)).toBe(268);

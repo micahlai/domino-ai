@@ -43,6 +43,7 @@ function treeOf(entries: CatalogEntry[], baseRunId: string | null): Node | null 
 }
 
 type RowContext = {
+  wide: boolean;
   run: WorkspaceRun;
   comparisons: ScenarioComparisons;
   byId: Map<string, CatalogEntry>;
@@ -66,6 +67,7 @@ export function ScenarioNav({
   buildOn,
   hrefFor,
   catalogHref,
+  wide = false,
 }: {
   run: WorkspaceRun;
   graph: Read<CatalogEntry[]>;
@@ -74,10 +76,12 @@ export function ScenarioNav({
   buildOn?: (runId: string) => void;
   hrefFor: (id: string) => string;
   catalogHref: string;
+  wide?: boolean;
 }) {
   const entries = familyEntries(run, graph);
   const root = treeOf(entries, baseRunId);
   const ctx: RowContext = {
+    wide,
     run,
     comparisons,
     byId: new Map(entries.map((e) => [e.runId, e])),
@@ -93,11 +97,10 @@ export function ScenarioNav({
   return (
     <nav
       aria-label="Scenarios"
-      className="hidden min-w-0 xl:sticky xl:top-20 xl:flex xl:h-[calc(100dvh-6rem)] xl:flex-col"
+      className="flex min-h-0 min-w-0 flex-1 flex-col"
       data-testid="scenario-nav"
     >
       <div className="mb-2 shrink-0 space-y-0.5 px-1">
-        <p className="text-xs font-medium text-muted-foreground">Scenarios</p>
         <p className="text-[11px] leading-4 text-muted-foreground">
           Tick to draw on the chart, up to {MAX_COMPARISONS}. Each branch starts where it leaves the
           line it builds on.
@@ -205,29 +208,16 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
           <label htmlFor={checkboxId} className="block cursor-pointer">
             <span
               className={cn(
-                "line-clamp-2 break-words text-sm leading-5",
+                "break-words text-sm leading-5",
+                !ctx.wide && "lg:line-clamp-2",
                 building ? "font-medium" : "text-foreground/90",
               )}
               title={name}
             >
               {name}
             </span>
-            {!isBase && parent && parent.parentRunId !== null ? (
-              <span className="block break-words text-[11px] leading-4 text-muted-foreground">
-                Built on {parent.label || KIND[parent.kind]}
-              </span>
-            ) : null}
           </label>
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted-foreground">
-            <span>
-              {isBase
-                ? "No what-ifs"
-                : entry.startsOn
-                  ? `Starts ${formatFullDate(entry.startsOn)}`
-                  : "Same events, other rules"}
-              {" · low "}
-              {formatExactCents(entry.lowPointCents)}
-            </span>
+          <div className="mt-1 flex min-h-8 flex-wrap items-center gap-1 text-xs">
             {building ? (
               <span
                 className="inline-flex items-center gap-1 font-medium text-foreground"
@@ -255,7 +245,35 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
                 Open
               </Link>
             )}
-          </span>
+          </div>
+          <details className="group/details mt-1 text-xs">
+            <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1 text-muted-foreground [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden="true"
+                className="size-3 transition-transform group-open/details:rotate-90"
+              />
+              Details
+            </summary>
+            <div className="space-y-1 pb-1 text-muted-foreground">
+              {!isBase && parent && parent.parentRunId !== null ? (
+                <span className="block break-words text-[11px] leading-4 text-muted-foreground">
+                  Built on {parent.label || KIND[parent.kind]}
+                </span>
+              ) : null}
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span>
+                  {isBase
+                    ? "No what-ifs"
+                    : entry.startsOn
+                      ? `Starts ${formatFullDate(entry.startsOn)}`
+                      : "Same events, other rules"}
+                  {" · low "}
+                  {formatExactCents(entry.lowPointCents)}, week of{" "}
+                  {formatFullDate(entry.lowPointWeek)}
+                </span>
+              </span>
+            </div>
+          </details>
         </div>
       </div>
       <AnimatePresence initial={false}>

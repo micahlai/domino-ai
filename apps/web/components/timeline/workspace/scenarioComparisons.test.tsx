@@ -372,6 +372,10 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain("Base forecast");
     expect(html).toContain(`accent-color:${SCENARIO_COLORS[1]}`);
     expect(html).toContain(`data-testid="scenario-build-${fixtureScenario.runId}"`);
+    for (const detail of html.matchAll(/<details\b[\s\S]*?<\/details>/g)) {
+      expect(detail[0]).not.toContain('data-testid="scenario-build-');
+      expect(detail[0]).not.toContain("Building here");
+    }
     const baseBox = html.match(
       new RegExp(`<input[^>]*data-testid="scenario-show-${fixtureRoot.runId}"[^>]*>`),
     )?.[0];

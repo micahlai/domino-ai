@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-25 Codex TL11 timeline layout
+- Done: consolidated session layout, continuous pan/grid, vertical key and branch-focus work on claude-timeline-chat. Feature handoff: features/timeline/HANDOFF.md; scope: features/timeline/TL11-layout.md.
+- Browser: desktop/tablet/phone, sidebar/draft/disclosure/comparison controls and fractional-time branch focus verified. Preview3116 reuses existing3212 backend/data. Main unchanged.
+- Checks: final pnpm check passes typechecks,2,520tests and lint649 files. User authorized commit/push of all session changes on claude-timeline-chat; no main merge requested.
+
 ## 2026-10-25 Main release
 - Done: combined origin/main fe39898 with field/main af7977d in isolated release/main-20261025; preserved existing main commits and README cleanup. Retained passing Field Convex tsconfig at sole conflict. Combined web/Convex typechecks pass; application code identical to recorded Field tests/build.
 - Published: release merge a607b97 pushed to origin/main successfully. Live3114/3260 and the dirty original main checkout remain unchanged. Next: separate LLM-chat implementation if requested.

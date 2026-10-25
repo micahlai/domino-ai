@@ -137,4 +137,4 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 
 | D1 | Feature completion overview PDF | User request | main fetched | done | main | Seven-page output/pdf/domino-feature-status-overview.pdf; code/status cross-check, source index, all pages visually reviewed; pnpm check passes |
 
-| TL11 | Page-filling timeline layout | kb/tasks/TL11-page-filling-timeline.md | TL10 | doing | claude-timeline-chat | User requests collapsible rails and bottom financial disclosures; Codex audits UI worker |
+| TL11 | Page-filling timeline layout | kb/tasks/TL11-page-filling-timeline.md | TL10 | done | claude-timeline-chat | All session UI consolidated; continuous pan/grid, vertical key, branch focus; 2,520 tests/typechecks/lint and desktop/tablet/phone browser pass |

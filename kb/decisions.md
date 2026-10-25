@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-25 Micah: the Timeline route fills the window below navigation. Scenario/chat sidebars collapse, financial details stay in a bottom tray, and chart panning uses continuous drawing coordinates. Build on remains visible and explicit; branch focus changes only chart inspection. See features/timeline/TL11-layout.md.
+
 - 2026-10-25: Jayden authorized publishing verified field/main to main, superseding the historical main freeze for this release. Preserve remote main commits and use an isolated release checkout; TL9 LLM conversation remains incomplete.
 
 - 2026-10-24 Jayden: independently own complete Field/Knowledge and Timeline/Simulations features, each with UI/backend/agent/roadmap, after audited P0 seam/schema/harness setup. Long-lived branches merge later; one writer per domain, three implementation processes total. See spec/independent-feature-lanes.md. Earlier tiny T1/sole-UI split superseded after P0.
