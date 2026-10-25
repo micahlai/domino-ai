@@ -55,7 +55,7 @@ describe("risks we're watching", () => {
       "Breaks minimum runway in the week of Dec 28.",
     );
     expect(riskSentence(risk({ status: "holds", low: { cents: 1_419_452_372, week: null } }))).toBe(
-      "Stays above the lender's minimum for all 13 weeks. Lowest cash $14.2M.",
+      "Stays above the illustrative cash floor for all 13 weeks. Lowest cash $14.2M.",
     );
   });
 

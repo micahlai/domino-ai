@@ -78,8 +78,8 @@ export function SuggestionsSection({
         <EmptyCard icon={<Lightbulb />}>
           <p className="font-medium text-foreground">No suggestions waiting.</p>
           <p>
-            When a risk would take cash below the lender's minimum, the engine tests fixes and posts
-            them here for you to accept or decline.
+            When a risk would take cash below the illustrative cash floor, the engine tests fixes
+            and posts them here for you to accept or decline.
           </p>
         </EmptyCard>
       ) : (
@@ -176,7 +176,7 @@ function SuggestionCard({
           note={roomLine(effect)}
         />
         <EffectCell
-          label="Lender's minimum"
+          label="Illustrative cash floor"
           cents={effect.minimum}
           week={null}
           tone={null}

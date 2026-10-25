@@ -255,7 +255,7 @@ export function demoSuggestions(view: DashboardView): Suggestion[] {
           staysAboveMinimum: r.fix.survives,
         },
         recommendation:
-          "Covers the gap to the lender's minimum at the low point, rounded up to the next $50K.",
+          "Covers the gap to the illustrative cash floor at the low point, rounded up to the next $50K.",
         status: "open" as const,
         by: "Engine-tested sample",
       },

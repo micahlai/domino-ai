@@ -7,15 +7,16 @@ import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
+import { OperatingProvenanceStrip } from "./field/OperatingProvenanceStrip";
 import { SimClockBar } from "./field/SimClockBar";
-import { useSelectedProfile } from "./field/company";
+import { operatingWorldId, useOperatingSelection } from "./field/company";
 
 // Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
 // harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
 // case study opens from the company switcher.
 const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
 /** Timeline's own routes (TL7): /c/<company>/timeline and its analysis page. */
-const TIMELINE = /^\/c\/[^/]+\/timeline(\/|$)/;
+const TIMELINE = /^\/c\/(?:[^/]+|operating\/[^/]+\/[^/]+)\/timeline(\/|$)/;
 const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
 /** The Timeline link follows the company picked in the top bar. */
 const primaryLinks = (profile: string) => [
@@ -43,6 +44,8 @@ const primaryLinks = (profile: string) => [
 
 /** Routes that own the whole window under the top bar and pin the Original dark tokens. */
 export const isFullWindow = (p: string) => under(p, "/investigate") || under(p, "/case/2u");
+const isOperatingProduct = (p: string) =>
+  p === "/" || under(p, "/field") || under(p, "/simulations") || p.startsWith("/c/operating");
 
 // The old Kestrel demo pages keep their sub-navigation inside the Timeline routes.
 const demoLinks = [
@@ -123,7 +126,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 /** Logo, page links, then the company switcher. On small screens the page links drop to their
  * own scrollable row under the logo. Always the light style, even above the dark pages. */
 function TopBar({ pathname }: { pathname: string }) {
-  const profile = useSelectedProfile();
+  const selection = useOperatingSelection();
+  const timelineCompany = encodeURIComponent(operatingWorldId(selection));
   return (
     <>
       <Suspense fallback={null}>
@@ -153,7 +157,7 @@ function TopBar({ pathname }: { pathname: string }) {
             className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto border-t px-2 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:border-t-0 md:px-0"
           >
             <ul className="flex h-11 gap-1 md:h-full">
-              {primaryLinks(profile).map(({ href, label, on }) => {
+              {primaryLinks(timelineCompany).map(({ href, label, on }) => {
                 const active = on(pathname);
                 return (
                   <li key={href} className="flex shrink-0">
@@ -180,6 +184,7 @@ function TopBar({ pathname }: { pathname: string }) {
             <CompanySwitcher />
           </div>
         </div>
+        {isOperatingProduct(pathname) ? <OperatingProvenanceStrip /> : null}
         {/* Simulated time for the dashboard and Field pages (Field lane). */}
         <SimClockBar pathname={pathname} />
       </header>

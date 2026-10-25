@@ -8,13 +8,12 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Segmented } from "../ui/segmented";
-import { useIsReplayCompany, useSelectedCompany } from "./company";
+import { useSelectedCompany } from "./company";
 
 // Simulated time for the selected company (convex/fieldClock.ts): a compact bar under the top
 // bar on the dashboard and the Field pages. Play moves the mock world day by day; each day's
 // new entries are ingested at once and the agents react, so every page updates live through
-// its own queries. Hidden without a backend, for 2U (replayed filings) and for companies that
-// only move by weeks.
+// its own queries. Hidden without a backend and for companies that only move by weeks.
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 const SPEEDS = [
@@ -24,7 +23,7 @@ const SPEEDS = [
 ] as const;
 type SpeedValue = (typeof SPEEDS)[number]["value"];
 
-const ON = (p: string) => p === "/" || p === "/field" || p.startsWith("/field/map");
+const ON = (p: string) => p === "/" || p === "/field" || p.startsWith("/field/");
 
 const longDate = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -41,9 +40,8 @@ export function SimClockBar({ pathname }: { pathname: string }) {
 }
 
 function LiveClockBar() {
-  const replay = useIsReplayCompany();
   const { companyId } = useSelectedCompany();
-  if (replay || !companyId) return null;
+  if (!companyId) return null;
   return <ClockControls companyId={companyId} />;
 }
 

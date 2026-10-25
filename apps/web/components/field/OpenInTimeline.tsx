@@ -11,14 +11,14 @@ import { Button } from "../ui/button";
 import { useSelectedCompany } from "./company";
 
 // "Open in Timeline": the Field side of the TL7 joint seam (convex/fieldTimeline.ts). Saves the
-// selected company's latest books as a Timeline forecast, with Field's lender rules and model as
+// selected company's latest books as a Timeline forecast, with Field's cash rules and model as
 // the reviewed assumptions, starts Timeline's risk analysis and opens the saved run. The same
 // books open the same run again. Nothing is paid or moved.
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export const OPEN_IN_TIMELINE_NOTE =
-  "Saves the latest books as a Timeline forecast with this company's lender rules, then starts Timeline's risk analysis. Nothing is paid or moved.";
+  "Saves the latest books as a Timeline forecast with illustrative cash rules, then starts Timeline's risk analysis. Nothing is paid or moved.";
 
 export function OpenInTimeline({
   variant = "default",

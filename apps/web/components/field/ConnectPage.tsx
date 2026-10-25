@@ -28,6 +28,7 @@ import {
 import { PageHeader, Section, StatTile } from "../ui/page";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/sheet";
 import { Skeleton } from "../ui/skeleton";
+import { ReplayGuard } from "./ReplayGuard";
 import { ConnectDataProvider, type ConnectTool, useConnectData } from "./connect-data";
 import { EXCLUDED_GROUPS, EXCLUDED_GROUP_LABEL, type ExcludedReport } from "./connect-excluded";
 import { SourceBadge, timeAgo, useNow } from "./parts";
@@ -57,11 +58,13 @@ const READ_TIMEOUT_MS = 30_000;
 
 export function ConnectPage() {
   return (
-    <ConnectBoundary>
-      <ConnectDataProvider>
-        <ConnectView />
-      </ConnectDataProvider>
-    </ConnectBoundary>
+    <ReplayGuard>
+      <ConnectBoundary>
+        <ConnectDataProvider>
+          <ConnectView />
+        </ConnectDataProvider>
+      </ConnectBoundary>
+    </ReplayGuard>
   );
 }
 

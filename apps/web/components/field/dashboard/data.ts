@@ -156,10 +156,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 function LiveData({ children }: { children: ReactNode }) {
   // Follows the company picked in the top bar (newest feed until the picker list loads).
   const { companyId } = useSelectedCompany();
-  const r = useQuery(
-    DASHBOARD_API.summary,
-    companyId === undefined ? "skip" : companyId ? { companyId } : {},
-  );
+  const r = useQuery(DASHBOARD_API.summary, companyId ? { companyId } : "skip");
   // Read-only: the analyst's latest run for the same company the summary returned.
   const latest = useQuery(
     api.fieldAnalyst.latest,
@@ -216,8 +213,8 @@ export function useTimelineRun(companyId: Id<"companies"> | undefined): Timeline
   }, [outputKey, getOutput]);
   if (!companyId || raw === undefined) return { state: "loading" };
   if (!link) return { state: "none" };
-  // Keep showing the last output while a refreshed one loads after the analysis changes.
-  if (!output) return { state: "loading", link };
+  // A prior selection's output must never render under the newly selected company.
+  if (!output || output.key !== outputKey) return { state: "loading", link };
   return {
     state: "ready",
     link,

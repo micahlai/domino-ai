@@ -7,8 +7,10 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { OpenInTimeline } from "../../field/OpenInTimeline";
 import {
   FIELD_COMPANIES,
-  selectCompany,
-  useCompanySelection,
+  OPERATING_COMPANIES,
+  operatingSelectionFromWorldId,
+  selectOperating,
+  useOperatingSelection,
   useSelectedCompany,
 } from "../../field/company";
 import { formatFullDate } from "../baseline/format";
@@ -18,16 +20,22 @@ import { formatFullDate } from "../baseline/format";
 // latest imported books. Reading only; importing stays behind the explicit Field action.
 
 export const fieldCompanyOf = (companyId: string) =>
-  FIELD_COMPANIES.find((c) => c.id === companyId) ?? null;
+  OPERATING_COMPANIES.find((c) => c.id === operatingSelectionFromWorldId(companyId)?.company) ??
+  FIELD_COMPANIES.find((c) => c.id === companyId) ??
+  null;
 
 /** Selects the URL's company in the top bar once per company (picking another navigates). */
 export function SyncCompany({ companyId }: { companyId: string }) {
-  const company = fieldCompanyOf(companyId);
-  const selection = useCompanySelection();
+  const operating = operatingSelectionFromWorldId(companyId);
+  const selection = useOperatingSelection();
   // biome-ignore lint/correctness/useExhaustiveDependencies: sync only when the URL company changes
   useEffect(() => {
-    if (company && selection !== company.id) selectCompany(company.id);
-  }, [company]);
+    if (
+      operating &&
+      (selection.company !== operating.company || selection.scenario !== operating.scenario)
+    )
+      selectOperating(operating);
+  }, [companyId]);
   return null;
 }
 
@@ -46,18 +54,18 @@ export type LatestImport =
 
 /** The latest Field import for a Timeline company id (a Field profile), if any. Live only. */
 export function useLatestImport(companyId: string): LatestImport {
-  const field = fieldCompanyOf(companyId);
+  const operating = operatingSelectionFromWorldId(companyId);
   const { companies } = useSelectedCompany();
-  const fieldId = companies?.find((c) => c.profile === companyId)?.companyId as
-    | Id<"companies">
-    | undefined;
+  const fieldId = companies?.find(
+    (c) => c.company === operating?.company && c.scenario === operating?.scenario,
+  )?.companyId as Id<"companies"> | undefined;
   const link = useQuery(
     api.fieldTimeline.latest,
-    field && fieldId ? { companyId: fieldId } : "skip",
+    operating && fieldId ? { companyId: fieldId } : "skip",
   );
-  if (!field) return { state: "not_field" };
-  if (companies === undefined || (fieldId && link === undefined)) return { state: "loading" };
-  if (!fieldId || !link) return { state: "none" };
+  if (!operating) return { state: "not_field" };
+  if (companies === undefined || !fieldId || link === undefined) return { state: "loading" };
+  if (!link) return { state: "none" };
   return {
     state: "ready",
     runId: link.runId,

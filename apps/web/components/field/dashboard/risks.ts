@@ -154,8 +154,8 @@ export function analystRisks(latest: AnalystLatest, view: DashboardView): RiskFe
 }
 
 export const OUTCOME_WORDS: Record<RiskOutcome, string> = {
-  stays_above: "Stays above the lender's minimum",
-  falls_below: "Falls below the lender's minimum",
+  stays_above: "Stays above the illustrative cash floor",
+  falls_below: "Falls below the illustrative cash floor",
   below_zero: "Falls below zero",
-  breaks_rule: "Breaks another lender rule",
+  breaks_rule: "Breaks another illustrative cash rule",
 };

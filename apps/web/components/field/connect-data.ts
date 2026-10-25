@@ -92,13 +92,9 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
 }
 
 function Live({ children }: { children: ReactNode }) {
-  // Follows the company picked in the top bar (newest feed until the picker list loads).
+  // Every read and write is pinned to the exact selected operating feed.
   const { companyId: picked } = useSelectedCompany();
-  const list = useQuery(
-    CONNECT_API.list,
-    picked === undefined ? "skip" : picked ? { companyId: picked } : {},
-  );
-  const companyId = list?.companyId;
+  const list = useQuery(CONNECT_API.list, picked ? { companyId: picked } : "skip");
   const connect = useMutation(CONNECT_API.connect);
   const disconnect = useMutation(CONNECT_API.disconnect);
   const syncNow = useMutation(CONNECT_API.syncNow);
@@ -110,17 +106,20 @@ function Live({ children }: { children: ReactNode }) {
       asOf: list?.asOf ?? null,
       tools: list === undefined ? undefined : (list?.tools ?? null),
       connect: async (tool) => {
-        await connect({ companyId, tool, consent: true });
+        if (!picked) throw new Error("Selected company is still connecting.");
+        await connect({ companyId: picked, tool, consent: true });
       },
       disconnect: async (tool) => {
-        await disconnect({ companyId, tool });
+        if (!picked) throw new Error("Selected company is still connecting.");
+        await disconnect({ companyId: picked, tool });
       },
       syncNow: async () => {
-        await syncNow({ companyId });
+        if (!picked) throw new Error("Selected company is still connecting.");
+        await syncNow({ companyId: picked });
       },
       loadExcluded: async () => null,
     }),
-    [list, companyId, connect, disconnect, syncNow],
+    [list, picked, connect, disconnect, syncNow],
   );
   return createElement(Context.Provider, { value }, children);
 }
