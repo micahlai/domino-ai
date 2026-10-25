@@ -1,92 +1,141 @@
+<p align="center">
+  <img src="docs/assets/thumbnail.jpg" alt="Domino" width="100%" />
+</p>
+
 # Domino
 
-**Domino investigates company cash, compares forecasts with later results, and tests costed alternatives.**
+**An AI cash-flow analyst for B2B software companies.** Domino reads a company's finance tools,
+audits them, builds a 13-week cash forecast, shows the chain of problems one bad event sets off
+(the "dominoes"), and tests costed fixes as branches of the timeline. A person accepts or declines
+every fix. Domino never moves money.
 
-## How we use Convex
+**Live app:** https://domino-ruddy.vercel.app · **Built at** Cal Hacks 13.0 for Hyphenate's
+autonomous finance track · **Setup:** [docs/SETUP.md](docs/SETUP.md)
 
-- HTTP actions verify signed vendor webhooks (`apps/web/convex/http.ts`).
-- Scheduled functions run the simulated clock and the audit, forecasting and advisor agent swarms (`fieldClock.ts`, `fieldAnalyst.ts`).
-- A composed schema with 43 tables and 69 indexes holds snapshots, findings, suggestions and timeline branches (`apps/web/convex/schemas/`).
-- Realtime `useQuery` keeps the dashboard, brain map, worker page and Timeline live with no refresh.
-- Full feature list, proof files and build log: [hackathon.md](hackathon.md).
+---
 
-The current demo is a historical 2U case study. Its main screen is a grouped agent map beside a persistent conversation. Inspect frozen company evidence, save a quarterly forecast, reveal reported outcomes and explore hypothetical decisions. Some scenario and CREAO coordination features are still incomplete.
+## For judges
 
-Start with the [shared product plan, status and roadmap](kb/product/team-reset-2026-10-24.md), [team ownership](kb/coordination/historical/team-checkpoint.md), and [current/planned architecture diagrams](docs/architecture/README.md). The integration branch is preview/historical-overnight. Main remains unchanged.
+### The problem
 
-Built at Cal Hacks 13.0 for Hyphenate's autonomous finance track. [Track coverage and gaps](kb/product/hyphenate-checklist.md) are explicit; we do not claim full completion.
+Cash runs out one late payment at a time. A big customer pays 30 days late, cash drops below
+the lender's limit, hiring freezes, bills slip. The FP&A analyst who owns the cash forecast
+usually finds out from a spreadsheet that was already out of date when it was built.
 
-The setup and operational-agent notes below are retained from the earlier Kestrel prototype. They are not evidence that those capabilities are part of the current historical journey. Do not run a seed/reset against the existing demo database. See HANDOFF.md for the current local runtime and checked commands.
+### The seat it fills
 
-## Quick start
+The **FP&A analyst who owns the cash forecast**, working with the controller and CFO.
 
-```bash
-# 1. Tools: Node 20+, pnpm 9
-corepack enable
+### What to try (about 3 minutes)
 
-# 2. Install
-pnpm install
+| Page | What you see |
+| --- | --- |
+| **Judge sandbox** (`/judge`) | Your own private sandbox company. Pick its data sources, upload your own CSV rows or add a surprise, then press Play and watch the agents react. |
+| **Worker** (`/field`) | Press **Start agents**. Ingestion, audit, forecasting and advisor agents run on a simulated clock. |
+| **Brain map** (`/field/map`) | Every source, agent and output as a live graph of the work being done. |
+| **Timeline** | The 13-week cash forecast. Ask Domino "what if our biggest customer pays 60 days late?" or "what if rates rise?" and get a new branch with its dominoes and costed fixes. |
+| **2U backtest** (`/case/2u/backtest`) | A real public company. Forecast from Nov 2023 filings, then reveal what 2U actually reported. |
 
-# 3. Keys
-cp .env.example .env.local        # fill in values from the team password manager
+### What makes it different
 
-# 4. Your own Convex dev database (after apps/web exists, prompt P1)
-cd apps/web && npx convex dev
+- **Dominoes, not just a forecast.** Each event shows the next problems it causes, up to four
+  levels deep, so you see *why* a week goes under the minimum.
+- **Every fix is simulated before anyone approves it.** Suggestions link to saved forecast runs,
+  so the cost and timing of a fix are visible (some "helpful" fixes cost cash before they pay back).
+- **AI proposes, math decides.** Agents explain and propose changes; a pure, tested engine
+  computes every number in integer cents.
+- **It learns from you.** Flagging or declining a finding becomes a scoped rule that later audit
+  and advisor runs apply.
 
-# 5. Run everything (web, Convex, mock servers)
-pnpm dev
+### What is real and what is simulated
 
-# 6. Reset the simulated company to a known state (after prompt E2)
-pnpm seed
+| Part | Status |
+| --- | --- |
+| Demo companies (Kestrel Data and others) | Simulated, based on public SaaS filings |
+| 2U case study | Real public filings with publication dates; later results kept separate from forecasts |
+| Billing, CRM, cards, books, payroll | Our mock servers that copy real API shapes (Stripe, HubSpot, Ramp, QuickBooks, Gusto) |
+| Bank | Capital One Nessie API |
+| News signals | Real Apify runs on public pages |
+| Forecast, dominoes, fixes, learning | Real code with tests |
+
+The 2U replay is retrospective: we picked the case after the outcome was known. It shows the
+method, not proof that Domino would have predicted the outcome.
+
+### Sponsor tracks
+
+- **Hyphenate:** a finance seat with limited access, a clear record of every agent step, and a
+  person approving every action. [Coverage and gaps](kb/product/hyphenate-checklist.md).
+- **Convex:** the only database and backend (details below).
+- **CREAO:** agent apps for learning the company, with a Claude fallback.
+- **Capital One Nessie:** the bank account behind the cash balance.
+- **Apify / CRS:** counterparty news signals and identity checks.
+
+---
+
+## Technical overview
+
+![Domino system architecture](docs/architecture/domino-system.png)
+
+### Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind, shadcn/Radix, React Flow (brain map), Motion, D3/SVG charts. Hosted on Vercel. |
+| Backend and database | Convex: queries, mutations, actions, HTTP actions, scheduled functions, realtime `useQuery`, paginated queries |
+| Engine | Pure TypeScript in `packages/engine`: forecast, 13-week direct cash flow statement, dominoes, audit checks, advisor, learning. No network, no clock, no randomness. |
+| Contracts | Zod schemas in `packages/contracts` validate every boundary (APIs, agent output, JSON) |
+| AI | Claude (`claude-opus-5-5` by default) and CREAO agent apps behind one interface in `packages/agents` |
+| Data sources | Mock tool servers (`apps/mocks`), Capital One Nessie, Apify, SEC EDGAR filings |
+
+### How data flows
+
+1. **Ingest.** Connectors pull from the mock tools and Nessie. Signed vendor webhooks hit Convex
+   HTTP actions, which verify the signature and schedule a debounced re-ingest.
+2. **Audit.** An audit swarm checks the books against each other (for example billing vs bank)
+   and writes findings.
+3. **Forecast.** Parallel forecasters build the 13-week direct cash flow statement. Per-customer
+   payment delays feed the forecast.
+4. **Advise.** The advisor proposes fixes as `Change` objects. The engine scores each fix on a
+   saved timeline branch.
+5. **Decide and learn.** A person accepts or declines. Decisions become scoped rules for later runs.
+
+A simulated clock (self-rescheduling Convex jobs with a lease) plays the company forward day by
+day, so the whole loop runs live while you watch.
+
+### How we use Convex
+
+- HTTP actions verify signed vendor webhooks (Stripe, Gusto, Ramp, Nessie): `apps/web/convex/http.ts`, `fieldWebhooks.ts`
+- Scheduled functions run the simulated clock and the agent swarms: `fieldClock.ts`, `fieldAudit.ts`, `fieldAnalyst.ts`, `fieldAdvisor.ts`
+- A composed schema with 43 tables and 69 indexes holds immutable snapshots, findings, suggestions and timeline branches: `apps/web/convex/schemas/`
+- Realtime `useQuery` keeps the dashboard, brain map, worker page and Timeline live with no refresh
+- The agent activity feed uses a paginated query with `usePaginatedQuery`
+
+### Design rules we enforce
+
+- **Money is integer cents.** No floating-point money anywhere.
+- **The engine is pure.** The same input always gives the same output, so every number can be reproduced.
+- **Agents never calculate money.** They return proposed changes; the engine computes the result.
+- **No peeking.** The engine, agents and UI cannot read the simulator's answer key; a test enforces this.
+- **Mocks only** for payment, card, CRM and payroll tools. Domino never moves money.
+
+### Repo map
+
+| Path | What it is |
+| --- | --- |
+| `apps/web` | Next.js UI and Convex backend (`apps/web/convex/`) |
+| `apps/mocks` | Mock servers for billing, CRM, cards, books, payroll |
+| `packages/contracts` | Shared types, Zod schemas, fixtures |
+| `packages/engine` | Forecast, dominoes, audit, advisor, learning. Pure functions with Vitest tests. |
+| `packages/sim` | Simulated companies, events, planted errors, answer key (used only by evals) |
+| `packages/agents` | Claude and CREAO adapters behind one interface |
+| `docs/` | [Setup](docs/SETUP.md), [demo data](docs/SETUP-DATA.md), [architecture](docs/architecture/README.md) |
+| `kb/` | Spec, decisions, task cards, handoffs |
+| `skills/` | Plain-markdown development skills used by every coding agent |
+
+### Testing
+
+```sh
+pnpm check     # typecheck, Vitest tests, Biome lint
 ```
 
-Before you push: `pnpm check` (typecheck, tests, lint).
-
-## Where things are
-
-| Path | What it is | Owner |
-| --- | --- | --- |
-| `kb/` | Knowledge base: spec, status board, decisions, handoffs. Read `kb/README.md` first. | Both |
-| `prompts/` | Ready-to-run prompts for coding agents, in order. Start at `prompts/README.md`. | Both |
-| `skills/` | Development skills, plain markdown, work with any coding agent (orchestrator, ui-build, taste, ...) | Both |
-| `packages/contracts` | Shared types, Zod schemas, fixtures. The contract between all modules. | Both, by PR |
-| `packages/sim` | Simulated companies, events, planted errors, answer key | Jayden |
-| `packages/engine` | Forecast, dominoes, risk scan, fix scoring, learning. Pure functions. | Jayden |
-| `packages/agents` | CREAO and Claude agents behind one interface | Jayden |
-| `apps/mocks` | Mock servers for CRM, cards, books, payroll | Jayden |
-| `apps/web` | Next.js UI and Convex backend | Micah |
-
-## How we work
-
-1. Pull, then read `kb/status/board.md` and the latest entries in `kb/handoffs.md`.
-2. Pick a task card from `kb/tasks/` (or run the next prompt in `prompts/`).
-3. Work on a short branch. Merge to `main` at least every 2 hours. `main` must pass `pnpm check`.
-4. Update the board and add a handoff note before you push.
-
-## Judging notes
-
-- **Seats it fills:** the FP&A analyst who owns the cash forecast, working with the controller and CFO.
-- **What is real and what is simulated:** see `kb/product/proof.md`.
-- **CREAO agent ids and run links:** see `kb/product/submission.md`.
-
-### CREAO backend configuration
-
-The local server configuration is in ignored `.env.local`. Keep `CREAO_API_KEY`
-there; never copy it into this README or frontend code.
-
-```dotenv
-CREAO_API_BASE_URL=https://agent.creao.ai/api/v1
-CREAO_AGENT_ID_MAPSOURCE=<your mapping agent ID>
-CREAO_AGENT_ID_CONSTRAINTS=<your constraints agent ID>
-CREAO_AGENT_ID_BRIEF=<your brief agent ID>
-```
-
-For this API family, start runs at `POST /apps/{agentId}/runs` relative to the
-configured base URL, with bearer authentication and an `inputs` object. See the
-[CREAO starter pack](https://community.creao.ai/AI_hackathon_UCLA2026/tech) and
-[API Trigger guide](https://docs.creao.ai/pro/api-trigger).
-
-An earlier local setup handoff recorded pending replacement of Jayden's key and agents,
-and results containing input/summary objects rather than contract outputs. Environment
-variables are now populated, but this integration does not revalidate their ownership or
-current job output. Validate the configured agents before claiming end-to-end learning.
+Build log with commits for each feature: [hackathon.md](hackathon.md).
