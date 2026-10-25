@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../ui/badge";
 import { Skeleton } from "../../ui/skeleton";
+import { fixesDomId, riskDomId } from "../notifications";
 import { money } from "./format";
 import { EmptyCard, WorkerSection, linkClass } from "./parts";
 import { SOURCE_LABEL, type WatchedRisk, riskSentence } from "./risks";
@@ -23,9 +24,12 @@ export function RisksSection({
   rows,
   loading,
   action,
+  fixScenarios,
 }: {
   rows: WatchedRisk[];
   loading: boolean;
+  /** Scenario ids with an open suggestion, so "See fixes" lands on that scenario's fixes. */
+  fixScenarios?: ReadonlySet<string>;
   /** "Open in timeline": saves these books as a Timeline forecast and opens it. */
   action?: ReactNode;
 }) {
@@ -65,7 +69,11 @@ export function RisksSection({
             aria-label={`${rows.length} risk scenarios, ${failing} below the minimum or breaking a rule`}
           >
             {rows.map((r) => (
-              <RiskRow key={`${r.source}-${r.id}`} risk={r} />
+              <RiskRow
+                key={`${r.source}-${r.id}`}
+                risk={r}
+                hasFixes={fixScenarios?.has(r.id) ?? false}
+              />
             ))}
           </ul>
         </>
@@ -74,10 +82,13 @@ export function RisksSection({
   );
 }
 
-function RiskRow({ risk: r }: { risk: WatchedRisk }) {
+function RiskRow({ risk: r, hasFixes }: { risk: WatchedRisk; hasFixes: boolean }) {
   const badge = STATUS_BADGE[r.status];
   return (
-    <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <li
+      id={riskDomId(r.id)}
+      className="scroll-mt-20 flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -92,6 +103,14 @@ function RiskRow({ risk: r }: { risk: WatchedRisk }) {
         >
           {riskSentence(r)}
         </p>
+        {r.status !== "holds" && r.source !== "sample" ? (
+          <a
+            href={hasFixes ? `#${fixesDomId(r.id)}` : "#suggestions-title"}
+            className={cn(linkClass, "mt-1")}
+          >
+            See fixes
+          </a>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center justify-between gap-5 sm:justify-end">
         {r.low ? (

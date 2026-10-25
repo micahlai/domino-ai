@@ -10,6 +10,7 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
+import { fixesDomId, riskDomId, suggestionDomId } from "../notifications";
 import { day, money } from "./format";
 import { DecidedDetails, EmptyCard, WorkerSection } from "./parts";
 import {
@@ -46,12 +47,15 @@ export function SuggestionsSection({
   onDecide,
   onSimulate,
   companyId,
+  riskIds,
 }: {
   state: SuggestionsState;
   context: EffectContext;
   onDecide: DecideSuggestion;
   onSimulate?: SimulateSuggestion;
   companyId?: string | null;
+  /** Risk rows on this page, so "See the risk" lands on the exact row. */
+  riskIds?: ReadonlySet<string>;
 }) {
   const { open, decided } =
     state.kind === "ready" ? splitSuggestions(state.list) : { open: [], decided: [] };
@@ -93,9 +97,13 @@ export function SuggestionsSection({
         </EmptyCard>
       ) : (
         <ul className="divide-y overflow-hidden rounded-lg border bg-card shadow-xs">
-          {open.map((s) => (
+          {open.map((s, i) => (
             <SuggestionCard
               key={s.id}
+              firstOfScenario={
+                !!s.scenarioId && open.findIndex((o) => o.scenarioId === s.scenarioId) === i
+              }
+              hasRisk={!!s.scenarioId && (riskIds?.has(s.scenarioId) ?? false)}
               suggestion={s}
               context={context}
               onDecide={onDecide}
@@ -132,7 +140,7 @@ export function SuggestionsSection({
                       fixKind: s.fix.kind,
                     })}
                   >
-                    Why this suggestion
+                    See how
                   </Link>
                 ) : null}
               </div>
@@ -144,7 +152,7 @@ export function SuggestionsSection({
   );
 }
 
-const domId = (id: string) => `suggestion-${id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+const domId = suggestionDomId;
 
 function SuggestionCard({
   suggestion: s,
@@ -152,12 +160,16 @@ function SuggestionCard({
   onDecide,
   onSimulate,
   companyId,
+  firstOfScenario = false,
+  hasRisk = false,
 }: {
   suggestion: Suggestion;
   context: EffectContext;
   onDecide: DecideSuggestion;
   onSimulate?: SimulateSuggestion;
   companyId?: string | null;
+  firstOfScenario?: boolean;
+  hasRisk?: boolean;
 }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"simulate" | "declined" | null>(null);
@@ -201,7 +213,10 @@ function SuggestionCard({
     }
   }
   return (
-    <li aria-labelledby={`${id}-title`} className="px-4 py-4">
+    <li id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 px-4 py-4">
+      {firstOfScenario && s.scenarioId ? (
+        <span id={fixesDomId(s.scenarioId)} className="block scroll-mt-20" />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <p className="text-xs text-muted-foreground">
           Suggested by <span className="font-medium text-foreground">{s.by}</span>
@@ -216,6 +231,22 @@ function SuggestionCard({
       {scenario ? (
         <p className="text-[13px] leading-5 text-muted-foreground">If: {scenario}</p>
       ) : null}
+      <p className="mt-1 flex flex-wrap gap-x-4 text-[13px]">
+        <a
+          href={hasRisk && s.scenarioId ? `#${riskDomId(s.scenarioId)}` : "#risks-title"}
+          className={CROSS_LINK}
+        >
+          See the risk
+        </a>
+        <button
+          type="button"
+          className={cn(CROSS_LINK, "disabled:cursor-not-allowed disabled:opacity-50")}
+          disabled={busy !== null || !onSimulate || !hasSavedInputs}
+          onClick={simulate}
+        >
+          Try this fix
+        </button>
+      </p>
 
       <dl className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-md border bg-border text-[13px]">
         <EffectCell
@@ -263,7 +294,7 @@ function SuggestionCard({
             fixKind: s.fix.kind,
           })}
         >
-          Why this suggestion
+          See how
         </Link>
       ) : null}
 
@@ -307,6 +338,9 @@ function SuggestionCard({
     </li>
   );
 }
+
+const CROSS_LINK =
+  "rounded font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring";
 
 function EffectCell({
   label,
