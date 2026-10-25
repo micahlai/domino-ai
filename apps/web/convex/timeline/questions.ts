@@ -89,7 +89,7 @@ const TITLES: Record<Method, string> = {
 
 const FAILURES: Record<string, string> = {
   PROVIDER_UNAVAILABLE:
-    'Domino could not read this with its fixed patterns, and the language reader is not set up. Try plainer wording, for example "What if Acme pays 14 days late?". Nothing was calculated.',
+    'Domino could not read this with its fixed patterns, and the language reader is not set up. A question like "What if Acme pays 14 days late?" works. Nothing was calculated.',
   PROVIDER_TIMEOUT:
     "The language reader took too long. Nothing was calculated. Ask again to retry.",
   PROVIDER_ERROR:

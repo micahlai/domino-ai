@@ -518,17 +518,22 @@ function CompanyEyebrow({ companyId }: { companyId: string }) {
       <span className="font-medium text-foreground">
         {fieldCompanyOf(companyId)?.name ?? companyId}
       </span>
-      {operatingSelectionFromWorldId(companyId) ? (
+      {operatingSelectionFromWorldId(companyId)?.company === "2u" ? (
+        <Badge variant="secondary">Public filings</Badge>
+      ) : operatingSelectionFromWorldId(companyId) ? (
         <Badge variant="secondary">Simulated</Badge>
       ) : null}
     </span>
   );
 }
 
+/** Timeline fills the window, so pages that are not the chart add the app's usual gutter. */
+const PAGE_GUTTER = "px-4 py-6 md:px-8 md:py-8";
+
 function CatalogPage({ companyId }: { companyId: string }) {
   const latest = useLatestImport(companyId);
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${PAGE_GUTTER}`}>
       <PageHeader
         eyebrow={<CompanyEyebrow companyId={companyId} />}
         title="Saved scenarios"
@@ -553,14 +558,28 @@ function CatalogPage({ companyId }: { companyId: string }) {
 function CompanyHome({ companyId }: { companyId: string }) {
   const latest = useLatestImport(companyId);
   const router = useRouter();
-  const route = latest.state === "ready" ? latest.route : null;
+  // With no current import but saved forecasts, open the newest saved one, never an empty state.
+  const newestQuery = useMemo(
+    () => ({
+      c: { query: catalogRef, args: { companyId, paginationOpts: { numItems: 1, cursor: null } } },
+    }),
+    [companyId],
+  );
+  const saved = readCatalogPage((useQueries(newestQuery) as Record<string, unknown>).c, companyId);
+  const newest = saved.state === "ready" ? saved.value.entries[0] : undefined;
+  const route =
+    latest.state === "ready"
+      ? latest.route
+      : latest.state === "none" && newest
+        ? workspaceHref(companyId, { runId: newest.runId })
+        : null;
   useEffect(() => {
     if (route) router.replace(route);
   }, [route, router]);
   if (latest.state === "not_field") return <CatalogPage companyId={companyId} />;
-  if (latest.state !== "none")
+  if (latest.state !== "none" || route || saved.state === "loading")
     return (
-      <div className="space-y-3" aria-busy="true">
+      <div className={`space-y-3 ${PAGE_GUTTER}`} aria-busy="true">
         <output className="block text-sm text-muted-foreground">
           Opening the latest timeline...
         </output>
@@ -570,7 +589,7 @@ function CompanyHome({ companyId }: { companyId: string }) {
     );
   const name = fieldCompanyOf(companyId)?.name ?? companyId;
   return (
-    <div className="space-y-6" data-testid="timeline-empty">
+    <div className={`space-y-6 ${PAGE_GUTTER}`} data-testid="timeline-empty">
       <PageHeader
         eyebrow={<CompanyEyebrow companyId={companyId} />}
         title={`No timeline for ${name} yet`}
@@ -584,7 +603,7 @@ function CompanyHome({ companyId }: { companyId: string }) {
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>Usable cash for the next 13 weeks, next to recent history</li>
           <li>The lowest point against the lender's minimum</li>
-          <li>Ask questions, try events and see saved risks</li>
+          <li>Ask questions, model events and see saved risks</li>
         </ul>
         <OpenInTimeline label="Bring in latest books" />
         <p className="text-xs text-muted-foreground">{OPEN_IN_TIMELINE_NOTE}</p>

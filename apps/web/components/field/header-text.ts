@@ -40,6 +40,9 @@ export function companyDisplay(entry: Pick<CatalogLike, "id" | "name" | "simulat
 /** One quiet line under the top bar. The full dates live in the Sources sheet only. */
 export function provenanceSummary(entry: CatalogLike | undefined) {
   if (!entry) return { badge: "Simulated books", line: "reconstructed from public filings" };
+  // 2U is a real public company: its books come from its filings, not a simulation.
+  if (entry.id === "2u")
+    return { badge: "Public filings", line: `as of ${shortDate(entry.simulationAsOf)}` };
   return {
     badge: "Simulated books",
     line: `based on ${entry.referenceCompany} filings · as of ${shortDate(entry.simulationAsOf)}`,

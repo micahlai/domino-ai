@@ -42,6 +42,7 @@ import type * as fieldAi from "../fieldAi.js";
 import type * as fieldAnalyst from "../fieldAnalyst.js";
 import type * as fieldApify from "../fieldApify.js";
 import type * as fieldAudit from "../fieldAudit.js";
+import type * as fieldCascade from "../fieldCascade.js";
 import type * as fieldClock from "../fieldClock.js";
 import type * as fieldCoordinator from "../fieldCoordinator.js";
 import type * as fieldCrs from "../fieldCrs.js";
@@ -106,6 +107,7 @@ import type * as timeline_assistant_questions from "../timeline/assistant/questi
 import type * as timeline_baselines from "../timeline/baselines.js";
 import type * as timeline_chat from "../timeline/chat.js";
 import type * as timeline_chat_draft from "../timeline/chat/draft.js";
+import type * as timeline_chat_explain from "../timeline/chat/explain.js";
 import type * as timeline_chat_receipt from "../timeline/chat/receipt.js";
 import type * as timeline_chat_refs from "../timeline/chat/refs.js";
 import type * as timeline_chat_source from "../timeline/chat/source.js";
@@ -123,6 +125,7 @@ import type * as timeline_questions_provider from "../timeline/questions/provide
 import type * as timeline_questions_receipt from "../timeline/questions/receipt.js";
 import type * as timeline_questions_resolve from "../timeline/questions/resolve.js";
 import type * as timeline_questions_table from "../timeline/questions/table.js";
+import type * as timeline_recordNames from "../timeline/recordNames.js";
 import type * as timeline_refs from "../timeline/refs.js";
 import type * as timeline_scenarioStart from "../timeline/scenarioStart.js";
 import type * as timeline_workspace from "../timeline/workspace.js";
@@ -172,6 +175,7 @@ declare const fullApi: ApiFromModules<{
   fieldAnalyst: typeof fieldAnalyst;
   fieldApify: typeof fieldApify;
   fieldAudit: typeof fieldAudit;
+  fieldCascade: typeof fieldCascade;
   fieldClock: typeof fieldClock;
   fieldCoordinator: typeof fieldCoordinator;
   fieldCrs: typeof fieldCrs;
@@ -236,6 +240,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/baselines": typeof timeline_baselines;
   "timeline/chat": typeof timeline_chat;
   "timeline/chat/draft": typeof timeline_chat_draft;
+  "timeline/chat/explain": typeof timeline_chat_explain;
   "timeline/chat/receipt": typeof timeline_chat_receipt;
   "timeline/chat/refs": typeof timeline_chat_refs;
   "timeline/chat/source": typeof timeline_chat_source;
@@ -253,6 +258,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/questions/receipt": typeof timeline_questions_receipt;
   "timeline/questions/resolve": typeof timeline_questions_resolve;
   "timeline/questions/table": typeof timeline_questions_table;
+  "timeline/recordNames": typeof timeline_recordNames;
   "timeline/refs": typeof timeline_refs;
   "timeline/scenarioStart": typeof timeline_scenarioStart;
   "timeline/workspace": typeof timeline_workspace;

@@ -4,6 +4,8 @@ import type { Forecast } from "@domino/contracts";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { friendlyLabel } from "../../../convex/timeline/recordNames";
+import { formatCents } from "../../../lib/format";
 import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -66,7 +68,7 @@ export function AnalysisView({ run, selected, history, actions, disabled }: Anal
       else setReviewedFor(null);
     } catch {
       setMessage(
-        "The result could not be confirmed. Try the same request again to avoid starting it twice.",
+        "The result could not be confirmed. Send the same request again; it will not start twice.",
       );
     } finally {
       setPending(false);
@@ -80,9 +82,8 @@ export function AnalysisView({ run, selected, history, actions, disabled }: Anal
       testId="analysis-launch"
     >
       <p className="text-sm">
-        The service will generate at most 3 risks and 2 responses for each risk using the selected
-        records. These are hypothetical scenarios. Responses are simulated suggestions and do not
-        move money or approve an action.
+        Domino tests up to 3 events that could hurt cash and up to 2 fixes for each, using the saved
+        books. Fixes are simulations only: nothing is sent, paid or approved.
       </p>
       {!allowed ? (
         <output className="text-sm text-muted-foreground">
@@ -101,10 +102,7 @@ export function AnalysisView({ run, selected, history, actions, disabled }: Anal
           onChange={(e) => setReviewedFor(e.target.checked ? target : null)}
           data-testid="analysis-review"
         />
-        <span>
-          I reviewed the source timeline and rules. Start a bounded analysis using these saved
-          inputs.
-        </span>
+        <span>I checked the books and cash rules this analysis will use.</span>
       </label>
       <Button
         onClick={launch}
@@ -140,18 +138,18 @@ export function AnalysisView({ run, selected, history, actions, disabled }: Anal
             <span aria-hidden="true" className="max-sm:hidden">
               ·
             </span>
-            <span>{run.label || "Imported books"}</span>
+            <span>{friendlyLabel(run.label, run.baseline.seed.snapshot) || "Imported books"}</span>
             <span aria-hidden="true" className="max-sm:hidden">
               ·
             </span>
             <span>Books as of {formatFullDate(run.baseline.seed.asOf)}</span>
           </span>
         }
-        title={`Saved risks: what could put ${run.baseline.companyName}'s cash at risk`}
+        title={`Cash risks for ${run.baseline.companyName}`}
         description={
           <>
-            Tested from &ldquo;{run.label}&rdquo; and its saved rules over these 13 weeks. Every
-            result is saved; opening it again does not rerun anything.
+            What could push cash below the minimum in the next 13 weeks, and which fixes keep it
+            above. Results are saved; reopening this page does not rerun anything.
           </>
         }
         actions={
@@ -260,32 +258,28 @@ function AnalysisResult({
             {r.errorCode ? ` Service reason: ${r.errorCode}.` : ""}
           </p>
         ) : null}
+        <AnalysisSummary run={run} receipt={r} />
         {r.warnings.length ? (
-          <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+          <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
             {r.warnings.map((w, i) => (
-              <li key={`${i}-${w}`}>{w}</li>
+              <li key={`${i}-${w}`}>{plainWarning(w)}</li>
             ))}
           </ul>
         ) : null}
-        {r.resilience ? (
-          <div className="space-y-2">
-            <p className="text-sm">
-              <strong>
-                {r.resilience.survivedCount} of {r.resilience.scenarioCount} tested combinations
-              </strong>{" "}
-              met the tested requirements.
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer">How this was tested</summary>
+          {r.resilience ? (
+            <p className="mt-2">
+              {r.resilience.survivedCount} of {r.resilience.scenarioCount} combinations of these
+              events stayed within the cash rules, with no fixes applied. Each combination is a
+              what-if, not a probability of survival.
             </p>
-            <p className="text-sm">
-              Weighted scenario index: {r.resilience.weightedScenarioIndex}. This index is not a
-              probability of survival.
-            </p>
-            <p className="text-xs text-muted-foreground">{r.resilience.scope}</p>
-          </div>
-        ) : null}
-        <p className="text-xs text-muted-foreground">
-          An unknown or beyond-horizon rule is not confirmed compliance. Cash checks cover weekly
-          close in this saved 13-week forecast.
-        </p>
+          ) : null}
+          <p className="mt-2">
+            Checks use weekly closing cash in the 13-week forecast. An unknown or beyond-horizon
+            rule is not confirmed compliance.
+          </p>
+        </details>
       </Panel>
       {r.risks.map((risk) => (
         <RiskPanel
@@ -325,6 +319,68 @@ function AnalysisResult({
   );
 }
 
+/** Older saved receipts carry engine wording; show it in plain finance language. */
+function plainWarning(w: string): string {
+  return /neutral model supplied no risk candidates/i.test(w)
+    ? "The payment history showed no specific risk, so Domino tested the largest open invoice arriving 14 days late."
+    : w;
+}
+
+/** What was tested, the worst case, and which fixes keep cash above the minimum. */
+function AnalysisSummary({ run, receipt: r }: { run: WorkspaceRun; receipt: AnalysisReceipt }) {
+  if (!r.risks.length) return null;
+  const snapshot = run.baseline.seed.snapshot;
+  const name = (label: string) => friendlyLabel(label, snapshot);
+  const worst = [...r.risks].sort(
+    (a, b) => a.forecast.lowPoint.usable - b.forecast.lowPoint.usable,
+  )[0] as AnalysisRisk;
+  const floor = run.constraints.find((c) => c.kind === "min_cash");
+  const fixes = r.responses.filter((x) => x.clearsAllRules);
+  return (
+    <div className="space-y-3 text-sm" data-testid="analysis-summary">
+      <div>
+        <p className="text-xs text-muted-foreground">What was tested</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          {r.risks.map((risk) => (
+            <li key={risk.id}>{name(risk.label)}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Worst case</p>
+        <p className="mt-1">
+          Lowest cash{" "}
+          <strong className="tabular-nums">{formatCents(worst.forecast.lowPoint.usable)}</strong> in
+          the week of {formatFullDate(worst.forecast.lowPoint.weekStart)}, if{" "}
+          {name(worst.label).replace(/^./, (c) => c.toLowerCase())}.
+          {floor ? ` The minimum is ${formatCents(floor.limit)}.` : ""}
+        </p>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Fixes that keep cash above the minimum</p>
+        {fixes.length ? (
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {fixes.map((x) => (
+              <li key={x.id}>
+                {name(x.label)}{" "}
+                <span className="text-muted-foreground">
+                  (lowest cash {formatCents(x.forecast.lowPoint.usable)})
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1">
+            {r.responses.length
+              ? "None of the tested fixes clears every cash rule on its own."
+              : "No fix tested here raises the lowest cash point."}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RiskPanel({
   run,
   risk,
@@ -341,7 +397,10 @@ function RiskPanel({
   const response = responses.find((x) => x.id === responseId);
   const shown = response ?? risk;
   return (
-    <Panel title={risk.label} testId={`analysis-risk-${risk.id}`}>
+    <Panel
+      title={friendlyLabel(risk.label, run.baseline.seed.snapshot)}
+      testId={`analysis-risk-${risk.id}`}
+    >
       <p className="text-sm">
         Scenario weight:{" "}
         {new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 2 }).format(
@@ -362,7 +421,7 @@ function RiskPanel({
           onClick={() => setResponseId(null)}
           className="h-auto whitespace-normal"
         >
-          Show risk without a response
+          Without a fix
         </Button>
         {responses.map((x) => (
           <Button
@@ -372,14 +431,15 @@ function RiskPanel({
             onClick={() => setResponseId(x.id)}
             className="h-auto max-w-full whitespace-normal"
           >
-            Preview: {x.label}
+            With fix: {friendlyLabel(x.label, run.baseline.seed.snapshot)}
           </Button>
         ))}
       </div>
       <p className="text-sm">
-        {response ? response.label : "Without a response"}: lowest usable cash is{" "}
+        {response ? friendlyLabel(response.label, run.baseline.seed.snapshot) : "Without a fix"}:
+        lowest usable cash is{" "}
         <span className="whitespace-nowrap font-mono">
-          {formatExactCents(shown.forecast.lowPoint.usable)}
+          {formatCents(shown.forecast.lowPoint.usable)}
         </span>{" "}
         in the week of {formatFullDate(shown.forecast.lowPoint.weekStart)}.
       </p>
@@ -404,15 +464,15 @@ function RiskPanel({
       {response ? (
         <div className="space-y-3 rounded-lg border p-3" data-testid="analysis-response">
           <p className="text-sm">
-            Low-point change against this risk:{" "}
+            Raises the lowest cash point by{" "}
             <span className="whitespace-nowrap font-mono">{formatDelta(response.gainCents)}</span>.
-            Response risk: {response.risk}.
+            Execution risk: {response.risk}.
           </p>
           <p className="text-sm">Cost and terms: {response.costNote}</p>
           <p className="text-xs text-muted-foreground">
             {response.clearsAllRules
-              ? "The service found no breach in its tested rules. Review individual checks below for scope and unknowns."
-              : "This response does not clear every tested rule."}
+              ? "Keeps cash within every tested rule."
+              : "Does not keep cash within every tested rule on its own."}
           </p>
           <AnalysisProof
             evidence={response.evidence}
@@ -424,7 +484,9 @@ function RiskPanel({
         <summary className="cursor-pointer">Show simulated event inputs</summary>
         <ul className="mt-2 list-disc space-y-1 pl-4">
           {shown.changes.map((c, i) => (
-            <li key={`${i}-${c.kind}`}>{changeText(c, formatExactCents)}</li>
+            <li key={`${i}-${c.kind}`}>
+              {changeText(c, formatExactCents, run.baseline.seed.snapshot)}
+            </li>
           ))}
         </ul>
       </details>
@@ -488,24 +550,23 @@ function ExportPanel({
       if (r.ok) setJson(r.json);
       else setError(r.message);
     } catch {
-      setError("The financial output could not be read. Try again.");
+      setError("The saved data could not be loaded. Please retry.");
     } finally {
       setPending(false);
     }
   }
   return (
-    <div className="min-w-0 space-y-2 rounded-lg border p-3" data-testid="analysis-output">
+    <details className="min-w-0 space-y-2 text-xs" data-testid="analysis-output">
+      <summary className="cursor-pointer text-muted-foreground">Developer data</summary>
       <Button
-        variant="outline"
+        variant="ghost"
+        size="sm"
         disabled={pending}
         onClick={load}
         className="h-auto max-w-full whitespace-normal"
       >
-        {pending ? "Reading saved output..." : "Read financial output JSON"}
+        {pending ? "Loading..." : "Load saved data (JSON)"}
       </Button>
-      <p className="text-xs text-muted-foreground">
-        Reads saved chart, health and scenario data. No analysis starts.
-      </p>
       {error ? (
         <p role="alert" className="text-sm">
           {error}
@@ -526,6 +587,6 @@ function ExportPanel({
           </pre>
         </details>
       ) : null}
-    </div>
+    </details>
   );
 }

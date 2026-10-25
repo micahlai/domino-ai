@@ -1,4 +1,5 @@
-import { formatExactCents, formatFullDate } from "../baseline/format";
+import { formatCents } from "../../../lib/format";
+import { formatFullDate } from "../baseline/format";
 import type { RuleReceipt, WorkspaceRun } from "./api";
 
 // Plain-language reading of saved results. Every number is copied from a saved record; nothing
@@ -28,8 +29,8 @@ export function runHeadline(run: WorkspaceRun): string {
   const floor = floorReceipt(run);
   const low = run.forecast.lowPoint;
   if (floor?.status === "breached" && floor.weekStart)
-    return `Cash falls below the ${formatExactCents(floor.limit)} minimum in the week of ${formatFullDate(floor.weekStart)}`;
+    return `Cash falls below the ${formatCents(floor.limit)} minimum in the week of ${formatFullDate(floor.weekStart)}`;
   if (floor?.status === "clear")
-    return `Cash stays above the ${formatExactCents(floor.limit)} minimum for all ${run.forecast.weeks.length} weeks`;
-  return `Lowest cash is ${formatExactCents(low.usable)} in the week of ${formatFullDate(low.weekStart)}`;
+    return `Cash stays above the ${formatCents(floor.limit)} minimum for all ${run.forecast.weeks.length} weeks`;
+  return `Lowest cash is ${formatCents(low.usable)} in the week of ${formatFullDate(low.weekStart)}`;
 }

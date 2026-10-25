@@ -298,7 +298,7 @@ describe("timeline questions: proposals", () => {
     const r = await ask(t, "What if Acme pays 14 days late?");
     expect(r.status).toBe("proposal");
     expect(r.proposal).toEqual({
-      label: "Acme Logistics pays inv_acme_2027 14 days late",
+      label: "Acme Logistics invoice ($240K, due Nov 25), paid 14 days late",
       changes: [{ kind: "delay_invoice", invoiceId: "inv_acme_2027", days: 14 }],
       constraints: null,
       constraintNote: null,

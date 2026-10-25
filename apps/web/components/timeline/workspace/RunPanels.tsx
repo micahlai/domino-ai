@@ -298,7 +298,7 @@ export function ChangesPanel({ run }: { run: WorkspaceRun }) {
           {run.ownChanges.map((c, i) => (
             // Changes have no id; order is fixed in the saved record.
             // biome-ignore lint/suspicious/noArrayIndexKey: saved order is stable
-            <li key={i}>{changeText(c, formatExactCents)}</li>
+            <li key={i}>{changeText(c, formatExactCents, run.baseline.seed.snapshot)}</li>
           ))}
         </ul>
       ) : (

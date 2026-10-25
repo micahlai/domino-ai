@@ -312,7 +312,7 @@ describe("chat review rendering", () => {
     );
     expect(markup).toContain("All source rules stay in place");
     for (const rule of rules) expect(markup).toContain(rule.label.replaceAll("'", "&#x27;"));
-    expect(markup).toContain("$3,150,000");
+    expect(markup).toContain("$3.2M");
   });
   it("links saved result and removes the composer", () => {
     const markup = html(fixtureSaved);
