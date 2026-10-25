@@ -1,5 +1,7 @@
 # Domino audit supervisor
 
+> Retired as an independent dispatcher. User launches one Claude lead which owns ROADMAP.md and dispatch. Codex provides audit/integration support on request. Read kb/coordination/historical/claude-lead-control.md. Monitor remains PAUSED; do not resume or create a competing supervisor.
+
 > Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
 
 Read kb/spec/learning-loop-design-2026-10-24.md, kb/spec/forecast-evaluation-protocol-v1.md, kb/spec/scenario-persistence-v1.md, AGENTS.md, HANDOFF.md, kb/coordination/historical/team-checkpoint.md, active-run.md, kb/spec/product-workspace-2026-10-24.md and kb/spec/creao-canvas-cycle.md. Inspect actual branches, owned processes and commits before acting. Current records supersede historical task rows.

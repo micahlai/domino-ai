@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-10-24 user steering: one user-launched Claude lead owns queue/roadmap and subagent dispatch; Codex is independent audit/integration support on request. Keep monitor PAUSED, cap 3 including friend/children and one UI writer. Counterargument: a second dispatcher can react faster, but duplicates ownership and work.
+
 - 2026-10-24 Codex lead: use bounded SEC JSON onboarding and source-dated reconciliation, scoped feedback receipts and a separately sealed quarterly evaluation. Preserve old run contracts, data and UI. Candidate changes only post-cutoff flows; proposed 16-pair Tenable/Varonis test stays sealed until exact hashes are recorded. Counterargument: narrow sources and strict improvement gates may leave completion unmet; do not broaden claims or relax gates after seeing outcomes. Human launches Claude; monitor remains PAUSED.
 
 

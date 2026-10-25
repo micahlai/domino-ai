@@ -1,5 +1,7 @@
 # Local Claude: repair S3 saved-baseline compatibility
 
+> Completed at 5ecae8a; independent scoped audit passes. Archive instructions below, not a new dispatch. See kb/reviews/S3-repair-5ecae8a-audit.md and ROADMAP.md. Claude lead owns the next integration step.
+
 Human-launched only. Use the existing domino-S3 worktree on S3-quarterly-event-engine, currently commit 38297d4. First inspect branch/status and verify no other writer is active. Preserve all existing work. Read AGENTS.md, kb/tasks/S3-quarterly-event-engine.md, the installed orchestrator and ponytail skills, and skills/engine-tdd/SKILL.md. One bounded worker, no nested agents.
 
 Codex independently audited the initial checkpoint and blocked integration on one confirmed defect:

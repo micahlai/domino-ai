@@ -4,11 +4,13 @@
 
 Updated October 24 after the manual-launch coordination reset. Read team-checkpoint.md for the concise current agreement. This is current authority; older process notes are in active-run-history-2026-10-24.md. Read kb/spec/product-workspace-2026-10-24.md and C1 supervisor.
 
-## Lead takeover checkpoint
+## Latest control and audit checkpoint
 
-Codex now coordinates from domino-preview. See team-checkpoint.md, ../../spec/learning-loop-design-2026-10-24.md and ../../reviews/lead-takeover-2026-10-24.md. Fresh fetch still finds S2 at 1154972 and main 694ab2a. S3 remains clean 38297d4 with 50 focused tests passing but the persisted 2U regression still failing. No implementation launched. Read-only independent design review resolved six issues. Contracts/custody/manual task cards prepared; L1-L4 implementation, dataset seals and positive improvement evidence remain absent. `pnpm check` passed cached typechecks/tests plus fresh lint. No new build/browser/runtime claim.
+Jayden launches ONE Claude lead; it owns ROADMAP.md and worker dispatch. Codex is independent audit/integration support on request. See claude-lead-control.md. This Codex support task creates the roadmap and audits S3 repair 5ecae8a; it does not launch implementation, resume monitoring or overwrite the original chat's lead startup prompt.
 
-Actual local lsof/cwd checks confirm 3102/3214/3210 owners below. No local Claude in a Domino feature checkout observed; friend remote activity unknown. Monitor is confirmed PAUSED. Preserve that state until deliberate supervision resume. New architecture diagram includes required onboarding/reconciliation/feedback and isolated evaluation.
+S3 is clean at 5ecae8a. Codex reran 54 focused tests/typecheck/lint and 14 independent persisted/frozen/adversarial probes successfully; full uncached check passes 1,208 tests/typechecks/lint. Scoped code approved; preview integration pending. Friend S2 remains exclusive at last fetched 1154972, remote activity unknown. Existing 3102/3214/3210 runtimes preserved. L1-L4/data seals/forecast improvement remain incomplete.
+
+New CREAO USER-REPORTED evidence: memory empty, team Data access has no sources, supplied SKILL uses only frozen input. Remote input was job while adapter sends inputs.prompt. User said done after rename-to-prompt/existing-key instructions. Remote field change, backend credential binding and complete isolation are not independently verified. No provider call or secret handling in this checkpoint. Older CREAO/process paragraphs below record earlier observations only.
 
 ## Goal and rules
 
@@ -25,7 +27,7 @@ One coherent Workspace / Company / Simulations product with grouped agent map, p
 
 ## Ownership and next exact steps
 
-1. S3-quarterly-event-engine finished commit38297d4 in domino-S3. PID7799 has exited. Independent audit:50focusedtests pass but actual persisted2U baseline is rejected due AS-RESTRICTED manifest mismatch. BLOCKED, not integrated. Human launch prompt prompts/shared/S3-local-repair.md. No implementation process launched by Codex. Preserve this worktree and existing ownership.
+1. S3-quarterly-event-engine repaired at 5ecae8a in domino-S3, clean. Codex owns bounded independent audit here, with 54 focused tests/typecheck/lint and 14 independent probes passing; full uncached check passes 1,208 tests/typechecks/lint. Scoped code approved; no integration or repair restart. Original 38297d4 defect is historical; do not treat it as current worker state.
 2. Friend exclusively owns S2-simulation-catalog. origin branch pushed at1154972, no implementation commit at last fetch. Exact prompt prompts/shared/S2-friend-catalog.md. Scope read-only catalog, tests and ONE by_case_createdAt conversation index. Do not launch a local duplicate or overlap schema. User has been given the launch prompt.
 3. No local UI writer active. U1 early gate is complete; do not duplicate G6/G8/U1. U2 waits S2/S4. S4 waits accepted S1/S2/S3 AND an explicit audited additive persistence/schema/API/hash design. Reuse existing runs/operations, no parallel simulation database. Do not dispatch S4 from vague card alone.
 4. C2-real-coordinator-gate.md records live provider prerequisite. Fixed scheduling stays disclosed; true coordinator not implemented.
@@ -50,4 +52,4 @@ Creation assistant explicitly could not guarantee account/team context inheritan
 
 ## Supervision
 
-Automation domino-overnight-audit is confirmed PAUSED at lead takeover. Keep paused until supervision is deliberately resumed; do not create a duplicate. USER NOW LAUNCHES CLAUDE MANUALLY: prepare prompts, never auto-launch implementation until explicitly reauthorized. No new worker needed during this reset. Fresh fetch found main and remote S2 entirely contained in preview; S2 remains1154972, no implementation. Report accomplishments/verification/running-or-blocked/next after EVERY audit. Never place coding progress in product canvas. Earlier11:15deadline superseded. Pause only on userstop, verified fullvisiblecompletion or repeatedexternalblockers with noindependentwork. Product remains incomplete: required L1-L4 plus S2/S3/S4/U2 and real CREAO/coordinator gates remain. Next launches/dependencies are in learning-loop-design, with user launching Claude manually.
+Monitor domino-overnight-audit is PAUSED. Keep it paused; no duplicate supervisor. User launches one Claude lead which owns queue/dispatch. Codex provides audit/integration support on request. ROADMAP.md and claude-lead-control.md supersede old manual-per-worker launch routing. Preserve main, data, runtimes and friend ownership. Required L1-L4/S2/S3/S4/U2 and actual CREAO gates remain visible; no measured improvement claimed.

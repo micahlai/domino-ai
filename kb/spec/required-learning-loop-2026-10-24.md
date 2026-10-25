@@ -36,6 +36,8 @@ Automatic onboarding is bounded by documented supported inputs and actual grante
 
 ## Ownership and constraints
 
+Latest routing: user launches one Claude lead, which owns ROADMAP.md and worker dispatch. Codex provides independent audit/integration support on request. See ../coordination/historical/claude-lead-control.md. Earlier per-worker manual-launch wording is superseded; all required gates and evaluation rules remain unchanged.
+
 Claude implements; Codex plans, audits and integrates. User launches Claude manually. At most three implementation workers including friend/children; one UI writer; serialize full suite/build/browser. Integration stays on preview/historical-overnight, never main. Keep source data, existing runtimes and unrelated work. Old app-scoped CREAO only, no account/developer wallet, no unbounded retries or billable Apify without a spending cap. No automatic financial actions.
 
 ## Handoff to the new lead chat

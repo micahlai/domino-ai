@@ -2,6 +2,8 @@
 
 Status: lead design, not implemented. Authority: [required gates](required-learning-loop-2026-10-24.md). Preview only. Human launches Claude; Codex audits/integrates. Preserve all accepted UI, data and runtimes.
 
+Latest routing: Jayden launches ONE Claude lead; it owns queue/worker dispatch. Codex is independent audit/integration support on request. [Control rules](../coordination/historical/claude-lead-control.md) and root ROADMAP.md supersede older per-worker human-launch wording. No implementation launched by Codex; monitor stays PAUSED.
+
 ## Call and supported boundary
 
 Support authorized local uploads of SEC companyfacts JSON plus submissions JSON and accession acceptance metadata. One company per package, consolidated standard US-GAAP cash facts, USD, calendar quarters, 10-Q/10-K and separately versioned amendments. No arbitrary PDF extraction, custom taxonomy, segment facts, FX conversion or private connectors in this boundary. Unknown currency, tag, scale, acceptance instant, scope or calendar produces a question/block. A missing value is not zero.

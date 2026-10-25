@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-10-24 Claude lead control and S3 support audit
+- Latest user direction: launch one Claude lead; it owns ROADMAP.md, queue and worker dispatch. Codex provides independent audit/integration on request. No implementation dispatched; monitor stays PAUSED.
+- S3 repair 5ecae8a independently approved for scoped code integration: 54 focused tests, 14 independent real-source/frozen/adversarial probes, full 1,208 uncached tests/typechecks/lint. No preview merge/build/browser/database/provider acceptance.
+- ROADMAP has visible statuses and user request inbox. CREAO memory/data/SKILL evidence is user-reported; remote prompt rename, backend key/binding and complete isolation unverified. No provider call.
+- Next: user starts Claude lead with ROADMAP/control rules; lead checks friend S2/slots, requests S3 integration and assigns ready L0/E0. Codex stops dispatch ownership.
+
 ## 2026-10-24 Codex new lead: required-loop design
 - Fresh fetch/main/S2/worktrees/processes checked; monitor confirmed PAUSED. No implementation launched. S3 real saved-baseline defect reproduced despite50passing focused tests.
 - Added reviewed supported-source/reconciliation/rule design, frozen evaluation recipe with pending seals, exact additiveS4 design and7 bounded cards/manual L0/E0 prompts. Six independent design issues corrected.

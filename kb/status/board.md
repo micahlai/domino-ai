@@ -1,16 +1,16 @@
 # Status board
 
-Current authority: `../coordination/historical/team-checkpoint.md` and active-run. G6/G7/G8a/G8/S1/U1 accepted; 1,185 combined tests/build/browser at the last feature checkpoint. S3 38297d4 is blocked by independent saved-baseline compatibility audit, awaiting a human-launched repair. Friend S2 remains reserved with no implementation pushed. Codex audits and integrates preview only; user launches implementation manually. S4 design and U2 wiring are gated. CREAO/coordinator is not verified. Older task rows below are historical, not current worker status.
+Current authority: ../../ROADMAP.md and ../coordination/historical/claude-lead-control.md. User launches ONE Claude lead which owns queue/dispatch. Codex provides independent audit/integration support on request. S3 repair 5ecae8a passed independent scoped code audit; preview integration is pending. Friend S2 remains exclusive. Monitor PAUSED, main unchanged. Older rows below are history, not a launch queue.
 
 ## Required-loop takeover queue
 
-Authority: ../spec/learning-loop-design-2026-10-24.md. User launches Claude; Codex audits. No implementation launched in this checkpoint. Monitor confirmed PAUSED; main unchanged.
+Authority: ../../ROADMAP.md, Claude-lead control and ../spec/learning-loop-design-2026-10-24.md. Claude lead dispatches after one user launch; Codex audits on request. No implementation launched by Codex. Monitor PAUSED; main unchanged.
 
 | Work | Status | Gate / owner |
 | --- | --- | --- |
 | Lead reuse/design/evaluation recipe | done | Independent design recheck clear; data/candidate seals still pending |
 | S2 catalog | reserved | Friend only; origin1154972, no implementation submitted |
-| S3 scenario engine | blocked |38297d4; 50 focused tests pass, actual saved2U manifest rejected; manual repair |
+| S3 scenario engine | review | 5ecae8a independently approved; 54 focused tests, 14 probes, full 1,208-test/typecheck/lint check pass; pending preview integration, audit owner released |
 | L0 contracts / E0 custody | todo | Manual prompts prepared; actual slot check first |
 | L1 normalization / L2 reconciliation / L3 rules | blocked | Ordered contracts/development-data dependencies; no sealed test reads |
 | L5 durable knowledge / E1 evaluator | blocked | Frozen pure interfaces; L5 owns backend before S4 |

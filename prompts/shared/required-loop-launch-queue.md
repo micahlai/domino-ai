@@ -1,9 +1,9 @@
-# Manual Claude queue
+# Claude lead queue
 
-These are prepared assignments, not launched workers. Read kb/spec/learning-loop-design-2026-10-24.md for ownership and gates. Claude implements; Codex audits and integrates preview only. Main is untouched. Keep monitor paused. Verify actual workers before every launch, counting friend and children; at most three implementation processes, one UI writer, no nested agents for these cards.
+These are prepared assignments, not launched workers. Latest routing: user launches ONE Claude lead; that lead owns queue/dispatch under ROADMAP.md and kb/coordination/historical/claude-lead-control.md. Codex audits/integrates on request, not as a second dispatcher. Older per-worker human-launch wording is superseded. Main untouched, monitor PAUSED. Count friend and all children; maximum three implementation processes, one UI writer.
 
-1. Friend continues S2 only: S2-friend-catalog.md. Local continues S3 repair in its existing worktree: S3-local-repair.md. Preserve ownership and uncommitted work.
-2. L0-learning-contracts.md and E0-sealed-evaluation.md are ready manual prompts as slots permit. Do not run friend + S3 + L0 + E0 together.
+1. Friend owns S2 only: S2-friend-catalog.md. S3 repair finished at 5ecae8a and passes independent scoped audit; do not relaunch it from the old repair prompt. Preserve ownership and uncommitted work.
+2. L0-learning-contracts.md and E0-sealed-evaluation.md are ready for lead assignment as slots permit. Do not exceed three active implementation processes including friend and children.
 3. After accepted interfaces, use kb/tasks/L1-source-normalization.md, then L2-source-reconciliation.md, then L3-scoped-rules.md as the bounded Claude prompt with the common rules below. No sealed test reads. Codex audits each before the next.
 4. L5-knowledge-runtime.md requires reviewed exact additive backend schema first. E1-quarter-evaluator.md is independent after accepted interfaces, without test release.
 5. S4-durable-scenarios.md and U2-required-journey.md are prepared but BLOCKED prompts. Never launch them from this queue until Codex records accepted prerequisites and exact file/API ownership. C2 still needs platform isolation verification and a separate exact implementation card.
