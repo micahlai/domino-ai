@@ -25,6 +25,7 @@ import {
   initialDemoState,
 } from "./fixture";
 import { toFinding, toOperations, toStatus } from "./live";
+import { optimisticDecide } from "./optimistic";
 import type { FieldActions, FieldData } from "./types";
 
 // The one switch between the real field.* backend (convex/field.ts) and labelled demo data.
@@ -82,7 +83,12 @@ function LiveData({ children }: { children: ReactNode }) {
   const log = usePaginatedQuery(api.field.log, companyId ? { companyId } : "skip", {
     initialNumItems: LOG_PAGE,
   });
-  const decide = useMutation(api.field.decide);
+  const [decideError, setDecideError] = useState<FieldData["decideError"]>(null);
+  const decideOnServer = useMutation(api.field.decide);
+  const decide = useMemo(
+    () => decideOnServer.withOptimisticUpdate(optimisticDecide),
+    [decideOnServer],
+  );
   const ingestNow = useMutation(api.field.ingestNow);
   const advanceFeed = useMutation(api.field.advanceFeed);
   const setAutoIngest = useMutation(api.field.setAutoIngest);
@@ -94,7 +100,14 @@ function LiveData({ children }: { children: ReactNode }) {
     };
     return {
       decide: async ({ findingId, decision, note }) => {
-        await decide({ companyId: need(), findingId, decision, ...(note && { note }) });
+        setDecideError(null);
+        try {
+          await decide({ companyId: need(), findingId, decision, ...(note && { note }) });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not save the decision.";
+          setDecideError({ findingId, message });
+          throw e;
+        }
       },
       ingestNow: async () => {
         await ingestNow({ companyId: need() });
@@ -133,6 +146,7 @@ function LiveData({ children }: { children: ReactNode }) {
     canLoadMore: log.status === "CanLoadMore",
     loadMore: () => log.loadMore(LOG_PAGE),
     actions,
+    decideError,
   };
   return createElement(FieldContext.Provider, { value }, children);
 }

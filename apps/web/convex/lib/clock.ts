@@ -124,6 +124,8 @@ export interface Step {
   day: number;
   fired: Fired[];
   entries: DayEntries;
+  /** What the sources served before and after the step (the vendors' webhooks derive from it). */
+  served: { before: Snapshot; after: Snapshot };
 }
 
 /**
@@ -148,5 +150,12 @@ export function stepDays(world: WorldState, overlay: Overlay, origin: string, da
   }
   const nextOverlay: Overlay = fired.length > 0 ? { ...overlay, bills, story } : overlay;
   const after = servedSnapshot(next, nextOverlay);
-  return { world: next, overlay: nextOverlay, day, fired, entries: dayEntries(before, after) };
+  return {
+    world: next,
+    overlay: nextOverlay,
+    day,
+    fired,
+    entries: dayEntries(before, after),
+    served: { before, after },
+  };
 }

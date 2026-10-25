@@ -25,6 +25,12 @@ const sourceKind = v.union(
   v.literal("learned"),
 );
 const decision = v.union(v.literal("approved"), v.literal("rejected"));
+const webhookVendor = v.union(
+  v.literal("stripe"),
+  v.literal("gusto"),
+  v.literal("ramp"),
+  v.literal("nessie"),
+);
 
 export const fieldTables = {
   // Weekly company core (P0 v2): company, ingestion, model, constraints, approvals, log.
@@ -387,6 +393,42 @@ export const fieldTables = {
     /** A sync holds the row until this time (ms) so two runs never post the same line. */
     lockUntil: v.number(),
     lastError: v.union(v.string(), v.null()),
+  }).index("by_companyId", ["companyId"]),
+  // Mock vendor webhooks (fieldWebhooks.ts, http.ts). One signing secret per company and vendor,
+  // never sent to a client. Each accepted event is kept once (vendors retry), and one inbox row
+  // per company debounces the ingest a burst of events starts.
+  vendorWebhookSecrets: defineTable({
+    companyId,
+    vendor: webhookVendor,
+    secret: v.string(),
+    createdAt: v.string(),
+  }).index("by_companyId_and_vendor", ["companyId", "vendor"]),
+  vendorWebhookEvents: defineTable({
+    companyId,
+    vendor: webhookVendor,
+    eventId: v.string(),
+    type: v.string(),
+    summary: v.string(),
+    refs: v.array(v.string()),
+    /** "http" = signed delivery to the Convex site URL; "internal" = site URL unreachable. */
+    transport: v.union(v.literal("http"), v.literal("internal")),
+    receivedAt: v.string(),
+    /** joined = a simulated day's ingest was already starting and reads it. */
+    status: v.union(
+      v.literal("queued"),
+      v.literal("joined"),
+      v.literal("ingesting"),
+      v.literal("ingested"),
+      v.literal("failed"),
+    ),
+    runId: v.optional(v.string()),
+  })
+    .index("by_companyId_and_eventId", ["companyId", "eventId"])
+    .index("by_companyId_and_status", ["companyId", "status"]),
+  webhookInbox: defineTable({
+    companyId,
+    /** Wall time (ms) the pending debounced ingest runs; null = none pending. */
+    drainAt: v.union(v.number(), v.null()),
   }).index("by_companyId", ["companyId"]),
   // Investigations.
   // G2b: server-owned investigation conversations. One receipt per accepted requestId binds it
