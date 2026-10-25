@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "../../ui/badge";
 import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
+import { chatHref } from "../chat/api";
 import { AncestryPanel } from "./CatalogPanel";
 import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
@@ -124,6 +125,12 @@ export function WorkspaceView({
             className="text-primary underline-offset-4 hover:underline"
           >
             Review risk analysis
+          </Link>
+          <Link
+            href={chatHref(run.companyId, run.runId)}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Chat to add a rule or scenario
           </Link>
           <Badge variant="outline">{KIND[run.kind]}</Badge>
           <span>Saved {formatSavedAt(run.savedAt)}, read only</span>
