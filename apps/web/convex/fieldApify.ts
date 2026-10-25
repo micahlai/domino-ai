@@ -59,6 +59,7 @@ const signalArg = v.object({
 export type CachedSearch = {
   remoteRunId: string;
   fetchedAt: string;
+  originRunId?: string;
   itemCount: number;
   resultCount: number;
   usageUsd?: number;
@@ -79,6 +80,7 @@ async function freshSearch(ctx: QueryCtx, key: string, now: number) {
   return {
     remoteRunId: row.remoteRunId,
     fetchedAt: row.at,
+    ...(row.analystRunId && { originRunId: row.analystRunId }),
     itemCount: row.itemCount ?? 0,
     resultCount: row.resultCount ?? 0,
     ...(row.usageUsd !== undefined && { usageUsd: row.usageUsd }),
@@ -192,6 +194,7 @@ export type SignalSearch = {
   reason?: string;
   remoteRunId?: string;
   fetchedAt?: string;
+  originRunId?: string;
   itemCount?: number;
   resultCount?: number;
   usageUsd?: number;
@@ -301,6 +304,7 @@ export const researchEntryArg = v.object({
   remoteRunId: v.string(),
   cached: v.boolean(),
   fetchedAt: v.string(),
+  originRunId: v.optional(v.string()),
   role: v.optional(v.union(v.literal("customer"), v.literal("vendor"))),
   itemCount: v.number(),
   resultCount: v.number(),
@@ -355,6 +359,7 @@ export function searchReport(s: SignalSearch): { rows: RowBody[]; research?: Res
       remoteRunId: s.remoteRunId,
       cached: s.outcome === "cached",
       fetchedAt: s.fetchedAt ?? new Date().toISOString(),
+      ...(s.originRunId && { originRunId: s.originRunId }),
       ...(s.role && { role: s.role }),
       itemCount: s.itemCount ?? 0,
       resultCount: s.resultCount ?? 0,

@@ -1,7 +1,7 @@
 /**
  * CREAO coordinator ("coordinator#1", agentKind "creao", parent "analyst#1"). After the analyst
  * aggregates, one budgeted CREAO run (kind "coordinator", one per snapshot version) reads the
- * snapshot summary, the open audit flags, the engine's scenario results and the counterparty
+ * snapshot summary, the audit flags frozen at run start, the engine's scenario results and the counterparty
  * list (engine-computed, engine-formatted numbers only) and returns a prioritized plan. The plan
  * is validated by acceptCoordinatorPlan (allowlisted actions only, known ids only, no new money
  * amounts; anything else rejects the whole plan) and executed here by deterministic code:
@@ -14,12 +14,10 @@
  * It runs on every new snapshot version (one call per version); later runs on the same version
  * skip it, and only the first of those logs the skip.
  */
-import { SnapshotSchema } from "@domino/contracts";
 import { v } from "convex/values";
 import {
   type CoordinatorInput,
   type CoordinatorPlan,
-  MAX_COORDINATOR_FLAGS,
   coordinatorCreaoJob,
 } from "../../../packages/agents/src/fieldCreao";
 import { internal } from "./_generated/api";
@@ -36,15 +34,14 @@ import {
 } from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
 import { NOT_CONFIGURED, apifyConfigured, searchReport, searchSignals } from "./fieldApify";
+import { numericalInputs, pinnedInputs } from "./fieldTrace";
 import type { AgentRow } from "./lib/agentLog";
 import { APIFY_ACTOR, signalLines } from "./lib/apify";
 import type { CoordinatorRecord } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
-import { parse } from "./lib/parse";
 
 export const COORDINATOR = "coordinator#1";
 
-const SEVERITY = { high: 0, medium: 1, low: 2 } as const;
 /** A plan reason may be empty (tolerated); then the message has none. */
 const because = (reason: string) => (reason ? `: ${reason}` : "");
 
@@ -61,33 +58,20 @@ export const input = internalQuery({
       .unique();
     if (!run || run.status !== "running") return null;
     const digest = await buildDigest(ctx, run);
-    const open = await ctx.db
-      .query("findings")
-      .withIndex("by_companyId_and_status", (q) =>
-        q.eq("companyId", run.companyId).eq("status", "open"),
-      )
-      .order("desc")
-      .take(200);
-    const flags = [...open]
-      .sort(
-        (a, b) =>
-          SEVERITY[a.severity] - SEVERITY[b.severity] ||
-          (a.findingId < b.findingId ? -1 : a.findingId > b.findingId ? 1 : 0),
-      )
-      .slice(0, MAX_COORDINATOR_FLAGS)
-      .map((f) => ({
-        findingId: f.findingId,
-        kind: f.kind,
-        severity: f.severity,
-        summary: f.summary,
-        escalated: f.escalated,
-      }));
-    const snapshot = await ctx.db.get("snapshots", run.snapshotId);
-    const company = (await ctx.db.get("companies", run.companyId))?.name ?? "";
+    const pinned = pinnedInputs(run);
+    if (!pinned?.coordinatorFindings)
+      throw new Error(
+        "Legacy run: coordinator findings were not pinned; current findings cannot be substituted",
+      );
+    const { flags, openFlags, openEscalations } = pinned.coordinatorFindings;
+    const { snapshot } = await numericalInputs(ctx, run);
+    const company = pinned.company.name;
     const counterparties = snapshot
-      ? counterpartyJob(parse(SnapshotSchema, snapshot.data), company).counterparties.map(
-          ({ name, role, rank }) => ({ name, role, rank }),
-        )
+      ? counterpartyJob(snapshot, company).counterparties.map(({ name, role, rank }) => ({
+          name,
+          role,
+          rank,
+        }))
       : [];
     return {
       companyId: run.companyId,
@@ -97,8 +81,8 @@ export const input = internalQuery({
         snapshotVersion: digest.snapshotVersion,
         snapshot: {
           baseline: digest.baseline,
-          openFlags: open.length,
-          openEscalations: open.filter((f) => f.escalated).length,
+          openFlags,
+          openEscalations,
           failingScenarios: digest.scenarios.filter((s) => !s.survives).length,
           scenarios: digest.scenarios.length,
         },
@@ -179,6 +163,7 @@ export async function coordinate(
   const scope = `v${data.snapshotVersion}`;
   const reservation: Reservation = await ctx.runMutation(internal.fieldAi.reserve, {
     companyId,
+    analystRunId: runId,
     kind: "coordinator",
     provider: "creao",
     scope,
@@ -240,6 +225,7 @@ export async function coordinate(
       ctx,
       {
         companyId,
+        analystRunId: runId,
         kind: "coordinator",
         scope,
         callId: reservation.callId,

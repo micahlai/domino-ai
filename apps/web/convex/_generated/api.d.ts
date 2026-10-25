@@ -52,6 +52,7 @@ import type * as fieldSources from "../fieldSources.js";
 import type * as fieldSuggestions from "../fieldSuggestions.js";
 import type * as fieldTimeline from "../fieldTimeline.js";
 import type * as fieldTools from "../fieldTools.js";
+import type * as fieldTrace from "../fieldTrace.js";
 import type * as fieldWebhooks from "../fieldWebhooks.js";
 import type * as fixes from "../fixes.js";
 import type * as grades from "../grades.js";
@@ -170,6 +171,7 @@ declare const fullApi: ApiFromModules<{
   fieldSuggestions: typeof fieldSuggestions;
   fieldTimeline: typeof fieldTimeline;
   fieldTools: typeof fieldTools;
+  fieldTrace: typeof fieldTrace;
   fieldWebhooks: typeof fieldWebhooks;
   fixes: typeof fixes;
   grades: typeof grades;

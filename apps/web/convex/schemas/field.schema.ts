@@ -130,6 +130,7 @@ export const fieldTables = {
     steps: v.optional(v.number()),
   })
     .index("by_company", ["companyId"])
+    .index("by_company_and_runId", ["companyId", "runId"])
     // Bounded lookups of one action (the engine's saved proposal order) without a log scan.
     .index("by_company_and_action", ["companyId", "action"]),
   // Field analyst (fieldAnalyst.ts): one row per orchestrated run and per forecaster scenario.
@@ -150,6 +151,12 @@ export const fieldTables = {
     finishedAt: v.optional(v.string()),
     summary: v.optional(v.string()),
     research: v.optional(v.any()),
+    /** Validated FieldTraceInputs JSON, captured once when the run starts. */
+    traceInputs: v.optional(v.string()),
+    /** Run-local candidates survive the mutable open-suggestion upserts. */
+    traceCandidates: v.optional(v.string()),
+    /** Validated FieldTrace JSON, written once when this run becomes terminal. */
+    traceReceipt: v.optional(v.string()),
     // Claude's summary of the engine results (fieldAnalyst.summarize). Absent on older rows.
     aiSummary: v.optional(
       v.object({
@@ -186,6 +193,7 @@ export const fieldTables = {
     ),
   })
     .index("by_companyId", ["companyId"])
+    .index("by_company_and_runId", ["companyId", "runId"])
     .index("by_runId", ["runId"]),
   // Model-call budget (fieldAi.ts): one row per Claude call or CREAO run. Per company at most one
   // of each kind per snapshot version, and at most AI_CALLS_PER_HOUR rows per hour in total.
@@ -201,6 +209,8 @@ export const fieldTables = {
     provider: v.union(v.literal("claude"), v.literal("creao")),
     /** Snapshot version this call belongs to, as "v3". */
     scope: v.string(),
+    /** Original caller only. Duplicate reservations never transfer this attribution. */
+    analystRunId: v.optional(v.string()),
     hour: v.number(),
     at: v.string(),
     status: v.union(v.literal("reserved"), v.literal("ok"), v.literal("failed")),
