@@ -1,11 +1,8 @@
 "use client";
 import { useMutation, useQueries } from "convex/react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { Skeleton } from "../../ui/skeleton";
-import { ReadNotice } from "../workspace/CatalogPanel";
-import { type WorkspaceRun, getRunRef, readRun, workspaceHref } from "../workspace/api";
+import { useEffect, useMemo, useState } from "react";
+import type { WorkspaceRun } from "../workspace/api";
 import { RequestLedger } from "../workspace/requests";
 import { ChatView } from "./ChatView";
 import {
@@ -63,7 +60,15 @@ function Ready({
     const context = navigation.capture();
     const result = await requestChat(run, command, ledger, { begin, send, reset, confirm });
     if (result.ok && command.kind === "begin" && navigation.allows(context))
-      router.push(chatHref(run.companyId, run.runId, result.receipt.conversationId));
+      router.push(
+        chatHref(
+          run.companyId,
+          run.runId,
+          result.receipt.conversationId,
+          result.receipt.selectedWeek ?? undefined,
+          result.receipt.selectedItemId ?? undefined,
+        ),
+      );
     return result;
   }
   return (
@@ -75,57 +80,28 @@ function Ready({
       actions={{ write }}
       selectedWeek={selectedWeek}
       selectedItemId={selectedItemId}
+      sidebar
     />
   );
 }
-function Connected({ companyId }: { companyId: string }) {
+/** Reuses the timeline's already validated saved source; opening the page never starts a chat. */
+export function ChatSidebarLive({
+  run,
+  selectedWeek,
+  selectedItemId,
+}: {
+  run: WorkspaceRun;
+  selectedWeek?: string;
+  selectedItemId?: string;
+}) {
   const params = useSearchParams();
-  const runId = params.get("runId");
-  const conversationId = params.get("conversationId");
-  const queries = useMemo(
-    () => (runId ? { run: { query: getRunRef, args: { companyId, runId } } } : {}),
-    [companyId, runId],
-  );
-  const raw = useQueries(queries as Parameters<typeof useQueries>[0]) as Record<string, unknown>;
-  if (!runId)
-    return (
-      <div className="space-y-3 rounded-lg border p-5 text-sm">
-        <p>Choose a saved timeline before starting a chat.</p>
-        <Link href={workspaceHref(companyId)} className="text-primary hover:underline">
-          Open saved timelines
-        </Link>
-      </div>
-    );
-  const read = readRun(raw.run, { companyId, runId });
-  if (read.state !== "ready") return <ReadNotice read={read} what="source timeline" />;
   return (
     <Ready
-      key={`${companyId}:${runId}`}
-      run={read.value}
-      conversationId={conversationId}
-      selectedWeek={params.get("selectedWeek") ?? undefined}
-      selectedItemId={params.get("selectedItemId") ?? undefined}
+      key={`${run.companyId}:${run.runId}`}
+      run={run}
+      conversationId={params.get("conversationId")}
+      selectedWeek={selectedWeek}
+      selectedItemId={selectedItemId}
     />
-  );
-}
-export function ChatLive({ companyId }: { companyId: string }) {
-  return (
-    <Suspense
-      fallback={
-        <div aria-busy="true" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Opening the saved conversation…</p>
-          <Skeleton className="h-40 w-full" />
-        </div>
-      }
-    >
-      {process.env.NEXT_PUBLIC_CONVEX_URL ? (
-        <Connected companyId={companyId} />
-      ) : (
-        <p role="alert" className="rounded-lg border p-5 text-sm">
-          This page is not connected to the timeline service, so conversations cannot be read or
-          saved.
-        </p>
-      )}
-    </Suspense>
   );
 }

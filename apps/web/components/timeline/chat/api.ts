@@ -194,5 +194,5 @@ export function chatHref(
   if (conversationId) p.set("conversationId", conversationId);
   if (selectedWeek) p.set("selectedWeek", selectedWeek);
   if (selectedItemId) p.set("selectedItemId", selectedItemId);
-  return `/c/${encodeURIComponent(companyId)}/timeline/chat?${p}`;
+  return `/c/${encodeURIComponent(companyId)}/timeline?${p}#timeline-chat`;
 }
