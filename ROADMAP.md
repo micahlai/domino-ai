@@ -24,6 +24,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
+| T1 timeline controls, proposed friend lane | Friend, sole UI writer when assigned | Verify/checkpoint any active S2 writer; dedicated worktree | [Card](kb/tasks/T1-timeline-series-controls.md), [handoff](prompts/shared/T1-friend-timeline.md). Playground testing and series controls use stable existing props/APIs. Our lane stays engine/backend. No launch yet |
 | L1 normalization | Lead-assigned engine worker | Accepted L0 + E0 development package | [Card](kb/tasks/L1-source-normalization.md): source package -> validated snapshot/roles, exact provenance, no company-specific patch. Lead checks actual slots/worktree before launch |
 
 ## In progress
@@ -66,5 +67,6 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
 | RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | ACKNOWLEDGED by lead 78153, Oct 24. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
+| RQ10 parallel feature split | Claude lead assigns; friend owns timeline, Jayden engine/backend | [Split plan](kb/coordination/historical/parallel-feature-split.md); preserve S2/one UI writer | Prepared T1 test/play/feature handoff. Backend stable for existing 2U but onboarding/learning/scenario persistence unfinished. No automatic worker launch or ownership transfer |
 | RQ7 run the gated sequence / U2 | Claude lead dispatch; Codex audit/integration | Read [U2](kb/coordination/historical/user-inbox.md); accepted L0/E0 before L1 | Superseded by U3 pause, then resumed by RQ8. ACKNOWLEDGED. Continue active repairs/re-audits, integrate passing work and launch L1 when eligible; no duplicate lead or weakened gates |
 | RQ8 resume via claude-lead-goal prompt | Claude lead 78153 | U3 pause | ACKNOWLEDGED Oct 24. Pause lifted; final audits read; L0 to integration, E0 stopped for Jayden |

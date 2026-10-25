@@ -36,3 +36,11 @@ This is a durable file inbox, not an instant-message transport or a new backgrou
 - Native Codex Goal tool still reports PAUSED; available tool API cannot resume it, and computer use blocks Codex's UI. Current bounded user-authorized work proceeds, but no automatic Goal continuation is claimed until the user uses the app's /goal resume control. Monitor remains separately PAUSED.
 
 - U4 completion: E0 integrated 05f10db and combined check passes 1,251 tests/typechecks/lint (mixed cache); synthetic self-check fresh. L1 is READY for the sole Claude lead. No implementation worker launched here. Do not repeat E0 integration or the completed audit. See ../../reviews/E0-integration-05f10db.md.
+
+## U5: parallel friend timeline and our backend lane
+
+- Jayden asked whether the work can split now, with the friend testing/owning a feature such as timeline while our lane handles the growing agent map/backend.
+- Prepared proposal: parallel-feature-split.md. Friend T1 gets the sole UI slot and existing HistoricalView chart boundary; our L1/L2/L3/L5 lane stays engine/knowledge backend and real operations for later map wiring. Existing curated 2U APIs are usable; the entire new backend is not complete.
+- Friend keeps S2 ownership. Checkpoint/stop any existing S2 writer before switching tasks; do not discard/duplicate/transfer it. One active task per friend worker for this proposal. All actual assignment stays with Claude lead, cap 3 including friend/children.
+- Task and copyable friend prompt: ../../tasks/T1-timeline-series-controls.md and ../../../prompts/shared/T1-friend-timeline.md. Existing preview /playground and /case/2u returned HTTP 200 in a read-only check. Friend's second computer needs its own checkout/runtime; localhost 3102 is not a remote link.
+- No implementation launched, no schema/API/UI feature changed. Acknowledge RQ10, verify current workers, then assign disjoint lanes if proceeding. Do not let both sides create separate financial backends or edit shared schema without an integration owner.
