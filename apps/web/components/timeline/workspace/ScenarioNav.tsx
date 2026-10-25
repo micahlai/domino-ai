@@ -169,7 +169,15 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
             </button>
           ) : null}
         </span>
+        {isBase ? (
+          <span
+            aria-hidden="true"
+            className="relative mt-[0.45rem] h-0.5 w-3.5 shrink-0 rounded-full bg-primary"
+            title="The base forecast is always shown"
+          />
+        ) : null}
         <input
+          hidden={isBase}
           id={checkboxId}
           type="checkbox"
           className="relative mt-0.5 size-3.5 shrink-0 cursor-pointer disabled:cursor-default"
@@ -186,64 +194,62 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
           onChange={() => toggle(entry.runId)}
           data-testid={checkboxId}
         />
-        <label htmlFor={checkboxId} className="relative min-w-0 flex-1 cursor-pointer">
-          <span className="flex min-w-0 items-center gap-1.5">
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor={checkboxId} className="block cursor-pointer">
             <span
-              aria-hidden="true"
-              className={cn("size-2 shrink-0 rounded-full", isBase && "bg-primary")}
-              style={color ? { background: color } : undefined}
-            />
-            <span
-              className={cn("truncate text-sm", building ? "font-medium" : "text-foreground/90")}
+              className={cn(
+                "line-clamp-2 break-words text-sm leading-5",
+                building ? "font-medium" : "text-foreground/90",
+              )}
               title={name}
             >
               {name}
             </span>
-          </span>
-          <span className="block truncate text-[11px] text-muted-foreground">
-            {isBase
-              ? "No what-ifs"
-              : entry.startsOn
-                ? `Starts ${formatFullDate(entry.startsOn)}`
-                : "Same events, other rules"}
-            {" · low "}
-            {formatExactCents(entry.lowPointCents)}
-          </span>
-          {!isBase && parent && parent.parentRunId !== null ? (
-            <span className="block truncate text-[11px] text-muted-foreground">
-              Built on {parent.label || KIND[parent.kind]}
+            {!isBase && parent && parent.parentRunId !== null ? (
+              <span className="block break-words text-[11px] leading-4 text-muted-foreground">
+                Built on {parent.label || KIND[parent.kind]}
+              </span>
+            ) : null}
+          </label>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted-foreground">
+            <span>
+              {isBase
+                ? "No what-ifs"
+                : entry.startsOn
+                  ? `Starts ${formatFullDate(entry.startsOn)}`
+                  : "Same events, other rules"}
+              {" · low "}
+              {formatExactCents(entry.lowPointCents)}
             </span>
-          ) : null}
-        </label>
-        <span className="relative shrink-0 pt-0.5">
-          {building ? (
-            <span
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground"
-              title="New what-ifs from the chat or Try an event branch from here"
-            >
-              <GitBranch aria-hidden="true" className="size-3" />
-              Here
-            </span>
-          ) : buildOn ? (
-            <button
-              type="button"
-              onClick={() => buildOn(entry.runId)}
-              className="inline-flex items-center gap-1 rounded px-1 text-[11px] text-primary opacity-0 transition-opacity hover:underline focus-visible:opacity-100 group-hover:opacity-100"
-              aria-label={`Build new what-ifs on ${name}`}
-              data-testid={`scenario-build-${entry.runId}`}
-            >
-              <GitBranch aria-hidden="true" className="size-3" />
-              Build on
-            </button>
-          ) : (
-            <Link
-              href={hrefFor(entry.runId)}
-              className="text-[11px] text-primary underline-offset-4 hover:underline"
-            >
-              Open
-            </Link>
-          )}
-        </span>
+            {building ? (
+              <span
+                className="inline-flex items-center gap-1 font-medium text-foreground"
+                title="New what-ifs from the chat or Try an event branch from here"
+              >
+                <GitBranch aria-hidden="true" className="size-3" />
+                Building here
+              </span>
+            ) : buildOn ? (
+              <button
+                type="button"
+                onClick={() => buildOn(entry.runId)}
+                className="inline-flex items-center gap-1 rounded text-primary hover:underline"
+                aria-label={`Build new what-ifs on ${name}`}
+                data-testid={`scenario-build-${entry.runId}`}
+              >
+                <GitBranch aria-hidden="true" className="size-3" />
+                Build on
+              </button>
+            ) : (
+              <Link
+                href={hrefFor(entry.runId)}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Open
+              </Link>
+            )}
+          </span>
+        </div>
       </div>
       <AnimatePresence initial={false}>
         {children.length && open ? (

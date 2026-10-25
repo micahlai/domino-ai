@@ -218,7 +218,7 @@ export function WorkspaceView({
 
   return (
     <article
-      className="grid min-w-0 max-w-full grid-cols-1 items-start gap-6 [overflow-wrap:anywhere] lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[13rem_minmax(0,1fr)_25rem]"
+      className="grid min-w-0 max-w-full grid-cols-1 items-start gap-6 [overflow-wrap:anywhere] lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[16rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[18rem_minmax(0,1fr)_26rem]"
       data-testid="workspace"
       data-run-id={run.runId}
     >
