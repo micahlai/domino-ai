@@ -1,5 +1,7 @@
 # Team checkpoint: manual Claude launches
 
+> Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
+
 This is a coordination reset, not a Git reset. Preserve branches, local data and worktrees.
 
 ## Agreed product

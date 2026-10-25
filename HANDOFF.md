@@ -1,5 +1,7 @@
 # Domino handoff
 
+> Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
+
 - Goal: one historical company Workspace / Company / Simulations product. Current team agreement: kb/coordination/historical/team-checkpoint.md. Product scope: kb/spec/product-workspace-2026-10-24.md.
 - Accepted: G6/G7/G8a/G8/S1/U1. Last feature checkpoint 0f87ed2 passed 1,185 tests, typecheck, lint, build and browser checks. Stable preview is http://127.0.0.1:3102/case/2u.
 - Integration: preview/historical-overnight only. Main remains 694ab2a. Fresh fetch found no new remote main or S2 implementation commits to integrate.

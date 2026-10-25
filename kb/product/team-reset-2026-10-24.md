@@ -1,5 +1,7 @@
 # Domino: one shared product plan
 
+> Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
+
 Status checked October 24, 2026. Accepted preview: feature checkpoint 0f87ed2, coordination checkpoint d7b562a. S3 38297d4 is not accepted. Remote S2 is still 1154972. This document supersedes the old Kestrel pitch for the current demo.
 
 ## What the product does

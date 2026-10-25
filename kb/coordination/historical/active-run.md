@@ -1,5 +1,7 @@
 # Active run: unified Domino product
 
+> Latest scope: onboarding, source reconciliation, feedback learning and measured forecast improvement are mandatory. Read `kb/spec/required-learning-loop-2026-10-24.md` from the repo root. Earlier deferrals and the smaller planned-demo diagram are superseded. User still launches Claude manually. Monitor was observed PAUSED during chat handoff; do not assume it is active.
+
 Updated October 24 after the manual-launch coordination reset. Read team-checkpoint.md for the concise current agreement. This is current authority; older process notes are in active-run-history-2026-10-24.md. Read kb/spec/product-workspace-2026-10-24.md and C1 supervisor.
 
 ## Goal and rules
