@@ -1,5 +1,18 @@
 # Timeline handoff
 
+## 2026-10-24: TL1 ready for local smoke test
+
+- Done: backend e9e3f3c independently accepted after three boundary repairs; UI d1b8a37 reviewed; combined on TL1-checkpoint. Actual browser save/reload and API retry/tamper checks pass. 1,661 combined tests, typechecks/lint/production build pass. [Acceptance evidence](TL1-acceptance.md).
+- Try: http://127.0.0.1:3107/playground/timeline-seam -> load Kestrel weekly seed -> review assumptions -> Save forecast -> reload saved link. Thirteen saved weekly values remain identical. Load tampered copy to verify rejection. [All smoke gates](SMOKE-TESTS.md).
+- Next: TL1C constraints on its own named checkpoint branch, then TL2 event/chart integration. User confirmed current delivery through TL1 first. Field owns dashboard; skip its component.
+- Watch out: explicit neutral assumptions, not the old learned-model prototype; imported unsupported forward fields reject rather than silently miscalculate. Browser checked at 719px, no separate phone viewport claim. Local services left running; no push/main/lane-main merge/provider call. CLI-generated api.d.ts updated; installed local AI guides/skills stay untracked.
+
+## 2026-10-24: dashboard transferred to Field
+
+- Latest user direction: Field owns dashboard content and `apps/web/components/timeline/dashboard/Dashboard.tsx`. Timeline must skip this file. Earlier content ownership is superseded.
+- Timeline still owns computed health, risk scenarios and saved 13-week chart data, delivered through the agreed seam at integration. Current WeeklyResultRefV1 has health/branchIds/route, not embedded chart arrays or detailed scenarios; interface extension/read-access design recorded in boundary-requests.md. No shared contract edit made.
+- TL1 backend/UI scope is unchanged; its smoke UI is the Timeline playground. Lead continues auditing/combining workers on TL1-checkpoint; no main/lane-main merge.
+
 ## 2026-10-24: checkpoint branch names
 
 - User requests branch names by checkpoint. Preview/review checkout now uses TL1-checkpoint; implementation worker branch renamed TL1-saved-baseline in ../domino-TL1. Repository main remains untouched; no TL1 feature code is written on timeline/main.

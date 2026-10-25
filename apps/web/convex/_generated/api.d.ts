@@ -36,6 +36,8 @@ import type * as models from "../models.js";
 import type * as resilience from "../resilience.js";
 import type * as risks from "../risks.js";
 import type * as sources from "../sources.js";
+import type * as timeline_baselines from "../timeline/baselines.js";
+import type * as timeline_refs from "../timeline/refs.js";
 import type * as week from "../week.js";
 
 import type {
@@ -73,6 +75,8 @@ declare const fullApi: ApiFromModules<{
   resilience: typeof resilience;
   risks: typeof risks;
   sources: typeof sources;
+  "timeline/baselines": typeof timeline_baselines;
+  "timeline/refs": typeof timeline_refs;
   week: typeof week;
 }>;
 

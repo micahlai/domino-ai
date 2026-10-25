@@ -9,6 +9,8 @@ Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL1-checkpoint` (check
 
 The app's ignored `apps/web/.env.local` points only to this worktree's new anonymous local deployment and its synthetic computed company. No peer environment or provider secrets were copied. The home dashboard is still the shared shell placeholder; the live company screen is available through Timeline navigation.
 
+TL1 is now available at the boundary playground: load the weekly fixture, review the explicit neutral assumptions, save a baseline, and reopen/reload its result link. These saved imports live in Timeline-owned timelineBaselines, separately from the old computed `/c/kestrel` prototype. See [SMOKE-TESTS.md](SMOKE-TESTS.md) and [TL1 acceptance](TL1-acceptance.md). Field owns the dashboard component.
+
 ## Restart
 
 Check that these ports are free or already owned by this worktree. Preserve other services. From `apps/web`, keep these in separate terminals:
@@ -34,4 +36,4 @@ pnpm exec convex run historical:getCase '{"caseId":"twou-2023-cash-v1"}'
 
 Verified at setup: second seed call returns `created:false`, browser seam query returns 2U with seven facts, weekly fixture hash verification succeeds, and `/c/kestrel` renders Kestrel Data (computed prototype) from live backend subscriptions. Add event/fix simulation are available; week advancement is not implemented.
 
-Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services were left running for the user. Current roadmap features (new weekly imports, conversational questions, editable constraints, weekly catalog) remain separate implementation work.
+Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services were left running for the user. Saved weekly baseline imports work at TL1; conversational questions, editable constraints and weekly catalog remain separate implementation work.
