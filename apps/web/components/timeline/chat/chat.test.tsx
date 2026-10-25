@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { RequestLedger } from "../workspace/requests";
+import { ChatPlayground } from "./ChatPlayground";
 import { ChatView, ReviewProposal } from "./ChatView";
 import { chatHref, newerReceipt, readChat, readChats } from "./api";
 import { fixtureChat, fixtureReady, fixtureSaved, fixtureChatRun as run } from "./fixtures";
@@ -198,6 +199,28 @@ describe("confirmed chat writes", () => {
   });
 });
 describe("chat review rendering", () => {
+  it("keeps timeline controls and chat together without duplicating the source chart", () => {
+    const markup = renderToStaticMarkup(createElement(ChatPlayground));
+    expect(markup).toContain('data-testid="workspace"');
+    expect(markup).toContain('data-testid="timeline-chat-sidebar"');
+    expect(markup).toContain('id="timeline-chat"');
+    expect(markup).toContain("Expense amount");
+    expect(markup).not.toContain("View source timeline and rules");
+    expect(markup).toContain("Browse saved scenarios");
+  });
+  it("builds in-page conversation links preserving source and pinned selection", () => {
+    const href = chatHref("a/b", "run?x", "chat#x", "2026-11-02", "invoice/a");
+    const url = new URL(href, "http://localhost");
+    expect(url.pathname).toBe("/c/a%2Fb/timeline");
+    expect(url.hash).toBe("#timeline-chat");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      runId: "run?x",
+      conversationId: "chat#x",
+      selectedWeek: "2026-11-02",
+      selectedItemId: "invoice/a",
+    });
+  });
+
   function html(receipt: typeof fixtureChat | null) {
     return renderToStaticMarkup(
       createElement(ChatView, {
@@ -242,7 +265,7 @@ describe("chat review rendering", () => {
     expect(markup).toContain("Open saved timeline");
     expect(markup).not.toContain("Send reply");
     expect(chatHref("a/b", "source?x", "chat#x")).toContain(
-      "/c/a%2Fb/timeline/chat?runId=source%3Fx&amp;".replace("&amp;", "&"),
+      "/c/a%2Fb/timeline?runId=source%3Fx&amp;".replace("&amp;", "&"),
     );
   });
 });

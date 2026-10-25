@@ -1,17 +1,26 @@
-import { ChatLive } from "@/components/timeline/chat/ChatLive";
-import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Timeline chat" };
-export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
+import { chatHref } from "@/components/timeline/chat/api";
+import { workspaceHref } from "@/components/timeline/workspace/api";
+import { redirect } from "next/navigation";
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ companyId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { companyId } = await params;
-  return (
-    <div className="min-w-0 space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-3xl font-medium">Build a scenario together</h1>
-        <p className="text-sm text-muted-foreground">
-          Describe a change, answer a few questions, then review before saving.
-        </p>
-      </header>
-      <ChatLive key={companyId} companyId={companyId} />
-    </div>
+  const search = await searchParams;
+  const value = (name: string) => (typeof search[name] === "string" ? search[name] : undefined);
+  const runId = value("runId");
+  redirect(
+    runId
+      ? chatHref(
+          companyId,
+          runId,
+          value("conversationId"),
+          value("selectedWeek"),
+          value("selectedItemId"),
+        )
+      : workspaceHref(companyId),
   );
 }

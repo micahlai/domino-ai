@@ -2,11 +2,11 @@
 
 import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
-import { chatHref } from "../chat/api";
 import { AncestryPanel } from "./CatalogPanel";
 import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
@@ -42,6 +42,8 @@ export type WorkspaceViewProps = {
   /** Why writes are unavailable here (for example a fixture or no service connection). */
   disabled?: string;
   comparisons?: ScenarioComparisons;
+  initialContext?: { selectedWeek?: string; selectedItemId?: string };
+  chat?: (context: { selectedWeek?: string; selectedItemId?: string }) => ReactNode;
 };
 
 const KIND = { baseline: "Imported baseline", rules: "Rules changed", scenario: "Scenario" };
@@ -56,11 +58,18 @@ export function WorkspaceView({
   actions,
   disabled,
   comparisons,
+  chat,
+  initialContext,
 }: WorkspaceViewProps) {
   const b = run.baseline;
   const low = run.forecast.lowPoint;
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(low.weekStart);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [mobileChatOpen, setMobileChatOpen] = useState(true);
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(
+    initialContext?.selectedWeek ?? low.weekStart,
+  );
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(
+    initialContext?.selectedItemId ?? null,
+  );
   const options = useMemo(() => eventOptions(b.seed), [b.seed]);
   const suggestion = useMemo(() => {
     const item = b.seed.scheduledItems.find((i) => i.id === selectedItemId);
@@ -126,12 +135,6 @@ export function WorkspaceView({
           >
             Review risk analysis
           </Link>
-          <Link
-            href={chatHref(run.companyId, run.runId)}
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            Chat to add a rule or scenario
-          </Link>
           <Badge variant="outline">{KIND[run.kind]}</Badge>
           <span>Saved {formatSavedAt(run.savedAt)}, read only</span>
         </div>
@@ -149,10 +152,26 @@ export function WorkspaceView({
         ) : null}
       </header>
 
-      <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="hidden min-w-0 rounded-lg border p-4 xl:block">{sidebar}</aside>
-        <div className="min-w-0 max-w-full space-y-6">
-          <details className="rounded-lg border p-4 xl:hidden">
+      <div
+        className={
+          chat
+            ? "grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_22rem]"
+            : "grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]"
+        }
+      >
+        <aside
+          className={
+            chat
+              ? "hidden min-w-0 rounded-lg border p-4 2xl:row-span-2 2xl:block"
+              : "hidden min-w-0 rounded-lg border p-4 xl:block"
+          }
+        >
+          {sidebar}
+        </aside>
+        <div
+          className={`min-w-0 max-w-full space-y-6 ${chat ? "lg:col-start-1 lg:row-start-1 2xl:col-start-2" : ""}`}
+        >
+          <details className={`rounded-lg border p-4 ${chat ? "2xl:hidden" : "xl:hidden"}`}>
             <summary className="cursor-pointer text-sm font-medium">
               Browse saved scenarios · {selectedIds.length} selected
             </summary>
@@ -187,6 +206,37 @@ export function WorkspaceView({
             onRun={actions.simulate}
             disabled={disabled}
           />
+        </div>
+        {chat ? (
+          <section
+            aria-label="Timeline chat"
+            id="timeline-chat"
+            className="min-w-0 scroll-mt-4 lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:row-span-2 2xl:col-start-3"
+            data-testid="timeline-chat-sidebar"
+          >
+            <Button
+              variant="outline"
+              className="mb-3 w-full lg:hidden"
+              aria-expanded={mobileChatOpen}
+              aria-controls="timeline-chat-content"
+              onClick={() => setMobileChatOpen((open) => !open)}
+            >
+              {mobileChatOpen ? "Hide chat" : "Show chat · add a rule or scenario"}
+            </Button>
+            <div
+              id="timeline-chat-content"
+              className={`${mobileChatOpen ? "" : "hidden"} lg:block`}
+            >
+              {chat({
+                ...(selectedWeek ? { selectedWeek } : {}),
+                ...(selectedItemId ? { selectedItemId } : {}),
+              })}
+            </div>
+          </section>
+        ) : null}
+        <div
+          className={`min-w-0 max-w-full space-y-6 ${chat ? "lg:col-start-1 lg:row-start-2 2xl:col-start-2" : "xl:col-start-2"}`}
+        >
           <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             <WeekDetail
               run={run}

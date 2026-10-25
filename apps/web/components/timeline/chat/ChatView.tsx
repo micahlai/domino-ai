@@ -1,7 +1,7 @@
 "use client";
 import type { Constraint } from "@domino/contracts";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
@@ -22,6 +22,7 @@ export type ChatViewProps = {
   actions: ChatActions;
   selectedWeek?: string;
   selectedItemId?: string;
+  sidebar?: boolean;
 };
 export function ReviewProposal({
   receipt,
@@ -90,7 +91,9 @@ export function ChatView({
   actions,
   selectedWeek,
   selectedItemId,
+  sidebar = false,
 }: ChatViewProps) {
+  const transcript = useRef<HTMLOListElement>(null);
   const [writeGuard] = useState(() => new ChatWriteGuard());
   const blocked = writeGuard.pending !== null;
   const [previewWeek, setPreviewWeek] = useState<string | null>(null);
@@ -105,6 +108,11 @@ export function ChatView({
   const token = receipt ? `${receipt.conversationId}:${receipt.revision}` : null;
   const reviewed = token !== null && reviewedFor === token;
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
+  const lastTurn = receipt?.turns.at(-1)?.id;
+  useEffect(() => {
+    if (sidebar && lastTurn && transcript.current)
+      transcript.current.scrollTop = transcript.current.scrollHeight;
+  }, [sidebar, lastTurn]);
   async function write(command: ChatCommand) {
     if (busy.current || !writeGuard.allows(command)) return;
     busy.current = true;
@@ -135,57 +143,70 @@ export function ChatView({
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? run.baseline.seed.asOf;
   return (
     <article
-      className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]"
+      className={`min-w-0 max-w-full space-y-4 [overflow-wrap:anywhere] ${sidebar ? "lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain" : ""}`}
       data-testid="timeline-chat"
     >
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Link
-          className="text-primary hover:underline"
-          href={workspaceHref(run.companyId, { runId: run.runId })}
-        >
-          Back to source timeline
-        </Link>
-        <Badge variant="outline">Saved source · read only</Badge>
-        <span className="text-xs text-muted-foreground">
-          {run.label || "Baseline"} · saved {formatSavedAt(run.savedAt)}
-        </span>
-      </div>
-      <details className="rounded-lg border p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          View source timeline and rules
-        </summary>
-        <div className="mt-4 space-y-3">
-          <WorkspaceChart
-            history={run.baseline.history}
-            forecast={run.forecast}
-            items={run.baseline.seed.scheduledItems}
-            limits={run.constraints
-              .filter((c) => c.kind === "min_cash")
-              .map((c) => ({ id: c.id, label: c.label, cents: c.limit }))}
-            selectedWeek={previewWeek}
-            onSelectWeek={setPreviewWeek}
-          />
-          <p className="text-sm">
-            Lowest usable cash: {formatExactCents(run.forecast.lowPoint.usable)}, week of{" "}
-            <WhenDate iso={run.forecast.lowPoint.weekStart} />.
-          </p>
-          <ul className="list-disc pl-5 text-sm">
-            {run.constraints.map((c) => (
-              <li key={c.id}>
-                {c.label}:{" "}
-                {c.kind === "min_cash"
-                  ? formatExactCents(c.limit)
-                  : `${c.limit} ${c.kind === "min_runway_months" ? "months" : "days late"}`}
-              </li>
-            ))}
-          </ul>
-          {run.constraints.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No source rules.</p>
-          ) : null}
-        </div>
-      </details>
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <Panel title="Describe a rule or a possible event">
+      {!sidebar ? (
+        <>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Link
+              className="text-primary hover:underline"
+              href={workspaceHref(run.companyId, { runId: run.runId })}
+            >
+              Back to source timeline
+            </Link>
+            <Badge variant="outline">Saved source · read only</Badge>
+            <span className="text-xs text-muted-foreground">
+              {run.label || "Baseline"} · saved {formatSavedAt(run.savedAt)}
+            </span>
+          </div>
+          <details className="rounded-lg border p-4">
+            <summary className="cursor-pointer text-sm font-medium">
+              View source timeline and rules
+            </summary>
+            <div className="mt-4 space-y-3">
+              <WorkspaceChart
+                history={run.baseline.history}
+                forecast={run.forecast}
+                items={run.baseline.seed.scheduledItems}
+                limits={run.constraints
+                  .filter((c) => c.kind === "min_cash")
+                  .map((c) => ({ id: c.id, label: c.label, cents: c.limit }))}
+                selectedWeek={previewWeek}
+                onSelectWeek={setPreviewWeek}
+              />
+              <p className="text-sm">
+                Lowest usable cash: {formatExactCents(run.forecast.lowPoint.usable)}, week of{" "}
+                <WhenDate iso={run.forecast.lowPoint.weekStart} />.
+              </p>
+              <ul className="list-disc pl-5 text-sm">
+                {run.constraints.map((c) => (
+                  <li key={c.id}>
+                    {c.label}:{" "}
+                    {c.kind === "min_cash"
+                      ? formatExactCents(c.limit)
+                      : `${c.limit} ${c.kind === "min_runway_months" ? "months" : "days late"}`}
+                  </li>
+                ))}
+              </ul>
+              {run.constraints.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No source rules.</p>
+              ) : null}
+            </div>
+          </details>
+        </>
+      ) : (
+        <p className="px-1 text-xs text-muted-foreground">
+          Source: {run.label || "Baseline"} · {run.baseline.companyName}. The timeline beside this
+          chat stays unchanged until you open a saved result.
+        </p>
+      )}
+      <div
+        className={
+          sidebar ? "min-w-0 space-y-4" : "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]"
+        }
+      >
+        <Panel title={sidebar ? "Add a rule or scenario" : "Describe a rule or a possible event"}>
           <p className="text-sm text-muted-foreground">
             Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill
             deadline rule. I’ll ask for missing details one at a time. This chat uses supported
@@ -239,10 +260,11 @@ export function ChatView({
                 </p>
               ) : null}
               <ol
+                ref={transcript}
                 aria-label="Conversation"
                 aria-live="polite"
                 aria-relevant="additions"
-                className="space-y-4 py-3"
+                className={`space-y-4 py-3 ${sidebar ? "max-h-[40dvh] overflow-y-auto overscroll-contain pr-1" : ""}`}
               >
                 {receipt.turns.map((turn) => (
                   <li
@@ -403,8 +425,9 @@ export function ChatView({
             </p>
           ) : null}
         </Panel>
-        <aside className="min-w-0">
-          <Panel title="Recent conversations">
+        <details className="min-w-0 rounded-lg border p-4">
+          <summary className="cursor-pointer text-sm font-medium">Recent conversations</summary>
+          <div className="mt-3 space-y-3">
             <p className="text-xs text-muted-foreground">
               Up to 20 saved conversations for this source timeline. Reopening only reads saved
               data.
@@ -422,7 +445,13 @@ export function ChatView({
                         r.conversationId === receipt?.conversationId ? "page" : undefined
                       }
                       className="block min-h-11 text-primary hover:underline"
-                      href={chatHref(run.companyId, run.runId, r.conversationId)}
+                      href={chatHref(
+                        run.companyId,
+                        run.runId,
+                        r.conversationId,
+                        r.selectedWeek ?? undefined,
+                        r.selectedItemId ?? undefined,
+                      )}
                     >
                       {r.proposal?.label ||
                         r.turns.find((t) => t.role === "user")?.text ||
@@ -435,8 +464,8 @@ export function ChatView({
                 ))}
               </ul>
             )}
-          </Panel>
-        </aside>
+          </div>
+        </details>
       </div>
     </article>
   );

@@ -7,6 +7,6 @@
 - **Notes:** same TL9 isolation; no backend/shared contracts/engine/dashboard/Field/global styles/TL7/push edits. Avoid duplicate full source chart inside sidebar. Preserve source-pinned chats, exact retry and revision review guards. Include a props playground for integrated layout. Use existing UI worker worktree, merge lead checkpoint first. No delegation.
 
 ## Result
-- Done:
-- What changed:
-- Watch out:
+- Done: desktop right chat sidebar and mobile in-page toggle alongside existing chart, controls and saved scenarios. 101 focused chat/workspace tests, web typecheck and scoped Biome pass; lead owns combined build/browser acceptance.
+- What changed: ChatSidebarLive reuses the validated displayed run; no second source chart. Bounded transcript follows replies and sidebar scrolls independently. Desktop always displays chat after mobile-collapse/resize. Saved scenarios collapse below 2xl; chat sits between chart/composer and details on mobile. Durable workspace conversation links preserve source/week/item; old /timeline/chat links redirect. Deep-link selection initializes chart state, then user selection is authoritative for new chats. Integrated props playground and route/layout tests added.
+- Watch out: saved chats retain their original pinned context when chart selection changes. Source switches remount chat and preserve stale navigation/retry/review guards. Source and calculations remain unchanged until explicit review/save. No backend/TL7/runtime changes.
