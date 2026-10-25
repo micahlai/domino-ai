@@ -1,6 +1,6 @@
 # Status board
 
-Current authority: ../../ROADMAP.md and ../coordination/historical/claude-lead-control.md. User launches ONE Claude lead which owns queue/dispatch. Codex provides independent audit/integration support on request. S3 repair 5ecae8a passed independent scoped code audit; preview integration is pending. Friend S2 remains exclusive. Monitor PAUSED, main unchanged. Older rows below are history, not a launch queue.
+Current authority: ../../ROADMAP.md and ../coordination/historical/claude-lead-control.md. User launches ONE Claude lead which owns queue/dispatch. Codex provides independent audit/integration support on request. S3 repair 5ecae8a passed independent scoped code audit and is integrated at 16a3a56; combined uncached preview check passed 1,208 tests/typechecks/lint. Friend S2 remains exclusive. Monitor PAUSED, main unchanged. Older rows below are history, not a launch queue.
 
 ## Required-loop takeover queue
 
@@ -10,7 +10,7 @@ Authority: ../../ROADMAP.md, Claude-lead control and ../spec/learning-loop-desig
 | --- | --- | --- |
 | Lead reuse/design/evaluation recipe | done | Independent design recheck clear; data/candidate seals still pending |
 | S2 catalog | reserved | Friend only; origin1154972, no implementation submitted |
-| S3 scenario engine | review | 5ecae8a independently approved; 54 focused tests, 14 probes, full 1,208-test/typecheck/lint check pass; pending preview integration, audit owner released |
+| S3 scenario engine | done | 5ecae8a independently approved; 54 focused tests, 14 probes; integrated at 16a3a56 with combined uncached 1,208-test/typecheck/lint pass. Persistence/UI gates remain separate |
 | L0 contracts / E0 custody | todo | Manual prompts prepared; actual slot check first |
 | L1 normalization / L2 reconciliation / L3 rules | blocked | Ordered contracts/development-data dependencies; no sealed test reads |
 | L5 durable knowledge / E1 evaluator | blocked | Frozen pure interfaces; L5 owns backend before S4 |

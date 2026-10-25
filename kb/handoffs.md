@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-10-24 S3 checked preview integration
+
+- Done: user requested publishing tested features. Integrated independently audited S3 repair 5ecae8a via merge 16a3a56 on preview/historical-overnight. Combined uncached pnpm check passed 1,208 tests, five typechecks and lint (263 files). Log: /tmp/domino-s3-preview-check.log.
+- Next: one user-launched Claude lead owns ROADMAP and assigns ready L0/E0 while friend retains S2. Codex remains audit/integration support.
+- Limits: no new UI/build/provider/database acceptance. S4/U2, onboarding, reconciliation, learning, sealed improvement and real CREAO remain incomplete. Main, runtimes and data preserved; monitor PAUSED.
+
 ## 2026-10-24 Claude lead control and S3 support audit
 - Latest user direction: launch one Claude lead; it owns ROADMAP.md, queue and worker dispatch. Codex provides independent audit/integration on request. No implementation dispatched; monitor stays PAUSED.
 - S3 repair 5ecae8a independently approved for scoped code integration: 54 focused tests, 14 independent real-source/frozen/adversarial probes, full 1,208 uncached tests/typechecks/lint. No preview merge/build/browser/database/provider acceptance.

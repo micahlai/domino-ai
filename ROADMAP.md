@@ -10,6 +10,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | --- | --- | --- | --- |
 | G6/G7/G8a/G8/S1/U1 | Prior workers; Codex audit | Prior gates | Accepted grouped map, frozen knowledge, scenario contracts, early product UI; feature checkpoint 0f87ed2, prior 1,185 tests/build/browser |
 | D0 required-loop design | Codex; independent design auditor | Latest user scope | Reuse inventory, supported SEC JSON boundary, exact S4 and evaluation recipe reviewed; 1fce04a. Data/candidate seals and improvement are not done |
+| S3 quarterly scenario engine | Claude implementation; Codex audit/integration | Accepted S1 | Integrated at 16a3a56. [Independent audit](kb/reviews/S3-repair-5ecae8a-audit.md): 54 focused tests and 14 probes. Combined uncached preview check passed 1,208 tests, typechecks and lint. S4 persistence and U2 UI remain separate gates |
 
 ## Ready
 
@@ -28,7 +29,6 @@ No implementation worker is independently confirmed active in this checkpoint. F
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| S3 repair 5ecae8a | Claude lead requests integration; Codex audit complete | Finished Claude repair; clean domino-S3 | [Audit passes](kb/reviews/S3-repair-5ecae8a-audit.md): 54 focused tests, 14 independent probes, full 1,208-test/typecheck/lint check. Scoped code approved, NOT integrated; preserve S4 persistence/protocol gates |
 | C2 credential/input setup evidence | Claude lead assigns verifier; no live call yet | Existing dedicated evidence app and user-reported setup | Verify `prompt` remote input versus adapter `inputs.prompt`, authorized app binding and secret presence without exposing values; full isolation remains a separate gate |
 
 ## Blocked
@@ -54,6 +54,6 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | --- | --- | --- | --- |
 | RQ1 all onboarding/reconciliation/learning/improvement required | Claude lead | Latest required scope | Accepted into L0-L5/E0/E1/L4; not complete |
 | RQ2 one Claude lead with a queue and subagents | Claude lead | User launches C0; actual slots verified | This roadmap/control handoff ready; Codex stops competing dispatch |
-| RQ3 Claude repair is done | Codex bounded audit complete; Claude lead next | S3 commit 5ecae8a | Independent audit passes; full 1,208-test check. Pending preview integration, no repair redispatch |
+| RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
 | RQ4 CREAO setup says done | Lead-assigned verifier | User-reported empty memory/data access and input/key steps | Verify remote `prompt` and backend config; no isolation/provider-success claim yet |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
