@@ -40,7 +40,7 @@ L0/E0 are accepted and integrated. No implementation worker launched by this pla
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| L1 normalization 57a1581 | Claude lead owns repair/checkpoint; Codex audits | First review REJECT | [Audit](kb/reviews/L1-57a1581-codex-audit.md): invalid restricted-cash row selection and unauthenticated fiscal calendar. Repair activity must be checked before dispatch; not accepted |
+| L1 normalization a72f143 | Codex integration onto preview | Rounds 1-2 REJECT, round 3 ACCEPT | [Final audit](kb/reviews/L1-a72f143-codex-final.md): 243 engine tests, 155 independent probes, 14 source rows hand-verified. [R1](kb/reviews/L1-57a1581-codex-audit.md), [R2](kb/reviews/L1-4d68acd-codex-reaudit.md). Done after integrated combined check |
 
 ## Blocked
 
