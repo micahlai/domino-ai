@@ -9,6 +9,7 @@ import { type ReactNode, Suspense, useMemo, useState } from "react";
 import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
 import { baselineHref } from "../baseline/api";
+import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
 import type { AskInput, AskOutcome } from "./QuestionsPanel";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
@@ -168,6 +169,7 @@ function RunReady({
   read: Extract<ReturnType<typeof readRun>, { state: "ready" }>;
 }) {
   const run = read.value;
+  const params = useSearchParams();
   const { companyId } = runKey;
   const router = useRouter();
   const queries = useMemo(
@@ -351,6 +353,11 @@ function RunReady({
       questions={readQuestions(raw.questions, runKey) as Read<QuestionReceipt[]>}
       resultRef={readResultRef(raw.resultRef)}
       actions={actions}
+      initialContext={{
+        selectedWeek: params.get("selectedWeek") ?? undefined,
+        selectedItemId: params.get("selectedItemId") ?? undefined,
+      }}
+      chat={(context) => <ChatSidebarLive run={run} {...context} />}
     />
   );
 }

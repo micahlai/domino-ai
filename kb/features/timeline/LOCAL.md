@@ -1,6 +1,6 @@
 # Timeline local runtime
 
-Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL5-checkpoint` (checkpoint preview; `timeline/main` is the lane base).
+Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL7-checkpoint` (published checkpoint preview; `timeline/main` is the lane base).
 
 - App: http://127.0.0.1:3107
 - Weekly saved timeline/catalog: http://127.0.0.1:3107/c/kestrel/timeline
@@ -41,8 +41,14 @@ Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services
 
 ## Separate TL6–TL7 checkpoint
 
-Worktree `/Users/micahlai/.codex/worktrees/tl7-checkpoint/domino-ai`, branch TL7-checkpoint. App http://127.0.0.1:3108; backend3250/3251. Use the same restart commands above with3250/3251 and3108, from this separate worktree. Reuse its existing ignored local deployment state. Never copy environments or reset TL5 data. No provider configured or needed for deterministic analysis. [Acceptance and saved analysis](TL7-acceptance.md); [smoke steps](SMOKE-TESTS.md). TL5 remains unchanged and open on3107. Do not merge into TL5 without the user's explicit instruction.
+Worktree `/Users/micahlai/.codex/worktrees/tl7-checkpoint/domino-ai`, branch TL7-isolated-checkpoint. App http://127.0.0.1:3108; backend3250/3251. Use the same restart commands above with3250/3251 and3108, from this separate worktree. Reuse its existing ignored local deployment state. Never copy environments or reset TL5 data. No provider configured or needed for deterministic analysis. [Acceptance and saved analysis](TL7-acceptance.md); [smoke steps](SMOKE-TESTS.md). TL5 remains unchanged and open on3107. Do not merge into TL5 without the user's explicit instruction.
 
 ## 2026-10-25 merged smoke preview
 
 User authorized TL7-checkpoint into TL5-checkpoint. The existing3107 app/3240 backend now include TL6/TL7 and saved scenario comparisons. Previous instructions to keep TL5 at597fcc0 are historical. Saved data and ignored environment were retained; no data copied from3108. Main is unchanged.
+
+## Separate conversational preview (TL9)
+
+Worktree `/Users/micahlai/.codex/worktrees/tl9-chat-checkpoint/domino-ai`, branch `TL9-chat-checkpoint`. App http://127.0.0.1:3109; backend3260/3261. Use the restart commands above with3260/3261 and3109, from this worktree. Its own ignored deployment state contains an explicitly reviewed, labelled synthetic Kestrel fixture with neutral assumptions. No provider is configured or required. Do not copy environment files or database state.
+
+Start at [the saved source chat](http://127.0.0.1:3109/c/kestrel/timeline/chat?runId=timeline%3Aworkspace%2F7b750204b9e2d963f740de1ecd2f68fe8bf37b11) or the [props playground](http://127.0.0.1:3109/playground/timeline-chat). [Acceptance](TL9-acceptance.md) is authoritative for verification status. This work is separate from published TL7; no merge into TL7 or push is authorized.

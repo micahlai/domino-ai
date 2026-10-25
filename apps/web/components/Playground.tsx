@@ -163,6 +163,12 @@ export function Playground() {
       >
         Preview Timeline risk analysis
       </Link>
+      <Link
+        href="/playground/timeline-chat"
+        className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
+      >
+        Preview Timeline chat
+      </Link>
       <Separator />
       <nav aria-label="Component previews" className="flex flex-wrap gap-2">
         {sections.map((name) => (

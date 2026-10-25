@@ -1,5 +1,17 @@
 # Timeline handoff
 
+## 2026-10-25: TL9 sidebar ready for push
+
+- Done: durable typed clarification chat beside the timeline; exact reviewed scenario/rule save, transcript/history, source-pinned context and legacy link redirect. Phone remains on the timeline page. Independent review accepted final UI/backend; live initialization and repeated-payment issues repaired.
+- Checks:2,028 tests, five typechecks, lint408, separate Convex typecheck/build;21 core live API checks plus six nested-payment checks; actual desktop/phone sidebar flow. [Acceptance](TL9-acceptance.md).
+- Next: user may push TL9-chat-checkpoint as a separate branch. No TL9 push or merge into published TL7 performed; TL7 stays1140c26. TL8 and Field adoption remain separate.
+
+## 2026-10-25: separate chat implementation
+
+- User requests conversational rule/scenario creation with back-and-forth clarification in a separate worktree. TL9-chat-checkpoint owns integration, TL9-chat-backend/TL9-chat-ui workers are scoped by fixed interface/cards. No shared math/contracts/root schema/dashboard/Field edits.
+- New isolated3109/3260/3261 local backend/app uses explicitly reviewed labelled synthetic Kestrel neutral seed. No copied env/provider keys/database. [Pending acceptance](TL9-acceptance.md). Messages build typed pending fields; explicit reviewed confirmation alone saves through existing workspace.
+- Published origin/TL7-checkpoint1140c26 and3107 smoke data remain unchanged. No TL9 merge/push authorized or performed. TL8 rejoin remains separate.
+
 ## 2026-10-25: published checkpoint renamed TL7
 
 - User requested a clear name reflecting completedTL7 scope. Published merge branch is now TL7-checkpoint; partner should fetch/merge origin/TL7-checkpoint. Former remote TL5-checkpoint is superseded. Stable checkout remains ../domino-timeline with unchanged3107/3240 data.
