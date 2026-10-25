@@ -125,23 +125,34 @@ export function AnomalyPicker({
   value,
   onChange,
   disabled,
+  stacked = false,
 }: {
   value: Anomaly | "";
   onChange: (value: Anomaly | "") => void;
   disabled?: boolean;
+  /** Label above a full-width select (a narrow panel), instead of one inline row. */
+  stacked?: boolean;
 }) {
   const id = useId();
   return (
-    <span className="inline-flex min-w-0 items-center gap-2 text-sm">
-      <label htmlFor={id} className="shrink-0 text-muted-foreground">
-        With
+    <span
+      className={cn(
+        "min-w-0 text-sm",
+        stacked ? "flex flex-col gap-1.5" : "inline-flex items-center gap-2",
+      )}
+    >
+      <label
+        htmlFor={id}
+        className={stacked ? "text-[13px] font-medium" : "shrink-0 text-muted-foreground"}
+      >
+        {stacked ? "Plant an anomaly" : "With"}
       </label>
       <Select
         id={id}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as Anomaly | "")}
-        className="sm:w-56"
+        className={stacked ? "h-11 w-full sm:h-9" : "max-sm:h-11 sm:w-56"}
       >
         <option value="">no planted anomaly</option>
         {ANOMALY_OPTIONS.map((a) => (
@@ -162,7 +173,7 @@ export function AutoIngestToggle() {
   const [error, setError] = useState<string | null>(null);
   const on = status?.ingest.enabled ?? false;
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
+    <span className="inline-flex min-h-11 items-center gap-2 text-sm sm:min-h-0">
       <Switch
         id={id}
         checked={on}
@@ -180,7 +191,7 @@ export function AutoIngestToggle() {
         }}
       />
       <label htmlFor={id} className="whitespace-nowrap">
-        Auto ingest {on ? "on" : "off"}
+        Auto checks {on ? "on" : "off"}
       </label>
       {error ? <span className="text-[hsl(var(--danger-text))]">{error}</span> : null}
     </span>

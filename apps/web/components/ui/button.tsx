@@ -17,11 +17,12 @@ const buttonVariants = cva(
         ghost: "text-foreground hover:bg-accent hover:text-accent-foreground",
         link: "h-auto px-0 text-primary underline-offset-4 hover:underline",
       },
+      // Below 640px every size is at least a 44px touch target; desktop stays compact.
       size: {
-        default: "h-[var(--control-h)] px-3.5",
-        sm: "h-8 px-2.5 text-[13px]",
-        lg: "h-10 px-5",
-        icon: "h-[var(--control-h)] w-[var(--control-h)]",
+        default: "h-[var(--control-h)] px-3.5 max-sm:h-11",
+        sm: "h-8 px-2.5 text-[13px] max-sm:h-11",
+        lg: "h-10 px-5 max-sm:h-11",
+        icon: "h-[var(--control-h)] w-[var(--control-h)] max-sm:h-11 max-sm:w-11",
       },
     },
     defaultVariants: {
