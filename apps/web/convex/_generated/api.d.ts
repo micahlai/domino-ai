@@ -45,6 +45,7 @@ import type * as fieldJudge from "../fieldJudge.js";
 import type * as fieldNessie from "../fieldNessie.js";
 import type * as fieldSourceDetail from "../fieldSourceDetail.js";
 import type * as fieldSources from "../fieldSources.js";
+import type * as fieldTimeline from "../fieldTimeline.js";
 import type * as fixes from "../fixes.js";
 import type * as grades from "../grades.js";
 import type * as historical from "../historical.js";
@@ -95,11 +96,7 @@ import type * as timeline_workspaceRefs from "../timeline/workspaceRefs.js";
 import type * as timeline_workspaceRules from "../timeline/workspaceRules.js";
 import type * as week from "../week.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   agents: typeof agents;
@@ -139,6 +136,7 @@ declare const fullApi: ApiFromModules<{
   fieldNessie: typeof fieldNessie;
   fieldSourceDetail: typeof fieldSourceDetail;
   fieldSources: typeof fieldSources;
+  fieldTimeline: typeof fieldTimeline;
   fixes: typeof fixes;
   grades: typeof grades;
   historical: typeof historical;
@@ -198,10 +196,7 @@ declare const fullApi: ApiFromModules<{
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-export declare const api: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "public">
->;
+export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "public">>;
 
 /**
  * A utility for referencing Convex functions in your app's internal API.
@@ -211,9 +206,6 @@ export declare const api: FilterApi<
  * const myFunctionReference = internal.myModule.myFunction;
  * ```
  */
-export declare const internal: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "internal">
->;
+export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;
 
 export declare const components: {};
