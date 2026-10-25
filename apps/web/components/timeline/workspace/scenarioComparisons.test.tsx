@@ -211,6 +211,25 @@ describe("saved scenario comparisons", () => {
     expect(html).toContain('data-testid="forecast-line"');
   });
 
+  it("offers time and cash zoom and labels both axes with gridlines", () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceChart
+        history={fixtureRoot.baseline.history}
+        forecast={fixtureRoot.forecast}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+      />,
+    );
+    for (const label of ["All history", "Last 8 weeks", "Forecast only", "Fit to lines", "From $0"])
+      expect(html).toContain(label);
+    expect(html).toContain('data-testid="time-axis-title"');
+    expect(html).toContain("Week starting");
+    expect(html).toContain("Usable cash</text>");
+    expect(html.match(/data-testid="time-grid"/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
   it("omits a branch that never leaves the line it builds on", () => {
     const html = renderToStaticMarkup(
       <WorkspaceChart

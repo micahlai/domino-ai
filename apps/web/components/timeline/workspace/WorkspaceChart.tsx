@@ -4,6 +4,7 @@ import type { Forecast, HistoryWeek, ScheduledItem } from "@domino/contracts";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 import { useEffect, useId, useRef, useState } from "react";
+import { Segmented } from "../../ui/segmented";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
 
@@ -41,6 +42,9 @@ export type ChartProps = {
 };
 
 const DEFAULT_W = 880;
+type TimeWindow = "auto" | "all" | "recent" | "forecast";
+type CashRange = "fit" | "zero";
+const RECENT_WEEKS = 8;
 const DASHES = ["6 4", "2 4", "10 3 2 3"] as const;
 
 type Point = { x: number; y: number };
@@ -69,11 +73,19 @@ export function WorkspaceChart(p: ChartProps) {
   const titleId = useId();
   const [wrapRef, W] = useWidth();
   const compact = W < 560;
-  const H = compact ? 260 : 320;
-  const PAD = { right: compact ? 12 : 20, top: 30, bottom: 34 };
+  const H = compact ? 280 : 340;
+  const PAD = { right: compact ? 12 : 20, top: 30, bottom: 52 };
   const [hover, setHover] = useState<number | null>(null);
-  // Phones show the last two months of history so the 13 forecast weeks get most of the width.
-  const history = compact ? p.history.slice(-8) : p.history;
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("auto");
+  const [cashRange, setCashRange] = useState<CashRange>("fit");
+  // Phones default to the last two months of history so the forecast gets most of the width.
+  const shownWindow = timeWindow === "auto" ? (compact ? "recent" : "all") : timeWindow;
+  const history =
+    shownWindow === "forecast"
+      ? []
+      : shownWindow === "recent"
+        ? p.history.slice(-RECENT_WEEKS)
+        : p.history;
   const weeks = p.forecast.weeks;
   const comparisons = (p.comparisons ?? []).slice(0, 6);
   const mainLabel = p.forecastLabel ?? "This scenario";
@@ -84,11 +96,19 @@ export function WorkspaceChart(p: ChartProps) {
     ...(!p.comparisons ? (p.parent?.weeks.map((w) => w.usable) ?? []) : []),
     ...comparisons.flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)),
     ...p.limits.map((l) => l.cents),
+    // "From $0" keeps the true size of a change visible; "Fit" zooms into the lines shown.
+    ...(cashRange === "zero" ? [0] : []),
   ];
-  const { scale: y, ticks: cashTicks } = cashScale(values, [H - PAD.bottom, PAD.top]);
-  const left = Math.max(44, ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 14));
+  const { scale: y, ticks: cashTicks } = cashScale(
+    values,
+    [H - PAD.bottom, PAD.top],
+    compact ? 4 : 6,
+  );
+  // Room for the rotated "Usable cash" title plus the widest tick label.
+  const left =
+    18 + Math.max(44, ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 14));
   const dates = [...history.map((week) => week.weekStart), ...weeks.map((week) => week.weekStart)];
-  const timeTicks = dateTicks(dates, compact ? 3 : W < 820 ? 5 : 7);
+  const timeTicks = dateTicks(dates, compact ? 4 : W < 820 ? 6 : 9);
   const x = scaleLinear()
     .domain([0, Math.max(slots - 1, 1)])
     .range([left, W - PAD.right]);
@@ -153,6 +173,37 @@ export function WorkspaceChart(p: ChartProps) {
 
   return (
     <figure className="min-w-0 max-w-full space-y-3" data-testid="workspace-chart">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="chart-scale">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Time</span>
+          <Segmented
+            label="Time shown"
+            name={`${titleId}-time`}
+            value={shownWindow}
+            onChange={(v) => setTimeWindow(v)}
+            options={[
+              { value: "all", label: "All history" },
+              { value: "recent", label: `Last ${RECENT_WEEKS} weeks` },
+              { value: "forecast", label: "Forecast only" },
+            ]}
+            className="[&>label>span]:h-7 [&>label>span]:px-2 [&>label>span]:text-xs"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Cash</span>
+          <Segmented
+            label="Cash range"
+            name={`${titleId}-cash`}
+            value={cashRange}
+            onChange={(v) => setCashRange(v)}
+            options={[
+              { value: "fit", label: "Fit to lines" },
+              { value: "zero", label: "From $0" },
+            ]}
+            className="[&>label>span]:h-7 [&>label>span]:px-2 [&>label>span]:text-xs"
+          />
+        </div>
+      </div>
       <div ref={wrapRef} className="relative min-w-0 max-w-full">
         <svg
           viewBox={`0 0 ${W} ${H}`}
@@ -196,6 +247,18 @@ export function WorkspaceChart(p: ChartProps) {
             ))}
           </g>
           <g data-testid="date-axis" pointerEvents="none">
+            {timeTicks.map(({ index, date }) => (
+              <line
+                key={`grid-${date}`}
+                x1={x(index)}
+                x2={x(index)}
+                y1={PAD.top}
+                y2={H - PAD.bottom}
+                className="stroke-border"
+                strokeDasharray="2 4"
+                data-testid="time-grid"
+              />
+            ))}
             <line
               x1={left}
               x2={W - PAD.right}
@@ -203,6 +266,23 @@ export function WorkspaceChart(p: ChartProps) {
               y2={H - PAD.bottom}
               className="stroke-muted-foreground/40"
             />
+            <text
+              x={(left + W - PAD.right) / 2}
+              y={H - 8}
+              textAnchor="middle"
+              className="fill-muted-foreground text-[11px] font-medium"
+              data-testid="time-axis-title"
+            >
+              Week starting
+            </text>
+            <text
+              transform={`translate(12 ${(PAD.top + H - PAD.bottom) / 2}) rotate(-90)`}
+              textAnchor="middle"
+              className="fill-muted-foreground text-[11px] font-medium"
+              data-testid="cash-axis-title"
+            >
+              Usable cash
+            </text>
             {timeTicks.map(({ index, date }, i) => (
               <text
                 key={date}
