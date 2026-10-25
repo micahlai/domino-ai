@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { type AnalystDigest, type FindingRecord, counterpartyProfileVersion } from "./fieldAi";
+import {
+  type AnalystDigest,
+  type FindingRecord,
+  buildCounterpartyCreaoPrompt,
+  counterpartyProfileVersion,
+} from "./fieldAi";
 import {
   type CoordinatorInput,
+  FieldCreaoRejected,
   acceptCoordinatorPlan,
+  buildFieldCreaoPrompt,
+  checkCoordinatorPlan,
   coordinatorCreaoJob,
+  counterpartyCreaoJob,
   explainCreaoJob,
   fieldCreaoProfileVersion,
   runFieldCreaoJob,
@@ -183,47 +192,153 @@ describe("coordinator plan", () => {
     expect(acceptCoordinatorPlan(input, plan)).toBeUndefined();
   });
 
-  it("rejects invented amounts, in text or as a field", () => {
-    const inText = {
+  it("removes invented amounts from plan text and strips extra fields instead of rejecting", () => {
+    const plan = acceptCoordinatorPlan(input, {
       ...goodPlan,
-      actions: [{ action: "focus_scenario", scenarioIndex: 0, reason: "Drawing $250K fixes it." }],
-    };
-    expect(acceptCoordinatorPlan(input, inText)).toBeUndefined();
-    const asField = {
-      ...goodPlan,
-      actions: [{ action: "escalate_flag", findingId: "f-mid", reason: "Big.", amount: 25_000 }],
-    };
-    expect(acceptCoordinatorPlan(input, asField)).toBeUndefined();
-    expect(
-      acceptCoordinatorPlan(input, { ...goodPlan, summary: "Cash falls by $9,999 next week." }),
-    ).toBeUndefined();
+      summary: "Cash falls by $9,999 next week.",
+      priority: "high",
+      actions: [
+        { action: "focus_scenario", scenarioIndex: "0", reason: "Drawing $250K fixes it." },
+        { action: "escalate_flag", findingId: "f-mid", reason: "Big.", amount: 25_000 },
+      ],
+    });
+    expect(plan).toEqual({
+      summary: "Cash falls by [amount removed] next week.",
+      escalate: [{ findingId: "f-mid", reason: "Big." }],
+      focus: { scenarioIndex: 0, reason: "Drawing [amount removed] fixes it." },
+      research: null,
+    });
+    // An engine amount from the input stays.
+    expect(acceptCoordinatorPlan(input, goodPlan)?.focus?.reason).toContain("-$120K");
   });
 
-  it("rejects unknown ids, repeats and too many escalations", () => {
+  it("rejects unknown ids and conflicting picks with reasons; tolerates repeats and extras", () => {
     const esc = (findingId: string) => ({ action: "escalate_flag", findingId, reason: "Check." });
-    expect(acceptCoordinatorPlan(input, { ...goodPlan, actions: [esc("f-nope")] })).toBeUndefined();
+    const unknown = checkCoordinatorPlan(input, { ...goodPlan, actions: [esc("f-nope")] });
+    expect(unknown).toEqual({
+      ok: false,
+      issues: ['actions.0.findingId: unknown id "f-nope"; use one of f-high, f-mid'],
+    });
     expect(
       acceptCoordinatorPlan(input, { ...goodPlan, actions: [esc("f-mid"), esc("f-mid")] }),
-    ).toBeUndefined();
+    ).toMatchObject({ escalate: [{ findingId: "f-mid" }] });
     const four = {
       ...input,
       flags: ["a", "b", "c", "d"].map((id) => ({ ...input.flags[0]!, findingId: id })),
     };
     expect(
-      acceptCoordinatorPlan(four, { ...goodPlan, actions: ["a", "b", "c", "d"].map(esc) }),
-    ).toBeUndefined();
+      acceptCoordinatorPlan(four, { ...goodPlan, actions: ["a", "b", "c", "d"].map(esc) })
+        ?.escalate,
+    ).toHaveLength(3);
     expect(
-      acceptCoordinatorPlan(input, {
+      checkCoordinatorPlan(input, {
         ...goodPlan,
         actions: [{ action: "focus_scenario", scenarioIndex: 5, reason: "x" }],
       }),
-    ).toBeUndefined();
+    ).toEqual({ ok: false, issues: ["actions.0.scenarioIndex: unknown index 5; use one of 0"] });
     expect(
-      acceptCoordinatorPlan(input, {
+      checkCoordinatorPlan(input, {
         ...goodPlan,
         actions: [{ action: "research_counterparty", counterparty: "Acme", reason: "x" }],
       }),
-    ).toBeUndefined();
+    ).toMatchObject({ ok: false, issues: [expect.stringMatching(/unknown name "Acme"/)] });
+    const two = { ...input, scenarios: [...input.scenarios, { ...input.scenarios[0]!, index: 1 }] };
+    expect(
+      checkCoordinatorPlan(two, {
+        ...goodPlan,
+        actions: [
+          { action: "focus_scenario", scenarioIndex: 0, reason: "x" },
+          { action: "focus_scenario", scenarioIndex: 1, reason: "y" },
+        ],
+      }),
+    ).toEqual({ ok: false, issues: ["actions.1: a second focus_scenario; pick exactly one"] });
+    const action = checkCoordinatorPlan(input, {
+      ...goodPlan,
+      actions: [{ action: "pay_vendor", vendor: "Northwind", reason: "x" }],
+    });
+    expect(action).toMatchObject({
+      ok: false,
+      issues: [expect.stringMatching(/^actions\.0\.action: Invalid discriminator/)],
+    });
+    // A wrapped plan and a missing reason are harmless.
+    expect(
+      acceptCoordinatorPlan(input, {
+        result: {
+          summary: "Look at scenario 1.",
+          actions: [{ action: "focus_scenario", scenarioIndex: 0 }],
+        },
+      }),
+    ).toMatchObject({ focus: { scenarioIndex: 0, reason: "" } });
+  });
+
+  it("lists the allowed ids and an example plan in the output schema", () => {
+    const schema = coordinatorCreaoJob(input).outputSchema as {
+      description: string;
+      examples: { actions: { action: string; findingId?: string }[] }[];
+    };
+    expect(schema.description).toContain("findingId: f-high, f-mid");
+    expect(schema.description).toContain("counterparty: Halcyon Freight");
+    expect(schema.examples[0]?.actions.map((a) => a.action)).toEqual([
+      "escalate_flag",
+      "focus_scenario",
+      "research_counterparty",
+    ]);
+    expect(acceptCoordinatorPlan(input, schema.examples[0])).toBeDefined();
+  });
+});
+
+describe("rejections and repair", () => {
+  const plan = (answer: unknown, id: string) =>
+    fakeRuntime((_call, i) =>
+      i === 0
+        ? json({ id, status: "queued" }, 201)
+        : json({ id, status: "completed", result: { chatText: delimited(answer) } }),
+    );
+
+  it("reports the exact validation issues and the rejected answer", async () => {
+    const bad = { summary: "x", actions: [{ action: "focus_scenario", scenarioIndex: 4 }] };
+    const { runtime } = plan(bad, "run_9");
+    const error = await runFieldCreaoJob(env, coordinatorCreaoJob(input), runtime).catch((e) => e);
+    expect(error).toBeInstanceOf(FieldCreaoRejected);
+    expect(error).toMatchObject({
+      category: "invalid_output",
+      issues: ["actions.0.scenarioIndex: unknown index 4; use one of 0"],
+      detail: "actions.0.scenarioIndex: unknown index 4; use one of 0",
+      output: bad,
+    });
+  });
+
+  it("sends a repair run with the issues and the previous answer", async () => {
+    const { runtime, calls } = plan(goodPlan, "run_10");
+    const repair = {
+      issues: ["actions.0.scenarioIndex: unknown index 4"],
+      previousOutput: { a: 1 },
+    };
+    const out = await runFieldCreaoJob(env, coordinatorCreaoJob(input), { ...runtime, repair });
+    expect(out.runId).toBe("run_10");
+    const prompt = JSON.parse(JSON.parse(calls[0]?.body ?? "{}").inputs.prompt);
+    expect(prompt.repair).toEqual(repair);
+    expect(prompt.rules.join(" ")).toMatch(/repair\.issues/);
+    expect(buildFieldCreaoPrompt(coordinatorCreaoJob(input))).not.toContain('"repair"');
+  });
+
+  it("runs counterparty research as the research role with the same prompt and profile", async () => {
+    const job = {
+      company: "Kestrel Analytics",
+      asOf: "2026-11-02",
+      counterparties: [
+        { name: "Halcyon Freight", role: "customer" as const, rank: 1, facts: ["Rank 1"] },
+      ],
+    };
+    expect(buildFieldCreaoPrompt(counterpartyCreaoJob(job))).toBe(
+      buildCounterpartyCreaoPrompt(job),
+    );
+    expect(await fieldCreaoProfileVersion("research")).toBe(await counterpartyProfileVersion());
+    expect(
+      counterpartyCreaoJob(job).check({
+        notes: [{ counterparty: "Acme", risk: "low", note: "x" }],
+      }),
+    ).toEqual({ ok: false, issues: ['notes.0.counterparty: unknown name "Acme"'] });
   });
 });
 
@@ -355,7 +470,11 @@ describe("observed CREAO output quirks", () => {
     const flags = input.flags.map((f) =>
       f.findingId === "f-mid" ? { ...f, summary: "bill is $42000.00, usual $9500.00" } : f,
     );
-    expect(acceptCoordinatorPlan({ ...input, flags }, withCommas)?.escalate).toHaveLength(1);
-    expect(acceptCoordinatorPlan(input, withCommas)).toBeUndefined();
+    expect(acceptCoordinatorPlan({ ...input, flags }, withCommas)?.escalate[0]?.reason).toBe(
+      "Bill is $42,000.00 vs $9,500.00.",
+    );
+    expect(acceptCoordinatorPlan(input, withCommas)?.escalate[0]?.reason).toBe(
+      "Bill is [amount removed] vs [amount removed].",
+    );
   });
 });
