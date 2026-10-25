@@ -149,7 +149,10 @@ export default defineSchema({
     caseId: v.string(),
     question: v.string(),
     createdAt: v.string(),
-  }).index("by_conversationId", ["conversationId"]),
+  })
+    .index("by_conversationId", ["conversationId"])
+    // S2: newest-first saved investigation catalog for one exact case.
+    .index("by_case_createdAt", ["caseId", "createdAt"]),
   investigationMessages: defineTable({
     conversationId: v.string(),
     sequence: v.number(),
