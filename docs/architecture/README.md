@@ -22,3 +22,13 @@ The script produces current and planned PNG/PDF files under `generated/`. It use
 - [Current PDF](generated/domino-current.pdf)
 - [Planned PNG](generated/domino-planned.png)
 - [Planned PDF](generated/domino-planned.pdf)
+
+## System architecture slide (field/main)
+
+`system.py` draws one 16:9 slide of the Domino field app: data sources, Convex backend with the agents, the pure engine, real AI/tool APIs, frontend pages and users. Edge colors: blue data in, purple AI calls, green results to the UI, gray people and timers. Facts it shows are listed with their source files in the script's docstring.
+
+```sh
+/tmp/domino-diagrams-venv/bin/python docs/architecture/system.py
+```
+
+Output: [domino-system.png](domino-system.png) (padded to 16:9 when ImageMagick is installed) and [domino-system.svg](domino-system.svg) (icons embedded). Icon tiles live in `icons/`; `make_icons.py` rebuilds them from simple-icons, lucide-static and the app's own logos in `apps/web/public`.
