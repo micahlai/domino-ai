@@ -7,40 +7,55 @@ import { Panel, WhenDate } from "./RunPanels";
 import { type CatalogEntry, type CatalogPage, type Read, ancestryOf } from "./api";
 
 const KIND: Record<CatalogEntry["kind"], string> = {
-  baseline: "Imported baseline",
+  baseline: "Imported books",
   rules: "Rules changed",
-  scenario: "Scenario",
+  scenario: "What-if",
 };
 
 function EntryRow({
   e,
   href,
   current,
+  parent,
 }: {
   e: CatalogEntry;
   href: string;
   current?: boolean;
+  /** The saved scenario this one was built on, when it is listed. */
+  parent?: { label: string; href: string };
 }) {
   return (
     <li
-      className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t py-2 text-sm first:border-t-0"
+      className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t py-3 text-sm first:border-t-0"
       data-testid={`entry-${e.runId}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{KIND[e.kind]}</Badge>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {current ? (
           <span className="font-medium" aria-current="page">
             {e.label || "Untitled"} (open now)
           </span>
         ) : (
-          <Link href={href} className="text-primary underline-offset-4 hover:underline">
+          <Link
+            href={href}
+            className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline sm:min-h-0"
+          >
             {e.label || "Untitled"}
           </Link>
         )}
+        <Badge variant="secondary">{KIND[e.kind]}</Badge>
       </div>
       <span className="text-xs text-muted-foreground">
-        Low point {formatExactCents(e.lowPointCents)}, week of <WhenDate iso={e.lowPointWeek} />.
-        Saved {formatSavedAt(e.savedAt)}
+        Lowest {formatExactCents(e.lowPointCents)}, week of <WhenDate iso={e.lowPointWeek} />
+        {parent ? (
+          <>
+            {" "}
+            · built on{" "}
+            <Link href={parent.href} className="underline-offset-4 hover:underline">
+              {parent.label || "Untitled"}
+            </Link>
+          </>
+        ) : null}{" "}
+        · saved {formatSavedAt(e.savedAt)}
       </span>
     </li>
   );
@@ -77,19 +92,28 @@ export function CatalogList({
   hrefFor: (runId: string) => string;
 }) {
   const ready = pages.flatMap((p) => (p.state === "ready" ? p.value.entries : []));
+  const byId = new Map(ready.map((e) => [e.runId, e]));
   const last = pages[pages.length - 1];
   const blocked = pages.find((p) => p.state !== "ready");
   return (
     <Panel title="Saved scenarios" testId="catalog">
       {ready.length ? (
         <ul>
-          {ready.map((e) => (
-            <EntryRow key={e.runId} e={e} href={hrefFor(e.runId)} />
-          ))}
+          {ready.map((e) => {
+            const parent = e.parentRunId ? byId.get(e.parentRunId) : undefined;
+            return (
+              <EntryRow
+                key={e.runId}
+                e={e}
+                href={hrefFor(e.runId)}
+                parent={parent ? { label: parent.label, href: hrefFor(parent.runId) } : undefined}
+              />
+            );
+          })}
         </ul>
       ) : last?.state === "ready" ? (
         <p className="text-sm text-muted-foreground">
-          No saved scenarios yet. Save a baseline forecast, then open it here.
+          No saved scenarios yet. Bring in the latest books to start a timeline.
         </p>
       ) : null}
       {blocked ? <ReadNotice read={blocked} what="saved scenarios" /> : null}

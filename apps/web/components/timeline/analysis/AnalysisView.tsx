@@ -1,10 +1,12 @@
 "use client";
 
 import type { Forecast } from "@domino/contracts";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import { PageHeader } from "../../ui/page";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { ReadNotice } from "../workspace/CatalogPanel";
 import { Panel, ReceiptsPanel, formatDelta } from "../workspace/RunPanels";
@@ -69,82 +71,112 @@ export function AnalysisView({ run, selected, history, actions, disabled }: Anal
       setPending(false);
     }
   }
+  const launchPanel = (
+    <Panel
+      title={
+        receipt && canRetry(receipt) ? "Review another analysis attempt" : "Review before starting"
+      }
+      testId="analysis-launch"
+    >
+      <p className="text-sm">
+        The service will generate at most 3 risks and 2 responses for each risk using the selected
+        records. These are hypothetical scenarios. Responses are simulated suggestions and do not
+        move money or approve an action.
+      </p>
+      {!allowed ? (
+        <output className="text-sm text-muted-foreground">
+          Analysis currently starts from an imported baseline or a rules-only timeline with no
+          earlier events. This timeline already includes events. Open its baseline or a rules-only
+          timeline to start analysis.
+        </output>
+      ) : null}
+      {disabled ? <p className="text-sm text-muted-foreground">{disabled}</p> : null}
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1 size-4 shrink-0 accent-primary"
+          checked={reviewed}
+          disabled={!!disabled || !allowed || !!active || pending || unavailable}
+          onChange={(e) => setReviewedFor(e.target.checked ? target : null)}
+          data-testid="analysis-review"
+        />
+        <span>
+          I reviewed the source timeline and rules. Start a bounded analysis using these saved
+          inputs.
+        </span>
+      </label>
+      <Button
+        onClick={launch}
+        disabled={!!disabled || !allowed || !!active || pending || !reviewed || unavailable}
+        className="h-auto max-w-full whitespace-normal"
+        data-testid="analysis-start"
+      >
+        {pending
+          ? "Confirming the request..."
+          : active
+            ? "Analysis is in progress"
+            : receipt && canRetry(receipt)
+              ? "Start another attempt"
+              : "Start analysis"}
+      </Button>
+      {message ? (
+        <p role="alert" className="text-sm text-destructive">
+          {message}
+        </p>
+      ) : null}
+    </Panel>
+  );
   return (
     <article
       className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]"
       data-testid="timeline-analysis"
     >
-      <header className="space-y-2">
-        <Link
-          className="text-sm text-primary hover:underline"
-          href={workspaceHref(run.companyId, { runId: run.runId })}
-        >
-          Open the source timeline
-        </Link>
-        <h2 className="text-2xl font-medium">
-          See what could put {run.baseline.companyName}&rsquo;s cash at risk
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Analysis starts from &ldquo;{run.label}&rdquo; and its saved rules. It tests possible
-          events and compares simulated responses across these 13 weeks. Every result is saved;
-          opening it again does not rerun analysis.
-        </p>
-      </header>
-      <Panel
-        title={
-          receipt && canRetry(receipt)
-            ? "Review another analysis attempt"
-            : "Review before starting"
-        }
-        testId="analysis-launch"
-      >
-        <p className="text-sm">
-          The service will generate at most 3 risks and 2 responses for each risk using the selected
-          records. These are hypothetical scenarios. Responses are simulated suggestions and do not
-          move money or approve an action.
-        </p>
-        {!allowed ? (
-          <output className="text-sm text-muted-foreground">
-            Analysis currently starts from an imported baseline or a rules-only timeline with no
-            earlier events. This timeline already includes events. Open its baseline or a rules-only
-            timeline to start analysis.
-          </output>
-        ) : null}
-        {disabled ? <p className="text-sm text-muted-foreground">{disabled}</p> : null}
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 shrink-0 accent-primary"
-            checked={reviewed}
-            disabled={!!disabled || !allowed || !!active || pending || unavailable}
-            onChange={(e) => setReviewedFor(e.target.checked ? target : null)}
-            data-testid="analysis-review"
-          />
-          <span>
-            I reviewed the source timeline and rules. Start a bounded analysis using these saved
-            inputs.
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium text-foreground">{run.baseline.companyName}</span>
+            <Badge variant="secondary">Simulated company</Badge>
+            <span aria-hidden="true" className="max-sm:hidden">
+              ·
+            </span>
+            <span>{run.label || "Imported books"}</span>
+            <span aria-hidden="true" className="max-sm:hidden">
+              ·
+            </span>
+            <span>Books as of {formatFullDate(run.baseline.seed.asOf)}</span>
           </span>
-        </label>
-        <Button
-          onClick={launch}
-          disabled={!!disabled || !allowed || !!active || pending || !reviewed || unavailable}
-          className="h-auto max-w-full whitespace-normal"
-          data-testid="analysis-start"
-        >
-          {pending
-            ? "Confirming the request..."
-            : active
-              ? "Analysis is in progress"
-              : receipt && canRetry(receipt)
-                ? "Start another attempt"
-                : "Start analysis"}
-        </Button>
-        {message ? (
-          <p role="alert" className="text-sm text-[#E6A5B9]">
-            {message}
-          </p>
-        ) : null}
-      </Panel>
+        }
+        title={`Saved risks: what could put ${run.baseline.companyName}'s cash at risk`}
+        description={
+          <>
+            Tested from &ldquo;{run.label}&rdquo; and its saved rules over these 13 weeks. Every
+            result is saved; opening it again does not rerun anything.
+          </>
+        }
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={workspaceHref(run.companyId, { runId: run.runId })}>
+              Back to the timeline
+            </Link>
+          </Button>
+        }
+      />
+      {receipt ? (
+        <details className="group min-w-0 rounded-lg border bg-card shadow-xs">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <ChevronRight
+              aria-hidden="true"
+              className="size-4 text-muted-foreground transition-transform group-open:rotate-90"
+            />
+            Start another analysis
+          </summary>
+          <div className="border-t p-4 [&>section]:border-0 [&>section]:p-0 [&>section]:shadow-none">
+            {launchPanel}
+          </div>
+        </details>
+      ) : (
+        launchPanel
+      )}
       <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {selected === null ? (

@@ -8,42 +8,59 @@ import { WhenDate } from "./RunPanels";
 /** A chart-local editor: hiding it never unmounts the person's draft. */
 export function ScenarioComposer({
   selectedWeek,
+  open: openProp,
+  onOpenChange,
   ...form
-}: Omit<EventFormProps, "defaultDate"> & { selectedWeek: string | null }) {
-  const [open, setOpen] = useState(false);
+}: Omit<EventFormProps, "defaultDate"> & {
+  selectedWeek: string | null;
+  /** Optional control from the page actions ("Try an event"). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   const editorId = useId();
   const inForecast = selectedWeek !== null && selectedWeek >= form.firstWeek;
   const defaultDate = inForecast ? selectedWeek : form.firstWeek;
 
   return (
     <section
-      aria-label="Add a scenario on this timeline"
-      className="min-w-0 space-y-4 border-t pt-4 [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal"
+      id="try-an-event"
+      aria-label="Try an event on this timeline"
+      className="min-w-0 scroll-mt-24 space-y-4 rounded-lg border bg-card p-4 shadow-xs [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11"
       data-testid="timeline-composer"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <p className="text-sm text-foreground">
-            {inForecast ? "Selected forecast week" : "New events start in the week"} of{" "}
-            <WhenDate iso={defaultDate} />
-          </p>
-          <p>
-            {open
-              ? "Dates you enter stay fixed when you explore other weeks."
-              : "Explore a change here, then review it before saving a new scenario."}
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-[15px] font-semibold tracking-[-0.01em]">Try an event</p>
+          <p className="text-sm text-muted-foreground">
+            {open ? (
+              "Dates you enter stay fixed when you pick other weeks."
+            ) : (
+              <>
+                Add money in or out, move a bill or delay an invoice, starting the week of{" "}
+                <WhenDate iso={defaultDate} />. You review it before anything is saved.
+              </>
+            )}
           </p>
           {form.suggestion && !open ? (
-            <p>The selected scheduled item is available in the editor.</p>
+            <p className="text-xs text-muted-foreground">
+              The scheduled item you picked is ready in the editor.
+            </p>
           ) : null}
         </div>
         <Button
-          size="sm"
-          variant={open ? "outline" : "default"}
+          variant="outline"
           aria-expanded={open}
           aria-controls={editorId}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => setOpen(!open)}
+          data-testid="composer-toggle"
         >
-          {open ? "Hide editor · keep draft" : "Add scenario"}
+          {open ? "Hide editor · keep draft" : "Open the event form"}
         </Button>
       </div>
       <div id={editorId} hidden={!open}>

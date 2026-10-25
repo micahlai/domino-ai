@@ -148,7 +148,7 @@ export function ChatView({
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? run.baseline.seed.asOf;
   return (
     <article
-      className={`min-w-0 max-w-full space-y-4 [overflow-wrap:anywhere] ${sidebar ? "lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain" : ""}`}
+      className="min-w-0 max-w-full space-y-4 [overflow-wrap:anywhere]"
       data-testid="timeline-chat"
     >
       {!sidebar ? (
@@ -200,22 +200,20 @@ export function ChatView({
             </div>
           </details>
         </>
-      ) : (
-        <p className="px-1 text-xs text-muted-foreground">
-          Source: {run.label || "Baseline"} · {run.baseline.companyName}. The timeline beside this
-          chat stays unchanged until you open a saved result.
-        </p>
-      )}
+      ) : null}
       <div
         className={
           sidebar ? "min-w-0 space-y-4" : "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]"
         }
       >
-        <Panel title={sidebar ? "Add a rule or scenario" : "Describe a rule or a possible event"}>
+        <Panel
+          title={sidebar ? "Describe a what-if" : "Describe a rule or a possible event"}
+          bare={sidebar}
+        >
           <p className="text-sm text-muted-foreground">
-            Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill
-            deadline rule. I’ll ask for missing details one at a time. This chat uses supported
-            wording; other requests may need Start over.
+            {sidebar
+              ? "Say it in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing, one question at a time."
+              : "Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill deadline rule. I’ll ask for missing details one at a time. This chat uses supported wording; other requests may need Start over."}
           </p>
           {!receipt && selected && selected.state !== "ready" ? (
             <ReadNotice read={selected} what="conversation" />
@@ -223,8 +221,8 @@ export function ChatView({
           {!receipt && !selected ? (
             <div className="space-y-3">
               <p className="text-sm">
-                Start a conversation to draft changes to this saved timeline. Nothing is calculated
-                until you review and save.
+                Nothing is calculated until you review and save. The timeline stays as it is until
+                you open the saved result.
               </p>
               {selectedWeek ? (
                 <p className="text-xs text-muted-foreground">
@@ -249,12 +247,27 @@ export function ChatView({
           {receipt ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Badge variant="outline">
-                  {receipt.status === "saved"
-                    ? "Saved"
-                    : receipt.status === "ready"
-                      ? "Ready for review"
-                      : "Clarifying details"}
+                <Badge
+                  variant={
+                    receipt.status === "saved"
+                      ? "success"
+                      : receipt.status === "ready"
+                        ? "default"
+                        : receipt.pendingField
+                          ? "warning"
+                          : "outline"
+                  }
+                  data-testid="chat-status"
+                >
+                  {pending
+                    ? "Thinking…"
+                    : receipt.status === "saved"
+                      ? "Saved as a scenario"
+                      : receipt.status === "ready"
+                        ? "Ready to review"
+                        : receipt.pendingField
+                          ? "Needs one more detail"
+                          : "Listening"}
                 </Badge>
                 <span className="text-xs text-muted-foreground">{turns} of 20 messages</span>
               </div>
@@ -365,11 +378,12 @@ export function ChatView({
                 </div>
               ) : null}
               {receipt.status === "saved" && receipt.linkedRunId ? (
-                <div className="space-y-2 rounded-lg border p-4">
+                <div className="space-y-3 rounded-lg border border-safe/30 bg-safe/5 p-4">
                   <p className="text-sm font-medium">Your scenario is saved.</p>
                   <Link
-                    className="inline-flex min-h-11 items-center text-sm text-primary hover:underline"
+                    className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/85 sm:min-h-9"
                     href={workspaceHref(run.companyId, { runId: receipt.linkedRunId })}
+                    data-testid="chat-open-saved"
                   >
                     Open saved timeline
                   </Link>
@@ -396,7 +410,9 @@ export function ChatView({
             </>
           ) : null}
           {pending ? (
-            <output className="block text-sm text-muted-foreground">Saving your reply…</output>
+            <output className="block text-sm text-muted-foreground" aria-live="polite">
+              Thinking…
+            </output>
           ) : null}
           {opening && latest ? (
             <Link
@@ -477,7 +493,12 @@ export function ChatView({
                         "New conversation"}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {r.status} · {formatSavedAt(r.updatedAt)}
+                      {r.status === "saved"
+                        ? "Saved"
+                        : r.status === "ready"
+                          ? "Ready to review"
+                          : "In progress"}{" "}
+                      · {formatSavedAt(r.updatedAt)}
                     </p>
                   </li>
                 ))}

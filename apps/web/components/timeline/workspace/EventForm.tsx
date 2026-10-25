@@ -187,7 +187,7 @@ export function EventForm(p: EventFormProps) {
         ) : null}
       </fieldset>
       {tried && !built.ok ? (
-        <ul className="space-y-0.5 text-xs text-[#E6A5B9]" data-testid="event-errors">
+        <ul className="space-y-0.5 text-xs text-destructive" data-testid="event-errors">
           {built.errors.map((e) => (
             <li key={e}>{e}</li>
           ))}
@@ -266,7 +266,7 @@ export function EventForm(p: EventFormProps) {
       </div>
       {p.disabled ? <p className="text-xs text-muted-foreground">{p.disabled}</p> : null}
       {error ? (
-        <p role="alert" className="text-sm text-[#E6A5B9]">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

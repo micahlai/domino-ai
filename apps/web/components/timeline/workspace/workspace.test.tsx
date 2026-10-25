@@ -452,7 +452,8 @@ describe("workspace view", () => {
     expect(clean).not.toContain("fill-safe");
     const breached = render();
     expect(breached.match(/data-breached="true"/g)).toHaveLength(1);
-    expect(breached).toContain("Week with a saved rule breach");
+    expect(breached).toContain("Week below a cash minimum");
+    expect(breached).toContain('data-testid="breach-note"');
   });
 
   it("states the 13-week and original-schedule scope and group attribution", () => {
@@ -465,7 +466,7 @@ describe("workspace view", () => {
     expect(render(fixtureRules)).toContain("No breach found in these 13 weeks");
     expect(render(fixtureRules)).not.toContain("Meets the rule");
     expect(render()).toContain(
-      "Original imported schedule (item count; does not move with scenario changes)",
+      "Scheduled items (original imported dates; scenario changes are in the cash line)",
     );
     const detail = renderToStaticMarkup(
       <WeekDetail
