@@ -13,6 +13,7 @@ import { useState } from "react";
 import { TOOLS, type ToolInfo } from "../../convex/connectors/catalog";
 import type { ToolId } from "../../convex/connectors/types";
 import { cn } from "../../lib/utils";
+import { ToolLogo } from "../icons/ToolLogo";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -247,14 +248,7 @@ function StatusBadge({ tool }: { tool: ConnectTool }) {
 
 /** The tool's mark. Monogram for now; swap this one body for ToolLogo when icons land. */
 function ToolMark({ info }: { info: ToolInfo }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-[13px] font-semibold tracking-tight text-foreground shadow-xs"
-    >
-      {info.initials}
-    </span>
-  );
+  return <ToolLogo vendor={info.id} size={40} />;
 }
 
 function ToolCard({
