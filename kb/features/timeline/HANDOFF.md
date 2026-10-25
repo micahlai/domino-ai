@@ -1,3 +1,10 @@
+# Latest S2 assignment, 2026-10-24
+
+- User explicitly requested implementation in a separate worktree after the readiness/status discussion. One S2 implementation slot is now assigned; two remote repair slots are conservatively reserved from the latest published P0-C/L2 record. No other helper permitted.
+- Worktree `/Users/micahlai/.codex/worktrees/s2-simulation-catalog/domino-ai`, branch `S2-simulation-catalog`, exact base `1154972c3edae09d0a5df7c19c553b329b1b46fa`. Scope is the existing S2 card only, including its one additive conversation index.
+- This explicit assignment supersedes this lead's earlier index-release proposal below until S2 is safely committed/audited. No published P0-S branch or assignment was found; last preview still records P0-S blocked on S2. P0-S must incorporate the reviewed S2 index instead of writing it concurrently. No other Field/shared code is assigned here.
+- Claude implements one task; Codex reviews/tests. No main/preview merge, database reset/shared deployment or provider calls. Full Timeline implementation still waits accepted P0.
+
 # Timeline and Simulations handoff
 
 ## 2026-10-24: P0 intake and S2 checkpoint
