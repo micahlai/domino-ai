@@ -1,14 +1,14 @@
 # Domino
 
-**Domino stops cash problems before they start a chain reaction.**
+**Domino investigates company cash, compares forecasts with later results, and tests costed alternatives.**
 
-Domino is an AI FP&A analyst for B2B software companies. It plugs into a company's tools,
-learns how money moves, forecasts cash for 13 weeks, and predicts risky events such as a
-late customer payment. For each risk it shows the chain of problems that follows (the
-dominoes), and it simulates fixes as branches of the timeline. A person approves every
-action. Domino never moves money.
+The current demo is a historical 2U case study. Its main screen is a grouped agent map beside a persistent conversation. Inspect frozen company evidence, save a quarterly forecast, reveal reported outcomes and explore hypothetical decisions. Some scenario and CREAO coordination features are still incomplete.
 
-Built at Cal Hacks 13.0 for the Hyphenate track ("The Hyphenated Enterprise").
+Start with the [shared product plan, status and roadmap](kb/product/team-reset-2026-10-24.md), [team ownership](kb/coordination/historical/team-checkpoint.md), and [current/planned architecture diagrams](docs/architecture/README.md). The integration branch is preview/historical-overnight. Main remains unchanged.
+
+Built at Cal Hacks 13.0 for Hyphenate's autonomous finance track. [Track coverage and gaps](kb/product/hyphenate-checklist.md) are explicit; we do not claim full completion.
+
+The setup and operational-agent notes below are retained from the earlier Kestrel prototype. They are not evidence that those capabilities are part of the current historical journey. Do not run a seed/reset against the existing demo database. See HANDOFF.md for the current local runtime and checked commands.
 
 ## Quick start
 

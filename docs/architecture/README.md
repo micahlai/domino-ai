@@ -1,0 +1,22 @@
+# Domino architecture diagrams
+
+See [the shared product plan](../../kb/product/team-reset-2026-10-24.md) for scope, status, order and the Hyphenate gap analysis.
+
+These diagrams document the accepted preview and the planned complete demo. They do not imply that unmerged code or gated CREAO calls work. Generic icons represent Convex and CREAO, not additional products. There is one Convex database.
+
+Install Graphviz through your normal package manager if `dot` is not on PATH. Then, from the repo root:
+
+```sh
+python3 -m venv /tmp/domino-diagrams-venv
+/tmp/domino-diagrams-venv/bin/python -m pip install -r docs/architecture/requirements.txt
+/tmp/domino-diagrams-venv/bin/python docs/architecture/diagram.py
+```
+
+Optional output location: `python docs/architecture/diagram.py --out-dir /absolute/output/path`.
+
+The script produces current and planned PNG/PDF files under `generated/`. It uses `Diagram`, `Cluster`, labelled `Edge` connections and packaged React, TypeScript, server, document, action and database icons. It reads no product data, credentials or network sources. The Python environment is separate from the application dependencies.
+
+- [Current PNG](generated/domino-current.png)
+- [Current PDF](generated/domino-current.pdf)
+- [Planned PNG](generated/domino-planned.png)
+- [Planned PDF](generated/domino-planned.pdf)

@@ -8,3 +8,5 @@
 - Next: user launches Claude; Codex audits S3 repair and S2. Then audit exact S4 persistence design, including frozen response evidence and protocol post-hoc taint. S4 implementation and U2 UI remain gated.
 - CREAO: dedicated evidence app d949f966-355f-469e-b227-4e72066be8bc exists, zero runs observed, empty app memory/connectors. Full instructions, visibility and account/team inheritance remain unverified. Gate OFF; old app-scoped API only.
 - Monitor stays active for audits/coordination, with a report after every run. User now launches implementation manually. Preserve backend 3214/3210 data, unrelated processes and secrets. Exact runtime ownership in active-run.md. No Git reset, deletion, rebase or force push.
+
+- Team reset deliverable: kb/product/team-reset-2026-10-24.md explains the product, current features, ordered roadmap and official Hyphenate criteria with honest gaps. docs/architecture/diagram.py generates current/planned PNG and PDF diagrams. Old Kestrel product/proof/demo docs are marked superseded. No feature code or implementation launch in this documentation turn.

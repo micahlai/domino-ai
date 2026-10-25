@@ -1,3 +1,5 @@
+> Historical planning document. The Kestrel examples, metrics and claims below are not accepted proof or the current demo script. Use [the October 24 shared product plan](team-reset-2026-10-24.md). Do not present unmeasured values or old planned capabilities as results.
+
 # Submission checklist
 
 ## Everyone (Devpost)
