@@ -39,7 +39,7 @@ function applyOne(
       return items.filter(
         (i) =>
           !(
-            (i.kind === "invoice" || i.kind === "deal") &&
+            (i.kind === "invoice" || i.kind === "deal" || i.kind === "plan") &&
             i.customerId === change.customerId &&
             i.date >= change.fromDate
           ),

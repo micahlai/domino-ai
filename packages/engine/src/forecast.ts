@@ -8,6 +8,7 @@ import type {
 } from "@domino/contracts";
 import { applyChanges } from "./changes";
 import { weekStarts } from "./dates";
+import { recurringBillingItems } from "./recurring-revenue";
 import { type CashItem, baseSchedule, bucketOf } from "./schedule";
 
 const WEEKS = 13;
@@ -21,7 +22,12 @@ export function cashSchedule(
   changes: Change[],
 ): CashSchedule {
   const weeks = weekStarts(snapshot.asOf, WEEKS);
-  const items = applyChanges(baseSchedule(snapshot, model, weeks), changes, snapshot, weeks);
+  // Additive hook: unbilled plan occurrences (none when a snapshot has no billing plans).
+  const base = [
+    ...baseSchedule(snapshot, model, weeks),
+    ...recurringBillingItems(snapshot, model, weeks),
+  ];
+  const items = applyChanges(base, changes, snapshot, weeks);
   return { weeks, items };
 }
 

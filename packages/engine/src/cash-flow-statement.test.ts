@@ -373,8 +373,12 @@ describe("full statement and summary", () => {
       financing: 500_000,
       netChange: 799_000,
     });
-    // Only complete actual week is 10-19, net +112,655: not burning
-    expect(sum.runway).toEqual({ weeklyBurn: -112_655, weeks: null, basis: ["2026-10-19"] });
+    // Projected burn: 13 weeks net +799,000, so -799,000 / 13 rounds to -61,462: not burning
+    expect(sum.runway).toEqual({
+      weeklyBurn: -61_462,
+      weeks: null,
+      basis: s.weeks.filter((w) => w.kind === "projected").map((w) => w.weekStart),
+    });
   });
 
   it("computes runway from complete weeks at current burn", () => {
