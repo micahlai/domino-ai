@@ -294,11 +294,13 @@ function lostCustomer(run: WorkspaceRun, text: string, floor: string | null): Pl
   const biggest = /\b(biggest|largest|top|main)\s+customer\b/i.test(text)
     ? [...byCustomer.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0]
     : undefined;
-  const customer = named.length === 1 ? named[0] : snapshot.customers.find((c) => c.id === biggest);
-  if (!customer) return null;
   const { from } = horizon(run, floor);
   const start = looseDate(text, snapshot.asOf);
   const fromDate = start && start > from ? start : from;
+  const group = lostGroup(text, byCustomer);
+  if (group) return lostMany(run, items, group, fromDate);
+  const customer = named.length === 1 ? named[0] : snapshot.customers.find((c) => c.id === biggest);
+  if (!customer) return null;
   const lost = items.filter((i) => i.customerId === customer.id && i.date >= fromDate);
   const total = lost.reduce((s, i) => s + i.amount, 0);
   if (!lost.length)
@@ -311,6 +313,57 @@ function lostCustomer(run: WorkspaceRun, text: string, floor: string | null): Pl
     proposal: {
       label: `${customer.name} leaves`.slice(0, 200),
       changes: [{ kind: "churn", customerId: customer.id, fromDate }],
+      constraints: null,
+      constraintNote: null,
+    },
+  };
+}
+
+type LostGroup = { ids: string[]; what: string };
+
+/**
+ * "We lose all/every customer", "our top 3 customers leave", "we lose 20% / half of our
+ * customers": the largest payers by expected receipts go first, since a percentage of revenue
+ * is what moves cash. Null when the message is about a single customer.
+ */
+function lostGroup(text: string, byCustomer: Map<string, number>): LostGroup | null {
+  const ranked = [...byCustomer.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([id]) => id);
+  if (!ranked.length) return null;
+  if (/\b(all|every|each)\b[^.]*\bcustomers?\b|\bcustomers?\b[^.]*\b(all|every)\b/i.test(text))
+    return { ids: ranked, what: "every customer" };
+  const top = /\b(?:top|biggest|largest)\s+(\d+|two|three|four|five|ten)\s+customers\b/i.exec(text);
+  if (top) {
+    const n = Number(top[1]) || NUMBER_WORDS[top[1]?.toLowerCase() ?? ""] || 0;
+    if (n > 1)
+      return { ids: ranked.slice(0, n), what: `the top ${Math.min(n, ranked.length)} customers` };
+  }
+  const pct = /\b(\d{1,3})\s*%\s*(?:of\s+)?(?:our\s+)?customers\b/i.exec(text);
+  const half = /\bhalf\s+(?:of\s+)?(?:our\s+)?customers\b/i.test(text);
+  const share = half ? 50 : pct ? Math.min(100, Number(pct[1])) : 0;
+  if (share > 0) {
+    const n = Math.max(1, Math.round((ranked.length * share) / 100));
+    return { ids: ranked.slice(0, n), what: `${share}% of customers (${n} largest payers)` };
+  }
+  return null;
+}
+
+function lostMany(
+  run: WorkspaceRun,
+  items: ReturnType<typeof futureItems>,
+  group: LostGroup,
+  fromDate: string,
+): PlanReply {
+  const ids = new Set(group.ids);
+  const lost = items.filter((i) => ids.has(i.customerId ?? "") && i.date >= fromDate);
+  const total = lost.reduce((s, i) => s + i.amount, 0);
+  const label = `Lose ${group.what} from ${shortDate(fromDate)}`;
+  return {
+    answer: `Ready to model losing ${group.what} from ${shortDate(fromDate)}: all their later invoices and recurring bills stop, ${compactMoney(total)} across ${lost.length} expected receipts in these 13 weeks. Payroll, vendors and debt keep running, so the engine shows how fast cash runs out. Check the details below, then confirm.`,
+    proposal: {
+      label: label.slice(0, 200),
+      changes: group.ids.map((customerId) => ({ kind: "churn" as const, customerId, fromDate })),
       constraints: null,
       constraintNote: null,
     },
