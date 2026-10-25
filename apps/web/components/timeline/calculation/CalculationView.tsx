@@ -1,14 +1,14 @@
 "use client";
 
-import { timelineCalculationHref } from "@/lib/trace-links";
 import type { Change } from "@domino/contracts";
 import { type RequestForQueries, useQueries } from "convex/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { timelineCalculationHref } from "../../../lib/trace-links";
 import { getBaselineRef, readBaseline } from "../baseline/api";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
-import { type WorkspaceRun, getRunRef, readRun } from "../workspace/api";
+import { type WorkspaceRun, getRunRef, readRun, workspaceHref } from "../workspace/api";
 import { fieldOriginHref } from "../workspace/fieldOrigin";
 import { runHeadline } from "../workspace/summary";
 import { assumptionSummary } from "./assumptions";
@@ -104,7 +104,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
   return (
     <article className="mx-auto max-w-4xl space-y-8 pb-16">
       <Link
-        href={`/c/${encodeURIComponent(companyId)}/timeline`}
+        href={workspaceHref(companyId, { runId: run.runId })}
         className="text-sm text-primary underline"
       >
         Back to Timeline

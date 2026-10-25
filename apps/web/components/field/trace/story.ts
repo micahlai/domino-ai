@@ -1,4 +1,5 @@
 import type { FieldTrace } from "@/lib/field-trace-contract";
+import { formatFullDate } from "../../timeline/baseline/format";
 import { day, money } from "../worker/format";
 
 export type TraceStory = {
@@ -8,6 +9,13 @@ export type TraceStory = {
   checked: string;
   outcome: string;
 };
+
+/** Frozen source context, shown in place of the current-company header strip. */
+export function traceProvenanceLine(trace: FieldTrace): string | null {
+  const source = trace.inputs?.provenance;
+  if (!source) return null;
+  return `${source.label} · Reconstructed ledger ${formatFullDate(source.periodStart)} to ${formatFullDate(source.periodEnd)} · Public report ${formatFullDate(source.reportedAt)}`;
+}
 
 /** All claims come from the exact receipt. Missing old evidence stays missing. */
 export function traceStory(trace: FieldTrace): TraceStory {
