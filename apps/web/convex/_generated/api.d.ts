@@ -42,6 +42,7 @@ import type * as fieldAi from "../fieldAi.js";
 import type * as fieldAnalyst from "../fieldAnalyst.js";
 import type * as fieldApify from "../fieldApify.js";
 import type * as fieldAudit from "../fieldAudit.js";
+import type * as fieldCascade from "../fieldCascade.js";
 import type * as fieldClock from "../fieldClock.js";
 import type * as fieldCoordinator from "../fieldCoordinator.js";
 import type * as fieldCrs from "../fieldCrs.js";
@@ -172,6 +173,7 @@ declare const fullApi: ApiFromModules<{
   fieldAnalyst: typeof fieldAnalyst;
   fieldApify: typeof fieldApify;
   fieldAudit: typeof fieldAudit;
+  fieldCascade: typeof fieldCascade;
   fieldClock: typeof fieldClock;
   fieldCoordinator: typeof fieldCoordinator;
   fieldCrs: typeof fieldCrs;

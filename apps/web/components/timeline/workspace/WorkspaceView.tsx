@@ -13,6 +13,7 @@ import Link from "next/link";
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { scenarioStart } from "../../../convex/timeline/scenarioStart";
 import { timelineCalculationHref } from "../../../lib/trace-links";
+import { DominoEffects } from "../../field/DominoEffects";
 import { Button } from "../../ui/button";
 import { StatTile } from "../../ui/page";
 import { analysisHref } from "../analysis/links";
@@ -592,6 +593,13 @@ export function WorkspaceView({
                       {run.label || KIND[run.kind]} · {KIND[run.kind]}, saved{" "}
                       {formatSavedAt(run.savedAt)}. Saved results never change.
                     </p>
+                    {run.kind === "scenario" ? (
+                      <DominoEffects
+                        companyId={run.companyId}
+                        runId={run.runId}
+                        hrefFor={actions.hrefFor}
+                      />
+                    ) : null}
                     <details className="group min-w-0">
                       <summary className={SUMMARY}>
                         <ChevronRight aria-hidden="true" className={CHEVRON} />

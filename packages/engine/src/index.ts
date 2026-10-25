@@ -219,3 +219,16 @@ export {
   shortDate,
   undoLearnedRule,
 } from "./field-learning";
+/** Second-order consequences of a scenario (follow-on events as Changes); engine-local. */
+export {
+  CASCADE_LIMITS,
+  CASCADE_VERSION,
+  type CascadeInput,
+  type CascadeLikelihood,
+  type CascadeNode,
+  type CascadeResult,
+  type CascadeTrigger,
+  type TriggerKind,
+  cascade,
+} from "./cascade";
+export { money } from "./dominoes";
