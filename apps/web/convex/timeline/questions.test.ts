@@ -30,7 +30,7 @@ const modules: Record<string, () => Promise<unknown>> = {
   "../timeline/workspace.ts": () => import("./questions.fake-workspace.test-support"),
 };
 // The real schema gains timelineQuestions from TL2B; until then the frozen table is added here.
-const testSchema = defineSchema({ timelineQuestions: timelineQuestionsTable, ...schema.tables });
+const testSchema = defineSchema({ ...schema.tables, timelineQuestions: timelineQuestionsTable });
 const setup = () => convexTest(testSchema, modules);
 type T = ReturnType<typeof setup>;
 
