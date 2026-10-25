@@ -49,6 +49,8 @@ import type * as fieldNessie from "../fieldNessie.js";
 import type * as fieldOperating from "../fieldOperating.js";
 import type * as fieldSourceDetail from "../fieldSourceDetail.js";
 import type * as fieldSources from "../fieldSources.js";
+import type * as fieldSuggestionSeed from "../fieldSuggestionSeed.js";
+import type * as fieldSuggestionSimulation from "../fieldSuggestionSimulation.js";
 import type * as fieldSuggestions from "../fieldSuggestions.js";
 import type * as fieldTimeline from "../fieldTimeline.js";
 import type * as fieldTools from "../fieldTools.js";
@@ -169,6 +171,8 @@ declare const fullApi: ApiFromModules<{
   fieldOperating: typeof fieldOperating;
   fieldSourceDetail: typeof fieldSourceDetail;
   fieldSources: typeof fieldSources;
+  fieldSuggestionSeed: typeof fieldSuggestionSeed;
+  fieldSuggestionSimulation: typeof fieldSuggestionSimulation;
   fieldSuggestions: typeof fieldSuggestions;
   fieldTimeline: typeof fieldTimeline;
   fieldTools: typeof fieldTools;
