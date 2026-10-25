@@ -26,7 +26,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
-| P0-C contracts / P0-S schema | P0-C: Opus worker, FINAL round (Jayden option 1 exception): JSON-text boundary, total safeParse, money bounds; any remaining correctness failure stops P0-C. P0-S: blocked on friend S2 checkpoint | [P0-C final audit](kb/reviews/P0C-74f09af-codex-final.md) | PREPARING THE SPLIT |
+| P0-C contracts / P0-S schema | P0-C: STOPPED, Jayden decision (exception audit REJECT 66fe754). P0-S: blocked on friend S2 (friend actively working) | [Exception audit](kb/reviews/P0C-66fe754-codex-exception.md): object-level safeParse still throws on hostile thrown values (126/2,583); 8,000-link derived chain accepted but overflows engine stack; benefitLagDays 2^49 crashes engine date math; snapshot drops non-enumerable/symbol accessors, depth guard bypass via shared subtrees. JSON-text boundary: 0 throws in 79,999 | PREPARING THE SPLIT |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
