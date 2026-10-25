@@ -26,7 +26,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog | DONE: integrated 2b286d6 | Friend bd7e880 + lead repair ff8b27c | [Re-audit](kb/reviews/S2-ff8b27c-codex-reaudit.md) ACCEPT (500 -> 26 rows read); [integration](kb/reviews/S2-integration-2b286d6.md) 1,539 uncached tests, convex typecheck, lint 279 files |
-| P0-C contracts / P0-S schema | P0-C DONE 8c00374. P0-S: Opus worker running on ../domino-P0S (base 840970c = preview + S2) | [P0-S card decisions](kb/tasks/P0-S-schema-ownership.md) | PREPARING THE SPLIT |
+| P0-C contracts / P0-S schema | DONE: P0-C 8c00374, P0-S a3c3b4c | [P0-S audit](kb/reviews/P0S-664ab45-codex-audit.md), [integration](kb/reviews/P0S-integration-a3c3b4c.md): 1,579 uncached tests, schema export byte-identical, api.d.ts unchanged | P0-H running (../domino-P0H). PREPARING THE SPLIT |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
