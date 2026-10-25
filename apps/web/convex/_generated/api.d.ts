@@ -35,6 +35,7 @@ import type * as events from "../events.js";
 import type * as explanations from "../explanations.js";
 import type * as field from "../field.js";
 import type * as fieldAdvisor from "../fieldAdvisor.js";
+import type * as fieldAgents from "../fieldAgents.js";
 import type * as fieldAi from "../fieldAi.js";
 import type * as fieldAnalyst from "../fieldAnalyst.js";
 import type * as fieldApify from "../fieldApify.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   explanations: typeof explanations;
   field: typeof field;
   fieldAdvisor: typeof fieldAdvisor;
+  fieldAgents: typeof fieldAgents;
   fieldAi: typeof fieldAi;
   fieldAnalyst: typeof fieldAnalyst;
   fieldApify: typeof fieldApify;

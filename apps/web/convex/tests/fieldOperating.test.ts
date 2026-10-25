@@ -71,6 +71,7 @@ describe("fieldOperating", { timeout: 60_000 }, () => {
       company: "2u",
       scenario: "baseline",
     });
+    await t.mutation(api.fieldAgents.start, { companyId: baseline.companyId });
     vi.runOnlyPendingTimers();
     await t.finishInProgressScheduledFunctions();
     const exported = await t.query(api.field.exportSeed, { companyId: baseline.companyId });

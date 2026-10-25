@@ -40,11 +40,15 @@ export function JudgeWatch({ state, onLeave }: { state: JudgeState; onLeave: () 
     <div className="space-y-5">
       <PageHeader
         eyebrow={start ? `${state.name} · ${start.title}` : state.name}
-        title="Watch the agents read the books"
+        title={
+          state.agentsStarted ? "Watch the agents read the books" : "Last step: start the agents"
+        }
         description={
-          state.snapshotVersion > 0
-            ? "One agent started the work and called in helpers. Hover any agent to see what it is doing."
-            : "One agent is starting. It calls in helpers as it reads each tool."
+          !state.agentsStarted
+            ? "Your company and tools are ready. Press Start agents on the map: one coordinator begins and calls in helpers as it reads each tool."
+            : state.snapshotVersion > 0
+              ? "One agent started the work and called in helpers. Hover any agent to see what it is doing."
+              : "One agent is starting. It calls in helpers as it reads each tool."
         }
       />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

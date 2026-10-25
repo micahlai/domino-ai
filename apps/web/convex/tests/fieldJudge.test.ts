@@ -2,6 +2,7 @@
 // @vitest-environment edge-runtime
 
 import { convexTest } from "convex-test";
+import type { FunctionArgs } from "convex/server";
 import { ConvexError } from "convex/values";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -22,10 +23,17 @@ async function drain(t: T) {
   await t.finishInProgressScheduledFunctions();
 }
 
+/** A judge sandbox with its agents started (new sandboxes start idle). */
+async function judgeStart(t: T, args: FunctionArgs<typeof api.fieldJudge.start>) {
+  const created = await t.mutation(api.fieldJudge.start, args);
+  await t.mutation(api.fieldAgents.start, { companyId: created.companyId });
+  return created;
+}
+
 async function started() {
   vi.useFakeTimers();
   const t = newBackend();
-  const { companyId, name } = await t.mutation(api.fieldJudge.start, {});
+  const { companyId, name } = await judgeStart(t, {});
   await drain(t);
   return { t, companyId, name };
 }
@@ -57,7 +65,7 @@ describe("judge companies", () => {
     const status = await t.query(api.field.status, { companyId });
     expect(status).toMatchObject({ snapshotVersion: 1, lastIngestStatus: "ok" });
     expect(await t.query(api.field.companies, {})).toEqual([]);
-    const second = await t.mutation(api.fieldJudge.start, { profile: "kestrel-late" });
+    const second = await judgeStart(t, { profile: "kestrel-late" });
     expect(second.name).toBe("Judge Co. #2");
     const listed = await t.query(api.fieldJudge.companies, {});
     expect(listed.map((c) => [c.name, c.profile])).toEqual([
@@ -81,13 +89,13 @@ describe("judge companies", () => {
           judgeNumber: n,
         });
     });
-    expect((await code(t.mutation(api.fieldJudge.start, {}))).code).toBe("LIMIT");
+    expect((await code(judgeStart(t, {}))).code).toBe("LIMIT");
   });
 
   it("reset archives the company and starts a fresh one with the same profile", async () => {
     vi.useFakeTimers();
     const t = newBackend();
-    const first = await t.mutation(api.fieldJudge.start, { profile: "kestrel-crunch" });
+    const first = await judgeStart(t, { profile: "kestrel-crunch" });
     await drain(t);
     const next = await t.mutation(api.fieldJudge.reset, { companyId: first.companyId });
     expect(next.name).toBe("Judge Co. #2");
@@ -316,7 +324,7 @@ describe("simple judge flow", () => {
   it("applies the chosen data sources before the first ingest", async () => {
     vi.useFakeTimers();
     const t = newBackend();
-    const { companyId } = await t.mutation(api.fieldJudge.start, {
+    const { companyId } = await judgeStart(t, {
       profile: "kestrel-late",
       sources: ["nessie", "stripe"],
     });
@@ -345,7 +353,7 @@ describe("simple judge flow", () => {
       "nessie",
       "stripe",
     ]);
-    const full = await t.mutation(api.fieldJudge.start, {});
+    const full = await judgeStart(t, {});
     expect((await t.query(api.fieldJudge.state, { companyId: full.companyId }))?.sources).toEqual([
       "nessie",
       "stripe",
@@ -359,7 +367,7 @@ describe("simple judge flow", () => {
   it("refuses a selection without the bank, and nothing is created", async () => {
     vi.useFakeTimers();
     const t = newBackend();
-    const refused = await code(t.mutation(api.fieldJudge.start, { sources: ["stripe", "qbo"] }));
+    const refused = await code(judgeStart(t, { sources: ["stripe", "qbo"] }));
     expect(refused).toEqual({
       code: "INVALID_INPUT",
       message: "Keep the bank connected: the forecast starts from its cash balance",
@@ -400,7 +408,7 @@ describe("simple judge flow", () => {
     ]);
     expect(state?.snapshotVersion).toBeGreaterThan(1);
 
-    const noStripe = await t.mutation(api.fieldJudge.start, { sources: ["nessie", "qbo"] });
+    const noStripe = await judgeStart(t, { sources: ["nessie", "qbo"] });
     await drain(t);
     expect(
       await code(
@@ -419,7 +427,7 @@ describe("simple judge flow", () => {
         }),
       ),
     ).toEqual({ code: "NEEDS_SOURCE", message: "Connect Stripe to try this surprise" });
-    const bankOnly = await t.mutation(api.fieldJudge.start, { sources: ["nessie"] });
+    const bankOnly = await judgeStart(t, { sources: ["nessie"] });
     await drain(t);
     expect(
       await code(

@@ -29,7 +29,7 @@
  *   field.advanceFeed({ companyId, advance?, anomaly? })  advance the mock world one week
  *     (default) and/or plant one anomaly: duplicate | unusual_amount | unusual_timing |
  *     conflict | missing_expected. Returns { asOf, week, planted: string[] }.
- *   field.ingestNow({ companyId })    queue one ingest run now.
+ *   field.ingestNow({ companyId })    queue one ingest run now (AGENTS_IDLE before Start agents).
  *   field.setAutoIngest({ companyId, enabled })  every 45 s, at most 120 runs per enable.
  *   field.decide({ companyId, findingId, decision: "approved"|"rejected", note? })
  *     approved = issue confirmed, rejected = dismissed. Writes `approvals` (fixId = findingId,
@@ -63,6 +63,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { type MutationCtx, type QueryCtx, mutation, query } from "./_generated/server";
 import { DEFAULT_OFF, connectAll } from "./connections";
 import { TOOL_IDS } from "./connectors/types";
+import { requireAgentsStarted } from "./fieldAgents";
 import {
   ANOMALIES,
   type Anomaly,
@@ -103,8 +104,10 @@ async function personName(ctx: { auth: QueryCtx["auth"] }) {
 }
 
 /**
- * One new live-feed company with six connected tools (Capital One bank); its first ingest is queued. `judge`
+ * One new live-feed company with six connected tools (Capital One bank). `judge`
  * (fieldJudge.ts) names it "Judge Co. #N" instead of the picker name, so the picker skips it.
+ * `idle`: nothing is scheduled; fieldAgents.start queues the first ingest later. Otherwise the
+ * company counts as started and its first ingest is queued now (legacy field.setup).
  */
 export async function createFeedCompany(
   ctx: MutationCtx,
@@ -112,6 +115,7 @@ export async function createFeedCompany(
   profile: ProfileId | undefined,
   judge?: { number: number },
   operating?: OperatingSelection,
+  options: { idle?: boolean } = {},
 ) {
   const generated = operating ? createOperatingDemo(operating, seed) : null;
   const world = generated?.world ?? newWorld(seed, profile);
@@ -127,6 +131,7 @@ export async function createFeedCompany(
     status: "connecting",
     ...(judge && { judge: true, judgeNumber: judge.number }),
     ...(operating && { operatingDemo: { ...operating, version: 1 as const } }),
+    ...(!options.idle && { agentsStartedAt: new Date().toISOString() }),
   });
   // The model starts empty; reconstructed demos use only their generated illustrative rules.
   await ctx.db.insert("models", {
@@ -178,7 +183,8 @@ export async function createFeedCompany(
       ? `Connected reconstructed operating records for ${name} as of ${world.today}: illustrative data based on public filings, read through six mock source adapters`
       : `Connected six tools for ${name} as of ${world.today}: five mock vendor APIs (read only) and the bank from Domino's own Capital One Nessie sandbox account`,
   });
-  await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
+  if (!options.idle)
+    await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
   return companyId;
 }
 
@@ -416,6 +422,7 @@ export const ingestNow = mutation({
   args: { companyId: v.id("companies") },
   handler: async (ctx, { companyId }) => {
     await requireFeed(ctx, companyId);
+    await requireAgentsStarted(ctx, companyId);
     await writeLog(ctx, companyId, undefined, {
       actor: "person",
       action: "ingest.requested",
@@ -432,6 +439,7 @@ export const setAutoIngest = mutation({
   args: { companyId: v.id("companies"), enabled: v.boolean() },
   handler: async (ctx, { companyId, enabled }) => {
     const feed = await requireFeed(ctx, companyId);
+    if (enabled) await requireAgentsStarted(ctx, companyId);
     const generation = feed.autoGeneration + 1;
     await ctx.db.patch("feeds", feed._id, {
       auto: enabled,
