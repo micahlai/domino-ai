@@ -22,13 +22,16 @@ function Ready({
   conversationId,
   selectedWeek,
   selectedItemId,
+  onSavedForecast,
 }: {
   run: WorkspaceRun;
   conversationId: string | null;
   selectedWeek?: string;
   selectedItemId?: string;
+  onSavedForecast?: (runId: string) => void;
 }) {
   const router = useRouter();
+  const params = useSearchParams();
   const key = useMemo(
     () => ({ companyId: run.companyId, runId: run.runId }),
     [run.companyId, run.runId],
@@ -49,15 +52,31 @@ function Ready({
   const confirm = useMutation(confirmRef);
   const [ledger] = useState(() => new RequestLedger());
   const [navigation] = useState(() => new ChatNavigationGuard());
+  const [saveGuard] = useState(() => new ChatNavigationGuard());
+  saveGuard.setContext(
+    JSON.stringify([run.companyId, run.runId, params.get("runId"), conversationId]),
+  );
   navigation.setContext(
-    JSON.stringify([run.companyId, run.runId, conversationId, selectedWeek, selectedItemId]),
+    JSON.stringify([
+      run.companyId,
+      run.runId,
+      params.get("runId"),
+      conversationId,
+      selectedWeek,
+      selectedItemId,
+    ]),
   );
   useEffect(() => {
     navigation.activate();
-    return () => navigation.dispose();
-  }, [navigation]);
+    saveGuard.activate();
+    return () => {
+      navigation.dispose();
+      saveGuard.dispose();
+    };
+  }, [navigation, saveGuard]);
   async function write(command: ChatCommand) {
     const context = navigation.capture();
+    const saveContext = saveGuard.capture();
     const result = await requestChat(run, command, ledger, { begin, send, reset, confirm });
     if (result.ok && command.kind === "begin" && navigation.allows(context))
       router.push(
@@ -69,6 +88,13 @@ function Ready({
           result.receipt.selectedItemId ?? undefined,
         ),
       );
+    if (
+      result.ok &&
+      command.kind === "confirm" &&
+      result.receipt.linkedRunId &&
+      saveGuard.allows(saveContext)
+    )
+      onSavedForecast?.(result.receipt.linkedRunId);
     return result;
   }
   return (
@@ -90,10 +116,12 @@ export function ChatSidebarLive({
   run,
   selectedWeek,
   selectedItemId,
+  onSavedForecast,
 }: {
   run: WorkspaceRun;
   selectedWeek?: string;
   selectedItemId?: string;
+  onSavedForecast?: (runId: string) => void;
 }) {
   const params = useSearchParams();
   return (
@@ -103,6 +131,7 @@ export function ChatSidebarLive({
       conversationId={params.get("conversationId")}
       selectedWeek={selectedWeek}
       selectedItemId={selectedItemId}
+      onSavedForecast={onSavedForecast}
     />
   );
 }

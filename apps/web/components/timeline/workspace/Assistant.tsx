@@ -1,9 +1,7 @@
 "use client";
 
-import { PanelRightClose } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
-import { Button } from "../../ui/button";
 
 export type AssistantTab = "ask" | "chat";
 
@@ -74,23 +72,12 @@ export function Assistant({
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           onOpenChange(false);
-          document.querySelector<HTMLButtonElement>('[data-testid="chat-toggle"]')?.focus();
+          document.querySelector<HTMLButtonElement>('[data-testid="action-ask"]')?.focus();
         }
       }}
     >
       <div className="flex shrink-0 items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Ask Domino</h2>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="Collapse chat"
-          onClick={() => {
-            onOpenChange(false);
-            document.querySelector<HTMLButtonElement>('[data-testid="chat-toggle"]')?.focus();
-          }}
-        >
-          <PanelRightClose aria-hidden="true" />
-        </Button>
       </div>
       {body}
     </aside>

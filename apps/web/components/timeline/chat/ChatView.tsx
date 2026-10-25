@@ -14,6 +14,13 @@ import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
 import { type ChatReceipt, chatHref, displayedReceipt, newerReceipt } from "./api";
+import {
+  type OptimisticSend,
+  bindMessage,
+  messageAcknowledged,
+  queuedMessage,
+  visibleMessage,
+} from "./optimistic";
 import { type ChatCommand, type ChatOutcome, ChatWriteGuard } from "./requests";
 
 export type ChatActions = {
@@ -158,6 +165,13 @@ export function ChatView({
   const [latest, setLatest] = useState<ChatReceipt | null>(null);
   const [text, setText] = useState("");
   const [writing, setPending] = useState(false);
+  const [optimistic, setOptimistic] = useState<OptimisticSend | null>(null);
+  const optimisticRef = useRef<OptimisticSend | null>(null);
+  const messageSequence = useRef(0);
+  function updateOptimistic(message: OptimisticSend | null) {
+    optimisticRef.current = message;
+    setOptimistic(message);
+  }
   const busy = useRef(false);
   const [error, setError] = useState<string>();
   const [reviewedFor, setReviewedFor] = useState<string | null>(null);
@@ -167,7 +181,11 @@ export function ChatView({
   const named = selected !== null;
   const wasNamed = useRef(named);
   useEffect(() => {
-    if (wasNamed.current && !named) setLatest(null);
+    if (wasNamed.current && !named) {
+      setLatest(null);
+      optimisticRef.current = null;
+      setOptimistic(null);
+    }
     wasNamed.current = named;
   }, [named]);
   const opening = actions.beginNavigates === true && latest !== null && queryReceipt === null;
@@ -177,6 +195,7 @@ export function ChatView({
   const reviewed = token !== null && reviewedFor === token;
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
   const lastTurn = receipt?.turns.at(-1);
+  const optimisticTurn = visibleMessage(optimistic, receipt);
   async function write(command: ChatCommand): Promise<ChatOutcome | undefined> {
     if (busy.current || !writeGuard.allows(command)) return;
     busy.current = true;
@@ -190,14 +209,30 @@ export function ChatView({
         writeGuard.resolve();
         setLatest((current) => newerReceipt(current, result.receipt));
         setReviewedFor(null);
-        if (command.kind === "send" || command.kind === "reset") setText("");
+        if (command.kind === "send") {
+          const message = optimisticRef.current;
+          if (message && messageAcknowledged(message, result.receipt)) updateOptimistic(null);
+        }
+        if (command.kind === "reset") {
+          setText("");
+          updateOptimistic(null);
+        }
       } else {
         if (result.uncertain) writeGuard.remember(command);
         else writeGuard.resolve();
+        const message = optimisticRef.current;
+        if (message && (command.kind === "send" || command.kind === "begin")) {
+          if (result.uncertain) updateOptimistic({ ...message, uncertain: true });
+          else {
+            if (!messageAcknowledged(message, queryReceipt)) setText(message.text);
+            updateOptimistic(null);
+          }
+        }
         setError(result.message);
       }
     } catch {
       writeGuard.remember(command);
+      if (optimisticRef.current) updateOptimistic({ ...optimisticRef.current, uncertain: true });
       setError(
         "The reply was not confirmed. Retry the same request or reopen the saved conversation.",
       );
@@ -207,19 +242,39 @@ export function ChatView({
     }
     return outcome;
   }
-  /** Send a message; the first message also starts the conversation. */
+  /** Send a message; in the sidebar the first message also starts the conversation. */
+  async function sendFirstMessage(command: Extract<ChatCommand, { kind: "begin" }>, value: string) {
+    const begun = await write(command);
+    if (begun?.ok) {
+      if (optimisticRef.current)
+        updateOptimistic(bindMessage(optimisticRef.current, begun.receipt));
+      await write({ kind: "send", receipt: begun.receipt, text: value });
+    }
+  }
   async function sendText(value: string) {
-    if (!value || turns >= 20) return;
+    if (!value || turns >= 20 || busy.current || blocked || pending) return;
+    updateOptimistic(queuedMessage(`optimistic-${++messageSequence.current}`, value, receipt));
+    setText("");
     if (receipt) {
       await write({ kind: "send", receipt, text: value });
       return;
     }
-    const begun = await write({
-      kind: "begin",
-      ...(selectedWeek ? { selectedWeek } : {}),
-      ...(selectedItemId ? { selectedItemId } : {}),
-    });
-    if (begun?.ok) await write({ kind: "send", receipt: begun.receipt, text: value });
+    await sendFirstMessage(
+      {
+        kind: "begin",
+        ...(selectedWeek ? { selectedWeek } : {}),
+        ...(selectedItemId ? { selectedItemId } : {}),
+      },
+      value,
+    );
+  }
+  function retryPending() {
+    const command = writeGuard.pending;
+    if (!command) return;
+    if (optimisticRef.current) updateOptimistic({ ...optimisticRef.current, uncertain: false });
+    if (command.kind === "begin" && optimisticRef.current)
+      void sendFirstMessage(command, optimisticRef.current.text);
+    else void write(command);
   }
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? run.baseline.seed.asOf;
 
@@ -276,43 +331,60 @@ export function ChatView({
       ) : null}
     </>
   ) : null;
-  const transcript = receipt ? (
-    <ol
-      aria-label="Conversation"
-      aria-live="polite"
-      aria-relevant="additions"
-      className="space-y-4 py-3"
-    >
-      <AnimatePresence initial={false}>
-        {receipt.turns.map((turn) => (
-          <motion.li
-            key={turn.id}
-            {...enter}
-            className={`max-w-[95%] origin-bottom rounded-lg px-4 py-3 text-sm ${turn.role === "user" ? "ml-auto origin-bottom-right bg-muted" : "mr-auto origin-bottom-left border"}`}
-          >
-            <p className="mb-1 text-xs font-medium text-muted-foreground">
-              {turn.role === "user" ? "You" : "Domino"}
-            </p>
-            <p className="whitespace-pre-wrap">{turn.text}</p>
-            {turn.citations ? (
-              <details className="mt-2 text-xs" data-testid="chat-citations">
-                <summary className="cursor-pointer text-muted-foreground">
-                  Where this comes from ({turn.citations.length})
-                </summary>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                  {turn.citations.map((c) => (
-                    <li key={c.ref}>
-                      {c.label} <span className="font-mono text-muted-foreground">{c.ref}</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            ) : null}
-          </motion.li>
-        ))}
-      </AnimatePresence>
-    </ol>
-  ) : null;
+  const transcript =
+    receipt || optimisticTurn ? (
+      <ol
+        aria-label="Conversation"
+        aria-live="polite"
+        aria-relevant="additions"
+        className="space-y-4 py-3"
+      >
+        <AnimatePresence initial={false}>
+          {receipt?.turns.map((turn) => (
+            <motion.li
+              key={turn.id}
+              {...enter}
+              className={`max-w-[95%] origin-bottom rounded-lg px-4 py-3 text-sm ${turn.role === "user" ? "ml-auto origin-bottom-right bg-muted" : "mr-auto origin-bottom-left border"}`}
+            >
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {turn.role === "user" ? "You" : "Domino"}
+              </p>
+              <p className="whitespace-pre-wrap">{turn.text}</p>
+              {turn.citations ? (
+                <details className="mt-2 text-xs" data-testid="chat-citations">
+                  <summary className="cursor-pointer text-muted-foreground">
+                    Where this comes from ({turn.citations.length})
+                  </summary>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {turn.citations.map((c) => (
+                      <li key={c.ref}>
+                        {c.label} <span className="font-mono text-muted-foreground">{c.ref}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </motion.li>
+          ))}
+          {optimisticTurn ? (
+            <motion.li
+              key={optimisticTurn.id}
+              {...enter}
+              className="ml-auto max-w-[95%] origin-bottom-right rounded-lg bg-muted px-4 py-3 text-sm"
+              data-testid="chat-optimistic-message"
+            >
+              <p className="mb-1 text-xs font-medium text-muted-foreground">You</p>
+              <p className="whitespace-pre-wrap">{optimisticTurn.text}</p>
+              {optimisticTurn.uncertain ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Not confirmed yet. Retry this reply below.
+                </p>
+              ) : null}
+            </motion.li>
+          ) : null}
+        </AnimatePresence>
+      </ol>
+    ) : null;
   const choices =
     receipt && receipt.status !== "saved" && lastTurn?.choices ? (
       <Choices
@@ -461,13 +533,7 @@ export function ChatView({
             this conversation to read its saved state.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                if (writeGuard.pending) void write(writeGuard.pending);
-              }}
-            >
+            <Button variant="outline" disabled={pending} onClick={retryPending}>
               Retry unconfirmed reply
             </Button>
             <Button variant="outline" disabled={pending} onClick={() => window.location.reload()}>
@@ -536,7 +602,7 @@ export function ChatView({
     >
       <ChatScrollFrame
         label="What-if conversation"
-        followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
+        followKey={`${lastTurn?.id ?? ""}:${optimisticTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
         composer={composer}
       >
         <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask Domino</h3>

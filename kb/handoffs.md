@@ -18,6 +18,15 @@
 
 # Handoffs
 
+## 2026-10-25 Codex TL13 single chat control
+- Done: Ask Domino now opens/collapses the mounted sidebar; removed the standalone header icon and inner close icon. Its text remains visible on phones, expanded/controls state stays accessible, and Escape restores focus to the toggle.
+- Browser: one named toggle and zero duplicate close controls; desktop and actual 390px phone tests retain a typed draft across collapse/reopen and focus the input when opening. Same two-file change synchronized to codex/worker-timeline-context. Existing workspace tests/typechecks/lint and final full pnpm check (2,534 tests) pass.
+
+## 2026-10-25 Codex TL12 in-place forecasts and chat
+- Done: accepted chat/manual/question/rule scenarios select themselves without navigating, wait for validated saved data, and draw once. Chat Send clears the composer and shows the user bubble immediately; exact retry payloads and acknowledgement deduplication remain intact. Nearby cash-minimum labels use bounded separate lanes and full expandable receipt text.
+- Checks: full pnpm check passes (2,534 tests, typechecks, lint); final playground addition passes web typecheck/lint. Live manual save kept URL/editor, selected the new run and mounted its animation. Live chat showed the pending bubble with an empty composer, then one acknowledged user turn. Chat acceptance also kept URL, fractional time window (18.333333–38) and cash range; its new scenario was checked and the reveal path mounted. Crowded fixture has eight non-overlapping measured text bounds at 1440px and 390px.
+- Runtime: current Timeline frontend is http://127.0.0.1:3000, existing local Convex backend on 3212. The backend root message is not the app. Existing user runtimes/data preserved. Worker contextual handoff is separately isolated on codex/worker-timeline-context, not merged here or into main.
+
 ## 2026-10-25 Codex TL11 timeline layout
 - Done: consolidated session layout, continuous pan/grid, vertical key and branch-focus work on claude-timeline-chat. Feature handoff: features/timeline/HANDOFF.md; scope: features/timeline/TL11-layout.md.
 - Browser: desktop/tablet/phone, sidebar/draft/disclosure/comparison controls and fractional-time branch focus verified. Preview3116 reuses existing3212 backend/data. Main unchanged.
