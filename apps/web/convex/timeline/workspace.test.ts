@@ -11,12 +11,14 @@ import {
 } from "@domino/contracts";
 import { weeklyBoundaryFixtures as wfx } from "@domino/contracts/fixtures";
 import { engine } from "@domino/engine";
+import { cashSchedule } from "@domino/engine/src/forecast";
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import schema from "../schema";
 import { baselineRefs } from "./refs";
 import { WORKSPACE_METHOD_VERSION } from "./workspace";
 import { workspaceRefs as w } from "./workspaceRefs";
+import { ruleReceipts } from "./workspaceRules";
 
 // Vite writes this folder's files as "./x.ts"; convex-test resolves paths from the convex root.
 const modules = Object.fromEntries(
@@ -84,12 +86,12 @@ async function otherCompanySeed() {
 async function saveBaseline(
   t: T,
   constraints: Constraint[] = [],
-  over: { requestId?: string; seedJson?: string } = {},
+  over: { requestId?: string; seedJson?: string; model?: CompanyModel } = {},
 ) {
   const out = await t.mutation(baselineRefs.save, {
     requestId: over.requestId ?? "req-baseline-1",
     seedJson: over.seedJson ?? JSON.stringify(seed),
-    modelJson: JSON.stringify(NEUTRAL),
+    modelJson: JSON.stringify(over.model ?? NEUTRAL),
     constraintsJson: JSON.stringify(constraints),
     assumptionNote: "Neutral model for workspace tests.",
     reviewed: true,
@@ -579,6 +581,56 @@ describe("timeline workspace: scenarios (TL2)", () => {
 });
 
 describe("timeline workspace: requests and isolation", () => {
+  it("binds every reused root request to its original baseline and operation", async () => {
+    const t = setup();
+    const { baselineRunId, rootId } = await root(t);
+    const args = { companyId: "kestrel", baselineRunId, requestId: "req-open-alias" };
+    const replies = await Promise.all([t.mutation(w.open, args), t.mutation(w.open, args)]);
+    expect(replies).toEqual([
+      { companyId: "kestrel", runId: rootId, created: false },
+      { companyId: "kestrel", runId: rootId, created: false },
+    ]);
+    const other = await saveBaseline(t, [], { requestId: "req-another-baseline" });
+    await expect(t.mutation(w.open, { ...args, baselineRunId: other.runId })).rejects.toThrow(
+      /different inputs/,
+    );
+    await expect(simulate(t, rootId, [spend(1)], { requestId: args.requestId })).rejects.toThrow(
+      /different inputs/,
+    );
+    await expect(revise(t, rootId, [minCash(1)], { requestId: args.requestId })).rejects.toThrow(
+      /different inputs/,
+    );
+    const receipts = await t.run((ctx) => ctx.db.query("timelineRunRequests").collect());
+    expect(receipts.filter((r) => r.requestId === args.requestId)).toHaveLength(1);
+    expect(await runCount(t)).toBe(1);
+  });
+
+  it("preserves legacy run request bindings and backfills receipts without recalculating", async () => {
+    const t = setup();
+    const { baselineRunId, rootId } = await root(t);
+    const child = await simulate(t, rootId, [spend(100)], { requestId: "req-legacy-child" });
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("timelineRunRequests").collect())
+        await ctx.db.delete(row._id);
+    });
+    const forecast = vi.spyOn(engine, "forecast");
+    expect(
+      await t.mutation(w.open, { companyId: "kestrel", baselineRunId, requestId: "req-open-1" }),
+    ).toEqual({ companyId: "kestrel", runId: rootId, created: false });
+    expect(await simulate(t, rootId, [spend(100)], { requestId: "req-legacy-child" })).toEqual({
+      ...child,
+      created: false,
+    });
+    expect(forecast).not.toHaveBeenCalled();
+    expect(await t.run((ctx) => ctx.db.query("timelineRunRequests").collect())).toHaveLength(2);
+    await expect(
+      simulate(t, rootId, [spend(200)], { requestId: "req-legacy-child" }),
+    ).rejects.toThrow(/different inputs/);
+    await expect(revise(t, rootId, [minCash(1)], { requestId: "req-open-1" })).rejects.toThrow(
+      /different inputs/,
+    );
+  });
+
   it("returns the saved run on retry, conflicts on changed input, survives concurrency", async () => {
     const t = setup();
     const { rootId } = await root(t);
@@ -644,6 +696,181 @@ describe("timeline workspace: requests and isolation", () => {
     });
     expect(page.page.every((e) => e.companyId === "kestrel")).toBe(true);
     expect(page.page).toHaveLength(2);
+  });
+});
+
+describe("timeline workspace: effective schedule boundaries (TL5 repair)", () => {
+  it("rejects unbounded hire intervals before calling the engine and accepts the exclusive horizon end", async () => {
+    const t = setup();
+    const { rootId } = await root(t);
+    const hire: Change = {
+      kind: "shift_hire",
+      label: "Defer new hire",
+      monthlyCost: 100_000,
+      fromDate: "2026-11-02",
+      toDate: "9999-12-31",
+    };
+    const forecast = vi.spyOn(engine, "forecast");
+    await expect(simulate(t, rootId, [hire])).rejects.toThrow(/end it on or before 2027-02-01/);
+    expect(forecast).not.toHaveBeenCalled();
+    const bounded: Change = { ...hire, toDate: "2027-02-01" };
+    const child = await simulate(t, rootId, [bounded]);
+    expect((await get(t, child.runId)).forecast).toEqual(
+      engine.forecast(snapshot, NEUTRAL, [bounded]),
+    );
+  });
+
+  it.each<[Change, RegExp]>([
+    [{ kind: "delay_invoice", invoiceId: "inv_nw_q4", days: -366 }, /Observed history/],
+    [{ kind: "delay_bill", billId: "bill_agency_nov", days: -366 }, /Observed history/],
+  ])(
+    "rejects an effective historical payment with no run or receipt saved",
+    async (change, error) => {
+      const t = setup();
+      const { rootId } = await root(t);
+      await expect(simulate(t, rootId, [change])).rejects.toThrow(error);
+      expect(await runCount(t)).toBe(1);
+      expect(await t.run((ctx) => ctx.db.query("timelineRunRequests").collect())).toHaveLength(1);
+    },
+  );
+
+  it("checks cumulative invoice delays against the frozen model instead of the raw due date", async () => {
+    const t = setup();
+    const invoice = snapshot.invoices.find((i) => i.id === "inv_nw_q4");
+    if (!invoice) throw new Error("missing fixture invoice");
+    const model: CompanyModel = {
+      ...NEUTRAL,
+      customerDelayDays: { [invoice.customerId]: { mean: 40, p90: 40, samples: 1 } },
+    };
+    const baseline = await saveBaseline(t, [], { model });
+    const opened = await t.mutation(w.open, {
+      companyId: "kestrel",
+      baselineRunId: baseline.runId,
+      requestId: "req-model-open",
+    });
+    const first: Change = { kind: "delay_invoice", invoiceId: invoice.id, days: -70 };
+    const one = await simulate(t, opened.runId, [first]);
+    const schedule = cashSchedule(snapshot, model, [first]);
+    expect(schedule.items.find((i) => i.kind === "invoice" && i.id === invoice.id)?.date).toBe(
+      "2026-10-31",
+    );
+    await expect(
+      simulate(t, one.runId, [{ kind: "delay_invoice", invoiceId: invoice.id, days: -1 }]),
+    ).rejects.toThrow(/Observed history/);
+    expect(await runCount(t)).toBe(2);
+    expect((await get(t, one.runId)).forecast).toEqual(engine.forecast(snapshot, model, [first]));
+  });
+
+  it("permits removing in-horizon cash by delay, then rejects edits wholly beyond the horizon", async () => {
+    const t = setup();
+    const { rootId } = await root(t);
+    const delay: Change = { kind: "delay_invoice", invoiceId: "inv_nw_q4", days: 120 };
+    const one = await simulate(t, rootId, [delay]);
+    expect((await get(t, one.runId)).forecast).toEqual(engine.forecast(snapshot, NEUTRAL, [delay]));
+    await expect(
+      simulate(t, one.runId, [{ kind: "delay_invoice", invoiceId: "inv_nw_q4", days: 1 }]),
+    ).rejects.toThrow(/both, after the forecast/);
+    await expect(
+      simulate(t, one.runId, [{ kind: "lose_invoice", invoiceId: "inv_nw_q4" }]),
+    ).rejects.toThrow(/after the forecast/);
+    // Moving it back into the horizon is a real future effect.
+    const back = await simulate(t, one.runId, [
+      { kind: "delay_invoice", invoiceId: "inv_nw_q4", days: -120 },
+    ]);
+    expect((await get(t, back.runId)).forecast).toEqual((await get(t, rootId)).forecast);
+  });
+
+  it("rejects changes to cash already removed by ancestor loss, churn or full discount", async () => {
+    const t = setup();
+    const { rootId } = await root(t);
+    for (const change of [
+      { kind: "lose_invoice", invoiceId: "inv_nw_q4" },
+      { kind: "churn", customerId: "cus_northwind", fromDate: "2026-10-31" },
+      { kind: "discount_early_pay", invoiceId: "inv_nw_q4", percent: 100, payOn: "2026-11-02" },
+    ] satisfies Change[]) {
+      const one = await simulate(t, rootId, [change]);
+      await expect(
+        simulate(t, one.runId, [{ kind: "delay_invoice", invoiceId: "inv_nw_q4", days: 1 }]),
+      ).rejects.toThrow(/no remaining expected cash/);
+    }
+  });
+
+  it("rejects churn with no remaining affected cash and early payment that changes nothing", async () => {
+    const t = setup();
+    const { rootId } = await root(t);
+    await expect(
+      simulate(t, rootId, [{ kind: "churn", customerId: "cus_northwind", fromDate: "2027-01-31" }]),
+    ).rejects.toThrow(/no remaining expected cash/);
+    const first: Change = {
+      kind: "discount_early_pay",
+      invoiceId: "inv_nw_q4",
+      percent: 100,
+      payOn: "2026-11-02",
+    };
+    const child = await simulate(t, rootId, [first]);
+    await expect(simulate(t, child.runId, [first])).rejects.toThrow(/no remaining expected cash/);
+  });
+
+  it("rejects changes that round to no cash effect before saving a run", async () => {
+    const t = setup();
+    const { rootId } = await root(t);
+    await expect(
+      simulate(t, rootId, [
+        {
+          kind: "discount_early_pay",
+          invoiceId: "inv_nw_q4",
+          percent: 0.000000000001,
+          payOn: "2026-11-30",
+        },
+      ]),
+    ).rejects.toThrow(/does not change any expected cash/);
+    await expect(
+      simulate(t, rootId, [
+        {
+          kind: "shift_hire",
+          label: "A fraction of a cent saved",
+          monthlyCost: 1,
+          fromDate: "2026-11-02",
+          toDate: "2026-11-03",
+        },
+      ]),
+    ).rejects.toThrow(/does not change any expected cash/);
+    expect(await runCount(t)).toBe(1);
+  });
+
+  it("retains supported fractional runway limits and identifies group attribution honestly", async () => {
+    const t = setup();
+    const { rootId } = await root(t, [minCash(250_000_000), runway(4.5)]);
+    const child = await simulate(t, rootId, [
+      { kind: "add_cash", date: "2026-11-10", amount: 100, label: "Cash injection" },
+      spend(30_000_100),
+    ]);
+    const run = await get(t, child.runId);
+    expect(run.constraints[1]?.limit).toBe(4.5);
+    expect(run.receipts[0]?.actionLabels).toEqual(["Cash injection", "Equipment purchase"]);
+    expect(run.receipts[0]?.evidence.join(" ")).toMatch(
+      /as a whole.*individual causes were not tested/,
+    );
+  });
+
+  it("does not claim a newly caused breach when the parent rule cannot be evaluated", () => {
+    const rule = minCash(250_000_000);
+    const changes = [spend(30_000_000)];
+    const forecast = engine.forecast(snapshot, NEUTRAL, changes);
+    const incompatibleParent = structuredClone(engine.forecast(snapshot, NEUTRAL, []));
+    incompatibleParent.weeks[0]!.usable += 1;
+    const [receipt] = ruleReceipts({
+      snapshot,
+      model: NEUTRAL,
+      rules: [rule],
+      versionOf: () => "test-version",
+      plan: { forecast, changes },
+      parent: { forecast: incompatibleParent, changes: [] },
+      ownChanges: changes,
+      horizonEnd: "2027-01-31",
+    });
+    expect(receipt).toMatchObject({ status: "breached", relation: "unable", actionLabels: [] });
+    expect(receipt?.evidence.join(" ")).toMatch(/starting plan could not be evaluated/);
   });
 });
 

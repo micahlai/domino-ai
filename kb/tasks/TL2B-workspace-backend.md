@@ -11,7 +11,7 @@
 - What changed (files): `apps/web/convex/schemas/timeline.schema.ts` (timelineRuns, timelineQuestions), `schemaComposition.test.ts` (25 tables), new `timeline/workspace.ts`, `workspaceInput.ts`, `workspaceRules.ts`, `workspaceRefs.ts`, `workspace.test.ts`. No contracts, engine, root schema, Field, baselines.ts or dashboard edits. No question functions.
 - Watch out:
   - Engine subpath import `@domino/engine/src/rules` (package has no exports map), read-only. Include it in the lane import inventory.
-  - `open`: one root per baseline (run id derived from company+baseline). A second requestId for an existing root returns it (`created:false`) but does not bind that requestId.
+  - `open`: one root per baseline (run id derived from company+baseline). TL2B-R1 adds immutable receipts for every accepted requestId, including aliases that return an existing root (`created:false`).
   - Workspace input checks copy the private TL1 helpers (baselines.ts was out of scope). The money bound also counts change amounts and leaves 2x headroom so comparison deltas stay exact.
   - Rejected with explanations: changes dated on or before asOf, or targeting paid invoices/bills (`HISTORICAL_CHANGE`); dated changes after the last forecast Sunday (`OUTSIDE_HORIZON`); critical bill delays; repeated change labels; depth > 20; > 64 total changes. A delay that pushes existing cash past the horizon is accepted, because that is its real effect.
   - `reviseConstraints` rejects an identical rule set (`NO_CHANGE`). `simulate` needs >= 1 change; `constraintsJson` and `constraintNote` must come together.

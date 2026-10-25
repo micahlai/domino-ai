@@ -8,6 +8,7 @@ import {
   type Snapshot,
   canonicalJson,
 } from "@domino/contracts";
+import { type CashSchedule, cashSchedule } from "@domino/engine/src/forecast";
 import { ConvexError } from "convex/values";
 import { z } from "zod";
 
@@ -204,10 +205,113 @@ export function checkChanges(changes: Change[], snapshot: Snapshot, horizon: Hor
         futureDate(`"${change.label}" start`, change.fromDate);
         if (!isCalendarDate(change.toDate) || change.toDate <= change.fromDate)
           bad(`"${change.label}" must end after it starts`);
+        // toDate is exclusive. The engine walks every day up to it, so bound it here.
+        if (change.toDate > addDays(horizon.end, 1))
+          reject(
+            "OUTSIDE_HORIZON",
+            `"${change.label}" ends ${change.toDate}; end it on or before ${addDays(horizon.end, 1)}, the day after the forecast ends on ${horizon.end}`,
+          );
         break;
       }
     }
   }
+}
+
+type Item = CashSchedule["items"][number];
+const itemOf = (s: CashSchedule, kind: Item["kind"], id: string) =>
+  s.items.find((i) => i.kind === kind && i.id === id);
+
+/**
+ * Effective-date checks on the engine's own cash schedule (read-only), replaying the complete
+ * ordered changes with the frozen model, so relative changes are judged where the cash really
+ * lands: never on or before asOf, never with no remaining cash, never entirely after the forecast.
+ * Moving in-forecast cash past the end is allowed: removing it from the 13 weeks is the effect.
+ * Run after checkChanges, which bounds every loop the schedule performs.
+ */
+export function checkEffects(
+  changes: Change[],
+  snapshot: Snapshot,
+  model: CompanyModel,
+  horizon: Horizon,
+) {
+  const schedule = (n: number) => {
+    try {
+      return cashSchedule(snapshot, model, changes.slice(0, n));
+    } catch (e) {
+      const detail = e instanceof Error ? `: ${e.message}` : "";
+      return reject(
+        "UNSUPPORTED_INPUT",
+        `The engine could not apply the changes${detail}`.slice(0, 500),
+      );
+    }
+  };
+  const noCash = (what: string): never =>
+    reject(
+      "NO_EFFECT",
+      `${what} has no remaining expected cash in this plan (already settled, lost or removed by an earlier change)`,
+    );
+  const unchanged = (what: string): never =>
+    reject("NO_EFFECT", `${what} does not change any expected cash date or amount in this plan`);
+  const afterEnd = (message: string): never =>
+    reject(
+      "OUTSIDE_HORIZON",
+      `${message}, after the forecast ends on ${horizon.end}; it would have no effect`,
+    );
+  const history = (message: string): never =>
+    reject(
+      "HISTORICAL_CHANGE",
+      `${message}, on or before ${horizon.asOf}. Observed history is fixed; simulate only future events`,
+    );
+  let before = schedule(0);
+  changes.forEach((change, i) => {
+    const after = schedule(i + 1);
+    const moved = (kind: Item["kind"], id: string, what: string) => {
+      const b = itemOf(before, kind, id);
+      if (!b || b.amount === 0) return noCash(what);
+      const a = itemOf(after, kind, id);
+      if (!a) return noCash(what);
+      if (a.date <= horizon.asOf) history(`${what} would then be paid on ${a.date}`);
+      if (a.date === b.date && a.amount === b.amount) unchanged(what);
+      if (b.date > horizon.end && a.date > horizon.end)
+        afterEnd(`${what} moves from ${b.date} to ${a.date}, both`);
+    };
+    switch (change.kind) {
+      case "delay_invoice":
+        moved("invoice", change.invoiceId, `Invoice ${change.invoiceId}`);
+        break;
+      case "delay_bill":
+        moved("bill", change.billId, `Bill ${change.billId}`);
+        break;
+      case "discount_early_pay":
+        moved("invoice", change.invoiceId, `Invoice ${change.invoiceId}`);
+        break;
+      case "lose_invoice": {
+        const b = itemOf(before, "invoice", change.invoiceId);
+        if (!b || b.amount === 0) noCash(`Invoice ${change.invoiceId}`);
+        else if (b.date > horizon.end)
+          afterEnd(`Invoice ${change.invoiceId} is expected on ${b.date}`);
+        break;
+      }
+      case "churn": {
+        const remaining = new Set(after.items.map((a) => `${a.kind}:${a.id}`));
+        const removed = before.items.filter(
+          (b) => b.amount !== 0 && !remaining.has(`${b.kind}:${b.id}`),
+        );
+        if (removed.length === 0) noCash(`Customer ${change.customerId} from ${change.fromDate}`);
+        if (removed.every((b) => b.date > horizon.end))
+          afterEnd(
+            `All of customer ${change.customerId}'s expected cash from ${change.fromDate} is`,
+          );
+        break;
+      }
+      case "shift_hire":
+        if (after.items.length === before.items.length) unchanged(`Hire ${change.label}`);
+        break;
+      default:
+        break;
+    }
+    before = after;
+  });
 }
 
 /** Upper bound on any 13-week forecast: 98 days span at most 5 calendar months of hire cost. */

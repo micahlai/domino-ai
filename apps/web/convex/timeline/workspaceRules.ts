@@ -50,7 +50,7 @@ function evaluate(snapshot: Snapshot, model: CompanyModel, plan: Plan, rules: Co
 
 const UNIT = { min_cash: "cents", min_runway_months: "months", pay_by_date: "days" } as const;
 
-/** Plain label for a change, used to name the actions behind a new breach. */
+/** Plain label for a change, identifying inputs to the scenario as a group. */
 export function changeLabel(change: Change): string {
   switch (change.kind) {
     case "add_cash":
@@ -81,6 +81,7 @@ function exactDiff(a: number, b: number): number {
 function relationOf(status: Outcome["status"], parent: Outcome["status"] | null) {
   if (status === "unable") return "unable" as const;
   if (status === "beyond_horizon") return "outside_horizon" as const;
+  if (parent === "unable") return "unable" as const;
   if (status === "breached")
     return parent === "breached" || parent === null ? "pre_existing" : "new";
   return parent === "breached" ? "resolved" : "clear";
@@ -110,10 +111,18 @@ function receipt(
     shortfall: null,
     date: null,
     weekStart: null,
-    // Only a breach this scenario introduced is attributed to its own defined changes.
+    // These are group inputs; no individual action is claimed to cause the breach.
     actionLabels: relation === "new" ? ownChanges.map(changeLabel) : [],
     evidence: [`Rule source: ${c.evidence.source} ${c.evidence.ref} (${c.evidence.note})`],
   };
+  if (relation === "new")
+    base.evidence.push(
+      "This scenario as a whole introduces the breach. Its listed changes were evaluated together; individual causes were not tested",
+    );
+  if (parent?.status === "unable")
+    base.evidence.push(
+      "The starting plan could not be evaluated under this rule, so the scenario's effect on compliance is unknown",
+    );
   if (parent?.status === "breached" && "breach" in parent && parent.breach)
     base.evidence.push(
       `The plan this one started from also breaks this rule on ${parent.breach.date}`,

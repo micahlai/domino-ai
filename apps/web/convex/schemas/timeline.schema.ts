@@ -146,6 +146,14 @@ export const timelineTables = {
     .index("by_company_and_requestId", ["companyId", "requestId"])
     .index("by_company_and_baselineRunId", ["companyId", "baselineRunId"])
     .index("by_company", ["companyId"]),
+  // Every accepted workspace key stays bound, including opens that reuse an existing root.
+  timelineRunRequests: defineTable({
+    companyId: v.string(),
+    requestId: v.string(),
+    inputHash: v.string(),
+    runId: v.string(),
+    acceptedAt: v.string(),
+  }).index("by_company_and_requestId", ["companyId", "requestId"]),
   // TL3: one-shot question receipts. Written only by the questions worker's functions.
   timelineQuestions: defineTable({
     companyId: v.string(),

@@ -29,6 +29,7 @@ import {
   addDays,
   checkChanges,
   checkConstraints,
+  checkEffects,
   checkMoneyBound,
   checkRequestId,
   checkRowSize,
@@ -124,7 +125,11 @@ const runRow = (ctx: QueryCtx | MutationCtx, companyId: string, runId: string) =
     .withIndex("by_company_and_runId", (q) => q.eq("companyId", companyId).eq("runId", runId))
     .unique();
 
-/** Same request: return the saved run. Same id, different inputs: reject. Else null. */
+/**
+ * Same request: return the saved run. Same id, different inputs or operation: reject. Else null.
+ * Every accepted request has a receipt, including an `open` that reused an existing root, so
+ * no accepted key can later be spent on something else.
+ */
 async function priorRequest(
   ctx: MutationCtx,
   companyId: string,
@@ -132,16 +137,35 @@ async function priorRequest(
   inputHash: string,
 ): Promise<WorkspaceResult | null> {
   const prior = await ctx.db
-    .query("timelineRuns")
+    .query("timelineRunRequests")
     .withIndex("by_company_and_requestId", (q) =>
       q.eq("companyId", companyId).eq("requestId", requestId),
     )
     .unique();
-  if (!prior) return null;
+  // Runs saved before the receipt table was introduced retain their original binding.
+  if (!prior) {
+    const legacy = await ctx.db
+      .query("timelineRuns")
+      .withIndex("by_company_and_requestId", (q) =>
+        q.eq("companyId", companyId).eq("requestId", requestId),
+      )
+      .unique();
+    if (!legacy) return null;
+    if (legacy.inputHash !== inputHash)
+      reject("REQUEST_CONFLICT", "This requestId was already used with different inputs");
+    await bindRequest(ctx, { companyId, requestId, inputHash, runId: legacy.runId });
+    return { companyId, runId: legacy.runId, created: false };
+  }
   if (prior.inputHash !== inputHash)
     reject("REQUEST_CONFLICT", "This requestId was already used with different inputs");
   return { companyId, runId: prior.runId, created: false };
 }
+
+/** Bind an accepted request to its run, in the same transaction as any run it created. */
+const bindRequest = (
+  ctx: MutationCtx,
+  args: { companyId: string; requestId: string; inputHash: string; runId: string },
+) => ctx.db.insert("timelineRunRequests", { ...args, acceptedAt: new Date().toISOString() });
 
 const horizonOf = (baseline: SavedBaseline) => {
   const weeks = baseline.forecast.weeks;
@@ -268,6 +292,7 @@ async function saveChild(
   checkConstraints(constraints, snapshot);
   checkChanges(changes, snapshot, horizon);
   checkMoneyBound(snapshot, model, constraints, changes);
+  checkEffects(changes, snapshot, model, horizon);
 
   const forecast = ForecastSchema.parse(
     calculate("forecast this plan", () => engine.forecast(snapshot, model, changes)),
@@ -326,6 +351,12 @@ async function saveChild(
   };
   checkRowSize(row);
   await ctx.db.insert("timelineRuns", row);
+  await bindRequest(ctx, {
+    companyId: args.companyId,
+    requestId: args.requestId,
+    inputHash: args.inputHash,
+    runId,
+  });
   return { companyId: args.companyId, runId, created: true };
 }
 
@@ -350,8 +381,11 @@ export const open = mutation({
     const prior = await priorRequest(ctx, companyId, args.requestId, inputHash);
     if (prior) return prior;
     const runId = await rootRunId(companyId, baselineRunId);
-    // One root per baseline, whichever request opened it first.
-    if (await runRow(ctx, companyId, runId)) return { companyId, runId, created: false };
+    // One root per baseline, whichever request opened it first; later keys are bound to it.
+    if (await runRow(ctx, companyId, runId)) {
+      await bindRequest(ctx, { companyId, requestId: args.requestId, inputHash, runId });
+      return { companyId, runId, created: false };
+    }
 
     const baseline = await loadBaseline(ctx, companyId, baselineRunId);
     if (!baseline) reject("NOT_FOUND", "No saved baseline with that id for this company");
@@ -404,6 +438,7 @@ export const open = mutation({
     };
     checkRowSize(row);
     await ctx.db.insert("timelineRuns", row);
+    await bindRequest(ctx, { companyId, requestId: args.requestId, inputHash, runId });
     return { companyId, runId, created: true };
   },
 });
