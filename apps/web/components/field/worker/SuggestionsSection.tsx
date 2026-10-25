@@ -28,7 +28,7 @@ export type SuggestionsState =
   | { kind: "ready"; list: Suggestion[] };
 
 export type DecideSuggestion = (
-  id: string,
+  suggestion: Suggestion,
   decision: SuggestionDecision,
   note: string,
 ) => Promise<void>;
@@ -52,7 +52,7 @@ export function SuggestionsSection({
       step={1}
       title="Suggestions"
       count={state.kind === "ready" ? open.length : null}
-      description="Fixes the CREAO advisor tested on your forecast. Accept or decline each one."
+      description="Fixes tested on your forecast by the engine. Accept or decline each one."
     >
       {state.kind === "loading" ? (
         <div className="space-y-3" aria-busy="true">
@@ -63,8 +63,8 @@ export function SuggestionsSection({
         <EmptyCard icon={<Lightbulb />}>
           <p className="font-medium text-foreground">Suggestions are not switched on yet.</p>
           <p>
-            Once the CREAO advisor is connected, the fixes it tests for each risk appear here, with
-            what they do to your lowest cash.
+            Once suggestions are available, fixes tested for each risk appear here, with what they
+            do to your lowest cash.
           </p>
         </EmptyCard>
       ) : state.kind === "error" ? (
@@ -78,8 +78,8 @@ export function SuggestionsSection({
         <EmptyCard icon={<Lightbulb />}>
           <p className="font-medium text-foreground">No suggestions waiting.</p>
           <p>
-            When a risk would take cash below the lender's minimum, the CREAO advisor tests fixes
-            and posts them here for you to accept or decline.
+            When a risk would take cash below the lender's minimum, the engine tests fixes and posts
+            them here for you to accept or decline.
           </p>
         </EmptyCard>
       ) : (
@@ -132,7 +132,7 @@ function SuggestionCard({
     setBusy(decision);
     setError(null);
     try {
-      await onDecide(s.id, decision, note);
+      await onDecide(s, decision, note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the decision.");
     } finally {

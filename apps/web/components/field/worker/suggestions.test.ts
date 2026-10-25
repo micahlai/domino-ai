@@ -21,6 +21,8 @@ import {
 
 const row = (over: Record<string, unknown> = {}) => ({
   id: "sug_1",
+  runId: "run_1",
+  snapshotVersion: 1,
   scenarioId: "late_biggest_invoice",
   fix: { kind: "credit_draw", amountCents: 120_000_000, week: "2026-12-14" },
   effect: { lowPointCents: 302_702_845, lowPointWeek: "2027-01-25", staysAboveMinimum: true },
@@ -73,11 +75,41 @@ describe("worker formatting", () => {
 
 describe("suggestions adapter", () => {
   it("reads backend rows defensively and defaults the author", () => {
-    expect(suggestion()).toMatchObject({ id: "sug_1", status: "open", by: "CREAO advisor" });
+    expect(suggestion()).toMatchObject({ id: "sug_1", status: "open", by: "Engine advisors" });
     expect(toSuggestion(row({ id: undefined, _id: "doc1" }))?.id).toBe("doc1");
     expect(toSuggestion(row({ status: "maybe" }))).toBeNull();
     expect(toSuggestion(row({ effect: { lowPointWeek: "2027-01-25" } }))).toBeNull();
     expect(toSuggestion(null)).toBeNull();
+  });
+
+  it("reads the swarm API contract and keeps the effect from the same snapshot", () => {
+    const s = toSuggestion({
+      id: "scenario:credit_line_draw",
+      scenarioId: "scenario",
+      scenarioTitle: "Largest customer pays late",
+      fix: { kind: "credit_line_draw", label: "Draw $1.2M on the credit line" },
+      effect: {
+        lowPoint: 310_000_000,
+        lowWeekStart: "2027-01-25",
+        survives: true,
+        scenarioLow: 190_000_000,
+        lenderMinimum: 300_000_000,
+      },
+      recommendation: { text: "Covers the gap.", provider: "creao" },
+      status: "open",
+    });
+    expect(s).toMatchObject({ recommendation: "Covers the gap.", by: "CREAO advisor" });
+    if (!s) throw new Error("swarm row did not parse");
+    const ctx: EffectContext = { baseline: null, scenarios: new Map(), minimum: null };
+    expect(cashEffect(s, ctx)).toEqual({
+      before: { cents: 190_000_000, week: null },
+      after: { cents: 310_000_000, week: "2027-01-25" },
+      minimum: 300_000_000,
+      stays: true,
+    });
+    expect(scenarioTitle(s, ctx)).toBe("Largest customer pays late");
+    expect(toSuggestion({ ...row(), recommendation: null })?.by).toBe("Engine advisors");
+    expect(toSuggestion(row({ effect: { lowPoint: 1.5 } }))).toBeNull();
   });
 
   it("recognizes the error of a backend that is not deployed yet", () => {
@@ -127,12 +159,21 @@ describe("suggestions adapter", () => {
   });
 
   it("sends the decision with the note only when there is one", () => {
-    expect(decideArgs("sug_1", "accepted", "  ")).toEqual({
-      suggestionId: "sug_1",
+    expect(() => decideArgs("company_1", suggestion({ runId: undefined }), "accepted", "")).toThrow(
+      "Reload suggestions",
+    );
+    expect(decideArgs("company_1", suggestion(), "accepted", "  ")).toEqual({
+      companyId: "company_1",
+      id: "sug_1",
+      expectedRunId: "run_1",
+      expectedSnapshotVersion: 1,
       decision: "accepted",
     });
-    expect(decideArgs("sug_1", "declined", " later ")).toEqual({
-      suggestionId: "sug_1",
+    expect(decideArgs("company_1", suggestion(), "declined", " later ")).toEqual({
+      companyId: "company_1",
+      id: "sug_1",
+      expectedRunId: "run_1",
+      expectedSnapshotVersion: 1,
       decision: "declined",
       note: "later",
     });

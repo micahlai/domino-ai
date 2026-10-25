@@ -31,9 +31,18 @@ export type SuggestionFix =
 export type Suggestion = {
   id: string;
   scenarioId: string | null;
+  scenarioTitle?: string;
+  runId?: string;
+  snapshotVersion?: number;
   fix: SuggestionFix;
   /** Engine values with the fix applied. */
-  effect: { lowPointCents: number; lowPointWeek: string; staysAboveMinimum: boolean };
+  effect: {
+    lowPointCents: number;
+    lowPointWeek: string;
+    staysAboveMinimum: boolean;
+    scenarioLow?: number;
+    lenderMinimum?: number;
+  };
   recommendation: string;
   status: SuggestionStatus;
   note?: string;
@@ -41,14 +50,21 @@ export type Suggestion = {
   by: string;
 };
 
-export const SUGGESTED_BY = "CREAO advisor";
+export const SUGGESTED_BY = "Engine advisors";
 
 // Referenced by name so the page compiles before the backend module and its codegen exist.
 export const SUGGESTIONS_API = {
   list: makeFunctionReference<"query", { companyId: string }, unknown[]>("fieldSuggestions:list"),
   decide: makeFunctionReference<
     "mutation",
-    { suggestionId: string; decision: SuggestionDecision; note?: string },
+    {
+      companyId: string;
+      id: string;
+      expectedRunId: string;
+      expectedSnapshotVersion: number;
+      decision: SuggestionDecision;
+      note?: string;
+    },
     unknown
   >("fieldSuggestions:decide"),
 };
@@ -66,28 +82,50 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 export function toSuggestion(raw: unknown): Suggestion | null {
   if (!isRecord(raw) || !isRecord(raw.effect)) return null;
   const id = str(raw.id) || str(raw._id);
-  const low = num(raw.effect.lowPointCents);
+  const low = num(raw.effect.lowPoint) ?? num(raw.effect.lowPointCents);
   const fix = typeof raw.fix === "string" || isRecord(raw.fix) ? (raw.fix as SuggestionFix) : null;
   const status = raw.status;
-  if (!id || low === null || fix === null) return null;
+  if (!id || low === null || !Number.isSafeInteger(low) || fix === null) return null;
   if (status !== "open" && status !== "accepted" && status !== "declined") return null;
   return {
     id,
     scenarioId: str(raw.scenarioId) || null,
+    scenarioTitle: str(raw.scenarioTitle),
+    runId: str(raw.runId),
+    ...(num(raw.snapshotVersion) !== null && { snapshotVersion: raw.snapshotVersion as number }),
     fix,
     effect: {
       lowPointCents: low,
-      lowPointWeek: str(raw.effect.lowPointWeek),
-      staysAboveMinimum: raw.effect.staysAboveMinimum === true,
+      lowPointWeek: str(raw.effect.lowWeekStart) || str(raw.effect.lowPointWeek),
+      staysAboveMinimum: (raw.effect.survives ?? raw.effect.staysAboveMinimum) === true,
+      ...(num(raw.effect.scenarioLow) !== null && {
+        scenarioLow: raw.effect.scenarioLow as number,
+      }),
+      ...(num(raw.effect.lenderMinimum) !== null && {
+        lenderMinimum: raw.effect.lenderMinimum as number,
+      }),
     },
-    recommendation: str(raw.recommendation),
+    recommendation: isRecord(raw.recommendation)
+      ? str(raw.recommendation.text)
+      : str(raw.recommendation),
     status,
     ...(str(raw.note) && { note: str(raw.note) }),
-    by: str(raw.by) || str(raw.suggestedBy) || SUGGESTED_BY,
+    by:
+      str(raw.by) ||
+      str(raw.suggestedBy) ||
+      (isRecord(raw.recommendation) && raw.recommendation.provider === "creao"
+        ? "CREAO advisor"
+        : SUGGESTED_BY),
   };
 }
 
-const CREDIT_KINDS = new Set(["credit_draw", "draw_credit", "draw_credit_line", "add_cash"]);
+const CREDIT_KINDS = new Set([
+  "credit_line_draw",
+  "credit_draw",
+  "draw_credit",
+  "draw_credit_line",
+  "add_cash",
+]);
 
 /** The fix in plain words: "Draw $1.2M on the credit line in the week of Dec 14". */
 export function fixSentence(fix: SuggestionFix): string {
@@ -130,9 +168,14 @@ export type EffectContext = {
 export function cashEffect(s: Suggestion, ctx: EffectContext): CashEffect {
   const scenario = s.scenarioId ? ctx.scenarios.get(s.scenarioId) : undefined;
   return {
-    before: scenario ? { cents: scenario.cents, week: scenario.week } : ctx.baseline,
+    before:
+      s.effect.scenarioLow !== undefined
+        ? { cents: s.effect.scenarioLow, week: null }
+        : scenario
+          ? { cents: scenario.cents, week: scenario.week }
+          : ctx.baseline,
     after: { cents: s.effect.lowPointCents, week: s.effect.lowPointWeek || null },
-    minimum: ctx.minimum,
+    minimum: s.effect.lenderMinimum ?? ctx.minimum,
     stays: s.effect.staysAboveMinimum,
   };
 }
@@ -146,7 +189,7 @@ export function roomLine(e: CashEffect): string | null {
 
 /** The scenario this fix answers, in words, when the page knows it. */
 export const scenarioTitle = (s: Suggestion, ctx: EffectContext) =>
-  s.scenarioId ? (ctx.scenarios.get(s.scenarioId)?.title ?? null) : null;
+  s.scenarioTitle || (s.scenarioId ? (ctx.scenarios.get(s.scenarioId)?.title ?? null) : null);
 
 export function splitSuggestions(list: Suggestion[]) {
   return {
@@ -171,11 +214,23 @@ export function applyDecision(
 }
 
 /** Mutation arguments for one decision; an empty note is left out. */
-export const decideArgs = (id: string, decision: SuggestionDecision, note: string) => ({
-  suggestionId: id,
-  decision,
-  ...(note.trim() && { note: note.trim() }),
-});
+export const decideArgs = (
+  companyId: string,
+  suggestion: Suggestion,
+  decision: SuggestionDecision,
+  note: string,
+) => {
+  if (!suggestion.runId || !Number.isSafeInteger(suggestion.snapshotVersion))
+    throw new Error("Reload suggestions before recording a decision.");
+  return {
+    companyId,
+    id: suggestion.id,
+    expectedRunId: suggestion.runId,
+    expectedSnapshotVersion: suggestion.snapshotVersion as number,
+    decision,
+    ...(note.trim() && { note: note.trim() }),
+  };
+};
 
 /**
  * Demo suggestions: the dashboard's sample risks that need a credit line draw (derive.ts, real
@@ -202,7 +257,7 @@ export function demoSuggestions(view: DashboardView): Suggestion[] {
         recommendation:
           "Covers the gap to the lender's minimum at the low point, rounded up to the next $50K.",
         status: "open" as const,
-        by: SUGGESTED_BY,
+        by: "Engine-tested sample",
       },
     ];
   });

@@ -90,7 +90,7 @@ describe("worker page sections", () => {
     const html = render({ suggestions: { kind: "ready", list: [open, decided] } });
     expect(html).toContain("Draw $1.2M on the credit line in the week of Dec 14");
     expect(html).toContain("Suggested by <span");
-    expect(html).toContain("CREAO advisor");
+    expect(html).toContain("Engine advisors");
     expect(html).toContain("$1.8M"); // lowest cash now
     expect(html).toContain("$3M"); // with the fix, and the lender's minimum
     expect(html).toContain("Keeps you above the minimum");

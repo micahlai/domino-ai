@@ -32,10 +32,11 @@ export function useLiveSuggestions(companyId: string | null | undefined): {
   // Not optimistic: Convex applies the query update before the mutation resolves, so the card
   // moves to Decided as soon as the save lands, and a refused save keeps the card and its error.
   const decide = useCallback<DecideSuggestion>(
-    async (id, decision, note) => {
-      await mutate(decideArgs(id, decision, note));
+    async (suggestion, decision, note) => {
+      if (!companyId) throw new Error("Select a company before recording a decision.");
+      await mutate(decideArgs(companyId, suggestion, decision, note));
     },
-    [mutate],
+    [mutate, companyId],
   );
   let state: SuggestionsState;
   if (!SUGGESTIONS_ENABLED) state = { kind: "off" };
@@ -64,11 +65,11 @@ export function useDemoSuggestions(
   const initial = useMemo(() => (view ? demoSuggestions(view) : []), [view]);
   const list = store?.key === key ? store.list : initial;
   const decide = useCallback<DecideSuggestion>(
-    async (id, decision, note) => {
+    async (suggestion, decision, note) => {
       // Functional update: several quick decisions each build on the one before.
       setStore((prev) => ({
         key,
-        list: applyDecision(prev?.key === key ? prev.list : initial, id, decision, note),
+        list: applyDecision(prev?.key === key ? prev.list : initial, suggestion.id, decision, note),
       }));
     },
     [key, initial],
