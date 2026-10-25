@@ -51,6 +51,7 @@ import {
   pauseReason,
   profileOfWorld,
   stepDays,
+  supportsDayClock,
 } from "./lib/clock";
 import { daysBetween, nextBeat } from "./lib/storylines";
 import { type OutgoingEvent, vendorEvents } from "./lib/vendorWebhooks";
@@ -142,7 +143,7 @@ export const status = query({
     const day = daysBetween(origin, world.today);
     const next = nextBeat(profile, overlay.story);
     return {
-      supported: profile !== null,
+      supported: supportsDayClock(world),
       status: clock?.status ?? ("paused" as const),
       speed: (clock?.speed ?? 1) as Speed,
       day,
@@ -170,7 +171,7 @@ export const play = mutation({
   handler: async (ctx, { companyId, speed }) => {
     const clock = await ensureClock(ctx, companyId);
     const { world } = await requireWorld(ctx, companyId);
-    if (!profileOfWorld(world))
+    if (!supportsDayClock(world))
       throw new ConvexError({ code: "UNSUPPORTED", message: "This company only moves by weeks" });
     if (clock.status === "playing") return { status: "playing" as const };
     const day = daysBetween(clock.originDate, world.today);
@@ -273,7 +274,7 @@ export const claimTick = internalMutation({
     if (clock.tickStartedAt !== null && now - clock.tickStartedAt < TICK_LEASE_MS) return null;
     const { row, world, overlay } = await requireWorld(ctx, companyId);
     const day = daysBetween(clock.originDate, world.today);
-    const reason = profileOfWorld(world)
+    const reason = supportsDayClock(world)
       ? pauseReason({ ...clock, day, now })
       : "this company only moves by weeks";
     if (reason) {

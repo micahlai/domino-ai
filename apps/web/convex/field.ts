@@ -47,7 +47,14 @@ import {
 } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { scheduledItems } from "@domino/engine";
-import { PROFILE_IDS, type ProfileId } from "@domino/sim";
+import {
+  type OperatingSelection,
+  PROFILE_IDS,
+  type ProfileId,
+  createOperatingDemo,
+  operatingDemoCatalog,
+  operatingScenarioCatalog,
+} from "@domino/sim";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { deriveDashboard } from "../components/field/dashboard/derive";
@@ -104,9 +111,14 @@ export async function createFeedCompany(
   seed: number,
   profile: ProfileId | undefined,
   judge?: { number: number },
+  operating?: OperatingSelection,
 ) {
-  const world = newWorld(seed, profile);
-  const name = judge ? `Judge Co. #${judge.number}` : profileName(profile);
+  const generated = operating ? createOperatingDemo(operating, seed) : null;
+  const world = generated?.world ?? newWorld(seed, profile);
+  const operatingName = operating
+    ? `${operatingDemoCatalog.find((c) => c.id === operating.company)?.name ?? operating.company} · ${operatingScenarioCatalog.find((s) => s.id === operating.scenario)?.name ?? operating.scenario}`
+    : null;
+  const name = judge ? `Judge Co. #${judge.number}` : (operatingName ?? profileName(profile));
   const companyId = await ctx.db.insert("companies", {
     name,
     profile: "kestrel",
@@ -114,9 +126,9 @@ export async function createFeedCompany(
     today: world.today,
     status: "connecting",
     ...(judge && { judge: true, judgeNumber: judge.number }),
+    ...(operating && { operatingDemo: { ...operating, version: 1 as const } }),
   });
-  // A plain starting model: no learned delays or rules yet; constraints are the
-  // synthetic loan and board documents.
+  // The model starts empty; reconstructed demos use only their generated illustrative rules.
   await ctx.db.insert("models", {
     companyId,
     version: 1,
@@ -127,7 +139,7 @@ export async function createFeedCompany(
       rules: [],
     }),
   });
-  for (const c of fixtures.constraints)
+  for (const c of generated?.constraints ?? fixtures.constraints)
     await ctx.db.insert("constraints", { companyId, data: ConstraintSchema.parse(c) });
   for (const [kind, baseUrl] of SOURCES)
     await ctx.db.insert("sources", {
@@ -139,7 +151,7 @@ export async function createFeedCompany(
       tieOut: "pending",
       step: "waiting for first pull",
     });
-  await connectAll(ctx, companyId, name);
+  await connectAll(ctx, companyId, name, operating ? "plaid" : "nessie");
   await ctx.db.insert("feedWorlds", { companyId, world, overlay: emptyOverlay() });
   await ctx.db.insert("feeds", {
     companyId,
@@ -159,10 +171,12 @@ export async function createFeedCompany(
   await writeLog(ctx, companyId, undefined, {
     actor: "person",
     action: "feed.created",
-    refs: TOOL_IDS.filter((t) => !DEFAULT_OFF.includes(t)),
+    refs: TOOL_IDS.filter((t) => (operating ? t !== "nessie" : !DEFAULT_OFF.includes(t))),
     agent: "mock.feed",
-    tool: "sim.createCompany",
-    summary: `Connected six tools for ${name} as of ${world.today}: five mock vendor APIs (read only) and the bank from Domino's own Capital One Nessie sandbox account`,
+    tool: operating ? "sim.createOperatingDemo" : "sim.createCompany",
+    summary: operating
+      ? `Connected reconstructed operating records for ${name} as of ${world.today}: illustrative data based on public filings, read through six mock source adapters`
+      : `Connected six tools for ${name} as of ${world.today}: five mock vendor APIs (read only) and the bank from Domino's own Capital One Nessie sandbox account`,
   });
   await ctx.scheduler.runAfter(0, internal.fieldJobs.ingestRun, { companyId, trigger: "setup" });
   return companyId;

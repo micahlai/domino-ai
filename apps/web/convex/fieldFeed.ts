@@ -8,8 +8,10 @@ import {
 } from "@domino/contracts";
 import {
   type ProfileId,
+  advanceOperatingDays,
   advanceProfileWeek,
   createProfileCompany,
+  isOperatingWorld,
   isProfileWorld,
   simulator,
 } from "@domino/sim";
@@ -63,7 +65,11 @@ export function newWorld(seed: number, profile?: ProfileId): WorldState {
 
 export function nextWorld(world: WorldState): WorldState {
   return plain(
-    isProfileWorld(world) ? advanceProfileWeek(world) : simulator.advanceWeek(world, []),
+    isOperatingWorld(world)
+      ? advanceOperatingDays(world, 7)
+      : isProfileWorld(world)
+        ? advanceProfileWeek(world)
+        : simulator.advanceWeek(world, []),
   );
 }
 
