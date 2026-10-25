@@ -1,6 +1,12 @@
 import type { AgentJob } from "@domino/contracts";
 import { z } from "zod";
-import { type FailureCategory, ProviderError, type ProviderJob, failer } from "./errors";
+import {
+  type FailureCategory,
+  ProviderError,
+  type ProviderJob,
+  failer,
+  sanitizeErrorDetail,
+} from "./errors";
 import { type Candidate, type Selection, scanChatText, selectOne } from "./extract";
 import {
   type BoundedResponse,
@@ -282,11 +288,48 @@ export interface CreaoAppRun {
    * run_record_failed; nothing is polled or reposted.
    */
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
+  /**
+   * Opt-in: on HTTP 429 from the create call, wait Retry-After (seconds or HTTP date; 5 s when
+   * absent, capped at maxWaitMs) and post once more. A 429 means no run was created, so this
+   * cannot duplicate one. Other statuses are never reposted.
+   */
+  createRetryOn429?: { maxWaitMs: number };
+  /**
+   * Opt-in: after the run reports completed, an answer that is missing (no result, no
+   * candidates) or an artifact download that is not 200 is retried after each delay in turn,
+   * re-reading the run for fresh artifact links. An answer that is present but invalid is not.
+   */
+  resultRetryDelaysMs?: readonly number[];
+  /** Awaited before each result retry; a throwing callback is ignored. */
+  onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
+  /**
+   * Opt-in: put each result marker on its own line before scanning. CREAO can join chat
+   * segments without a newline ("...manifest.<<<DOMINO_RESULT>>>"). The block must still be
+   * delimited at both ends and pass validation; prose alone never becomes an answer.
+   */
+  markersOnOwnLine?: boolean;
+}
+
+/** Splits a result marker glued to surrounding text onto its own line. */
+export function markersOnOwnLine(text: string): string {
+  return text
+    .replaceAll(RESULT_START, `\n${RESULT_START}\n`)
+    .replaceAll(RESULT_END, `\n${RESULT_END}\n`);
+}
+
+/** Retry-After as milliseconds: delta seconds or an HTTP date; undefined when unusable. */
+export function retryAfterMs(header: string | null, now: number): number | undefined {
+  if (!header?.trim()) return undefined;
+  const seconds = Number(header.trim());
+  if (Number.isFinite(seconds)) return seconds >= 0 ? seconds * 1000 : undefined;
+  const date = Date.parse(header);
+  return Number.isNaN(date) ? undefined : Math.max(0, date - now);
 }
 
 /**
- * One app run: exactly one create, bounded polls to a terminal status, then exactly one
- * validated answer from chat text or trusted artifacts. Never retries or reposts.
+ * One app run: one create (plus at most one repost after a 429 when opted in), bounded polls
+ * to a terminal status, then exactly one validated answer from chat text or trusted
+ * artifacts. Without the opt-ins it never retries or reposts.
  */
 export async function runCreaoApp(
   runtime: TransportRuntime,
@@ -314,17 +357,29 @@ export async function runCreaoApp(
   };
   const expectOk = (response: BoundedResponse, ok: number[]) => {
     if (response.status >= 300 && response.status < 400) throw fail("redirect_rejected");
-    if (!ok.includes(response.status)) throw fail("http_status", response.status);
+    if (!ok.includes(response.status))
+      throw fail("http_status", response.status, sanitizeErrorDetail(response.text));
   };
   const auth = { authorization: `Bearer ${apiKey}`, accept: "application/json" };
 
   diag.stage = "create";
   const runsUrl = `${base}/apps/${encodeURIComponent(spec.appId)}/runs`;
-  const created = await request(
-    runsUrl,
-    { method: "POST", headers: { ...auth, "content-type": "application/json" }, body },
-    bounds.maxResponseBytes,
-  );
+  const post = () =>
+    request(
+      runsUrl,
+      { method: "POST", headers: { ...auth, "content-type": "application/json" }, body },
+      bounds.maxResponseBytes,
+    );
+  let created = await post();
+  if (created.status === 429 && spec.createRetryOn429) {
+    const wait = Math.min(
+      retryAfterMs(created.retryAfter, runtime.now()) ?? 5_000,
+      spec.createRetryOn429.maxWaitMs,
+    );
+    if (remaining() - wait < bounds.pollIntervalMs) expectOk(created, [200, 201, 202]);
+    await runtime.sleep(wait);
+    created = await post();
+  }
   expectOk(created, [200, 201, 202]);
   const createdRun = createdRunSchema.safeParse(parseJson(created.text));
   if (!createdRun.success) throw fail("malformed_response");
@@ -352,11 +407,7 @@ export async function runCreaoApp(
 
   diag.stage = "poll";
   const runUrl = `${runsUrl}/${encodeURIComponent(runId)}`;
-  let result: z.infer<typeof runResultSchema> | null | undefined;
-  for (let polls = 0; ; polls++) {
-    if (polls >= bounds.maxPolls) throw fail("poll_limit");
-    if (remaining() < bounds.pollIntervalMs) throw fail("deadline");
-    await runtime.sleep(bounds.pollIntervalMs);
+  const pollOnce = async () => {
     const polled = await request(runUrl, { method: "GET", headers: auth }, bounds.maxResponseBytes);
     expectOk(polled, [200]);
     const run = polledRunSchema.safeParse(parseJson(polled.text));
@@ -365,62 +416,104 @@ export async function runCreaoApp(
     if (!run.success || (id === undefined ? spec.strict : id !== runId)) {
       throw fail("malformed_response");
     }
-    if (checkStatus(run.data.status, fail) === "completed") {
-      result = run.data.result;
+    return { status: checkStatus(run.data.status, fail), result: run.data.result };
+  };
+  let result: z.infer<typeof runResultSchema> | null | undefined;
+  for (let polls = 0; ; polls++) {
+    if (polls >= bounds.maxPolls) throw fail("poll_limit");
+    if (remaining() < bounds.pollIntervalMs) throw fail("deadline");
+    await runtime.sleep(bounds.pollIntervalMs);
+    const polled = await pollOnce();
+    if (polled.status === "completed") {
+      result = polled.result;
       break;
     }
   }
-  diag.stage = "extract";
-  if (!result) throw fail("no_result");
-  diag.resultPresent = true;
-
-  const chatText = result.chatText ?? "";
-  const scan = scanChatText(chatText);
-  const candidates = scan.candidates;
-  Object.assign(diag, {
-    chatTextPresent: chatText.length > 0,
-    chatTextLength: chatText.length,
-    resultStartMarker: chatText.includes(RESULT_START),
-    resultEndMarker: chatText.includes(RESULT_END),
-    delimitedBlocks: scan.delimitedBlocks,
-    malformedDelimited: scan.malformedDelimited,
-    fences: scan.fences,
-    wholeJson: scan.wholeJson,
-  });
-  for (const artifact of result.artifacts ?? []) diag.artifacts[artifactCategory(artifact.type)]++;
-  const recognized = (result.artifacts ?? []).flatMap((artifact) => {
-    const kind = artifactKind(artifact);
-    return kind ? [{ artifact, kind }] : [];
-  });
-  for (const { kind } of recognized) diag.recognizedArtifacts[kind]++;
-  if (recognized.length > bounds.maxArtifacts) throw fail("too_many_artifacts");
-  for (const { artifact, kind } of recognized) {
-    const text = await downloadArtifact(artifact, runId);
-    diag.downloadedArtifacts[kind]++;
-    let found: Candidate[];
-    if (kind === "json") {
-      const json = parseJson(text);
-      found = json === undefined ? [] : [{ json }];
-    } else {
-      // The same strict scan as chat text: prose alone is never an answer.
-      found = scanChatText(text).candidates;
+  const delays = spec.resultRetryDelaysMs ?? [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return { value: await extract(result), runId };
+    } catch (error) {
+      const retriable =
+        error instanceof ProviderError &&
+        (error.category === "no_result" || error.category === "http_status");
+      const delayMs = delays[attempt];
+      if (!retriable || delayMs === undefined || remaining() - delayMs < bounds.pollIntervalMs)
+        throw error;
+      try {
+        await spec.onResultRetry?.({ attempt: attempt + 1, delayMs });
+      } catch {
+        // Ignored: logging must not change the result.
+      }
+      await runtime.sleep(delayMs);
+      result = (await pollOnce()).result;
     }
-    if (found.length > 0) diag.parsedArtifacts[kind]++;
-    diag.artifactCandidates += found.length;
-    candidates.push(...found);
   }
 
-  diag.stage = "select";
-  diag.candidates = candidates.length;
-  diag.envelopes = candidates.filter((c) => "json" in c && isEnvelope(c.json)).length;
-  const selection = spec.select(candidates);
-  diag.validated = selection.validated;
-  diag.distinct = selection.distinct;
-  if (selection.kind === "none") {
-    throw fail(spec.strict && candidates.length > 0 ? "invalid_output" : "no_result");
+  /** One extraction pass over a completed run's result; diagnostics describe the last pass. */
+  async function extract(
+    result: z.infer<typeof runResultSchema> | null | undefined,
+  ): Promise<unknown> {
+    diag.stage = "extract";
+    Object.assign(diag, {
+      artifacts: { json: 0, markdown: 0, text: 0, other: 0, missing: 0 },
+      recognizedArtifacts: { json: 0, markdown: 0, text: 0 },
+      downloadedArtifacts: { json: 0, markdown: 0, text: 0 },
+      parsedArtifacts: { json: 0, markdown: 0, text: 0 },
+      artifactCandidates: 0,
+    });
+    if (!result) throw fail("no_result");
+    diag.resultPresent = true;
+
+    const chatText = result.chatText ?? "";
+    const scan = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(chatText) : chatText);
+    const candidates = scan.candidates;
+    Object.assign(diag, {
+      chatTextPresent: chatText.length > 0,
+      chatTextLength: chatText.length,
+      resultStartMarker: chatText.includes(RESULT_START),
+      resultEndMarker: chatText.includes(RESULT_END),
+      delimitedBlocks: scan.delimitedBlocks,
+      malformedDelimited: scan.malformedDelimited,
+      fences: scan.fences,
+      wholeJson: scan.wholeJson,
+    });
+    for (const artifact of result.artifacts ?? [])
+      diag.artifacts[artifactCategory(artifact.type)]++;
+    const recognized = (result.artifacts ?? []).flatMap((artifact) => {
+      const kind = artifactKind(artifact);
+      return kind ? [{ artifact, kind }] : [];
+    });
+    for (const { kind } of recognized) diag.recognizedArtifacts[kind]++;
+    if (recognized.length > bounds.maxArtifacts) throw fail("too_many_artifacts");
+    for (const { artifact, kind } of recognized) {
+      const text = await downloadArtifact(artifact, runId);
+      diag.downloadedArtifacts[kind]++;
+      let found: Candidate[];
+      if (kind === "json") {
+        const json = parseJson(text);
+        found = json === undefined ? [] : [{ json }];
+      } else {
+        // The same strict scan as chat text: prose alone is never an answer.
+        found = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(text) : text).candidates;
+      }
+      if (found.length > 0) diag.parsedArtifacts[kind]++;
+      diag.artifactCandidates += found.length;
+      candidates.push(...found);
+    }
+
+    diag.stage = "select";
+    diag.candidates = candidates.length;
+    diag.envelopes = candidates.filter((c) => "json" in c && isEnvelope(c.json)).length;
+    const selection = spec.select(candidates);
+    diag.validated = selection.validated;
+    diag.distinct = selection.distinct;
+    if (selection.kind === "none") {
+      throw fail(spec.strict && candidates.length > 0 ? "invalid_output" : "no_result");
+    }
+    if (selection.kind === "ambiguous") throw fail("ambiguous_result");
+    return selection.value;
   }
-  if (selection.kind === "ambiguous") throw fail("ambiguous_result");
-  return { value: selection.value, runId };
 
   /**
    * Only the authenticated download endpoint for this run on the trusted origin is
@@ -454,7 +547,8 @@ export async function runCreaoApp(
         bounds.maxArtifactBytes,
       );
       if (response.status < 300 || response.status >= 400) {
-        if (response.status !== 200) throw fail("http_status", response.status);
+        if (response.status !== 200)
+          throw fail("http_status", response.status, "artifact download");
         return response.text;
       }
       let next: URL;

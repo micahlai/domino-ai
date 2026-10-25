@@ -55,7 +55,8 @@ const usageOf = (m: BetaMessage): Usage => ({
 
 /** Dollar amounts like "$12K", "-$1.2M" or "$4,200". */
 const MONEY = /-?\$\s?\d[\d,]*(?:\.\d+)?\s?[KMB]?/gi;
-const normalizeMoney = (s: string) => s.replace(/[\s-]/g, "").toUpperCase();
+/** Sign, spaces and thousands separators do not make a new amount: "$42,000.00" is "$42000.00". */
+const normalizeMoney = (s: string) => s.replace(/[\s,-]/g, "").toUpperCase();
 
 /** Amounts in `text` that do not appear in `allowed` (the engine-supplied input). */
 export function newMoneyMentions(text: string, allowed: string): string[] {
@@ -271,6 +272,8 @@ export type AnalystDigest = {
   baseline: { survives: boolean; lowPoint: string } | null;
   scenarios: ScenarioDigest[];
   failedForecasters: number;
+  /** Scenario index the CREAO coordinator asked the analyst to look at first. */
+  focusScenario?: number;
 };
 export type AnalystSummary = {
   recommendation: string;
@@ -295,6 +298,11 @@ export function buildAnalystRequest(digest: AnalystDigest) {
   const system = [
     ...SHARED_RULES,
     "Task: forecaster agents stress-tested the 13-week cash forecast. Read their engine results and write the analyst's recommendation for the finance lead: which scenarios fail, when, how big the impact is, and which scored fix to look at first. A person decides; never promise an outcome.",
+    ...(digest.focusScenario === undefined
+      ? []
+      : [
+          "focusScenario is the scenario index the coordinator asked the analyst to look at first: lead with it.",
+        ]),
     "recommendation: exactly three sentences, at most 450 characters. rationale: one or two sentences on why, at most 300 characters. citedScenarios: the scenario index numbers you relied on.",
   ].join("\n");
   const user = `Forecaster results:\n<domino_input>\n${encodeData(digest)}\n</domino_input>`;
@@ -445,7 +453,19 @@ export function acceptCounterpartyNotes(
 
 export type CounterpartyCreaoOptions = CreaoOptions & {
   onRunCreated?: (run: { runId: string; status: string }) => Promise<void> | void;
+  onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
 };
+
+/**
+ * Field runs tolerate three observed CREAO behaviors: a 429 on create (one repost after
+ * Retry-After), a run that reports completed before its artifacts are readable, and a result
+ * marker glued to the preceding chat text.
+ */
+export const FIELD_CREAO_RETRY = {
+  createRetryOn429: { maxWaitMs: 20_000 },
+  resultRetryDelaysMs: [2_000, 4_000, 8_000],
+  markersOnOwnLine: true,
+} as const;
 
 /** CREAO app credentials for the research job (the evidence analyst's app and key). */
 export const counterpartyCreaoEnv = creaoHistoricalEnv.evidence_analyst;
@@ -479,6 +499,8 @@ export function runCreaoCounterpartyResearch(
       select: (candidates) => selectDistinct(candidates, accept),
       strict: true,
       onRunCreated: options.onRunCreated,
+      ...FIELD_CREAO_RETRY,
+      onResultRetry: options.onResultRetry,
     });
     return { notes: run.value as CounterpartyNote[], runId: run.runId };
   });
