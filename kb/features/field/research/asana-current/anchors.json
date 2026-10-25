@@ -1,0 +1,1365 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "asana-current",
+  "modeledBusiness": "Fictional B2B work-management SaaS",
+  "publicCompany": "Asana, Inc.",
+  "currency": "USD",
+  "asOfDate": "2026-10-25",
+  "periodStart": "2026-05-01",
+  "periodEnd": "2026-07-31",
+  "reportedAt": "2026-09-03",
+  "freshnessEvidence": {
+    "latestEligibleQuarter": "FY2027 Q2, ended July 31, 2026",
+    "secCompanyListingUrl": "https://www.sec.gov/edgar/browse/?CIK=0001477720",
+    "asanaQuarterlyResultsUrl": "https://investors.asana.com/financials/quarterly-results",
+    "finding": "Both official lists show September 3, 2026 Q2 Form 10-Q as the latest 10-Q as of October 25, 2026; the following Q3 quarter ends October 31, 2026."
+  },
+  "sources": {
+    "q2_10q": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/asan-20260731.htm",
+      "form": "10-Q",
+      "accession": "0001477720-26-000060",
+      "filedAt": "2026-09-03",
+      "acceptedAtEastern": "2026-09-03T16:18:39-04:00",
+      "reportPeriodEnd": "2026-07-31",
+      "filingDetailUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000060/0001477720-26-000060-index.htm"
+    },
+    "q1_10q": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/asan-20260430.htm",
+      "form": "10-Q",
+      "accession": "0001477720-26-000039",
+      "filedAt": "2026-05-28",
+      "acceptedAtEastern": "2026-05-28T16:17:38-04:00",
+      "reportPeriodEnd": "2026-04-30",
+      "filingDetailUrl": "https://www.sec.gov/Archives/edgar/data/1477720/000147772026000039/0001477720-26-000039-index.htm"
+    },
+    "q2_release": {
+      "url": "https://investors.asana.com/news-releases/news-release-details/asana-announces-second-quarter-fiscal-2027-results",
+      "publicationDate": "2026-09-03",
+      "reportPeriodEnd": "2026-07-31",
+      "publisher": "Asana Investor Relations"
+    }
+  },
+  "reportedAnchors": [
+    {
+      "id": "balance.close.cash_and_equivalents",
+      "sourceLabel": "Cash and cash equivalents",
+      "sourceValue": "219,562",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.cash_and_equivalents",
+      "sourceLabel": "Cash and cash equivalents",
+      "sourceValue": "193,656",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.cash_and_equivalents",
+      "sourceLabel": "Cash and cash equivalents",
+      "sourceValue": "199,835",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.restricted_cash",
+      "sourceLabel": "Restricted cash",
+      "sourceValue": "844",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.restricted_cash",
+      "sourceLabel": "Restricted cash",
+      "sourceValue": "696",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.restricted_cash",
+      "sourceLabel": "Restricted cash",
+      "sourceValue": "418",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.marketable_securities",
+      "sourceLabel": "Marketable securities",
+      "sourceValue": "120,289",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.marketable_securities",
+      "sourceLabel": "Marketable securities",
+      "sourceValue": "230,984",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.marketable_securities",
+      "sourceLabel": "Marketable securities",
+      "sourceValue": "234,210",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.accounts_receivable_net",
+      "sourceLabel": "Accounts receivable, net",
+      "sourceValue": "78,645",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.accounts_receivable_net",
+      "sourceLabel": "Accounts receivable, net",
+      "sourceValue": "73,483",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.accounts_receivable_net",
+      "sourceLabel": "Accounts receivable, net",
+      "sourceValue": "110,312",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.accounts_payable",
+      "sourceLabel": "Accounts payable",
+      "sourceValue": "15,438",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.accounts_payable",
+      "sourceLabel": "Accounts payable",
+      "sourceValue": "25,155",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.accounts_payable",
+      "sourceLabel": "Accounts payable",
+      "sourceValue": "18,822",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.accrued_expenses_and_other_current_liabilities",
+      "sourceLabel": "Accrued expenses and other current liabilities",
+      "sourceValue": "119,875",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.accrued_expenses_and_other_current_liabilities",
+      "sourceLabel": "Accrued expenses and other current liabilities",
+      "sourceValue": "105,559",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.accrued_expenses_and_other_current_liabilities",
+      "sourceLabel": "Accrued expenses and other current liabilities",
+      "sourceValue": "123,716",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.deferred_revenue_current",
+      "sourceLabel": "Deferred revenue, current",
+      "sourceValue": "350,337",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.deferred_revenue_current",
+      "sourceLabel": "Deferred revenue, current",
+      "sourceValue": "322,931",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.deferred_revenue_current",
+      "sourceLabel": "Deferred revenue, current",
+      "sourceValue": "333,636",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.deferred_revenue_noncurrent",
+      "sourceLabel": "Deferred revenue, noncurrent",
+      "sourceValue": "379",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.deferred_revenue_noncurrent",
+      "sourceLabel": "Deferred revenue, noncurrent",
+      "sourceValue": "187",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.deferred_revenue_noncurrent",
+      "sourceLabel": "Deferred revenue, noncurrent",
+      "sourceValue": "220",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.total_current_assets",
+      "sourceLabel": "Total current assets",
+      "sourceValue": "471,768",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.total_current_assets",
+      "sourceLabel": "Total current assets",
+      "sourceValue": "550,483",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.total_current_assets",
+      "sourceLabel": "Total current assets",
+      "sourceValue": "593,348",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.total_current_liabilities",
+      "sourceLabel": "Total current liabilities",
+      "sourceValue": "512,867",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.total_current_liabilities",
+      "sourceLabel": "Total current liabilities",
+      "sourceValue": "479,644",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.total_current_liabilities",
+      "sourceLabel": "Total current liabilities",
+      "sourceValue": "501,020",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "balance.close.total_assets",
+      "sourceLabel": "Total assets",
+      "sourceValue": "816,149",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, July 31 column"
+    },
+    {
+      "id": "balance.open.total_assets",
+      "sourceLabel": "Total assets",
+      "sourceValue": "805,512",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, April 30 column"
+    },
+    {
+      "id": "balance.fiscalOpen.total_assets",
+      "sourceLabel": "Total assets",
+      "sourceValue": "844,088",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "instant",
+        "date": "2026-01-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated balance sheets, p. 1, January 31 comparative column"
+    },
+    {
+      "id": "income.quarter.revenue",
+      "sourceLabel": "Revenues",
+      "sourceValue": "216,429",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.cost_of_revenues",
+      "sourceLabel": "Cost of revenues",
+      "sourceValue": "30,325",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.gross_profit",
+      "sourceLabel": "Gross profit",
+      "sourceValue": "186,104",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.research_and_development",
+      "sourceLabel": "Research and development",
+      "sourceValue": "81,728",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.sales_and_marketing",
+      "sourceLabel": "Sales and marketing",
+      "sourceValue": "104,384",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.general_and_administrative",
+      "sourceLabel": "General and administrative",
+      "sourceValue": "41,211",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.total_operating_expenses",
+      "sourceLabel": "Total operating expenses",
+      "sourceValue": "227,323",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.operating_loss",
+      "sourceLabel": "Loss from operations",
+      "sourceValue": "(41,219)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.net_loss",
+      "sourceLabel": "Net loss",
+      "sourceValue": "(39,189)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of operations, p. 2, three months ended July 31, 2026"
+    },
+    {
+      "id": "income.quarter.stock_based_compensation",
+      "sourceLabel": "Total stock-based compensation expense",
+      "sourceValue": "56,326",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Note 12, Stockholders’ Equity, stock-based compensation expense table, p. 25; expense recognized in statements of operations"
+    },
+    {
+      "id": "cashFlow.sixMonths.operating",
+      "sourceLabel": "Net cash provided by operating activities",
+      "sourceValue": "86,290",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.investing",
+      "sourceLabel": "Net cash provided by (used in) investing activities",
+      "sourceValue": "29,330",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.financing",
+      "sourceLabel": "Net cash used in financing activities",
+      "sourceValue": "(94,062)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.foreignExchangeEffect",
+      "sourceLabel": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(1,405)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.beginningCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "200,253",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.endingCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "220,406",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.netIncreaseCombinedCash",
+      "sourceLabel": "Net increase (decrease) in cash, cash equivalents, and restricted cash",
+      "sourceValue": "20,153",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.acquisition",
+      "sourceLabel": "Cash paid for acquisition, net of acquired cash",
+      "sourceValue": "(71,616)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketablePurchases",
+      "sourceLabel": "Purchases of marketable securities",
+      "sourceValue": "(81,750)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketableSales",
+      "sourceLabel": "Sales of marketable securities",
+      "sourceValue": "133,603",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.marketableMaturities",
+      "sourceLabel": "Maturities of marketable securities",
+      "sourceValue": "61,021",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.propertyEquipment",
+      "sourceLabel": "Purchases of property and equipment",
+      "sourceValue": "(4,302)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.capitalizedSoftware",
+      "sourceLabel": "Capitalized internal-use software costs",
+      "sourceValue": "(7,626)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.termLoanRepayment",
+      "sourceLabel": "Repayment of term loan",
+      "sourceValue": "(3,750)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.shareRepurchases",
+      "sourceLabel": "Repurchases of common stock",
+      "sourceValue": "(96,526)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.stockOptionProceeds",
+      "sourceLabel": "Proceeds from exercise of stock options",
+      "sourceValue": "1,340",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.sixMonths.employeeSharePlanProceeds",
+      "sourceLabel": "Proceeds from employee stock purchase plan",
+      "sourceValue": "4,874",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "six_months",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 8, six months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.operating",
+      "sourceLabel": "Net cash provided by operating activities",
+      "sourceValue": "40,244",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.investing",
+      "sourceLabel": "Net cash (used in) provided by investing activities",
+      "sourceValue": "(3,422)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.financing",
+      "sourceLabel": "Net cash used in financing activities",
+      "sourceValue": "(41,925)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.foreignExchangeEffect",
+      "sourceLabel": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(798)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.beginningCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "200,253",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.endingCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "194,352",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.netIncreaseCombinedCash",
+      "sourceLabel": "Net (decrease) increase in cash, cash equivalents, and restricted cash",
+      "sourceValue": "(5,901)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.marketablePurchases",
+      "sourceLabel": "Purchases of marketable securities",
+      "sourceValue": "(50,043)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.marketableMaturities",
+      "sourceLabel": "Maturities of marketable securities",
+      "sourceValue": "52,515",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.propertyEquipment",
+      "sourceLabel": "Purchases of property and equipment",
+      "sourceValue": "(2,808)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.capitalizedSoftware",
+      "sourceLabel": "Capitalized internal-use software costs",
+      "sourceValue": "(3,086)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.termLoanRepayment",
+      "sourceLabel": "Repayment of term loan",
+      "sourceValue": "(2,500)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.shareRepurchases",
+      "sourceLabel": "Repurchases of common stock",
+      "sourceValue": "(44,985)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.stockOptionProceeds",
+      "sourceLabel": "Proceeds from exercise of stock options",
+      "sourceValue": "686",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.firstQuarter.employeeSharePlanProceeds",
+      "sourceLabel": "Proceeds from employee stock purchase plan",
+      "sourceValue": "4,874",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-02-01",
+        "end": "2026-04-30"
+      },
+      "source": "q1_10q",
+      "section": "Condensed consolidated statements of cash flows, p. 6, three months ended April 30, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.operating",
+      "sourceLabel": "Net cash provided by operating activities",
+      "sourceValue": "46,046",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.investing",
+      "sourceLabel": "Net cash provided by (used in) investing activities",
+      "sourceValue": "32,752",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.financing",
+      "sourceLabel": "Net cash used in financing activities",
+      "sourceValue": "(52,137)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.foreignExchangeEffect",
+      "sourceLabel": "Effect of foreign exchange rates on cash, cash equivalents, and restricted cash",
+      "sourceValue": "(607)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.beginningCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, beginning of period",
+      "sourceValue": "194,352",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.endingCombinedCash",
+      "sourceLabel": "Cash, cash equivalents, and restricted cash, end of period",
+      "sourceValue": "220,406",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.netIncreaseCombinedCash",
+      "sourceLabel": "Net increase (decrease) in cash, cash equivalents, and restricted cash",
+      "sourceValue": "26,054",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.acquisition",
+      "sourceLabel": "Cash paid for acquisition, net of acquired cash",
+      "sourceValue": "(71,616)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketablePurchases",
+      "sourceLabel": "Purchases of marketable securities",
+      "sourceValue": "(31,707)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketableSales",
+      "sourceLabel": "Sales of marketable securities",
+      "sourceValue": "133,603",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.marketableMaturities",
+      "sourceLabel": "Maturities of marketable securities",
+      "sourceValue": "8,506",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.propertyEquipment",
+      "sourceLabel": "Purchases of property and equipment",
+      "sourceValue": "(1,494)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.capitalizedSoftware",
+      "sourceLabel": "Capitalized internal-use software costs",
+      "sourceValue": "(4,540)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.termLoanRepayment",
+      "sourceLabel": "Repayment of term loan",
+      "sourceValue": "(1,250)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.shareRepurchases",
+      "sourceLabel": "Repurchases of common stock",
+      "sourceValue": "(51,541)",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    },
+    {
+      "id": "cashFlow.quarterRelease.stockOptionProceeds",
+      "sourceLabel": "Proceeds from exercise of stock options",
+      "sourceValue": "654",
+      "unit": "USD thousands",
+      "period": {
+        "kind": "quarter",
+        "start": "2026-05-01",
+        "end": "2026-07-31"
+      },
+      "source": "q2_release",
+      "section": "Summary of condensed consolidated statements of cash flows, three months ended July 31, 2026"
+    }
+  ],
+  "derivations": [
+    {
+      "id": "cashFlow.derivedQuarter.operating",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.operating) - parseThousands(cashFlow.firstQuarter.operating)",
+      "inputs": ["cashFlow.sixMonths.operating", "cashFlow.firstQuarter.operating"],
+      "crosscheck": "cashFlow.quarterRelease.operating"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.investing",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.investing) - parseThousands(cashFlow.firstQuarter.investing)",
+      "inputs": ["cashFlow.sixMonths.investing", "cashFlow.firstQuarter.investing"],
+      "crosscheck": "cashFlow.quarterRelease.investing"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.financing",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.financing) - parseThousands(cashFlow.firstQuarter.financing)",
+      "inputs": ["cashFlow.sixMonths.financing", "cashFlow.firstQuarter.financing"],
+      "crosscheck": "cashFlow.quarterRelease.financing"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.foreignExchangeEffect",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.foreignExchangeEffect) - parseThousands(cashFlow.firstQuarter.foreignExchangeEffect)",
+      "inputs": [
+        "cashFlow.sixMonths.foreignExchangeEffect",
+        "cashFlow.firstQuarter.foreignExchangeEffect"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.foreignExchangeEffect"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.netIncreaseCombinedCash",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.netIncreaseCombinedCash) - parseThousands(cashFlow.firstQuarter.netIncreaseCombinedCash)",
+      "inputs": [
+        "cashFlow.sixMonths.netIncreaseCombinedCash",
+        "cashFlow.firstQuarter.netIncreaseCombinedCash"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.netIncreaseCombinedCash"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.marketablePurchases",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.marketablePurchases) - parseThousands(cashFlow.firstQuarter.marketablePurchases)",
+      "inputs": [
+        "cashFlow.sixMonths.marketablePurchases",
+        "cashFlow.firstQuarter.marketablePurchases"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.marketablePurchases"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.marketableMaturities",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.marketableMaturities) - parseThousands(cashFlow.firstQuarter.marketableMaturities)",
+      "inputs": [
+        "cashFlow.sixMonths.marketableMaturities",
+        "cashFlow.firstQuarter.marketableMaturities"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.marketableMaturities"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.propertyEquipment",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.propertyEquipment) - parseThousands(cashFlow.firstQuarter.propertyEquipment)",
+      "inputs": ["cashFlow.sixMonths.propertyEquipment", "cashFlow.firstQuarter.propertyEquipment"],
+      "crosscheck": "cashFlow.quarterRelease.propertyEquipment"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.capitalizedSoftware",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.capitalizedSoftware) - parseThousands(cashFlow.firstQuarter.capitalizedSoftware)",
+      "inputs": [
+        "cashFlow.sixMonths.capitalizedSoftware",
+        "cashFlow.firstQuarter.capitalizedSoftware"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.capitalizedSoftware"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.termLoanRepayment",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.termLoanRepayment) - parseThousands(cashFlow.firstQuarter.termLoanRepayment)",
+      "inputs": ["cashFlow.sixMonths.termLoanRepayment", "cashFlow.firstQuarter.termLoanRepayment"],
+      "crosscheck": "cashFlow.quarterRelease.termLoanRepayment"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.shareRepurchases",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.shareRepurchases) - parseThousands(cashFlow.firstQuarter.shareRepurchases)",
+      "inputs": ["cashFlow.sixMonths.shareRepurchases", "cashFlow.firstQuarter.shareRepurchases"],
+      "crosscheck": "cashFlow.quarterRelease.shareRepurchases"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.stockOptionProceeds",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.stockOptionProceeds) - parseThousands(cashFlow.firstQuarter.stockOptionProceeds)",
+      "inputs": [
+        "cashFlow.sixMonths.stockOptionProceeds",
+        "cashFlow.firstQuarter.stockOptionProceeds"
+      ],
+      "crosscheck": "cashFlow.quarterRelease.stockOptionProceeds"
+    },
+    {
+      "id": "cashFlow.derivedQuarter.employeeSharePlanProceeds",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(cashFlow.sixMonths.employeeSharePlanProceeds) - parseThousands(cashFlow.firstQuarter.employeeSharePlanProceeds)",
+      "inputs": [
+        "cashFlow.sixMonths.employeeSharePlanProceeds",
+        "cashFlow.firstQuarter.employeeSharePlanProceeds"
+      ]
+    },
+    {
+      "id": "balance.open.combinedCash",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(balance.open.cash_and_equivalents) + parseThousands(balance.open.restricted_cash)",
+      "inputs": ["balance.open.cash_and_equivalents", "balance.open.restricted_cash"],
+      "crosscheck": "cashFlow.firstQuarter.endingCombinedCash"
+    },
+    {
+      "id": "balance.close.combinedCash",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(balance.close.cash_and_equivalents) + parseThousands(balance.close.restricted_cash)",
+      "inputs": ["balance.close.cash_and_equivalents", "balance.close.restricted_cash"],
+      "crosscheck": "cashFlow.sixMonths.endingCombinedCash"
+    },
+    {
+      "id": "balance.open.deferredRevenueTotal",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(balance.open.deferred_revenue_current) + parseThousands(balance.open.deferred_revenue_noncurrent)",
+      "inputs": [
+        "balance.open.deferred_revenue_current",
+        "balance.open.deferred_revenue_noncurrent"
+      ]
+    },
+    {
+      "id": "balance.close.deferredRevenueTotal",
+      "basis": "derived-from-reported",
+      "formula": "parseThousands(balance.close.deferred_revenue_current) + parseThousands(balance.close.deferred_revenue_noncurrent)",
+      "inputs": [
+        "balance.close.deferred_revenue_current",
+        "balance.close.deferred_revenue_noncurrent"
+      ]
+    }
+  ],
+  "absentLines": [
+    {
+      "source": "q1_10q",
+      "line": "Cash paid for acquisition, net of acquired cash",
+      "status": "No separate line printed in the Q1 cash-flow statement; do not encode a reported zero. Use the directly reported Q2 quarter release anchor."
+    },
+    {
+      "source": "q1_10q",
+      "line": "Sales of marketable securities",
+      "status": "No separate line printed in the Q1 cash-flow statement; do not encode a reported zero. Use the directly reported Q2 quarter release anchor."
+    },
+    {
+      "source": "q2_release",
+      "line": "Proceeds from employee stock purchase plan",
+      "status": "Quarter column contains a dash rather than a monetary number; derive from comparable six-month and first-quarter filing figures if needed."
+    }
+  ],
+  "modelingNotes": [
+    "Fictional Taskline records, customer allocations, invoice dates, payroll and vendor payments are reconstructions, not disclosed Asana transactions.",
+    "Reported GAAP revenue is distinct from customer cash receipts. Reported GAAP operating costs are distinct from cash payments.",
+    "Cash-flow statement endpoints include restricted cash. Model combined cash for the category reconciliation, retain reported restricted cash separately for usable cash. Marketable securities are separate from cash.",
+    "The acquisition cash payment, security purchases/sales/maturities, debt repayment and share repurchases belong in their reported cash-flow categories; dates and counterparties assigned to reconstructed entries remain synthetic.",
+    "Stock-based compensation of 56,326 is income-statement expense from Note 12, not the larger stockholders-equity rollforward amount that includes capitalized software compensation.",
+    "Actual reported net receivable and deferred-revenue opening/closing balances should constrain any illustrative accrual bridge. Business-combination effects mean simple balance changes are not actual billings or collections."
+  ]
+}
