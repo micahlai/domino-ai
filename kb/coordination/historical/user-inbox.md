@@ -20,3 +20,10 @@ This is a durable file inbox, not an instant-message transport or a new backgrou
 - Observed state: preview d4bcd61 records E0 217bd44 rejected with another repair assigned; L0 9f6f677 re-audit was still running. No feature worker launched by this Codex chat. Direct Terminal messaging was blocked by the computer-use tool; this entry is the durable request, not a claim of direct delivery.
 - Requested action: acknowledge U2 in ROADMAP RQ7 at the next safe boundary and continue the already active queue. Preserve the paused monitor and main. Do not treat another failed audit as permission to weaken the source/date/evaluation gates.
 - Acceptance: passing commits are independently reviewed/integrated with combined checks; L1 starts only after prerequisites. Record any remaining blocker and the exact next repair rather than claiming completion.
+
+## U3: PAUSE, goal-mode setup and Claude prompts
+
+- Latest user direction: `okay pause`; show the todo list/current work and prepare prompts for Claude. Set up goal mode paused. This supersedes U2/RQ7 run authorization.
+- Stop new acceptance, integration, repair and dispatch. Existing read-only audits may finish; do not consume their result as permission to progress while paused.
+- Verified Claude lead PID 64305 suspended with SIGSTOP. See pause-state.md for evidence and safe resume boundary. Friend remote state unknown; monitor remains PAUSED. Current final repairs L0 06e1c98/E0 1eb1052 remain unaccepted.
+- After explicit resume, inspect those final audits first. If either fails its third review, report findings/options and wait rather than dispatch another fix. Ready prompts are in ../../../prompts/shared/claude-lead-goal.md.

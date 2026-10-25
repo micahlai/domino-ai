@@ -1,5 +1,7 @@
 # Domino roadmap and request inbox
 
+**Execution PAUSED by Jayden.** The verified Claude lead is suspended; existing read-only audits may finish. No acceptance, integration, new repair or dispatch until explicit resume. See [pause state](kb/coordination/historical/pause-state.md) and [copyable Claude prompts](prompts/shared/claude-lead-goal.md). Earlier `run it` requests are superseded.
+
 Live chat steering: [user inbox](kb/coordination/historical/user-inbox.md). Claude lead checks new entries before dispatch/integration and between worker results, then records acknowledgment/disposition here. Feature code stays with implementation workers; new messages do not automatically cancel active work.
 
 One user-launched Claude lead owns this queue and dispatch. Codex provides independent audit/integration support on request. [Control rules](kb/coordination/historical/claude-lead-control.md) supersede older per-worker manual-launch routing. Main untouched, monitor PAUSED, at most three implementation processes including friend/children, one UI writer.
@@ -23,12 +25,12 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 
 ## In progress
 
-Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no coding. No UI writer active.
+Paused checkpoint: L0/E0 implementation workers have finished their final repair commits; existing read-only audits may finish. Friend S2 remains reserved with remote activity unknown. Claude lead is suspended, no new dispatch and no UI writer active.
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Claude worker, repair round 2 running | L0-learning-contracts / ../domino-L0 | Codex REJECTED 9f6f677 ([re-audit](kb/reviews/L0-9f6f677-codex-reaudit.md)): repeated quarters pass cohort gate, duplicate assumption IDs, manifest/seal protocol mismatch. Lead kept dependency-first ordering (documented). Last round before escalation | 5 of 7 original findings fixed and independently probed |
-| E0 data custody | Claude worker, repair round 2 running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED 217bd44 too ([re-audit](kb/reviews/E0-217bd44-codex-reaudit.md)): missing-acceptance substitution, incomplete historical read log, thin self-check. Last round before escalation | Accession pinning, instants, strict boundary fixed; 16/16 still claimed |
+| L0 contracts | Worker finished 06e1c98; independent audit pending | L0-learning-contracts / ../domino-L0 | PAUSED lead, no acceptance/integration. Inspect final audit only after resume; third failure requires user direction | Worker reports all four issues fixed; 338 contracts tests/typecheck/lint pass. Not independently accepted |
+| E0 data custody | Worker finished 1eb1052; independent audit pending | E0-evaluation-custody / ../domino-E0 | PAUSED lead, no acceptance/integration. Inspect final audit only after resume; third failure requires user direction | Worker reports chronology/custody repair; independent result pending, no sealed-cohort acceptance claimed |
 
 ## Review
 

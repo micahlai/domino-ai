@@ -1,5 +1,7 @@
 # Domino handoff
 
+> USER PAUSE, latest authority: read kb/coordination/historical/pause-state.md. Claude lead PID 64305 was verified and suspended (SIGSTOP); existing read-only audits may finish. No new acceptance/integration/dispatch. Final repair commits L0 06e1c98 and E0 1eb1052 remain unaccepted. Worker test reports do not override audit gates. Earlier `run it` is superseded. Copyable Claude prompts: prompts/shared/claude-lead-goal.md. Codex Goal is being set up PAUSED; resumption requires explicit user direction. Main, app/backends/data and paused monitor preserved.
+
 > 2026-10-24 C0 takeover: Claude lead owns ROADMAP.md, HANDOFF.md and dispatch. Launched L0 (../domino-L0, branch L0-learning-contracts) and E0 (../domino-E0, branch E0-evaluation-custody), both from 16a3a56. Slots full (friend S2 + L0 + E0). Next: when each worker commits, run `codex review --base preview/historical-overnight` in its worktree, record report in kb/reviews/, then integrate accepted commits onto preview. Then L1 after L0+E0 accepted.
 
 > Latest control: user launches ONE Claude lead to own ROADMAP.md and worker dispatch. Codex is audit/integration support on request, not a competing dispatcher. Read kb/coordination/historical/claude-lead-control.md. Prior per-worker human-launch routing is superseded. Monitor remains PAUSED. S3 repair 5ecae8a is integrated on preview at 16a3a56; combined uncached pnpm check passed 1,208 tests, typechecks and lint.
