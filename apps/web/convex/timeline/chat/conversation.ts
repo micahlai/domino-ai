@@ -5,7 +5,7 @@ import { IN, OUT } from "../questions/grammar";
 import { type Intent, IntentSchema } from "../questions/intent";
 import { countTokens, dateTokens, moneyTokens, parseMoneyText } from "../questions/parse";
 import { type Citation, resolve } from "../questions/resolve";
-import { type Draft, type Result, emptyDraft, evaluateIntents } from "./draft";
+import { type Draft, type Result, emptyDraft, evaluateIntents, plannedChange } from "./draft";
 import type { ChatReceipt } from "./receipt";
 
 /**
@@ -32,6 +32,7 @@ export const TurnPlanSchema = z
     draft: DraftUpdateSchema.nullable(),
     questions: z.array(LookupSchema).max(8),
     recordIds: z.array(z.string().min(1).max(240)).max(24),
+    planText: z.string().min(1).max(1000).nullable().optional(),
   })
   .strict();
 export type TurnPlan = z.infer<typeof TurnPlanSchema>;
@@ -276,4 +277,30 @@ export function unverifiedAmounts(reply: string, saved: unknown[], texts: string
     if (!read) return !texts.some((t) => t.includes(token));
     return !values.some((v) => Math.abs(v - read.cents) <= read.tolerance);
   });
+}
+
+/** Existing plan computations run only as an LLM-requested, checked tool. */
+export function checkPlan(run: WorkspaceRun, text: string, floor: string | null): Result {
+  const unsupported =
+    /\b(not|never|don['’]?t|avoid|cancel|unless|except|excluding|including|provided|conditional|contingent|if|before|after|between|through|until|only|without|either|or|daily|tax|maximum|max|at most|at least|monthly|per month)\b/i.test(
+      text.replace(/\bwhat if\b/gi, " "),
+    );
+  const timedNonHire = !/\bhire\b/i.test(text) && dateTokens(text).length > 0;
+  if (unsupported || timedNonHire)
+    return {
+      draft: emptyDraft(),
+      answer:
+        "The plan cannot preserve that condition or date range. Clarify the assumption before creating a proposal.",
+      proposal: null,
+      pendingField: null,
+    };
+  return (
+    plannedChange(run, emptyDraft(), text, floor) ?? {
+      draft: emptyDraft(),
+      answer:
+        "That plan needs more details. State the vendor and percentage, or the number of hires, cost and start date.",
+      proposal: null,
+      pendingField: null,
+    }
+  );
 }

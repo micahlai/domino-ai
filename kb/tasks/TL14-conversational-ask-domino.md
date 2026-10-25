@@ -9,6 +9,7 @@
 - **Notes:** continue origin/main fe1fbad in codex/ask-domino-conversation. Claude implements; Codex audits. Read existing chat/assistant tests and kb/spec/build-spec.md. Preserve checked engine answers/citations and leased idempotency. Enable LLM narration without allowing narration to write proposals, compute forecast money or treat source/Worker text as instructions. Explicitly handle unavailable providers; no canned claim of a working LLM. Unsupported scenarios remain discussable. Reset must prevent old draft revival; context must distinguish previous discussion from current approved values. Do not add broad regex barriers to conversation. No deployment, main merge, external calls, nested agents or runtime changes. Focused tests only by worker; root runs full check/build/browser.
 
 ## Result
-- Done:
-- What changed (files):
-- Watch out:
+- Done: every new Ask Domino message uses the LLM, with the full saved conversation, draft/selection, invoice/company/timeline context and verified Brain outputs. Missing provider fails retryably. Saved simulations remain discussable. User explicitly authorized Codex implementation after Claude hit its limit, then requested immediate main merge without further checks.
+- What changed: conversational action, checked draft/plan tools, Field Brain context bridge, transcript/provenance isolation, invoice lookup, continued composer, lawsuit playground fixture and mocked regressions. Preserved latest main percentage/hiring/price tools and scenario reveal work.
+- Validation: 134 focused tests plus web/Convex typechecks passed on the combined checkpoint; the earlier full check passed. Final regression additions and follow-up changes were submitted to the already-running full check; no further results inspected after the user waived more checks. Browser inspected the labelled discussion fixture. Live provider was not exercised.
+- Watch out: chats retain their existing 20-user-turn/42-message limits. Brain output is bounded and labels missing/truncated/stale context. No production deployment performed.

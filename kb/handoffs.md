@@ -1,3 +1,8 @@
+## 2026-10-25 Codex conversational Ask Domino
+- Done: LLM-only conversation with all saved turns, verified same-company Brain output, source/version labels and invoice lookup. Natural discussion and clarification, checked proposals and saved-result follow-ups. Latest main plan tools and scenario reveal work preserved.
+- Validation: combined134 focused tests and web/Convex typechecks passed before final follow-ups. Earlier full check passed. User directed immediate main merge without further checking; no live-provider test or production deployment claimed.
+- Next: user review on main. Details: tasks/TL14-conversational-ask-domino.md. Claude hit its session limit; user explicitly authorized Codex to finish.
+
 ## 2026-10-25 Codex TL14 saved-entry branch animation
 - Fixed: animation was queued only by saves inside Timeline. Worker forecast-open, chat saved-result and risk/response links now carry a selected-run entry intent. The child curve waits for validated saved parent/ancestor data, then mounts at zero path length and grows from its actual parent; the flag is consumed without navigation or loss of chat/week/item/hash.
 - Browser: provider-free delayed fixture shows zero incoming curves before parent arrival, then a partially drawn stroke (dash0.165) from the parent's later distinct vertex. Hiding/showing the child has no animated path. Final source review confirms latest main risk/copy changes remain intact. No real provider calls or data resets.

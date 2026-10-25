@@ -2,7 +2,7 @@
 
 | Work | Status | Checkout / evidence |
 | --- | --- | --- |
-| TL14 conversational Ask Domino | doing | codex/ask-domino-conversation from origin/main fe1fbad; Claude implementation session75308, Codex audit. Every message uses LLM; full transcript and verified Brain map/company/invoice/timeline context. Isolated fixture preview3147/session5623; main/shared runtimes unchanged. |
+| TL14 conversational Ask Domino | done | codex/ask-domino-conversation from origin/main fe1fbad; Codex completed with explicit user override after Claude session limit. Every message uses LLM with transcript and verified Brain/company/invoice/timeline context. Combined focused134/typechecks passed; user requested immediate main merge without further checks. See TL14 task result. |
 
 ## Field lane takeover, Oct 25
 

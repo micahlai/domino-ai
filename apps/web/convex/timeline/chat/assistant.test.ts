@@ -684,6 +684,63 @@ describe("conversational context and required LLM", () => {
     expect(await t.query(chatRefs.get, key(r))).toEqual(r);
   });
 
+  it("routes hiring plans through the LLM and the checked plan tool", async () => {
+    const t = setup();
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const { spy } = scriptClaude([
+      toolUse("preview_plan", {}),
+      final({ reply: "I prepared the hiring assumption for your review. Nothing is saved yet." }),
+    ]);
+    const result = await t.action(assistantSend, turn(r, "hire 3 engineers at $150K from Dec 1"));
+    expect(result.status).toBe("ready");
+    expect(
+      result.proposal?.changes.every((c) => c.kind === "remove_cash" && c.date >= "2026-12-01"),
+    ).toBe(true);
+    expect(result.linkedRunId).toBeNull();
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not discard a condition when the model asks to preview a hiring plan", async () => {
+    const t = setup();
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    scriptClaude([
+      toolUse("preview_plan", {}),
+      final({ reply: "We need to clarify the condition before preparing this plan." }),
+    ]);
+    const result = await t.action(
+      assistantSend,
+      turn(r, "hire 3 engineers at $150K from Dec 1 if Acme pays"),
+    );
+    expect(result.proposal).toBeNull();
+  });
+
+  it("continues after a saved simulation using its actual result and the full conversation", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    classify([atlas]);
+    r = await t.action(assistantSend, turn(r));
+    r = await t.mutation(chatRefs.confirm, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+      reviewed: true,
+    });
+    const original = r;
+    const { bodies } = scriptClaude([
+      toolUse("lookup_forecast", { topic: "low_point", weekText: null, itemText: null }),
+      final({ reply: "We can inspect the saved scenario’s cash low point together." }),
+    ]);
+    r = await t.action(assistantSend, turn(r, "What is the low point now?"));
+    expect(r.status).toBe("saved");
+    expect(r.linkedRunId).toBe(original.linkedRunId);
+    const messages = bodies[0]?.messages as { content: string }[];
+    const context = JSON.parse(messages[0]!.content);
+    expect(context.referenceData.savedSimulationResult.run.runId).toBe(original.linkedRunId);
+    expect(r.turns.at(-1)?.citations?.some((c) => c.ref.includes(original.linkedRunId!))).toBe(
+      true,
+    );
+  });
+
   async function withBrain(t: T) {
     const seed = WeeklySeedV1Schema.parse(weeklyBoundaryFixtures.validKestrelWeeklySeed);
     const at = "2026-10-25T15:00:00.000Z";

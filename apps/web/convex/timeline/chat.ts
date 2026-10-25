@@ -17,6 +17,7 @@ import {
   TurnPlanSchema,
   activeUserTurns,
   checkDraft,
+  checkPlan,
   citationsFor,
   segmentStartOf,
 } from "./chat/conversation";
@@ -639,16 +640,22 @@ export const saveAssistantTurn = internalMutation({
     if (planJson !== undefined) {
       const plan = TurnPlanSchema.parse(JSON.parse(planJson));
       const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+      if (plan.planText !== null && plan.planText !== undefined && plan.planText !== args.text)
+        reject("INVALID_INPUT", "The plan must use the latest message exactly.");
       const checked =
-        plan.draft === null || receipt.status === "saved"
+        receipt.status === "saved"
           ? null
-          : checkDraft(run, plan.draft, {
-              draft,
-              userTurns: activeUserTurns(receipt, segmentStart, args.text),
-              selectedItemId: receipt.selectedItemId,
-              conversationId: receipt.conversationId,
-              floor,
-            }).result;
+          : plan.planText
+            ? checkPlan(run, args.text, floor)
+            : plan.draft === null
+              ? null
+              : checkDraft(run, plan.draft, {
+                  draft,
+                  userTurns: activeUserTurns(receipt, segmentStart, args.text),
+                  selectedItemId: receipt.selectedItemId,
+                  conversationId: receipt.conversationId,
+                  floor,
+                }).result;
       const nextDraft = checked?.draft ?? draft;
       const proposal = checked ? checked.proposal : receipt.proposal;
       const now = new Date().toISOString();

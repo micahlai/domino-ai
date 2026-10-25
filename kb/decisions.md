@@ -70,3 +70,5 @@ Newest first. Format: `- YYYY-MM-DD Name: decision. Why: reason.`
 - 2026-10-23 Team: not entering Anthropic "Claude for Public Benefit" or Cartesia. Why: no real fit.
 
 - 2026-10-25 Field: suggestion decisions require the displayed run and snapshot version; delayed advisor writes cannot replace newer evidence. Audits retain durable exact inputs until audit and recompute succeed.
+
+- 2026-10-25: Ask Domino must invoke the LLM for every new message; missing/failed providers return retryable errors, never deterministic chat fallback. Full conversation and verified Brain/company/invoice/timeline evidence inform replies; checked code owns proposals and financial calculations.
