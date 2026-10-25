@@ -37,8 +37,7 @@ export type DecideSuggestion = (
 ) => Promise<void>;
 export type SimulateSuggestion = (suggestion: Suggestion) => Promise<void>;
 
-export const NEVER_MOVES_MONEY =
-  "Simulation saves a what-if plan. Nothing is paid or moved. Dismiss records a decision.";
+export const NEVER_MOVES_MONEY = "Simulated only. Nothing is paid or moved.";
 
 export function SuggestionsSection({
   state,
@@ -61,7 +60,7 @@ export function SuggestionsSection({
       step={1}
       title="Suggestions"
       count={state.kind === "ready" ? open.length : null}
-      description="Fixes tested on your forecast by the engine. Simulate one in Timeline or dismiss it."
+      description="Fixes tested on your forecast. Try one or dismiss it."
     >
       {state.kind === "loading" ? (
         <div className="space-y-3" aria-busy="true">
@@ -86,10 +85,7 @@ export function SuggestionsSection({
       ) : open.length === 0 ? (
         <EmptyCard icon={<Lightbulb />}>
           <p className="font-medium text-foreground">No suggestions waiting.</p>
-          <p>
-            When a risk would take cash below the illustrative cash floor, the engine tests fixes
-            and posts them here for you to simulate or dismiss.
-          </p>
+          <p>When a risk would take cash below the lender's minimum, tested fixes appear here.</p>
         </EmptyCard>
       ) : (
         <ul className="divide-y overflow-hidden rounded-lg border bg-card shadow-xs">
@@ -132,7 +128,7 @@ export function SuggestionsSection({
                       fixKind: s.fix.kind,
                     })}
                   >
-                    Why this suggestion
+                    See how
                   </Link>
                 ) : null}
               </div>
@@ -195,7 +191,7 @@ function SuggestionCard({
       setError(
         typeof data?.message === "string"
           ? data.message
-          : "Could not save this simulation. Your suggestion was not changed.",
+          : "Could not try this fix. Nothing was changed.",
       );
       setBusy(null);
     }
@@ -207,7 +203,7 @@ function SuggestionCard({
           Suggested by <span className="font-medium text-foreground">{s.by}</span>
         </p>
         <Badge variant={effect.stays ? "success" : "destructive"}>
-          {effect.stays ? "Passes cash and payment checks" : "Cash or payment checks still fail"}
+          {effect.stays ? "Fixes it" : "Still short"}
         </Badge>
       </div>
       <h3 id={`${id}-title`} className="mt-1 text-[15px] font-semibold leading-6">
@@ -236,16 +232,13 @@ function SuggestionCard({
           note={roomLine(effect)}
         />
         <EffectCell
-          label="Illustrative cash floor"
+          label="Lender's minimum (sample)"
           cents={effect.minimum}
           week={null}
           tone={null}
           missing="None set"
         />
       </dl>
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">
-        The cash floor and any credit line are simulation assumptions, not a reported facility.
-      </p>
 
       {s.recommendation ? (
         <p className="mt-3 text-[13px] leading-5 text-muted-foreground">
@@ -263,13 +256,13 @@ function SuggestionCard({
             fixKind: s.fix.kind,
           })}
         >
-          Why this suggestion
+          See how
         </Link>
       ) : null}
 
       <div className="mt-3 space-y-1.5">
         <label htmlFor={`${id}-note`} className="block text-[13px] font-medium">
-          Dismissal note <span className="font-normal text-muted-foreground">(optional)</span>
+          Note <span className="font-normal text-muted-foreground">(optional)</span>
         </label>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
@@ -283,7 +276,7 @@ function SuggestionCard({
           <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
             <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
               <ArrowRight aria-hidden="true" />
-              {busy === "simulate" ? "Saving plan..." : "Simulate this option"}
+              {busy === "simulate" ? "Trying..." : "Try this fix"}
             </Button>
             <Button variant="outline" disabled={busy !== null} onClick={dismiss}>
               <X aria-hidden="true" />
@@ -294,8 +287,7 @@ function SuggestionCard({
         <p className="text-xs leading-5 text-muted-foreground">{NEVER_MOVES_MONEY}</p>
         {companyId && !hasSavedInputs ? (
           <p className="text-xs leading-5 text-muted-foreground">
-            This older suggestion has no complete saved identity for a simulation. Its decision
-            record and explanation remain available.
+            This older suggestion cannot be tried. You can still see how or dismiss it.
           </p>
         ) : null}
       </div>

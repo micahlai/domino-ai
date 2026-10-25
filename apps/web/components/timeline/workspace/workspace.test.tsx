@@ -480,7 +480,7 @@ describe("workspace view", () => {
     expect(html).toContain("Without this fix");
     expect(html).toContain("With this fix");
     expect(html).toContain('data-testid="field-origin-link"');
-    expect(html).toContain("Why that suggestion");
+    expect(html).toContain("See suggestion");
     expect(html).toContain("runId=analyst-old&amp;scenarioId=risk-old&amp;fixKind=delay_bill");
   });
 
@@ -587,7 +587,7 @@ describe("questions panel", () => {
 
   it("shows the stored reading method and current backend failure codes", () => {
     const codes = [
-      ["PROVIDER_UNAVAILABLE", "no language reader is set up"],
+      ["PROVIDER_UNAVAILABLE", "I could not read that"],
       ["PROVIDER_TIMEOUT", "language reader took too long"],
       ["PROVIDER_ERROR", "language reader could not be reached"],
       ["PROVIDER_REFUSED", "language reader declined"],

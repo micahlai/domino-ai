@@ -191,10 +191,10 @@ export function ScenarioSidebar({
                   ) : null}
                   <Link
                     href={timelineCalculationHref(run.companyId, entry.runId)}
-                    aria-label={`How we got here for ${name}`}
+                    aria-label={`See how for ${name}`}
                     className="inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
                   >
-                    How we got here
+                    See how
                   </Link>
                   {entries.filter((row) => row.label === entry.label).length > 1 ? (
                     <time

@@ -284,14 +284,14 @@ export function ConnectView() {
               disabled={on.length === 0 || data.source === "loading" || pending}
               onClick={() => {
                 setReading(signature);
-                run(data.syncNow, "Read every connected tool again.");
+                run(data.syncNow, "Checked every tool again.");
               }}
             >
               <RefreshCw
                 aria-hidden="true"
                 className={cn(pending && "animate-spin motion-reduce:animate-none")}
               />
-              Read all tools now
+              Check latest data
             </Button>
           </>
         }
@@ -638,7 +638,7 @@ function ExcludedSheet({
             </p>
           ) : report === undefined ? (
             <div className="space-y-2" aria-busy="true">
-              <p className="text-[13px] text-muted-foreground">Reading the connector receipts...</p>
+              <p className="text-[13px] text-muted-foreground">Loading tools...</p>
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
             </div>

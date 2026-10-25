@@ -33,7 +33,7 @@ export type QuestionActions = {
 
 const FAILURES: Record<string, string> = {
   PROVIDER_UNAVAILABLE:
-    "The question did not match the supported wording, and no language reader is set up. Try plainer wording. Nothing was calculated.",
+    'I could not read that. Try something like "Why did cash drop this week?" Nothing was calculated.',
   PROVIDER_TIMEOUT:
     "The language reader took too long. Nothing was calculated. Ask again to retry.",
   PROVIDER_ERROR:

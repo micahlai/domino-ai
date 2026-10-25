@@ -300,7 +300,7 @@ export function advance(
     return {
       draft,
       answer:
-        "Conditions, exceptions, date ranges and relative dates are unsupported. The draft is unchanged. Give just the requested value, or describe an unconditional event on one exact date or a supported weekly rule.",
+        'I can only read one plain event on one exact date, like "Pay $250,000 to Roofing Co on 2023-12-04". Words like for, in, if, before or with are not supported yet. Nothing changed.',
       proposal: null,
       pendingField: draft.pending ? fieldWords[draft.pending.field] : null,
     };

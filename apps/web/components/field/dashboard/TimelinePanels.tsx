@@ -150,7 +150,7 @@ export function TimelineHealthBanner({
               {meta.label}
             </Badge>
             <Badge variant="secondary" className="font-normal" title={h.scope}>
-              Illustrative forecast
+              Simulated
             </Badge>
           </span>
           <p className="mt-2 max-w-3xl text-[15px] font-medium leading-6 text-foreground">

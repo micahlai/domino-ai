@@ -126,7 +126,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
             href={originHref}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            Why that suggestion
+            See suggestion
           </Link>
         </p>
       ) : null}
@@ -162,8 +162,8 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
             <h3 className="text-sm font-semibold">3. What was calculated</h3>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               The recorded engine run applied {run.changes.length} total changes, forecast{" "}
-              {run.forecast.weeks.length} weeks, then checked {run.receipts.length} saved rules. Its
-              operation is marked {run.operation.status}.
+              {run.forecast.weeks.length} weeks, then checked {run.receipts.length} saved rules.
+              Status: {run.operation.status}.
             </p>
           </li>
           <li>
@@ -174,7 +174,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
               {firstBreach
                 ? `${firstBreach.label} was breached${firstBreach.weekStart ? ` in the week of ${formatFullDate(firstBreach.weekStart)}` : ""}.`
                 : run.receipts.length
-                  ? "No saved rule receipt reports a breach."
+                  ? "No saved rule was broken."
                   : "No rule checks were saved."}
             </p>
           </li>
@@ -185,7 +185,7 @@ function WithBaseline({ companyId, run }: { companyId: string; run: WorkspaceRun
           className="text-sm text-primary underline"
           href={timelineCalculationHref(companyId, run.parentRunId)}
         >
-          View previous calculation
+          Compare
         </Link>
       ) : null}
       <details className="rounded-lg border bg-card p-5">

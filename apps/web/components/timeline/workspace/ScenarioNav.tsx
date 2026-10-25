@@ -69,11 +69,11 @@ export function ScenarioNav({
               </Link>
               <Link
                 href={timelineCalculationHref(run.companyId, entry.runId)}
-                aria-label={`How we got here for ${name}`}
+                aria-label={`See how for ${name}`}
                 className="relative ml-2.5 block w-fit rounded px-1 py-0.5 text-xs text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
                 style={{ marginLeft: `${10 + depth * 10}px` }}
               >
-                How we got here
+                See how
               </Link>
             </li>
           );

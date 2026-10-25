@@ -306,9 +306,9 @@ function StatusLine({ now, runner }: { now: number; runner: Runner }) {
   const { status } = useFieldData();
   const parts: ReactNode[] = status
     ? [
-        status.feed.lastAdvanceAt
-          ? `New entries arrived ${timeAgo(status.feed.lastAdvanceAt, now)}`
-          : "Arrival time unavailable",
+        ...(status.feed.lastAdvanceAt
+          ? [`New entries arrived ${timeAgo(status.feed.lastAdvanceAt, now)}`]
+          : []),
         status.ingest.lastRunAt
           ? `Agent last ran ${timeAgo(status.ingest.lastRunAt, now)}${
               status.ingest.lastStatus && RUN_NOTE[status.ingest.lastStatus]
@@ -431,7 +431,7 @@ function DemoControls({ runner, disabled }: { runner: Runner; disabled: boolean 
           }
         >
           <Download aria-hidden="true" />
-          New entries arrive
+          Add new entries
         </Button>
         <AutoIngestToggle />
       </div>

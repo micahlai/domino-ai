@@ -386,7 +386,7 @@ function CompanyEyebrow({ companyId }: { companyId: string }) {
         {fieldCompanyOf(companyId)?.name ?? companyId}
       </span>
       {operatingSelectionFromWorldId(companyId) ? (
-        <Badge variant="secondary">Illustrative forecast on reconstructed books</Badge>
+        <Badge variant="secondary">Simulated</Badge>
       ) : null}
     </span>
   );
@@ -443,14 +443,14 @@ function CompanyHome({ companyId }: { companyId: string }) {
         title={`No timeline for ${name} yet`}
         description={
           operatingSelectionFromWorldId(companyId)
-            ? "Bring in the reconstructed books to see an illustrative 13-week cash forecast and illustrative cash rules."
-            : "Bring in the latest books to see a 13-week cash forecast and any stated cash rules."
+            ? "Bring in the books to see a simulated 13-week cash forecast."
+            : "Bring in the latest books to see a 13-week cash forecast."
         }
       />
       <section className="max-w-2xl space-y-4 rounded-lg border bg-card p-5 shadow-xs">
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>Usable cash for the next 13 weeks, next to recent history</li>
-          <li>The lowest point and any stated cash floor on one chart</li>
+          <li>The lowest point against the lender's minimum</li>
           <li>Ask questions, try events and see saved risks</li>
         </ul>
         <OpenInTimeline label="Bring in latest books" />

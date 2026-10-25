@@ -98,7 +98,7 @@ export function FieldTraceView() {
     return (
       <Notice
         title="Saved run could not be verified"
-        text="Its identity or receipt did not match this link."
+        text="Its saved record did not match this link."
       />
     );
   return <TraceContent trace={trace.value} />;
@@ -247,13 +247,13 @@ function TraceContent({ trace }: { trace: FieldTrace }) {
               ? trace.providers
                   .map((p) => `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`)
                   .join("; ")
-              : "No provider receipt recorded"}
+              : "None recorded"}
           </p>
           <p>
             Advisor: {trace.aiSummary?.status ?? "No advisor summary recorded"}. Coordinator:{" "}
             {trace.coordinator?.status ?? "No coordinator record"}.
           </p>
-          {trace.truncation.providers ? <p>Some provider receipts were omitted.</p> : null}
+          {trace.truncation.providers ? <p>Some AI records were left out.</p> : null}
         </div>
       </details>
     </article>

@@ -97,10 +97,10 @@ describe("worker page sections", () => {
     expect(html).toContain("Engine advisors");
     expect(html).toContain("$1.8M"); // lowest cash now
     expect(html).toContain("$3M"); // with the fix, and the lender's minimum
-    expect(html).toContain("Passes cash and payment checks");
-    expect(html).toContain("Simulate this option</button>");
+    expect(html).toContain("Fixes it");
+    expect(html).toContain("Try this fix</button>");
     expect(html).toContain("Dismiss</button>");
-    expect(html).toContain("Simulation saves a what-if plan. Nothing is paid or moved.");
+    expect(html).toContain("Simulated only. Nothing is paid or moved.");
     expect(html).toContain(
       "/field/analysis?companyId=company123&amp;runId=run%2Fold&amp;scenarioId=risk%2Fold&amp;fixKind=credit_line_draw",
     );
