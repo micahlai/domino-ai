@@ -93,8 +93,10 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
           {context.reportedAt}. The ledger date and publication date are separate.
         </p>
       </div>
-      <div>
-        <p className="font-medium">Public anchors</p>
+      <details>
+        <summary className="cursor-pointer font-medium text-primary">
+          Reported and derived anchors ({context.reported.length})
+        </summary>
         <ul className="mt-2 space-y-2">
           {context.reported.map((anchor) => (
             <li
@@ -125,7 +127,7 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
             </li>
           ))}
         </ul>
-      </div>
+      </details>
       <div>
         <p className="font-medium">Cash bridge from backend</p>
         <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">

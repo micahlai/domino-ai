@@ -256,7 +256,11 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
   const cur = bars[shown];
   const labelEvery = width < 520 ? 4 : 2;
   const kindWords = (b: DashboardBar) =>
-    b.kind === "actual" ? (b.partial ? "Actual, week so far" : "Actual") : "Projected";
+    b.kind === "actual"
+      ? b.partial
+        ? "Reconstructed history, week so far"
+        : "Reconstructed history"
+      : "Projected";
 
   return (
     <div>
@@ -348,7 +352,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
                   fontWeight={500}
                   fill={MUTED}
                 >
-                  Actual
+                  {width < 520 ? "Reconstructed" : "Reconstructed history"}
                 </text>
                 <text
                   x={m.left + band * firstProjected + 6}
@@ -439,7 +443,7 @@ export function CashFlowBars({ bars }: { bars: DashboardBar[] }) {
         ))}
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden="true" className="size-2.5 rounded-[3px] bg-foreground/80" />
-          Actual (solid)
+          Reconstructed history (solid)
         </span>
         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
           <ProjectedSwatch />

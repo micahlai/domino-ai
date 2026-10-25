@@ -7,6 +7,8 @@ describe("operating source panel", () => {
   it("shows separate 2U ledger and publication dates plus the reported and reconstructed AP basis", () => {
     const context = operatingProvenance({ company: "2u", scenario: "baseline" });
     const html = renderToStaticMarkup(<SourceContents context={context} />);
+    expect(html).toContain(`Reported and derived anchors (${context.reported.length})`);
+    expect(html).toMatch(/<details><summary[^>]*>Reported and derived anchors/);
     expect(html).toContain("2023-09-30");
     expect(html).toContain("2023-11-09");
     expect(html).toContain("combined cash including restricted");
