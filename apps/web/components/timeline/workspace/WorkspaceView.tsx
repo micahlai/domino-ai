@@ -4,6 +4,7 @@ import type { Change, Constraint, WeeklyResultRefV1 } from "@domino/contracts";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "../../ui/badge";
+import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { AncestryPanel } from "./CatalogPanel";
 import { EventForm } from "./EventForm";
@@ -81,6 +82,12 @@ export function WorkspaceView({
             className="text-primary underline-offset-4 hover:underline"
           >
             All saved scenarios
+          </Link>
+          <Link
+            href={analysisHref(run.companyId, run.runId)}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Review risk analysis
           </Link>
           <Badge variant="outline">{KIND[run.kind]}</Badge>
           <span>Saved {formatSavedAt(run.savedAt)}, read only</span>

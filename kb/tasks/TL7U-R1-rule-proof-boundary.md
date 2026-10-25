@@ -7,6 +7,6 @@
 - **Notes:** current api.ts compares every individual receipt.constraintVersion to analysis set version, always rejecting real rule-bearing output. Remove that comparison; validate per-rule against source run.receipts by constraintId in readAnalysis/readAnalyses. Align other strict limits with actual backend schema. No runtime/shared/backend/TL5 changes. Root integrates TL7 only.
 
 ## Result
-- Done:
-- What changed:
-- Watch out:
+- Done: repaired real rule-bearing analysis reads; focused30 tests, web typecheck, scoped lint and git diff --check pass.
+- What changed: full-set constraintVersion still pins the selected source run, while every risk/response proof now matches the source receipt by constraintId, individual version, kind and limit. Missing/extra/changed rule proof rejects. Updated playground/test fixtures to carry distinct set and individual hashes, and aligned evidence100, changes1..8, text2000, warnings30 and scenario-count1..8 limits with backend9e87c77. Logs: /tmp/TL7-ui-r1-tests.log, /tmp/TL7-ui-r1-typecheck.log and /tmp/TL7-ui-r1-lint.log.
+- Watch out: lead still owns live browser verification/integration on TL7. No runtime/backend/shared/TL5 edits.
