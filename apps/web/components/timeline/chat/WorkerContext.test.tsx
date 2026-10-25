@@ -25,6 +25,7 @@ it("offers the Worker actions and optional note in the provider-free playground"
   const html = renderToStaticMarkup(<WorkerTimelinePlayground />);
   expect(html).toContain("Open in forecast</button>");
   expect(html).toContain("Dismiss</button>");
+  expect(html).toContain("(optional)");
   expect(html).not.toContain("Accept</button>");
 });
 it("rejects mismatched or oversized context instead of attaching another suggestion", () => {

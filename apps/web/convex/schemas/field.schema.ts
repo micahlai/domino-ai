@@ -89,6 +89,10 @@ export const fieldTables = {
     // Agents (fieldAgents.ts, optional): when a person pressed Start agents. New operating and
     // judge companies start idle; an older row with any snapshot counts as started.
     agentsStartedAt: v.optional(v.string()),
+    // Replay (fieldOperating.replay, optional): a fresh idle copy of this operating company and
+    // scenario. The original row is left untouched; the picker prefers it unless a browser
+    // chose the replay.
+    replayOf: v.optional(v.id("companies")),
     operatingDemo: v.optional(
       v.object({
         company: v.union(

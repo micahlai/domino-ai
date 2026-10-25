@@ -4,6 +4,11 @@
 - Limits: this branch is not merged into main or claude-timeline-chat. Existing Ask Domino answers remain bounded; broad advisory narration is unchanged. No new backend deployment, environment copy, schema change or user-runtime restart. Root-owned frontend-only preview is 3126; existing production runtimes/data preserved.
 - UI follow-up: synchronized TL13's single Ask Domino open/collapse toggle, removing both duplicate close buttons. Existing 100 workspace tests and final full pnpm check (2,741 tests/typechecks/lint) pass; desktop/phone browser verification uses the same patch in the Timeline checkout. Temporary root-owned frontend-only preview 3126 stopped after props verification.
 
+## 2026-10-25 Codex combined Timeline and Worker main integration
+- Done: merged claude-timeline-chat 5fbd13e and codex/worker-timeline-context dbc4d55 over origin/main 0f2874f in isolated codex/merge-timeline-worker. Retained main's simplified chat layout and existing Field features; combined optimistic user messages, once-only saved-forecast reveal, bounded chart annotations, single sidebar toggle and frozen Worker context.
+- Review: independent read-only integration audit found no blockers. Combined props browser verifies Worker note/context and Timeline single control. Full pnpm check passes 2,755 tests, package typechecks and lint742files. Independent Convex TypeScript and webpack production build pass. Both source tips are ancestors of the combined result.
+- Limits: no production backend deployment, data reset, provider call or existing runtime restart. Temporary frontend-only preview3127 stopped after verification. User explicitly authorized main integration; prior branch-isolation notes are historical.
+
 ## 2026-10-25 Saved suggestion journey live
 - Done: af76dda pushed; Next3114 restarted, Convex3260 watcher recovered after locked dependency install with data preserved. Live2U Late payments analysis completed; primary Simulate opened exact saved risk/fix comparison, required label and How links. Existing baseline91-day history preserved. Isolated3138/3298 stopped.
 - Runtime: Next92582/session61687; Convex94703/watcher94604/session28954. Checks/build reused from the checked candidate. No main/protected-port/data changes. Optional Try-it/map polish remains queued. See features/field/HANDOFF.md and /tmp/field-suggestion-live-3114.png.

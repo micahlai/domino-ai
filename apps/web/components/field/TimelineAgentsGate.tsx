@@ -6,7 +6,9 @@ import { AgentsGate, AgentsIdleCard } from "./agents";
 import {
   FIELD_OPERATING_API,
   operatingSelectionFromWorldId,
+  replayChoice,
   selectedOperatingRecord,
+  useReplayChoices,
 } from "./company";
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -35,8 +37,9 @@ function Gate({
   children: ReactNode;
 }) {
   const records = useQuery(FIELD_OPERATING_API.list, {});
+  useReplayChoices();
   if (records === undefined) return null;
-  const record = selectedOperatingRecord(records, selection);
+  const record = selectedOperatingRecord(records, selection, replayChoice(selection));
   if (!record) return <>{children}</>;
   return (
     <AgentsGate
@@ -45,7 +48,7 @@ function Gate({
         <div className="mx-auto max-w-[1040px]">
           <AgentsIdleCard
             state={state}
-            detail="The timeline starts from the books the agents read, so there is nothing to forecast yet. Start the agents on the Brain map; the 13-week timeline appears once the first read finishes."
+            detail="The timeline starts from the books the agents read, so there is nothing to forecast yet. Start them here; the 13-week timeline appears once the first read finishes."
           />
         </div>
       )}

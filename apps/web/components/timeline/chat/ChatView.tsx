@@ -619,7 +619,7 @@ export function ChatView({
     >
       <ChatScrollFrame
         label="What-if conversation"
-        followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
+        followKey={`${lastTurn?.id ?? ""}:${optimisticTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
         composer={composer}
       >
         <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask Domino</h3>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Check, Lock } from "lucide-react";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -15,10 +15,10 @@ import {
   SOURCE_NEEDS,
 } from "../../convex/lib/judge";
 import { cn } from "../../lib/utils";
-import { ToolLogo } from "../icons/ToolLogo";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page";
 import { JudgeWatch } from "./JudgeWatch";
+import { SourcePicker, toggleSource } from "./SourcePicker";
 import { SOURCE_TILE, readStored, storeJudgeCompany, subscribe } from "./flow";
 import { errorText } from "./shared";
 
@@ -184,17 +184,10 @@ function PickSources({ start, onBack }: { start: JudgeStart; onBack: () => void 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggle = useCallback((t: JudgeSource) => {
-    if (t === REQUIRED_SOURCE) return;
-    setOn((cur) => {
-      const next = new Set(cur);
-      if (!next.delete(t)) next.add(t);
-      // Turning a tool off also turns off the tools that need it.
-      for (const [tool, rule] of Object.entries(SOURCE_NEEDS))
-        if (rule && !next.has(rule.needs)) next.delete(tool as JudgeSource);
-      return next;
-    });
-  }, []);
+  const toggle = useCallback(
+    (t: JudgeSource) => setOn((cur) => toggleSource(cur, t, REQUIRED_SOURCE, SOURCE_NEEDS)),
+    [],
+  );
 
   const go = async () => {
     setBusy(true);
@@ -216,62 +209,14 @@ function PickSources({ start, onBack }: { start: JudgeStart; onBack: () => void 
         title="Pick its data sources"
         description="Domino reads only the tools you connect, so turning one off hides what it knows. The bank is required: the forecast starts from its cash."
       />
-      <fieldset>
-        <legend className="sr-only">Data sources</legend>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {JUDGE_SOURCES.map((t) => {
-            const tile = SOURCE_TILE[t];
-            const checked = on.has(t);
-            const required = t === REQUIRED_SOURCE;
-            const rule = SOURCE_NEEDS[t];
-            const blocked = rule !== undefined && !on.has(rule.needs);
-            return (
-              <label
-                key={t}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors",
-                  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2",
-                  checked ? "border-foreground/60" : "opacity-60 hover:opacity-100",
-                  required || blocked ? "cursor-default" : "cursor-pointer",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={checked}
-                  disabled={required || blocked}
-                  onChange={() => toggle(t)}
-                  aria-describedby={`src-${t}`}
-                />
-                <ToolLogo vendor={tile.vendor} size={36} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{tile.name}</span>
-                  <span id={`src-${t}`} className="block text-[13px] text-muted-foreground">
-                    {required
-                      ? "Required"
-                      : blocked
-                        ? `Needs ${SOURCE_TILE[rule.needs].name}`
-                        : tile.gives}
-                  </span>
-                </span>
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded border",
-                    checked ? "border-foreground bg-foreground text-background" : "border-input",
-                  )}
-                >
-                  {required ? (
-                    <Lock className="size-3" />
-                  ) : checked ? (
-                    <Check className="size-3.5" strokeWidth={3} />
-                  ) : null}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
+      <SourcePicker
+        tools={JUDGE_SOURCES}
+        tiles={SOURCE_TILE}
+        on={on}
+        required={REQUIRED_SOURCE}
+        needs={SOURCE_NEEDS}
+        onToggle={toggle}
+      />
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" onClick={onBack} disabled={busy}>
           Back

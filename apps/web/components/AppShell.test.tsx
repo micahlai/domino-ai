@@ -22,11 +22,12 @@ const current = (html: string) =>
   [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
 
 describe("AppShell navigation", () => {
-  it("lists the five product pages, then the judge sandbox, in order and hides dev routes", () => {
+  it("lists the six product pages, then the judge sandbox, in order and hides dev routes", () => {
     const html = render("/");
     const order = [
       "/",
       "/field",
+      "/field/customers",
       "/field/map",
       "/field/connect",
       "/c/operating%2F2u%2Fbaseline/timeline",
@@ -34,7 +35,7 @@ describe("AppShell navigation", () => {
     ].map((h) => html.indexOf(`href="${h}"`));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(6);
+    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
     expect(html).toContain("Main navigation");
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain("Company and scenario");

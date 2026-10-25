@@ -11,8 +11,11 @@ import {
   type OperatingSelection,
   isLegacyOperatingTimelinePath,
   operatingWorldId,
+  replayChoice,
   selectOperating,
+  selectedOperatingRecord,
   useOperatingSelection,
+  useReplayChoices,
   useSelectedCompany,
 } from "./company";
 import { companyDisplay, menuKey } from "./header-text";
@@ -55,11 +58,26 @@ export function CompanySwitcher() {
 }
 
 function LivePicker() {
-  const { selected, error } = useSelectedCompany();
-  return <Picker selectedName={selected?.name} error={error} />;
+  const { selected, error, companies } = useSelectedCompany();
+  useReplayChoices();
+  const statusOf = companies
+    ? (next: OperatingSelection): OperatingStatus =>
+        selectedOperatingRecord(companies, next, replayChoice(next))?.started ? "ready" : "idle"
+    : undefined;
+  return <Picker selectedName={selected?.name} error={error} statusOf={statusOf} />;
 }
 
-function Picker({ selectedName, error }: { selectedName?: string; error?: string | null }) {
+export type OperatingStatus = "ready" | "idle";
+
+function Picker({
+  selectedName,
+  error,
+  statusOf,
+}: {
+  selectedName?: string;
+  error?: string | null;
+  statusOf?: (selection: OperatingSelection) => OperatingStatus;
+}) {
   const selection = useOperatingSelection();
   const pathname = usePathname() ?? "";
   const router = useRouter();
@@ -76,6 +94,7 @@ function Picker({ selectedName, error }: { selectedName?: string; error?: string
       onChange={pick}
       selectedName={selectedName}
       error={error}
+      statusOf={statusOf}
     />
   );
 }
@@ -87,12 +106,15 @@ export function OperatingSelectorControls({
   onChange,
   selectedName,
   error,
+  statusOf,
   defaultOpen = false,
 }: {
   selection: OperatingSelection;
   onChange: (selection: OperatingSelection) => void;
   selectedName?: string;
   error?: string | null;
+  /** "Ready" (has data) or "Not started" per option; omitted without a backend. */
+  statusOf?: (selection: OperatingSelection) => OperatingStatus;
   /** Render the menu open (tests and the playground). */
   defaultOpen?: boolean;
 }) {
@@ -221,6 +243,7 @@ export function OperatingSelectorControls({
                     <span className="text-[13px] font-medium leading-5">{d.name}</span>
                     <span className="text-xs leading-4 text-muted-foreground">{d.subtitle}</span>
                   </span>
+                  <StatusTag status={statusOf?.({ ...selection, company: c.id })} />
                 </MenuItem>
               );
             })}
@@ -237,6 +260,7 @@ export function OperatingSelectorControls({
                 onSelect={() => choose({ ...selection, scenario: s.id })}
               >
                 <span className="flex-1 text-[13px] leading-5">{s.name}</span>
+                <StatusTag status={statusOf?.({ ...selection, scenario: s.id })} />
               </MenuItem>
             ))}
           </MenuGroup>
@@ -254,6 +278,22 @@ export function OperatingSelectorControls({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function StatusTag({ status }: { status?: OperatingStatus }) {
+  if (!status) return null;
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-4",
+        status === "ready"
+          ? "bg-secondary text-foreground"
+          : "border border-dashed border-input text-muted-foreground",
+      )}
+    >
+      {status === "ready" ? "Ready" : "Not started"}
+    </span>
   );
 }
 
