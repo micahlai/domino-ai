@@ -9,7 +9,7 @@ import {
 } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Doc } from "./_generated/dataModel";
-import type { CatalogItem } from "./investigationCatalog";
+import { type CatalogItem, boundedPaginationOpts } from "./investigationCatalog";
 import schema from "./schema";
 
 const modules = import.meta.glob(["./**/*.ts", "./_generated/*.js", "!./**/*.test.ts"]);
@@ -270,6 +270,36 @@ describe("investigationCatalog.list scope and pagination", () => {
     });
     expect(at25.page).toHaveLength(25);
     expect(at25.page).toEqual(full.page);
+  });
+
+  it("caps rows read before a wide endCursor range is materialized", async () => {
+    // Regression for the S2 audit: endCursor from a late page used to read all 500 rows.
+    const ids = Array.from({ length: 500 }, (_, i) => `c${String(i).padStart(3, "0")}`);
+    const t = await setup({
+      conversations: ids.map((id, i) =>
+        conversation(id, new Date(Date.UTC(2026, 0, 1) + i * 60_000).toISOString()),
+      ),
+    });
+    let cursor: string | null = null;
+    for (let i = 0; i < 19; i++) cursor = (await t.query(list, page(25, cursor))).continueCursor;
+    const late = await t.query(list, page(24, cursor));
+    expect(late.isDone).toBe(false);
+    const wide = {
+      numItems: 1,
+      cursor: null,
+      endCursor: late.continueCursor,
+      maximumRowsRead: 1000,
+    };
+    await expect(t.query(list, { caseId: CASE_ID, paginationOpts: wide })).rejects.toThrow(
+      /at most 25 items/,
+    );
+  });
+
+  it("replaces any caller row cap with the server bound", () => {
+    for (const maximumRowsRead of [undefined, 0, 1, 26, 1000, Number.MAX_SAFE_INTEGER])
+      expect(
+        boundedPaginationOpts({ numItems: 1, cursor: null, endCursor: "x", maximumRowsRead }),
+      ).toEqual({ numItems: 1, cursor: null, endCursor: "x", maximumRowsRead: 26 });
   });
 
   it("returns an empty page for an empty case", async () => {

@@ -1,4 +1,8 @@
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import {
+  type PaginationOptions,
+  paginationOptsValidator,
+  paginationResultValidator,
+} from "convex/server";
 import { type Infer, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { type QueryCtx, query } from "./_generated/server";
@@ -24,6 +28,12 @@ type Op = Doc<"investigationOperations">;
 type Conversation = Doc<"investigationConversations">;
 
 const MAX_PAGE_ITEMS = 25;
+
+// The caller's row cap is replaced, not trusted: Convex stops reading at maximumRowsRead
+// even inside an endCursor range, so at most MAX_PAGE_ITEMS + 1 rows are ever read.
+export function boundedPaginationOpts(opts: PaginationOptions): PaginationOptions {
+  return { ...opts, maximumRowsRead: MAX_PAGE_ITEMS + 1 };
+}
 // The fixed workflow holds at most 6 operations; investigation's own step loop stops at 8.
 const MAX_OPERATIONS = 8;
 
@@ -182,9 +192,10 @@ export const list = query({
       .query("investigationConversations")
       .withIndex("by_case_createdAt", (q) => q.eq("caseId", caseId))
       .order("desc")
-      .paginate(paginationOpts);
-    // A native endCursor sets the page boundary and ignores numItems, so the bound is
-    // rechecked here, before any per-conversation reads. Rows are never sliced off.
+      .paginate(boundedPaginationOpts(paginationOpts));
+    // A native endCursor sets the page boundary and ignores numItems. The server row cap
+    // stops the read at MAX_PAGE_ITEMS + 1, so an over-wide range fails here, before any
+    // per-conversation reads. Rows are never sliced off.
     if (result.page.length > MAX_PAGE_ITEMS)
       fail("INVALID_REQUEST", `A page may hold at most ${MAX_PAGE_ITEMS} items; narrow endCursor`);
     return { ...result, page: await Promise.all(result.page.map((c) => itemOf(ctx, c))) };
