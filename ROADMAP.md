@@ -1,6 +1,6 @@
 # Domino roadmap and request inbox
 
-**Execution PAUSED by Jayden.** The verified Claude lead is suspended; existing read-only audits may finish. No acceptance, integration, new repair or dispatch until explicit resume. See [pause state](kb/coordination/historical/pause-state.md) and [copyable Claude prompts](prompts/shared/claude-lead-goal.md). Earlier `run it` requests are superseded.
+**RESUMED October 24.** Lead: Claude Code PID 78153 (old 64305 gone). L0 06e1c98 passed final audit and goes to Codex integration. E0 1eb1052 failed its third audit: stopped, awaiting Jayden. L1 stays blocked on E0. See [pause state](kb/coordination/historical/pause-state.md).
 
 Live chat steering: [user inbox](kb/coordination/historical/user-inbox.md). Claude lead checks new entries before dispatch/integration and between worker results, then records acknowledgment/disposition here. Feature code stays with implementation workers; new messages do not automatically cancel active work.
 
@@ -29,8 +29,7 @@ Paused checkpoint: L0/E0 implementation workers have finished their final repair
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Worker finished 06e1c98; independent audit pending | L0-learning-contracts / ../domino-L0 | PAUSED lead, no acceptance/integration. Inspect final audit only after resume; third failure requires user direction | Worker reports all four issues fixed; 338 contracts tests/typecheck/lint pass. Not independently accepted |
-| E0 data custody | Worker finished 1eb1052; independent audit pending | E0-evaluation-custody / ../domino-E0 | PAUSED lead, no acceptance/integration. Inspect final audit only after resume; third failure requires user direction | Worker reports chronology/custody repair; independent result pending, no sealed-cohort acceptance claimed |
+| L0 contracts | Codex integration onto preview | L0-learning-contracts / ../domino-L0 | Codex merges 06e1c98 into preview and runs combined check | [Final audit ACCEPT](kb/reviews/L0-06e1c98-codex-final.md): no findings, 338 contracts tests, 318 probes. Done only after integrated combined check |
 
 ## Review
 
@@ -42,6 +41,7 @@ Paused checkpoint: L0/E0 implementation workers have finished their final repair
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
+| E0 data custody | Jayden decision | Third audit REJECT on 1eb1052 | [Final audit](kb/reviews/E0-1eb1052-codex-final.md): (High) biome.json lacks custody ignores so `biome check .` can print sealed JSON; (Medium) generated manifest/labels JSON fail Biome format. Chronology/custody repairs verified. No repair round without Jayden |
 | L1 normalization | Lead-assigned engine worker | Accepted L0 + E0 development package | [Card](kb/tasks/L1-source-normalization.md): unseen supported mapping package -> snapshot/engine, exact provenance, no company-specific patch |
 | L2 reconciliation | Lead-assigned engine worker | Accepted L1 | [Card](kb/tasks/L2-source-reconciliation.md): true conflicts block affected roles; duplicates/timing/definitions and totals handled honestly |
 | L3 scoped feedback | Lead-assigned engine worker | Accepted L2 | [Card](kb/tasks/L3-scoped-rules.md): later eligible behavior changes, unrelated-company isolation, rejection/reversal/rollback |
@@ -64,6 +64,7 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
 | RQ4 CREAO setup says done | Lead-assigned verifier | User-reported empty memory/data access and input/key steps | Verify remote `prompt` and backend config; no isolation/provider-success claim yet |
 | RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
-| RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | QUEUED, acknowledgment pending. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
+| RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | ACKNOWLEDGED by lead 78153, Oct 24. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
-| RQ7 run the gated sequence / U2 | Claude lead dispatch; Codex audit/integration | Read [U2](kb/coordination/historical/user-inbox.md); accepted L0/E0 before L1 | QUEUED, acknowledgment pending. Continue active repairs/re-audits, integrate passing work and launch L1 when eligible; no duplicate lead or weakened gates |
+| RQ7 run the gated sequence / U2 | Claude lead dispatch; Codex audit/integration | Read [U2](kb/coordination/historical/user-inbox.md); accepted L0/E0 before L1 | Superseded by U3 pause, then resumed by RQ8. ACKNOWLEDGED. Continue active repairs/re-audits, integrate passing work and launch L1 when eligible; no duplicate lead or weakened gates |
+| RQ8 resume via claude-lead-goal prompt | Claude lead 78153 | U3 pause | ACKNOWLEDGED Oct 24. Pause lifted; final audits read; L0 to integration, E0 stopped for Jayden |

@@ -1,3 +1,5 @@
+> RESUMED Oct 24: Claude lead is Claude Code PID 78153 (old 64305 gone, no SIGCONT). L0 06e1c98 final audit ACCEPT, Codex integrating onto preview. E0 1eb1052 third audit REJECT (biome custody exposure + JSON format), stopped awaiting Jayden. L1 blocked on E0. Next: record L0 integration result; get Jayden decision on E0.
+
 # Domino handoff
 
 > USER PAUSE, latest authority: read kb/coordination/historical/pause-state.md. Claude lead PID 64305 was verified and suspended (SIGSTOP); existing read-only audits may finish. No new acceptance/integration/dispatch. Final repair commits L0 06e1c98 and E0 1eb1052 remain unaccepted. Worker test reports do not override audit gates. Earlier `run it` is superseded. Copyable Claude prompts: prompts/shared/claude-lead-goal.md. Codex Goal is being set up PAUSED; resumption requires explicit user direction. Main, app/backends/data and paused monitor preserved.
