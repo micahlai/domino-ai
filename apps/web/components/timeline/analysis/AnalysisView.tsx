@@ -4,6 +4,7 @@ import type { Forecast } from "@domino/contracts";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { PageHeader } from "../../ui/page";
@@ -432,7 +433,7 @@ function RiskPanel({
         <div className="space-y-3">
           <Link
             className="text-sm text-primary hover:underline"
-            href={workspaceHref(run.companyId, { runId: shown.runId })}
+            href={openedTimelineHref(run.companyId, shown.runId)}
           >
             Open this saved {response ? "response" : "risk"} timeline
           </Link>

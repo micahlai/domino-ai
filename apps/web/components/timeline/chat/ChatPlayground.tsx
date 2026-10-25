@@ -5,7 +5,9 @@ import { formatExactCents } from "../baseline/format";
 import { WorkspaceChart } from "../workspace/WorkspaceChart";
 import { WorkspaceView } from "../workspace/WorkspaceView";
 import { workspaceHref } from "../workspace/api";
+import { fixtureEntryGraph, fixtureOpenedResponse } from "../workspace/entryFixture";
 import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "../workspace/fixtures";
+import { openedForecastReady } from "../workspace/forecastReveal";
 import { ChatView } from "./ChatView";
 import { fixtureChat, fixtureChatRun, fixtureReady, fixtureSaved } from "./fixtures";
 /** Deliberately repeated layout-only notes; every plotted point uses an existing saved fixture. */
@@ -64,6 +66,94 @@ function CrowdedLabelsFixture() {
     </details>
   );
 }
+/** The same saved-parent readiness gate used by a connected entry, with manual data delivery. */
+function DelayedEntryFixture() {
+  const [phase, setPhase] = useState<"idle" | "waiting" | "ready" | "shown">("idle");
+  const [ids, setIds] = useState([
+    fixtureRules.runId,
+    fixtureScenario.runId,
+    fixtureOpenedResponse.runId,
+  ]);
+  const reads = {
+    [fixtureRoot.runId]: { state: "ready" as const, value: fixtureRoot },
+    [fixtureRules.runId]: { state: "ready" as const, value: fixtureRules },
+    [fixtureScenario.runId]:
+      phase === "waiting"
+        ? { state: "loading" as const }
+        : { state: "ready" as const, value: fixtureScenario },
+    [fixtureOpenedResponse.runId]: { state: "ready" as const, value: fixtureOpenedResponse },
+  };
+  const ready =
+    phase === "ready" &&
+    openedForecastReady(
+      fixtureOpenedResponse,
+      { state: "ready", value: fixtureEntryGraph },
+      reads,
+      ids,
+      fixtureRoot.runId,
+    );
+  return (
+    <details id="delayed-entry-fixture" className="rounded-lg border p-3">
+      <summary className="min-h-11 cursor-pointer text-sm font-medium">
+        Delayed saved scenario entry fixture
+      </summary>
+      <p className="my-3 text-sm text-muted-foreground">
+        Open a saved scenario, then deliver its saved parent forecast. The incoming line waits for
+        the parent and draws once. Hiding and showing it afterwards does not replay the draw. No
+        service calls.
+      </p>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <Button
+          onClick={() => {
+            setPhase("waiting");
+            setIds([fixtureRules.runId, fixtureScenario.runId, fixtureOpenedResponse.runId]);
+          }}
+        >
+          Open saved scenario (fixture)
+        </Button>
+        <Button disabled={phase !== "waiting"} onClick={() => setPhase("ready")}>
+          Deliver saved parent forecast
+        </Button>
+        <output className="self-center text-sm" data-testid="entry-fixture-phase">
+          {phase}
+        </output>
+      </div>
+      {phase !== "idle" ? (
+        <div className="h-[36rem] overflow-hidden rounded-lg border">
+          <WorkspaceView
+            run={fixtureOpenedResponse}
+            parent={reads[fixtureScenario.runId]!}
+            graph={{ state: "ready", value: fixtureEntryGraph }}
+            baseRunId={fixtureRoot.runId}
+            questions={{ state: "ready", value: [] }}
+            resultRef={{ state: "missing" }}
+            forecastNotice={
+              phase === "waiting"
+                ? "Reading the saved scenario and the forecast it branches from..."
+                : undefined
+            }
+            comparisons={{
+              ids,
+              reads,
+              onChange: setIds,
+              waitingRunIds: phase === "waiting" ? [fixtureOpenedResponse.runId] : [],
+              revealRunIds: ready ? [fixtureOpenedResponse.runId] : [],
+              onReveal: () => setPhase("shown"),
+            }}
+            actions={{
+              catalogHref: "#delayed-entry-fixture",
+              hrefFor: () => "#delayed-entry-fixture",
+              simulate: async () => ({ ok: false, message: "Fixture only." }),
+              reviseRules: async () => ({ ok: false, message: "Fixture only." }),
+              confirmProposal: async () => ({ ok: false, message: "Fixture only." }),
+              relink: async () => ({ ok: false, message: "Fixture only." }),
+            }}
+          />
+        </div>
+      ) : null}
+    </details>
+  );
+}
 export function ChatPlayground() {
   const [mode, setMode] = useState<"new" | "clarify" | "ready" | "saved" | "error">("clarify");
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
@@ -74,6 +164,7 @@ export function ChatPlayground() {
         Labelled fixtures only. These controls show saved states; they do not calculate or write
         data.
       </p>
+      <DelayedEntryFixture />
       <CrowdedLabelsFixture />
       <div className="flex flex-wrap gap-2">
         {(["new", "clarify", "ready", "saved", "error"] as const).map((value) => (

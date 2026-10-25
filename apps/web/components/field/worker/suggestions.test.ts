@@ -49,12 +49,14 @@ describe("worker formatting", () => {
       reused: false,
       scenarioLow: { cents: 100, weekStart: "2026-11-02" },
       fixLow: { cents: 200, weekStart: "2026-11-02" },
-      route: "/c/kestrel/timeline?runId=fix&conversationId=chat#timeline-chat",
+      route: "/c/kestrel/timeline?runId=fix&reveal=fix&conversationId=chat#timeline-chat",
     };
     expect(readSimulationResult(result)).toEqual(result);
     for (const route of [
       "https://example.com",
-      "/c/other/timeline?runId=fix&conversationId=chat#timeline-chat",
+      "/c/kestrel/timeline?runId=fix&conversationId=chat#timeline-chat",
+      "/c/kestrel/timeline?runId=fix&reveal=risk&conversationId=chat#timeline-chat",
+      "/c/other/timeline?runId=fix&reveal=fix&conversationId=chat#timeline-chat",
       "/c/kestrel/timeline?runId=risk&conversationId=chat#timeline-chat",
     ])
       expect(() => readSimulationResult({ ...result, route })).toThrow();

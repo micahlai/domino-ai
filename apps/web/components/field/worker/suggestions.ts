@@ -1,5 +1,6 @@
 import { makeFunctionReference } from "convex/server";
 import { z } from "zod";
+import { workerTimelineHref } from "../../../lib/timeline-entry";
 import type { DashboardView } from "../dashboard/derive";
 import { money, weekOf } from "./format";
 
@@ -48,12 +49,11 @@ const SimulationResultSchema = z
 /** Only navigate to the returned saved company/run/conversation, never an arbitrary route. */
 export function readSimulationResult(raw: unknown): SimulationResult {
   const result = SimulationResultSchema.parse(raw);
-  const expected = `/c/${encodeURIComponent(result.timelineCompanyId)}/timeline?${new URLSearchParams(
-    {
-      runId: result.fixRunId,
-      conversationId: result.conversationId,
-    },
-  )}#timeline-chat`;
+  const expected = workerTimelineHref(
+    result.timelineCompanyId,
+    result.fixRunId,
+    result.conversationId,
+  );
   if (result.route !== expected) throw new Error("The saved Timeline link could not be verified.");
   return result;
 }

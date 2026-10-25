@@ -2,6 +2,7 @@
 import { canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
 import { z } from "zod";
+import { workerTimelineHref } from "../lib/timeline-entry";
 import { api, internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { sha256 } from "./fieldJobs";
@@ -21,8 +22,7 @@ type Result = {
 
 type Saved = { companyId: string; runId: string; created: boolean };
 const hash = async (value: unknown) => (await sha256(canonicalJson(value))).slice(0, 48);
-const routeFor = (companyId: string, runId: string, conversationId: string) =>
-  `/c/${encodeURIComponent(companyId)}/timeline?${new URLSearchParams({ runId, conversationId })}#timeline-chat`;
+const routeFor = workerTimelineHref;
 
 /** Explicit viewing saves the pinned baseline, risk, fix and context without accepting it. */
 export const simulate = action({

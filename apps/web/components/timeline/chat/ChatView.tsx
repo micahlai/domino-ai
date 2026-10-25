@@ -3,13 +3,14 @@ import type { Constraint } from "@domino/contracts";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { ReadNotice } from "../workspace/CatalogPanel";
 import { inputClass } from "../workspace/RuleEditor";
 import { WhenDate } from "../workspace/RunPanels";
-import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
+import type { Read, WorkspaceRun } from "../workspace/api";
 import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
@@ -488,7 +489,7 @@ export function ChatView({
         <p className="text-sm font-medium">Your scenario is saved.</p>
         <Link
           className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/85 sm:min-h-9"
-          href={workspaceHref(run.companyId, { runId: receipt.linkedRunId })}
+          href={openedTimelineHref(run.companyId, receipt.linkedRunId)}
           data-testid="chat-open-saved"
         >
           Open saved timeline

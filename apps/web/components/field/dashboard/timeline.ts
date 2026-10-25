@@ -1,6 +1,7 @@
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import type { AnalysisReceipt } from "../../timeline/analysis/api";
 import { analysisHref } from "../../timeline/analysis/links";
-import { type FinancialOutput, routeFor } from "../../timeline/analysis/output";
+import type { FinancialOutput } from "../../timeline/analysis/output";
 import type { CashPoint, Health } from "./derive";
 
 /**
@@ -131,14 +132,14 @@ export function timelineRiskCards(
       lowPoint: risk.forecast.lowPoint,
       impact: risk.forecast.lowPoint.usable - base,
       failureReason: risk.failureReason,
-      route: risk.runId ? routeFor(companyId, risk.runId) : null,
+      route: risk.runId ? openedTimelineHref(companyId, risk.runId) : null,
       response: best
         ? {
             label: best.label,
             costNote: best.costNote,
             gainCents: best.gainCents,
             clearsAllRules: best.clearsAllRules,
-            route: best.runId ? routeFor(companyId, best.runId) : null,
+            route: best.runId ? openedTimelineHref(companyId, best.runId) : null,
           }
         : null,
     };

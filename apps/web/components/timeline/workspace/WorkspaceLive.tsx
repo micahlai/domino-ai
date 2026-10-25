@@ -5,6 +5,7 @@ import { useMutation, useQueries } from "convex/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { hasEntryReveal, withoutEntryReveal } from "../../../lib/timeline-entry";
 import { OPEN_IN_TIMELINE_NOTE, OpenInTimeline } from "../../field/OpenInTimeline";
 import { operatingSelectionFromWorldId } from "../../field/company";
 import { Badge } from "../../ui/badge";
@@ -46,11 +47,13 @@ import {
   acceptedSelection,
   consumeForecast,
   forecastReadyToReveal,
+  openedForecastReady,
   queueForecast,
 } from "./forecastReveal";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
 import {
+  assignColors,
   comparisonIds,
   familyEntries,
   readComparison,
@@ -212,6 +215,24 @@ function RunReady({
   const raw = useQueries(queries) as Record<string, unknown>;
   const graph = readGraph(raw.graph, { companyId, baselineRunId: run.baselineRunId });
   const shown = useShownScenarios();
+  const entryKey = JSON.stringify([companyId, run.runId]);
+  const [entryRequested] = useState(
+    () =>
+      run.parentRunId !== null &&
+      run.kind !== "baseline" &&
+      hasEntryReveal(params.toString(), run.runId) &&
+      !shown.revealedEntries.has(entryKey),
+  );
+  const [entryConsumed, setEntryConsumed] = useState(false);
+  const entryWaiting = entryRequested && !entryConsumed;
+  useEffect(() => {
+    if (!entryWaiting && hasEntryReveal(window.location.search, run.runId))
+      window.history.replaceState(
+        window.history.state,
+        "",
+        withoutEntryReveal(window.location.href, run.runId),
+      );
+  }, [entryWaiting, run.runId]);
   const [saveGuard] = useState(() => new ForecastSaveGuard());
   saveGuard.setContext({ companyId, runId: params.get("runId") ?? run.runId });
   useEffect(() => {
@@ -230,26 +251,49 @@ function RunReady({
   // parents are added once the family graph loads, so a deep link lands with its full branch.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened run and graph read
   useEffect(() => {
-    if (run.kind !== "baseline") show(run.runId);
+    if (run.kind !== "baseline" && !entryWaiting) show(run.runId);
   }, [run.runId, graph.state]);
   // A scenario is drawn with every scenario it builds on, so its branch leaves a visible line.
   const show = (id: string) => {
     const next = showWithAncestors(shown.ids, id, familyEntries(run, graph), baseRunId ?? "");
     if (next && next.length !== shown.ids.length) shown.set(next);
   };
-  const selectedComparisons = comparisonIds(shown.ids, baseRunId ?? "");
+  const entrySelection =
+    entryWaiting && graph.state === "ready" && run.parentRunId
+      ? acceptedSelection(
+          shown.ids,
+          run.runId,
+          run.parentRunId,
+          familyEntries(run, graph),
+          baseRunId ?? "",
+        )
+      : null;
+  const selectedComparisons = comparisonIds(entrySelection?.ids ?? shown.ids, baseRunId ?? "");
+  // Keep the priority selection after the entry signal is consumed; the mounted chart stays put.
+  const entrySelectionKey = entrySelection?.ids.join("\n");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: snapshot keyed by bounded run IDs
+  useEffect(() => {
+    if (entrySelection) {
+      shown.set(entrySelection.ids);
+      setOmittedAncestors(entrySelection.omittedAncestors);
+    }
+  }, [entrySelectionKey]);
   const comparisonKey = selectedComparisons.join("\n");
   // Convex stores subscription callbacks by query-bag identity and updates state during render
   // when they change. Memoize on the bounded ID list, not the freshly parsed graph array.
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed by the joined id list
   const comparisonQueries = useMemo(
-    () =>
-      Object.fromEntries(
+    () => ({
+      ...Object.fromEntries(
         selectedComparisons
           .filter((id) => id !== run.runId)
           .map((id) => [`comparison:${id}`, { query: getRunRef, args: { companyId, runId: id } }]),
       ),
-    [companyId, comparisonKey, run.runId],
+      ...(entryWaiting && run.parentRunId
+        ? { entryParent: { query: getRunRef, args: { companyId, runId: run.parentRunId } } }
+        : {}),
+    }),
+    [companyId, comparisonKey, run.runId, run.parentRunId, entryWaiting],
   );
   const comparisonRaw = useQueries(comparisonQueries) as Record<string, unknown>;
   const comparisonReads: Record<string, Read<import("./api").WorkspaceRun>> = {};
@@ -262,7 +306,22 @@ function RunReady({
     if (savedForecasts[id] && checked?.state === "ready" && checked.value.parentRunId !== run.runId)
       comparisonReads[id] = { state: "unusable" };
   }
-  const parent = run.parentRunId ? (comparisonReads[run.parentRunId] ?? null) : null;
+  const entryReads = { ...comparisonReads };
+  if (entryWaiting && run.parentRunId)
+    entryReads[run.parentRunId] = readComparison(comparisonRaw.entryParent, run, run.parentRunId);
+  const entryReady =
+    entryWaiting && openedForecastReady(run, graph, entryReads, selectedComparisons, baseRunId);
+  const parent = run.parentRunId ? (entryReads[run.parentRunId] ?? null) : null;
+  function consumeEntry() {
+    shown.revealedEntries.add(entryKey);
+    setEntryConsumed(true);
+    if (hasEntryReveal(window.location.search, run.runId))
+      window.history.replaceState(
+        window.history.state,
+        "",
+        withoutEntryReveal(window.location.href, run.runId),
+      );
+  }
 
   const simulate = useMutation(simulateRef);
   const revise = useMutation(reviseConstraintsRef);
@@ -382,7 +441,7 @@ function RunReady({
       ? {
           ...graph,
           value: selectedComparisons.reduce((entries, id) => {
-            const read = comparisonReads[id];
+            const read = entryReads[id];
             return read?.state === "ready"
               ? familyEntries(read.value, { state: "ready", value: entries })
               : entries;
@@ -397,25 +456,39 @@ function RunReady({
       graph={visibleGraph}
       comparisons={{
         ids: selectedComparisons,
-        reads: comparisonReads,
+        reads: entryReads,
+        waitingRunIds: entryWaiting && !entryReady ? [run.runId] : [],
         onChange: (ids) => {
           setOmittedAncestors(0);
           shown.set(ids);
         },
-        colors: shown.colors,
-        revealRunIds: Object.entries(savedForecasts).flatMap(([runId, status]) =>
-          status === "waiting" &&
-          forecastReadyToReveal({ runId, parentRunId: run.runId }, run, comparisonReads[runId])
-            ? [runId]
-            : [],
-        ),
-        onReveal: (runId) => setSavedForecasts((current) => consumeForecast(current, runId)),
+        colors: entrySelection ? assignColors(shown.colors, selectedComparisons) : shown.colors,
+        revealRunIds: [
+          ...(entryReady ? [run.runId] : []),
+          ...Object.entries(savedForecasts).flatMap(([runId, status]) =>
+            status === "waiting" &&
+            forecastReadyToReveal({ runId, parentRunId: run.runId }, run, comparisonReads[runId])
+              ? [runId]
+              : [],
+          ),
+        ],
+        onReveal: (runId) => {
+          if (entryReady && runId === run.runId) consumeEntry();
+          else setSavedForecasts((current) => consumeForecast(current, runId));
+        },
       }}
       baseRunId={baseRunId}
       forecastNotice={
-        omittedAncestors > 0
+        omittedAncestors > 0 || (entrySelection?.omittedAncestors ?? 0) > 0
           ? "Showing the new forecast and its 5 nearest parent scenarios. Earlier parents stay saved; the chart shows up to 6 scenario lines."
-          : waitingNotice
+          : entryWaiting && !entryReady
+            ? ["unusable", "error", "missing"].includes(graph.state) ||
+              Object.values(entryReads).some((read) =>
+                ["unusable", "error", "missing"].includes(read.state),
+              )
+              ? "The scenario is saved, but its parent forecast could not be verified. Reopen it from Saved scenarios."
+              : "Reading the saved scenario and the forecast it branches from..."
+            : waitingNotice
       }
       questions={readQuestions(raw.questions, runKey) as Read<QuestionReceipt[]>}
       resultRef={readResultRef(raw.resultRef)}

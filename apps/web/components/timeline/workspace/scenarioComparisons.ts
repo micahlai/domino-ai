@@ -24,6 +24,8 @@ export type ScenarioComparisons = {
   colors?: Record<string, number>;
   /** Newly accepted curves only; consumed once they are mounted with validated data. */
   revealRunIds?: string[];
+  /** Entry curves wait for their saved parent so no static first paint precedes the draw. */
+  waitingRunIds?: string[];
   onReveal?: (runId: string) => void;
 };
 

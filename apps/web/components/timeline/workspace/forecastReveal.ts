@@ -69,3 +69,63 @@ export class ForecastSaveGuard {
     return this.active && context === this.capture();
   }
 }
+
+/** An opened node must wait for its actual saved parent and every visible parent curve. */
+export function openedForecastReady(
+  run: WorkspaceRun,
+  graph: Read<CatalogEntry[]>,
+  reads: Record<string, Read<WorkspaceRun>>,
+  ids: string[],
+  baseRunId: string | null,
+): boolean {
+  if (!run.parentRunId || run.kind === "baseline" || graph.state !== "ready" || !baseRunId)
+    return false;
+  const parent = reads[run.parentRunId];
+  if (
+    !parent ||
+    parent.state !== "ready" ||
+    readComparison(parent.value, run, run.parentRunId).state !== "ready"
+  )
+    return false;
+  const entries = new Map(graph.value.map((entry) => [entry.runId, entry]));
+  let child = run;
+  const seen = new Set<string>([run.runId]);
+  while (child.runId !== baseRunId) {
+    const parentId = child.parentRunId;
+    if (!parentId || seen.has(parentId)) return false;
+    seen.add(parentId);
+    const entry = entries.get(child.runId);
+    if (entry && entry.parentRunId !== parentId) return false;
+    const read = reads[parentId];
+    if (read?.state === "ready") {
+      if (readComparison(read.value, run, parentId).state !== "ready") return false;
+      child = read.value;
+    } else {
+      // Ancestors beyond the six-line window remain saved; graph identity must still be complete.
+      if (ids.includes(parentId)) return false;
+      const ancestor = entries.get(parentId);
+      if (
+        !ancestor ||
+        ancestor.companyId !== run.companyId ||
+        ancestor.baselineRunId !== run.baselineRunId
+      )
+        return false;
+      if (parentId === baseRunId)
+        return ancestor.kind === "baseline" && ancestor.parentRunId === null;
+      let next = ancestor.parentRunId;
+      while (next && next !== baseRunId && !seen.has(next)) {
+        seen.add(next);
+        const above = entries.get(next);
+        if (
+          !above ||
+          above.companyId !== run.companyId ||
+          above.baselineRunId !== run.baselineRunId
+        )
+          return false;
+        next = above.parentRunId;
+      }
+      return next === baseRunId;
+    }
+  }
+  return child.kind === "baseline" && child.parentRunId === null;
+}

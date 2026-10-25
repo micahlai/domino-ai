@@ -173,6 +173,7 @@ export function WorkspaceView({
     return saved?.state === "ready" ? saved.value.forecast : null;
   };
   const curves = selectedIds.flatMap((id) => {
+    if (selection.waitingRunIds?.includes(id)) return [];
     const saved = selection.reads[id];
     const read = saved?.state === "ready" ? readComparison(saved.value, run, id) : saved;
     if (read?.state !== "ready") return [];

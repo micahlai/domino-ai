@@ -148,3 +148,5 @@ C1: done, `kb/tasks/C1-engine-context.md`, f80401d merged at 3c54e67 under expli
 | W1 | Worker suggestion to contextual Ask Domino | kb/tasks/W1-worker-timeline-chat-context.md | Latest Field release | done | codex/worker-timeline-context | Separate tree; Decline/Show on Timeline retain note and frozen context; full check and props browser pass |
 
 | MERGE-TW | Integrate Timeline and Worker into main | kb/tasks/MERGE-timeline-worker-main.md | TL12, TL13, W1 | done | main | Both tips merged; 2,755 tests/typechecks/lint, Convex tsc, webpack build and props browser pass |
+
+| TL14 | Reveal newly opened scenario branches | kb/tasks/TL14-opened-scenario-reveal.md | MERGE-TW | doing | codex/timeline-entry-reveal | Wire Worker/saved-result entry to data-ready parent-anchored animation |
