@@ -27,3 +27,10 @@ This is a durable file inbox, not an instant-message transport or a new backgrou
 - Stop new acceptance, integration, repair and dispatch. Existing read-only audits may finish; do not consume their result as permission to progress while paused.
 - Verified Claude lead PID 64305 suspended with SIGSTOP. See pause-state.md for evidence and safe resume boundary. Friend remote state unknown; monitor remains PAUSED. Current final repairs L0 06e1c98/E0 1eb1052 remain unaccepted.
 - After explicit resume, inspect those final audits first. If either fails its third review, report findings/options and wait rather than dispatch another fix. Ready prompts are in ../../../prompts/shared/claude-lead-goal.md.
+
+## U4: resume supervision and approve existing E0 config audit
+
+- Jayden explicitly requested `resume the Domino goal and check what Claude is doing now`, then approved `Audit the existing fix (recommended)` for Biome-only 5f1d772 with integration allowed only if it passes. This is the required direction after the third E0 rejection, not permission to relax its gates or begin an unbounded repair cycle.
+- Codex in this chat owns the bounded follow-up audit and preview integration/check. Do not duplicate it. Six synthetic exclusion probes, E0 self-check and actual E0 lint pass; report: ../../reviews/E0-5f1d772-approved-followup.md. Protected payloads remain unopened.
+- Claude lead 78153 remains the sole dispatcher. L0 is already integrated d4e24d9. After accepted E0 integration/combined check, L1 can be assigned under its card and actual slot check. Friend retains S2.
+- Native Codex Goal tool still reports PAUSED; available tool API cannot resume it, and computer use blocks Codex's UI. Current bounded user-authorized work proceeds, but no automatic Goal continuation is claimed until the user uses the app's /goal resume control. Monitor remains separately PAUSED.
