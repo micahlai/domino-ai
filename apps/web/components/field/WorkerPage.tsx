@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   FileOutput,
+  History,
   Inbox,
   Play,
   RefreshCw,
@@ -16,19 +17,24 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { verifyWeeklySeedText } from "../../lib/feature-boundary/verify";
 import { cn } from "../../lib/utils";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { PageHeader, StatTile } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
 import { useFieldData } from "./data";
 import { byTime } from "./graph";
+import { EmptyRow, Panel } from "./panel";
 import {
   AnomalyPicker,
   AutoIngestToggle,
   DataLabel,
   FINDING_LABEL,
+  FieldTabs,
   OPERATION_LABEL,
+  SEVERITY_BADGE,
   SEVERITY_LABEL,
-  SEVERITY_TONE,
   clock,
   timeAgo,
   useNow,
@@ -47,52 +53,60 @@ export function WorkerPage() {
       : `${open.length} ${open.length === 1 ? "flag needs" : "flags need"} your review`;
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>Finance agent</span>
+    <div className="mx-auto max-w-[1200px] space-y-6">
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-2">
+            Finance agent
             <DataLabel />
-          </div>
-          <h1 className="text-3xl font-medium tracking-tight">{headline}</h1>
-          <p className="text-sm leading-6 text-muted-foreground">
-            The finance agent reads new entries from billing, customer records, cards, books,
-            payroll and the bank, then checks them for anything odd. You decide every flag. Domino
-            never moves money.
-          </p>
-        </div>
-      </header>
+          </span>
+        }
+        title={headline}
+        description="The finance agent reads new entries from billing, customer records, cards, books, payroll and the bank, then checks them for anything odd. You decide every flag. Domino never moves money."
+        actions={<FieldTabs />}
+      />
 
       {data.needsSetup ? <SetupCard /> : null}
       <StatusStrip now={now} />
       <ActionBar />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section aria-labelledby="queue-title" className="min-w-0 space-y-4">
-          <h2 id="queue-title" className="text-sm font-medium">
-            Review queue
-            {data.findings ? (
-              <span className="ml-2 text-muted-foreground">{open.length} open</span>
-            ) : null}
-          </h2>
-          {!data.findings ? (
-            <Skeleton className="h-40 w-full" />
-          ) : open.length === 0 ? (
-            <div className="flex items-center gap-3 rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-              <Inbox aria-hidden="true" className="size-5 shrink-0" />
-              No open flags. New ones show up here when the audit agent finds something.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              <AnimatePresence initial={false}>
-                {open.map((finding) => (
-                  <FindingCard key={finding.id} finding={finding} now={now} />
-                ))}
-              </AnimatePresence>
-            </ul>
-          )}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-4">
+          <Panel
+            aria-labelledby="queue-title"
+            level="h2"
+            title={<span id="queue-title">Review queue</span>}
+            description="Approve if the flag is a real problem; reject if it is fine."
+            aside={
+              data.findings ? (
+                <Badge variant={open.length > 0 ? "warning" : "secondary"}>
+                  {open.length} open
+                </Badge>
+              ) : null
+            }
+          >
+            {!data.findings ? (
+              <div className="space-y-3 p-4" aria-busy="true">
+                <p className="text-sm text-muted-foreground">Loading the review queue...</p>
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : open.length === 0 ? (
+              <EmptyRow icon={<Inbox />}>
+                No open flags. New ones show up here when the audit agent finds something.
+              </EmptyRow>
+            ) : (
+              <ul className="divide-y">
+                <AnimatePresence initial={false}>
+                  {open.map((finding) => (
+                    <FindingCard key={finding.id} finding={finding} now={now} />
+                  ))}
+                </AnimatePresence>
+              </ul>
+            )}
+          </Panel>
           {decided.length > 0 ? <DecidedList findings={decided} /> : null}
-        </section>
+        </div>
         <ActivityFeed operations={data.operations} now={now} />
       </div>
     </div>
@@ -127,28 +141,23 @@ function StatusStrip({ now }: { now: number }) {
       ]
     : null;
   return (
-    <div className="space-y-2">
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border md:grid-cols-4">
-        {(items ?? Array.from({ length: 4 }, () => null)).map((item, i) => (
-          <div key={item?.label ?? i} className="bg-card p-4">
-            {item ? (
-              <>
-                <dt className="text-xs text-muted-foreground">{item.label}</dt>
-                <dd className="mt-1 text-lg font-medium">{item.value}</dd>
-                <dd className="text-xs text-muted-foreground">{item.note}</dd>
-              </>
-            ) : (
-              <Skeleton className="h-14 w-full" />
-            )}
-          </div>
-        ))}
-      </dl>
+    <section aria-label="Agent status" className="space-y-2">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {items
+          ? items.map((item) => (
+              <StatTile key={item.label} label={item.label} value={item.value} delta={item.note} />
+            ))
+          : [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[100px] rounded-lg" />)}
+      </div>
       {status?.ingest.lastStatus === "failed" && status.lastError ? (
-        <p role="alert" className="text-sm text-[hsl(var(--danger-text))]">
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/25 bg-destructive/[0.04] px-3 py-2 text-sm text-destructive"
+        >
           Last ingest failed: {status.lastError}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -163,10 +172,9 @@ function SetupCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <section className="rounded-xl border border-dashed p-4 text-sm">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed bg-card p-4 text-sm">
       <p>No live feed yet. Connect the six mock sources for a synthetic company to start.</p>
       <Button
-        className="mt-3"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -182,7 +190,7 @@ function SetupCard() {
       >
         Connect mock sources
       </Button>
-      {error ? <p className="mt-2 text-[hsl(var(--danger-text))]">{error}</p> : null}
+      {error ? <p className="w-full text-destructive">{error}</p> : null}
     </section>
   );
 }
@@ -214,87 +222,96 @@ function ActionBar() {
   }
 
   return (
-    <section aria-label="Actions" className="rounded-xl border bg-card p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          disabled={disabled}
-          onClick={() =>
-            run(
-              "feed",
-              () => actions.advanceFeed(anomaly || undefined),
-              `New entries arrived in the mock feed${anomaly ? " with a planted anomaly" : ""}. ${status?.ingest.enabled ? "Auto ingest picks them up on its next run." : "Press Ingest now to read them."}`,
-            )
-          }
+    <section aria-label="Actions" className="overflow-hidden rounded-lg border bg-card shadow-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button
+            disabled={disabled}
+            onClick={() =>
+              run(
+                "feed",
+                () => actions.advanceFeed(anomaly || undefined),
+                `New entries arrived in the mock feed${anomaly ? " with a planted anomaly" : ""}. ${status?.ingest.enabled ? "Auto ingest picks them up on its next run." : "Press Ingest now to read them."}`,
+              )
+            }
+          >
+            <Download aria-hidden="true" />
+            New entries arrive
+          </Button>
+          <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={disabled} />
+        </div>
+        <span aria-hidden="true" className="hidden h-6 w-px bg-border xl:block" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={disabled}
+            onClick={() =>
+              run(
+                "ingest",
+                actions.ingestNow,
+                source === "live"
+                  ? "Ingest queued. The agent reads every source; results appear below as they land."
+                  : "The agent ran and checked every source.",
+              )
+            }
+          >
+            <RefreshCw aria-hidden="true" className={cn(busy === "ingest" && "animate-spin")} />
+            Ingest now
+          </Button>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            title="For now this runs a fresh ingest and audit."
+            onClick={() =>
+              run(
+                "analysis",
+                actions.ingestNow,
+                "Analysis started: a fresh ingest and audit. Forecast analysis comes next.",
+              )
+            }
+          >
+            <Play aria-hidden="true" />
+            Launch analysis
+          </Button>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            onClick={() =>
+              run(
+                "export",
+                async () => setSeed(await actions.exportSeed()),
+                "Seed exported for a simulation.",
+              )
+            }
+          >
+            <FileOutput aria-hidden="true" />
+            Export seed for simulation
+          </Button>
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 xl:ml-auto xl:w-auto">
+          <AutoIngestToggle />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t bg-muted/40 px-3 py-2">
+        <output
+          className={cn(
+            "block min-h-5 text-[13px]",
+            message?.error ? "text-destructive" : "text-muted-foreground",
+          )}
         >
-          <Download aria-hidden="true" className="mr-2 size-4" />
-          New entries arrive
-        </Button>
-        <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={disabled} />
-        <Button
-          variant="outline"
-          disabled={disabled}
-          onClick={() =>
-            run(
-              "ingest",
-              actions.ingestNow,
-              source === "live"
-                ? "Ingest queued. The agent reads every source; results appear below as they land."
-                : "The agent ran and checked every source.",
-            )
-          }
-        >
-          <RefreshCw
-            aria-hidden="true"
-            className={cn("mr-2 size-4", busy === "ingest" && "animate-spin")}
-          />
-          Ingest now
-        </Button>
-        <Button
-          variant="outline"
-          disabled={disabled}
-          title="For now this runs a fresh ingest and audit."
-          onClick={() =>
-            run(
-              "analysis",
-              actions.ingestNow,
-              "Analysis started: a fresh ingest and audit. Forecast analysis comes next.",
-            )
-          }
-        >
-          <Play aria-hidden="true" className="mr-2 size-4" />
-          Launch analysis
-        </Button>
-        <Button
-          variant="outline"
-          disabled={disabled}
-          onClick={() =>
-            run(
-              "export",
-              async () => setSeed(await actions.exportSeed()),
-              "Seed exported for a simulation.",
-            )
-          }
-        >
-          <FileOutput aria-hidden="true" className="mr-2 size-4" />
-          Export seed for simulation
-        </Button>
-        <AutoIngestToggle />
+          {busy
+            ? "Working..."
+            : (message?.text ??
+              "Ready. Every action here only reads or checks; nothing moves money.")}
+        </output>
         <Link
           href="/field/map"
-          className="ml-auto inline-flex min-h-9 items-center gap-1 rounded text-sm text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          className="inline-flex items-center gap-1 rounded text-[13px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
         >
           Watch it on the brain map
-          <ArrowUpRight aria-hidden="true" className="size-4" />
+          <ArrowUpRight aria-hidden="true" className="size-3.5" />
         </Link>
       </div>
-      <output
-        className={cn(
-          "mt-3 block min-h-5 text-sm",
-          message?.error ? "text-[hsl(var(--danger-text))]" : "text-muted-foreground",
-        )}
-      >
-        {busy ? "Working..." : (message?.text ?? "")}
-      </output>
       <SeedDialog text={seed} demo={source === "demo"} onClose={() => setSeed(null)} />
     </section>
   );
@@ -343,10 +360,10 @@ function SeedDialog({
         <p
           className={cn(
             "flex items-center gap-2 text-sm",
-            verdict?.ok === false ? "text-[hsl(var(--danger-text))]" : "text-muted-foreground",
+            verdict?.ok === false ? "text-destructive" : "text-muted-foreground",
           )}
         >
-          {verdict?.ok ? <Check aria-hidden="true" className="size-4 text-primary" /> : null}
+          {verdict?.ok ? <Check aria-hidden="true" className="size-4 text-safe" /> : null}
           {verdict?.text ?? "Checking the seed..."}
         </p>
         <pre
@@ -361,7 +378,7 @@ function SeedDialog({
               download="weekly-seed.json"
               href={`data:application/json;charset=utf-8,${encodeURIComponent(text ?? "")}`}
             >
-              <Download aria-hidden="true" className="mr-2 size-4" />
+              <Download aria-hidden="true" />
               Download
             </a>
           </Button>
@@ -371,7 +388,7 @@ function SeedDialog({
               setCopied(true);
             }}
           >
-            <Copy aria-hidden="true" className="mr-2 size-4" />
+            <Copy aria-hidden="true" />
             {copied ? "Copied" : "Copy text"}
           </Button>
         </div>
@@ -404,84 +421,106 @@ function FindingCard({ finding, now }: { finding: FieldFinding; now: number }) {
       animate={{ opacity: 1, y: 0 }}
       exit={reduced ? { opacity: 0 } : { opacity: 0, x: 24 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="rounded-xl border bg-card p-4"
+      className="bg-card px-4 py-4"
     >
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span
-          className={cn(
-            "rounded-md border px-2 py-0.5 font-medium",
-            SEVERITY_TONE[finding.severity],
-          )}
-        >
-          {SEVERITY_LABEL[finding.severity]}
-        </span>
-        <span className="font-medium">{FINDING_LABEL[finding.kind]}</span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Badge variant={SEVERITY_BADGE[finding.severity]}>{SEVERITY_LABEL[finding.severity]}</Badge>
+        <span className="text-sm font-semibold">{FINDING_LABEL[finding.kind]}</span>
         {finding.escalated ? (
-          <span className="text-muted-foreground">· escalated to you</span>
+          <Badge variant="outline" className="font-normal text-muted-foreground">
+            Escalated to you
+          </Badge>
         ) : null}
-        <span className="text-muted-foreground">· found {timeAgo(finding.detectedAt, now)}</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          Found {timeAgo(finding.detectedAt, now)}
+        </span>
       </div>
       <p className="mt-2 text-sm leading-6">{finding.summary}</p>
       <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        Records:
+        Records
         {finding.refs.map((ref) => (
-          <code key={ref} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+          <code
+            key={ref}
+            className="rounded border bg-muted/60 px-1.5 py-px font-mono text-[11px] text-foreground"
+          >
             {ref}
           </code>
         ))}
       </p>
-      <label htmlFor={noteId} className="mt-3 block text-xs text-muted-foreground">
-        Note (optional)
-      </label>
-      <textarea
-        id={noteId}
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={2}
-        maxLength={500}
-        placeholder="Why you decided this"
-        className="mt-1 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={busy !== null} onClick={() => decide("approved")}>
-          <Check aria-hidden="true" className="mr-1.5 size-3.5" />
-          Approve
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy !== null}
-          onClick={() => decide("rejected")}
-        >
-          <X aria-hidden="true" className="mr-1.5 size-3.5" />
-          Reject
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          Approve if the flag is a real problem; reject if it is fine.
-        </span>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label htmlFor={noteId} className="sr-only">
+          Note (optional)
+        </label>
+        <Input
+          id={noteId}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+          placeholder="Add a note (optional): why you decided this"
+          className="h-8 sm:flex-1"
+        />
+        <div className="flex shrink-0 gap-2">
+          <Button
+            size="sm"
+            className="flex-1 sm:flex-none"
+            disabled={busy !== null}
+            onClick={() => decide("approved")}
+          >
+            <Check aria-hidden="true" />
+            Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            disabled={busy !== null}
+            onClick={() => decide("rejected")}
+          >
+            <X aria-hidden="true" />
+            Reject
+          </Button>
+        </div>
       </div>
-      {error ? <p className="mt-2 text-sm text-[hsl(var(--danger-text))]">{error}</p> : null}
+      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
     </motion.li>
   );
 }
 
 function DecidedList({ findings }: { findings: FieldFinding[] }) {
   return (
-    <details className="rounded-xl border p-4 text-sm">
-      <summary className="cursor-pointer text-muted-foreground">
-        {findings.length} decided {findings.length === 1 ? "flag" : "flags"}
+    <details className="group overflow-hidden rounded-lg border bg-card text-sm shadow-xs">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <span>
+          Decided
+          <span className="ml-2 font-normal text-muted-foreground">
+            {findings.length} {findings.length === 1 ? "flag" : "flags"}
+          </span>
+        </span>
+        <span className="text-[13px] font-normal text-muted-foreground group-open:hidden">
+          Show
+        </span>
+        <span className="hidden text-[13px] font-normal text-muted-foreground group-open:inline">
+          Hide
+        </span>
       </summary>
-      <ul className="mt-3 space-y-3">
+      <ul className="divide-y border-t">
         {findings.map((f) => (
-          <li key={f.id} className="border-t pt-3">
-            <p className="text-xs">
-              <span className={f.status === "approved" ? "text-primary" : "text-muted-foreground"}>
+          <li
+            key={f.id}
+            className="grid gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[88px_minmax(0,1fr)]"
+          >
+            <div>
+              <Badge variant={f.status === "approved" ? "success" : "secondary"}>
                 {f.status === "approved" ? "Approved" : "Rejected"}
-              </span>
-              <span className="text-muted-foreground"> · {FINDING_LABEL[f.kind]}</span>
-            </p>
-            <p className="mt-1 leading-6">{f.summary}</p>
-            {f.note ? <p className="mt-1 text-muted-foreground">Note: {f.note}</p> : null}
+              </Badge>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">{FINDING_LABEL[f.kind]}</p>
+              <p className="mt-0.5 leading-6">{f.summary}</p>
+              {f.note ? (
+                <p className="mt-1 text-[13px] text-muted-foreground">Note: {f.note}</p>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>
@@ -509,16 +548,23 @@ export function ActivityFeed({
     [operations],
   );
   return (
-    <section aria-labelledby="activity-title" className={cn("min-w-0 space-y-4", className)}>
-      <h2 id="activity-title" className="text-sm font-medium">
-        Recent activity
-      </h2>
+    <Panel
+      aria-labelledby="activity-title"
+      level="h2"
+      title={<span id="activity-title">Recent activity</span>}
+      aside={<History aria-hidden="true" className="size-4 text-muted-foreground" />}
+      className={className}
+    >
       {!operations ? (
-        <Skeleton className="h-64 w-full" />
+        <div className="space-y-3 p-4" aria-busy="true">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No recorded activity yet.</p>
+        <EmptyRow>No recorded activity yet.</EmptyRow>
       ) : (
-        <ol className="space-y-0 border-l">
+        <ol className="divide-y">
           <AnimatePresence initial={false}>
             {rows.map((op) => {
               const fresh = !initial.current?.has(op.id) && !reduced;
@@ -529,32 +575,41 @@ export function ActivityFeed({
                   initial={fresh ? { opacity: 0, x: -6 } : false}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
-                  className="relative py-2 pl-4"
+                  className="flex gap-3 px-4 py-2.5"
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "absolute -left-[3.5px] top-3.5 size-1.5 rounded-full",
-                      op.status === "failed" ? "bg-destructive" : "bg-muted-foreground/60",
+                      "mt-[7px] size-1.5 shrink-0 rounded-full",
+                      op.status === "failed" ? "bg-destructive" : "bg-muted-foreground/40",
                     )}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{OPERATION_LABEL[op.kind]}</span>
-                    {" · "}
-                    {op.agent}
-                    {op.tool ? ` · ${op.tool}` : ""}
-                    {" · "}
-                    <time dateTime={op.at} title={clock(op.at)}>
-                      {timeAgo(op.at, now)}
-                    </time>
-                  </p>
-                  <p className="text-sm leading-5">{op.summary}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 truncate text-[13px] font-medium">
+                        {OPERATION_LABEL[op.kind]}
+                        <span className="font-normal text-muted-foreground">
+                          {" · "}
+                          {op.agent}
+                          {op.tool ? ` · ${op.tool}` : ""}
+                        </span>
+                      </p>
+                      <time
+                        dateTime={op.at}
+                        title={clock(op.at)}
+                        className="shrink-0 text-xs tabular-nums text-muted-foreground"
+                      >
+                        {timeAgo(op.at, now)}
+                      </time>
+                    </div>
+                    <p className="text-[13px] leading-5 text-muted-foreground">{op.summary}</p>
+                  </div>
                 </motion.li>
               );
             })}
           </AnimatePresence>
         </ol>
       )}
-    </section>
+    </Panel>
   );
 }
