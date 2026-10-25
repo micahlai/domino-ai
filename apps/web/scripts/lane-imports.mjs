@@ -9,7 +9,8 @@ import { importSpecs } from "./import-specs.mjs";
 
 const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Ownership from kb/spec/independent-feature-lanes.md "Source ownership after P0".
+// Ownership from kb/spec/independent-feature-lanes.md "Source ownership after P0", plus P0 v2
+// (kb/spec/weekly-product-vision-2026-10-24.md). components/investigate (agent map) is Field.
 const LANES = {
   field: [
     /^app\/investigate\//,
@@ -27,6 +28,10 @@ const LANES = {
   ],
   timeline: [
     /^app\/historical\//,
+    // P0 v2: the existing weekly /c/[companyId] UI and its components.
+    /^app\/c\//,
+    /^components\/(company|multiverse)\//,
+    /^components\/(AddEventDialog|DominoChain|FixCard|Headline|MultiverseTimeline|ProofDrawer|ResilienceBar|RiskList)\.tsx$/,
     /^app\/case\/2u\/simulations\//,
     /^app\/playground\/timeline-seam\//,
     /^components\/historical\//,

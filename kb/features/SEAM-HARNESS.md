@@ -60,6 +60,12 @@ Verified fixture hashes (recomputed, equal to `FEATURE_BOUNDARY_FIXTURE_HASHES`)
 | savedResultRef | 3847404c...89fbe6 | n/a | verified against validTwoUSeed |
 | postRevealTwoU | 9def5cd4...3bb77c | n/a | verified against validTwoUSeed |
 
+## Weekly seam v2 (P0 v2)
+
+`packages/contracts/src/weekly-boundary.ts`: WeeklySeedV1 (`parseWeeklySeedJson`) and WeeklyResultRefV1 (`parseWeeklyResultRefJson`), same JSON-text and hash rules as P0-C. `/playground/field-seam` exports the Kestrel weekly fixture as JSON text; `/playground/timeline-seam` verifies it with `verifyWeeklySeedText` and shows company, asOf, scheduled items and findings. The tampered copy is rejected by the recomputed hash. Pins: `WEEKLY_BOUNDARY_FIXTURE_HASHES`.
+
+P0 v2 ownership: Timeline also owns `app/c/**`, `components/{company,multiverse}/**` and the top-level weekly components used by `/c/[companyId]` (see `apps/web/scripts/lane-imports.mjs`). Convex tables: Field owns companies, sources, snapshots, models, constraints, approvals, log; Timeline owns risks, branches, fixes, resilience, history, grades, explanations. `convex/schemas/legacy.schema.ts` keeps only the shared `companyId` validator.
+
 ## Namespace and import inventory
 
 | Lane | Owns (P0-H files in bold) | May import |
@@ -78,7 +84,7 @@ node apps/web/scripts/lane-imports.mjs
 
 ### Frozen legacy exceptions (pre-existing at base 664ab45)
 
-18 cross-lane imports: 15 production, 3 test. Each is frozen. It may be deleted by its importing lane but never widened. The OWNER of the imported module must keep the listed exports and their signatures/props backward compatible until a coordinated checkpoint removes the edge.
+18 cross-lane imports: 15 production, 3 test. Unchanged after P0 v2 (rerun on branch P0-v2-weekly-seam: still 18, 0 in harness files). Each is frozen. It may be deleted by its importing lane but never widened. The OWNER of the imported module must keep the listed exports and their signatures/props backward compatible until a coordinated checkpoint removes the edge.
 
 | Importer (lane) | Line | Imports | Owner keeping it stable |
 | --- | --- | --- | --- |

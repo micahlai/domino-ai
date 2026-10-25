@@ -221,6 +221,9 @@ function exact<T extends z.ZodTypeAny>(schema: T) {
   });
 }
 
+/** exact(), shared with weekly-boundary.ts (the weekly seam v2). Internal helper, not a seam. */
+export { exact as exactBoundarySchema };
+
 // ---------- JSON-text helpers ----------
 
 /** Nesting deeper than this is rejected (boundary records nest about 8 levels). */

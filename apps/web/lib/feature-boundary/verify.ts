@@ -3,14 +3,19 @@ import {
   type TimelineResultRefV1,
   type TimelineRevealV1,
   type TimelineSeedV1,
+  type WeeklySeedV1,
   canonicalJson,
   contentHashPreimage,
   parseForecastReadyTimelineSeedJson,
   parseTimelineResultRefContextJson,
   parseTimelineRevealContextJson,
   parseTimelineSeedJson,
+  parseWeeklySeedJson,
 } from "@domino/contracts";
-import { featureBoundaryFixtures as fx } from "@domino/contracts/fixtures";
+import {
+  featureBoundaryFixtures as fx,
+  weeklyBoundaryFixtures as wfx,
+} from "@domino/contracts/fixtures";
 import type { z } from "zod";
 
 // P0-H consumer-side verifier, shared by both lanes (frozen common code, like the contracts).
@@ -149,4 +154,32 @@ export async function verifyFixtureText(
   if (r.contentHash !== pins.contentHash || r.snapshotContentHash !== pins.snapshotContentHash)
     return fail("content hashes differ from the pinned fixture hashes");
   return r;
+}
+
+// ---------- Weekly seam v2 (WeeklySeedV1) ----------
+
+export const PINNED_WEEKLY_FIXTURE_HASHES = wfx.WEEKLY_BOUNDARY_FIXTURE_HASHES;
+export const WEEKLY_FIXTURE_NAMES = [
+  "validKestrelWeeklySeed",
+  "tamperedKestrelWeeklySeed",
+] as const;
+export type WeeklyFixtureName = (typeof WEEKLY_FIXTURE_NAMES)[number];
+
+/** A weekly fixture exactly as it would cross the boundary: JSON text. */
+export function weeklyFixtureText(name: WeeklyFixtureName): string {
+  return JSON.stringify(wfx[name], null, 2);
+}
+
+/** A WeeklySeedV1 from JSON text: parse, then recompute its contentHash. */
+export async function verifyWeeklySeedText(
+  text: unknown,
+  opts: VerifyOptions = {},
+): Promise<Verified<WeeklySeedV1>> {
+  const parsed = parseWeeklySeedJson(text);
+  if (!parsed.success) return fail(issueText(parsed.error));
+  const contentHash = await sha256Hex(contentHashPreimage(parsed.data));
+  if (contentHash !== parsed.data.contentHash)
+    return fail("weekly seed contentHash does not match its content");
+  const pin = await pinned(parsed.data, opts);
+  return pin.ok ? { ok: true, value: parsed.data, contentHash, fixtureHash: pin.fixtureHash } : pin;
 }

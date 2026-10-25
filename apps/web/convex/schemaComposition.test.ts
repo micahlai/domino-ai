@@ -2,33 +2,33 @@
 import { describe, expect, it } from "vitest";
 import schema from "./schema";
 import { fieldTables } from "./schemas/field.schema";
-import { legacyTables } from "./schemas/legacy.schema";
+import * as legacy from "./schemas/legacy.schema";
 import { timelineTables } from "./schemas/timeline.schema";
 
+// P0 v2: the 14 legacy tables are split between the lanes; legacy.schema.ts keeps only shared
+// validators.
 const LANES = {
-  legacy: [
-    "companies",
-    "sources",
-    "snapshots",
-    "models",
-    "constraints",
+  timeline: [
     "risks",
     "branches",
     "fixes",
     "resilience",
     "history",
-    "approvals",
     "grades",
     "explanations",
-    "log",
-  ],
-  timeline: [
     "historicalRuns",
     "historicalReveals",
     "historicalRevealReceipts",
     "historicalActivity",
   ],
   field: [
+    "companies",
+    "sources",
+    "snapshots",
+    "models",
+    "constraints",
+    "approvals",
+    "log",
     "investigationRequests",
     "investigationConversations",
     "investigationMessages",
@@ -78,10 +78,10 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
 
 describe("schema composition", () => {
   it("assigns each table to exactly one lane fragment", () => {
-    expect(Object.keys(legacyTables).sort()).toEqual([...LANES.legacy].sort());
+    expect(Object.keys(legacy)).toEqual(["companyId"]);
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
-    const all = [...LANES.legacy, ...LANES.timeline, ...LANES.field];
+    const all = [...LANES.timeline, ...LANES.field];
     expect(new Set(all).size).toBe(22);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });

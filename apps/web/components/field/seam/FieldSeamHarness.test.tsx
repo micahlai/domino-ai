@@ -9,5 +9,7 @@ describe("field seam harness", () => {
     expect(html).toContain("Backend not configured");
     expect(html).toMatch(/fixture-validTwoUSeed.*?verified/);
     expect(html).toMatch(/fixture-mismatchedSeed.*?rejected/);
+    expect(html).toMatch(/weekly-validKestrelWeeklySeed.*?verified/);
+    expect(html).toMatch(/weekly-tamperedKestrelWeeklySeed.*?rejected/);
   });
 });

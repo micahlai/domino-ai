@@ -13,6 +13,7 @@ import { CASE_ID } from "../../historical/live";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { TimelineBackendSmoke } from "./TimelineBackendSmoke";
+import { WeeklySeedPanel } from "./WeeklySeedPanel";
 import { seedView } from "./seedView";
 
 const SEEDS: { name: FixtureName; label: string }[] = [
@@ -41,6 +42,7 @@ export function TimelineSeamHarness() {
   return (
     <div className="space-y-6">
       <TimelineBackendSmoke caseId={CASE_ID} />
+      <WeeklySeedPanel />
       <section className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-dashed text-clay">
