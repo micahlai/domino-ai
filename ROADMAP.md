@@ -25,8 +25,8 @@ Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no 
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Claude worker (lead subagent, Opus), launched 2026-10-24 | L0-learning-contracts / ../domino-L0 from 16a3a56 | Worker commits and stops; lead runs `codex review` audit | [Card](kb/tasks/L0-learning-contracts.md): additive schemas, synthetic tests, focused test/typecheck/lint; Codex audit |
-| E0 data custody | Claude worker finished at b441a2a (data 6179238); Codex CLI review running | E0-evaluation-custody / ../domino-E0 from 16a3a56 | Await `codex review` verdict; worker reports 16/16 test pairs eligible, 6 SEC GETs, dev 4/8 + validation 4/4; manifest b4005325..., protocol 41344e7a... | [Card](kb/tasks/E0-evaluation-custody.md): hashes, coverage, exposure ledger, nothing sealed committed; Codex audit |
+| L0 contracts | Claude worker finished at 10b500c; Codex exec audit running | L0-learning-contracts / ../domino-L0 from 16a3a56 | Await audit verdict | [Card](kb/tasks/L0-learning-contracts.md): additive schemas, synthetic tests, focused test/typecheck/lint; Codex audit |
+| E0 data custody | Claude worker, repair running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED b441a2a ([audit](kb/reviews/E0-b441a2a-codex-audit.md)): original-accession pinning, acceptance instants, read logging, Freshworks package, strict boundary. Repair then re-audit | 16 pairs claimed eligible before the fix; recount after it |
 
 ## Review
 
