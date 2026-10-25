@@ -27,7 +27,7 @@ Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no 
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Repair 9f6f677 done; Codex re-audit running | L0-learning-contracts / ../domino-L0 | Await re-audit | 335 contracts tests, typecheck, biome pass (worker-reported) |
+| L0 contracts | Claude worker, repair round 2 running | L0-learning-contracts / ../domino-L0 | Codex REJECTED 9f6f677 ([re-audit](kb/reviews/L0-9f6f677-codex-reaudit.md)): repeated quarters pass cohort gate, duplicate assumption IDs, manifest/seal protocol mismatch. Lead kept dependency-first ordering (documented). Last round before escalation | 5 of 7 original findings fixed and independently probed |
 | E0 data custody | Claude worker, repair round 2 running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED 217bd44 too ([re-audit](kb/reviews/E0-217bd44-codex-reaudit.md)): missing-acceptance substitution, incomplete historical read log, thin self-check. Last round before escalation | Accession pinning, instants, strict boundary fixed; 16/16 still claimed |
 
 ## Review
@@ -64,3 +64,4 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
 | RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | QUEUED, acknowledgment pending. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
+| RQ7 run the gated sequence / U2 | Claude lead dispatch; Codex audit/integration | Read [U2](kb/coordination/historical/user-inbox.md); accepted L0/E0 before L1 | QUEUED, acknowledgment pending. Continue active repairs/re-audits, integrate passing work and launch L1 when eligible; no duplicate lead or weakened gates |
