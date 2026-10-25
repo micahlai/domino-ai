@@ -55,6 +55,11 @@ export function Dashboard() {
 
 function LiveDashboard() {
   const { companyId, error } = useSelectedCompany();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  // A cached Convex feed may be ready on the first client render while SSR only has a loading
+  // shell. Keep those first renders identical, then reveal the selected feed or its error.
+  if (!hydrated) return <LoadingState />;
   if (error) return <Notice title="Operating company could not connect">{error}</Notice>;
   if (!companyId) return <LoadingState />;
   return (
