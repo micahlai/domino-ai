@@ -69,6 +69,7 @@ export type WorkspaceViewProps = {
   risksHref?: string;
   /** A short page-level notice under the header, e.g. newer books exist. */
   notice?: ReactNode;
+  forecastNotice?: string;
   /** The workspace root: its forecast is the base line every scenario forks from. */
   baseRunId?: string | null;
 };
@@ -112,6 +113,7 @@ export function WorkspaceView({
   initialAssistant,
   risksHref,
   notice,
+  forecastNotice,
   baseRunId: baseRunIdProp,
 }: WorkspaceViewProps) {
   const b = run.baseline;
@@ -179,6 +181,7 @@ export function WorkspaceView({
     return [
       {
         runId: id,
+        reveal: selection.revealRunIds?.includes(id),
         label: read.value.label || "Untitled scenario",
         href: actions.hrefFor(id),
         forecast: read.value.forecast,
@@ -388,6 +391,11 @@ export function WorkspaceView({
                   Hover for details, click a line to focus it
                 </p>
               </div>
+              {forecastNotice ? (
+                <output className="text-xs text-muted-foreground" aria-live="polite">
+                  {forecastNotice}
+                </output>
+              ) : null}
               <WorkspaceChart
                 fill
                 history={b.history}
@@ -396,6 +404,7 @@ export function WorkspaceView({
                 forecastRunId={baseRunId ?? undefined}
                 initialFocusRunId={run.runId}
                 comparisons={curves}
+                onReveal={selection.onReveal}
                 items={b.seed.scheduledItems}
                 limits={limits}
                 breachedWeeks={run.runId === baseRunId ? breaches.map((n) => n.weekStart) : []}

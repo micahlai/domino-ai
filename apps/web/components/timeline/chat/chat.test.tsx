@@ -203,6 +203,8 @@ describe("confirmed chat writes", () => {
     const old = guard.capture();
     guard.setContext("source-b");
     expect(guard.allows(old)).toBe(false);
+    guard.setContext("source-a");
+    expect(guard.allows(old)).toBe(false);
     guard.dispose();
     expect(guard.allows("source-b")).toBe(false);
   });

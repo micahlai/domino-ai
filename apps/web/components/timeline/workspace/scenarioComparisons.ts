@@ -21,6 +21,9 @@ export type ScenarioComparisons = {
   onChange: (ids: string[]) => void;
   /** Color slot per shown scenario; missing slots fall back to selection order. */
   colors?: Record<string, number>;
+  /** Newly accepted curves only; consumed once they are mounted with validated data. */
+  revealRunIds?: string[];
+  onReveal?: (runId: string) => void;
 };
 
 /** Selection is unique and bounded. The base run is always drawn, so it is never selectable. */

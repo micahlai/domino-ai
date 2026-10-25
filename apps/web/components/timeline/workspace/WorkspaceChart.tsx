@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import { formatExactCents, formatFullDate } from "../baseline/format";
+import { placeChartAnnotations } from "./chartAnnotations";
 import { type FocusCurve, type FocusPoint, nearestCurveAt, pointOnCurve } from "./chartFocus";
 import { cashScale, formatAxisCash, panWeekWindow, visibleDateTicks } from "./chartScales";
 
@@ -29,8 +30,11 @@ export type ChartProps = {
   /** Identity of the main line and preferred open scenario for the initial focus dot. */
   forecastRunId?: string;
   initialFocusRunId?: string;
+  onReveal?: (runId: string) => void;
   comparisons?: {
     runId: string;
+    /** Draw this newly accepted saved curve once on arrival. */
+    reveal?: boolean;
     label: string;
     href: string;
     forecast: Forecast;
@@ -94,6 +98,77 @@ function usePlotSize() {
   return [ref, size] as const;
 }
 
+/** Retain this mount's draw state when its arrival signal is consumed by the workspace. */
+function ScenarioStroke({
+  d,
+  color,
+  dash,
+  reveal,
+  onReveal,
+}: {
+  d: string;
+  color?: string;
+  dash?: string;
+  reveal: boolean;
+  onReveal: () => void;
+}) {
+  const reduced = useReducedMotion();
+  const [drawIn] = useState(reveal && !reduced);
+  useEffect(() => {
+    if (reveal) onReveal();
+  }, [reveal, onReveal]);
+  const props = {
+    d,
+    fill: "none",
+    className: color ? undefined : "stroke-muted-foreground opacity-80",
+    stroke: color,
+    strokeWidth: color ? 2.25 : 1.5,
+    strokeLinejoin: "round" as const,
+    strokeLinecap: "round" as const,
+    strokeDasharray: dash,
+  };
+  return drawIn ? (
+    <motion.path
+      {...props}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1 }}
+      transition={{ duration: reduced ? 0 : 0.9, ease: "easeOut" }}
+      data-testid="forecast-reveal"
+    />
+  ) : (
+    <path {...props} />
+  );
+}
+
+/** Rules can leave cash unchanged: briefly trace their saved path without inventing a fork. */
+function SameForecastReveal({
+  d,
+  color,
+  reveal,
+  onReveal,
+}: { d: string; color?: string; reveal: boolean; onReveal: () => void }) {
+  const reduced = useReducedMotion();
+  const [drawIn] = useState(reveal && !reduced);
+  const [finished, setFinished] = useState(false);
+  useEffect(() => {
+    if (reveal) onReveal();
+  }, [reveal, onReveal]);
+  return drawIn && !finished ? (
+    <motion.path
+      d={d}
+      fill="none"
+      stroke={color}
+      strokeWidth={4}
+      strokeLinecap="round"
+      initial={{ pathLength: 0, opacity: 0.9 }}
+      animate={{ pathLength: 1, opacity: 0.9 }}
+      transition={{ duration: reduced ? 0 : 0.9, ease: "easeOut" }}
+      onAnimationComplete={() => setFinished(true)}
+      data-testid="forecast-same-path-reveal"
+    />
+  ) : null;
+}
+
 /**
  * Recorded history on the left, the saved 13-week forecast on the right. Positions are drawing
  * geometry only; every value shown in text comes straight from the saved record.
@@ -102,6 +177,18 @@ export function WorkspaceChart(p: ChartProps) {
   const titleId = useId();
   const clipId = `${titleId.replace(/:/g, "")}-plot`;
   const [wrapRef, plotSize] = usePlotSize();
+  const legendRef = useRef<HTMLElement>(null);
+  const [legendSize, setLegendSize] = useState({ width: 180, height: 60 });
+  useEffect(() => {
+    const element = legendRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const update = () =>
+      setLegendSize({ width: element.offsetWidth, height: element.offsetHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const W = plotSize.width;
   const compact = W < 560;
   const H = p.fill ? Math.max(180, plotSize.height) : compact ? 280 : 340;
@@ -276,6 +363,31 @@ export function WorkspaceChart(p: ChartProps) {
     ),
   ];
   const anyBreach = breachedWeeks.size > 0 || notes.some((n) => "dot" in n);
+  const annotations = placeChartAnnotations(
+    [
+      ...p.limits
+        .filter((limit) => limit.cents >= domainLo && limit.cents <= domainHi)
+        .map((limit) => ({
+          id: `limit:${limit.id}`,
+          x: left + 5,
+          y: y(limit.cents),
+          text: `${limit.label} ${formatExactCents(limit.cents)}`,
+        })),
+      ...notes.map((note, index) => ({
+        id: `note:${index}`,
+        x: note.pt.x,
+        y: note.pt.y,
+        text: note.short ?? note.text,
+      })),
+    ],
+    {
+      left: plotLeft + 4,
+      top: PAD.top + 6,
+      width: Math.max(1, plotRight - plotLeft - 8),
+      height: Math.max(1, H - PAD.bottom - PAD.top - 12),
+    },
+    p.fill ? [{ left: left + 8, top: PAD.top + 4, ...legendSize }] : [],
+  );
 
   // The branch point of a proposal under review: the forecast week containing its start date.
   const preview = p.branchPreview;
@@ -371,6 +483,7 @@ export function WorkspaceChart(p: ChartProps) {
       data-testid="workspace-chart"
     >
       <figcaption
+        ref={legendRef}
         className={
           p.fill
             ? "absolute z-20 max-h-[70%] w-max max-w-[min(20rem,calc(100%_-_6rem))] overflow-y-auto rounded-md border bg-card/95 px-2 py-1 text-xs text-muted-foreground shadow-xs"
@@ -460,6 +573,25 @@ export function WorkspaceChart(p: ChartProps) {
             </span>
           </div>
         </details>
+        {notes.length || p.limits.length ? (
+          <details className="mt-1 max-h-32 overflow-y-auto text-xs">
+            <summary className="min-h-8 cursor-pointer py-1 text-destructive">
+              Cash minimum details ({notes.length + p.limits.length})
+            </summary>
+            <ul className="space-y-1 pl-2">
+              {p.limits.map((limit) => (
+                <li key={limit.id}>
+                  {limit.label} · {formatExactCents(limit.cents)}
+                </li>
+              ))}
+              {notes.map((note, index) => (
+                <li key={`${index}:${note.weekStart}`}>
+                  {formatFullDate(note.weekStart)} · {note.text}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </figcaption>
       <div
         className={
@@ -621,13 +753,6 @@ export function WorkspaceChart(p: ChartProps) {
                     strokeWidth={1.25}
                     strokeDasharray="6 4"
                   />
-                  <text
-                    x={left + 6}
-                    y={y(l.cents) - 6}
-                    className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
-                  >
-                    {l.label} {formatExactCents(l.cents)}
-                  </text>
                 </g>
               ))}
             <g clipPath={`url(#${clipId})`}>
@@ -646,7 +771,25 @@ export function WorkspaceChart(p: ChartProps) {
               ) : null}
               {comparisons.map((entry, index) => {
                 const points = comparisonPoints(entry);
-                if (points.length < 2) return null;
+                if (points.length < 2)
+                  return (
+                    <SameForecastReveal
+                      key={entry.runId}
+                      d={
+                        draw(
+                          lastPast
+                            ? [
+                                lastPast,
+                                ...entry.forecast.weeks.map((week, i) => at(off + i, week.usable)),
+                              ]
+                            : entry.forecast.weeks.map((week, i) => at(off + i, week.usable)),
+                        ) ?? ""
+                      }
+                      color={entry.color}
+                      reveal={Boolean(entry.reveal)}
+                      onReveal={() => p.onReveal?.(entry.runId)}
+                    />
+                  );
                 const fork =
                   entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
                 return (
@@ -656,15 +799,12 @@ export function WorkspaceChart(p: ChartProps) {
                     data-testid={entry.parent ? "parent-line" : "comparison-line"}
                     data-run-id={entry.runId}
                   >
-                    <path
+                    <ScenarioStroke
                       d={draw(points) ?? ""}
-                      fill="none"
-                      className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
-                      stroke={entry.color}
-                      strokeWidth={entry.color ? 2.25 : 1.5}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
+                      color={entry.color}
+                      dash={entry.color ? undefined : DASHES[index % DASHES.length]}
+                      reveal={Boolean(entry.reveal)}
+                      onReveal={() => p.onReveal?.(entry.runId)}
                     />
                     {fork ? (
                       <circle
@@ -757,38 +897,60 @@ export function WorkspaceChart(p: ChartProps) {
                   <title>{focusLabel}</title>
                 </circle>
               ) : null}
-              {notes.map((n) => {
-                const flip = n.pt.x > W * 0.62;
+              {notes.map((note, index) => (
+                <g
+                  key={`dot:${index}:${note.weekStart}`}
+                  pointerEvents="none"
+                  data-testid="breach-note"
+                >
+                  <title>{`${formatFullDate(note.weekStart)} · ${note.text}`}</title>
+                  {"dot" in note ? (
+                    <circle
+                      cx={note.pt.x}
+                      cy={note.pt.y}
+                      r={4.5}
+                      className="fill-destructive stroke-card"
+                      strokeWidth={2}
+                      data-breached="true"
+                    />
+                  ) : null}
+                </g>
+              ))}
+              {annotations.placed.map((label) => {
+                const noteIndex = label.id.startsWith("note:") ? Number(label.id.slice(5)) : -1;
+                const note = notes[noteIndex];
+                const fullText = note
+                  ? `${formatFullDate(note.weekStart)} · ${note.text}`
+                  : label.text;
+                const targetX = Math.max(label.left, Math.min(label.left + label.width, label.x));
+                const targetY = Math.max(label.top, Math.min(label.top + label.height, label.y));
                 return (
                   <g
-                    key={`${n.weekStart}-${n.text}-${n.pt.y}`}
+                    key={label.id}
+                    data-testid="chart-annotation"
                     pointerEvents="none"
-                    data-testid="breach-note"
+                    aria-label={fullText}
                   >
-                    {"dot" in n ? (
-                      <circle
-                        cx={n.pt.x}
-                        cy={n.pt.y}
-                        r={4.5}
-                        className="fill-destructive stroke-card"
-                        strokeWidth={2}
-                        data-breached="true"
+                    <title>{fullText}</title>
+                    {note ? (
+                      <line
+                        x1={label.x}
+                        y1={label.y}
+                        x2={targetX}
+                        y2={targetY}
+                        className="stroke-destructive/60"
                       />
                     ) : null}
-                    <line
-                      x1={n.pt.x}
-                      x2={n.pt.x}
-                      y1={n.pt.y + 7}
-                      y2={Math.min(H - PAD.bottom - 4, n.pt.y + 22)}
-                      className="stroke-destructive"
-                    />
                     <text
-                      x={n.pt.x + (flip ? -6 : 6)}
-                      y={Math.min(H - PAD.bottom - 6, n.pt.y + 22)}
-                      textAnchor={flip ? "end" : "start"}
+                      x={label.left}
+                      y={label.top + 11}
                       className="fill-destructive text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
                     >
-                      {compact && n.short ? n.short : n.text}
+                      {label.lines.map((line, i) => (
+                        <tspan key={`${i}:${line}`} x={label.left} dy={i ? 14 : 0}>
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
                   </g>
                 );
