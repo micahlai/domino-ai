@@ -168,11 +168,13 @@ export function WorkspaceView({
   const selectedIds = comparisonIds(selection.ids, baseRunId ?? "");
   const entries = familyEntries(run, graph);
   const shownSet = new Set(selectedIds);
-  // Hovering a scenario in the left rail lights up its line and every line it builds on.
+  // Hovering a drawn scenario in the left rail lights up its line and every line it builds on.
+  // An unticked scenario has no line, so hovering it leaves everything in focus.
   const [hoveredRunId, setHoveredRunId] = useState<string | null>(null);
-  const hoveredLineage = hoveredRunId
-    ? [...ancestorsOf(hoveredRunId, entries, baseRunId ?? ""), hoveredRunId]
-    : null;
+  const hoveredLineage =
+    hoveredRunId && (hoveredRunId === baseRunId || shownSet.has(hoveredRunId))
+      ? [...ancestorsOf(hoveredRunId, entries, baseRunId ?? ""), hoveredRunId]
+      : null;
   const base = run.baseline.forecast;
   const forecastOf = (id: string) => {
     if (id === baseRunId) return base;
