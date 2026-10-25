@@ -77,7 +77,7 @@ import {
   query,
 } from "./_generated/server";
 import { type Reservation, runAiStep } from "./fieldAi";
-import { type CoordinatorRecord, coordinate, coordinatorRecordArg } from "./fieldCoordinator";
+import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 import {
@@ -94,6 +94,7 @@ import {
   usd,
 } from "./lib/analystScenarios";
 import { APIFY_LABEL, checkCustomerNews, lookUpCompanyFunding } from "./lib/apifyDemo";
+import { type CoordinatorRecord, coordinatorRecordArg } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
 import { parse } from "./lib/parse";
 

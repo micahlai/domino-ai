@@ -51,6 +51,7 @@ import type * as lib_analystScenarios from "../lib/analystScenarios.js";
 import type * as lib_apifyDemo from "../lib/apifyDemo.js";
 import type * as lib_computed from "../lib/computed.js";
 import type * as lib_connectionRows from "../lib/connectionRows.js";
+import type * as lib_coordinatorRecord from "../lib/coordinatorRecord.js";
 import type * as lib_counterparties from "../lib/counterparties.js";
 import type * as lib_fieldCompanies from "../lib/fieldCompanies.js";
 import type * as lib_parse from "../lib/parse.js";
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "lib/apifyDemo": typeof lib_apifyDemo;
   "lib/computed": typeof lib_computed;
   "lib/connectionRows": typeof lib_connectionRows;
+  "lib/coordinatorRecord": typeof lib_coordinatorRecord;
   "lib/counterparties": typeof lib_counterparties;
   "lib/fieldCompanies": typeof lib_fieldCompanies;
   "lib/parse": typeof lib_parse;

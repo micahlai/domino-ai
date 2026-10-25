@@ -12,8 +12,7 @@
  * no canned plan: without CREAO the agents keep their default order and the log says why.
  */
 import { SnapshotSchema } from "@domino/contracts";
-import { type Infer, v } from "convex/values";
-import { ProviderError } from "../../../packages/agents/src/errors";
+import { v } from "convex/values";
 import {
   type CoordinatorInput,
   type CoordinatorPlan,
@@ -24,32 +23,22 @@ import {
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { type ActionCtx, internalMutation, internalQuery } from "./_generated/server";
-import { AUDIT_AGENT, CREAO_STEP_DEADLINE_MS, type Reservation, creaoGate } from "./fieldAi";
+import {
+  AUDIT_AGENT,
+  CREAO_STEP_DEADLINE_MS,
+  type Reservation,
+  creaoFailure,
+  creaoGate,
+} from "./fieldAi";
 import { ANALYST, RESEARCH, SUMMARIZER, buildDigest } from "./fieldAnalyst";
 import type { AgentRow } from "./lib/agentLog";
 import type { Inputs } from "./lib/analystScenarios";
 import { APIFY_LABEL, checkCustomerNews } from "./lib/apifyDemo";
+import type { CoordinatorRecord } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
 import { parse } from "./lib/parse";
 
 export const COORDINATOR = "coordinator#1";
-
-export const coordinatorRecordArg = v.object({
-  status: v.union(
-    v.literal("done"),
-    v.literal("unavailable"),
-    v.literal("skipped"),
-    v.literal("failed"),
-  ),
-  reason: v.optional(v.string()),
-  summary: v.optional(v.string()),
-  escalate: v.optional(v.array(v.object({ findingId: v.string(), reason: v.string() }))),
-  focus: v.optional(v.object({ scenarioIndex: v.number(), reason: v.string() })),
-  research: v.optional(v.object({ counterparty: v.string(), reason: v.string() })),
-  remoteRunId: v.optional(v.string()),
-  at: v.string(),
-});
-export type CoordinatorRecord = Infer<typeof coordinatorRecordArg>;
 
 const SEVERITY = { high: 0, medium: 1, low: 2 } as const;
 
@@ -237,7 +226,7 @@ export async function coordinate(ctx: ActionCtx, runId: string): Promise<Coordin
     plan = run.value;
     remoteRunId = run.runId;
   } catch (error) {
-    const category = error instanceof ProviderError ? error.category : "unexpected";
+    const category = creaoFailure(error);
     await ctx.runMutation(internal.fieldAi.settle, {
       callId: reservation.callId,
       status: "failed",

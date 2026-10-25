@@ -193,6 +193,12 @@ export const writeExplanations = internalMutation({
   },
 });
 
+/** Failure category plus HTTP status when there is one, e.g. "http_status 429". No provider text. */
+export function creaoFailure(error: unknown): string {
+  if (!(error instanceof ProviderError)) return "unexpected";
+  return error.httpStatus === undefined ? error.category : `${error.category} ${error.httpStatus}`;
+}
+
 export const tokens = (u: Usage) => `${u.inputTokens} in / ${u.outputTokens} out tokens`;
 
 /**
@@ -373,7 +379,7 @@ export async function runAiStep<T>(ctx: ActionCtx, step: AiStep<T>): Promise<AiS
         remoteRunId: run.runId,
       };
     } catch (error) {
-      const category = error instanceof ProviderError ? error.category : "unexpected";
+      const category = creaoFailure(error);
       await ctx.runMutation(internal.fieldAi.settle, {
         callId: reservation.callId,
         status: "failed",
