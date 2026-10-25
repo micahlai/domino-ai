@@ -1,0 +1,76 @@
+/// <reference types="vite/client" />
+// @vitest-environment edge-runtime
+
+import { parseWeeklySeedJson } from "@domino/contracts";
+import { operatingProvenance } from "@domino/sim";
+import { convexTest } from "convex-test";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { api } from "../_generated/api";
+import schema from "../schema";
+
+const modules = import.meta.glob(["../**/*.ts", "../_generated/*.js", "!./**", "!../**/*.test.ts"]);
+
+afterEach(() => vi.useRealTimers());
+
+describe("fieldOperating", { timeout: 60_000 }, () => {
+  it("creates only the selected scenario, returns the same feed, and exposes its provenance", async () => {
+    const t = convexTest(schema, modules);
+    const legacy = await t.mutation(api.field.setup, { profile: "kestrel" });
+    const selection = { company: "2u", scenario: "baseline" } as const;
+    const first = await t.mutation(api.fieldOperating.ensure, selection);
+    const again = await t.mutation(api.fieldOperating.ensure, selection);
+    expect(first.created).toBe(true);
+    expect(again).toEqual({ ...first, created: false });
+    expect(await t.query(api.fieldOperating.list, {})).toEqual([
+      { companyId: first.companyId, ...selection, name: first.name },
+    ]);
+    expect(await t.query(api.fieldOperating.context, { companyId: first.companyId })).toEqual(
+      operatingProvenance(selection),
+    );
+    expect(await t.query(api.fieldOperating.context, { companyId: legacy.companyId })).toBeNull();
+    expect(await t.query(api.field.status, { companyId: legacy.companyId })).not.toBeNull();
+    const tools = await t.query(api.connections.list, { companyId: first.companyId });
+    expect(tools?.tools.find((tool) => tool.tool === "plaid")?.status).toBe("connected");
+    expect(tools?.tools.find((tool) => tool.tool === "nessie")?.status).toBe("disconnected");
+  });
+
+  it("exports the ingested operating books under a unique scenario identity", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const baseline = await t.mutation(api.fieldOperating.ensure, {
+      company: "2u",
+      scenario: "baseline",
+    });
+    vi.runOnlyPendingTimers();
+    await t.finishInProgressScheduledFunctions();
+    const exported = await t.query(api.field.exportSeed, { companyId: baseline.companyId });
+    const parsed = parseWeeklySeedJson(exported.json);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.company.id).toBe("operating/2u/baseline");
+    expect(parsed.data.snapshot.companyId).toBe("operating/2u/baseline");
+    expect(parsed.data.snapshot.cashOnHand).toBeGreaterThan(0);
+    const opened = await t.action(api.fieldTimeline.openInTimeline, {
+      companyId: baseline.companyId,
+      reviewed: true,
+    });
+    expect(opened.timelineCompanyId).toBe("operating/2u/baseline");
+    expect(opened.route).toContain("/c/operating%2F2u%2Fbaseline/timeline");
+    const saved = await t.query(api.timeline.baselines.get, {
+      companyId: opened.timelineCompanyId,
+      runId: opened.baselineRunId,
+    });
+    expect(saved?.seed.snapshot).toEqual(parsed.data.snapshot);
+    expect(saved?.assumptionNote).toContain(
+      "Based on 2U public filings, with reconstructed operating data.",
+    );
+    expect(saved?.assumptionNote).toContain("The imported rules are illustrative");
+
+    const late = await t.mutation(api.fieldOperating.ensure, {
+      company: "2u",
+      scenario: "late-payments",
+    });
+    expect(late.companyId).not.toBe(baseline.companyId);
+    expect(await t.query(api.fieldOperating.list, {})).toHaveLength(2);
+  });
+});

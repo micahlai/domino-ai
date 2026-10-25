@@ -29,6 +29,7 @@ import {
   parseWeeklyResultRefJson,
   parseWeeklySeedJson,
 } from "@domino/contracts";
+import { type OperatingProvenance, operatingProvenance } from "@domino/sim";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -58,10 +59,23 @@ export const importInputs = internalQuery({
     const constraints = rows
       .map((r) => ConstraintSchema.parse(r.data))
       .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const company = await ctx.db.get("companies", companyId);
+    const selection = company?.operatingDemo;
+    const operating = selection
+      ? operatingProvenance({ company: selection.company, scenario: selection.scenario }, 1)
+      : null;
     return {
       snapshotVersion: feed?.snapshotVersion ?? 0,
       model: CompanyModelSchema.parse(modelRow?.data ?? EMPTY_MODEL),
       constraints,
+      operating: operating
+        ? {
+            label: operating.label,
+            periodStart: operating.periodStart,
+            periodEnd: operating.periodEnd,
+            reportedAt: operating.reportedAt,
+          }
+        : null,
     };
   },
 });
@@ -98,6 +112,7 @@ function assumptionNote(args: {
   snapshotVersion: number;
   modelVersion: number;
   rules: { label: string; kind: string; limit: number }[];
+  operating: Pick<OperatingProvenance, "label" | "periodStart" | "periodEnd" | "reportedAt"> | null;
 }) {
   const rules = args.rules.length
     ? args.rules
@@ -111,10 +126,13 @@ function assumptionNote(args: {
         .join("; ")
     : "none on file";
   return [
-    `Imported from Field: books as of ${args.asOf} (snapshot version ${args.snapshotVersion}), Field model version ${args.modelVersion}, and the company's rules from Field (${rules}). Reviewed by the person who chose Open in Timeline. Nothing is paid or moved.`,
+    `Imported from Field: books as of ${args.asOf} (snapshot version ${args.snapshotVersion}), Field model version ${args.modelVersion}, and ${args.operating ? "illustrative simulation rules" : "the company's rules"} from Field (${rules}). Reviewed by the person who chose Open in Timeline. Nothing is paid or moved.`,
+    args.operating &&
+      `${args.operating.label} Historical ledger period ${args.operating.periodStart} through ${args.operating.periodEnd}; public report date ${args.operating.reportedAt}. Operating records are reconstructed; forward events and forecasts are illustrative. The imported rules are illustrative simulation assumptions, not reported company covenants.`,
     "Engine conventions: written-off invoices are never collected; a paid invoice's collected amount is final; pending processor payouts arrive on their estimated date, net of fees; billing plans project expected collections.",
     `Not calculated yet, so books using them are rejected rather than misstated: ${UNSUPPORTED_SEED_FIELDS.join("; ")}.`,
   ]
+    .filter((part): part is string => typeof part === "string")
     .join(" ")
     .slice(0, 2000);
 }
@@ -144,12 +162,17 @@ export const openInTimeline = action({
       snapshotVersion: number;
       model: ReturnType<typeof CompanyModelSchema.parse>;
       constraints: ReturnType<typeof ConstraintSchema.parse>[];
+      operating: Pick<
+        OperatingProvenance,
+        "label" | "periodStart" | "periodEnd" | "reportedAt"
+      > | null;
     } = await ctx.runQuery(internal.fieldTimeline.importInputs, { companyId });
     const note = assumptionNote({
       asOf: seed.snapshot.asOf,
       snapshotVersion: inputs.snapshotVersion,
       modelVersion: inputs.model.version,
       rules: inputs.constraints,
+      operating: inputs.operating,
     });
     const modelJson = JSON.stringify(inputs.model);
     const constraintsJson = JSON.stringify(inputs.constraints);

@@ -94,12 +94,17 @@ function view(t: ToolId, row: Doc<"connections"> | null) {
 /** The simulated bank is an alternative to Capital One, so it starts disconnected. */
 export const DEFAULT_OFF: ToolId[] = ["plaid"];
 
-/** Setup: every tool but the simulated bank starts connected (demo consent). */
-export async function connectAll(ctx: MutationCtx, companyId: Id<"companies">, name: string) {
+/** Setup: legacy feeds use Nessie; reconstructed operating feeds use the simulated bank. */
+export async function connectAll(
+  ctx: MutationCtx,
+  companyId: Id<"companies">,
+  name: string,
+  bank: "nessie" | "plaid" = "nessie",
+) {
   const by = await personName(ctx);
   const at = new Date().toISOString();
   for (const t of TOOLS) {
-    const off = DEFAULT_OFF.includes(t.id);
+    const off = bank === "plaid" ? t.id === "nessie" : DEFAULT_OFF.includes(t.id);
     await ctx.db.insert("connections", {
       companyId,
       tool: t.id,

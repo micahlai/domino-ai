@@ -45,7 +45,23 @@ export const fieldTables = {
     judge: v.optional(v.boolean()),
     judgeNumber: v.optional(v.number()),
     judgeArchivedAt: v.optional(v.string()),
-  }),
+    operatingDemo: v.optional(
+      v.object({
+        company: v.union(
+          v.literal("2u"),
+          v.literal("asana-inspired"),
+          v.literal("gitlab-inspired"),
+        ),
+        scenario: v.union(
+          v.literal("baseline"),
+          v.literal("late-payments"),
+          v.literal("customer-loss"),
+          v.literal("unexpected-expense"),
+        ),
+        version: v.literal(1),
+      }),
+    ),
+  }).index("by_operating_demo", ["operatingDemo.company", "operatingDemo.scenario"]),
   sources: defineTable({
     companyId,
     kind: sourceKind,

@@ -1,5 +1,12 @@
 import type { Snapshot, WorldState } from "@domino/contracts";
-import { type ProfileId, advanceProfileDays, isProfileId, isProfileWorld } from "@domino/sim";
+import {
+  type ProfileId,
+  advanceOperatingDays,
+  advanceProfileDays,
+  isOperatingWorld,
+  isProfileId,
+  isProfileWorld,
+} from "@domino/sim";
 import { type Overlay, servedSnapshot } from "../fieldFeed";
 import { money } from "./judge";
 import { type Fired, daysBetween, dueBeats, resolveBeat } from "./storylines";
@@ -24,7 +31,12 @@ export const SESSION_MAX_MS = 60 * 60_000;
 export const CLOCK_MAX_DAYS = 364;
 
 export const profileOfWorld = (world: WorldState): ProfileId | null =>
-  isProfileWorld(world) && isProfileId(world.companyId) ? world.companyId : null;
+  !isOperatingWorld(world) && isProfileWorld(world) && isProfileId(world.companyId)
+    ? world.companyId
+    : null;
+
+export const supportsDayClock = (world: WorldState): boolean =>
+  isOperatingWorld(world) || profileOfWorld(world) !== null;
 
 /** Why a playing clock must pause now, or null to keep going. */
 export function pauseReason(c: {
@@ -64,10 +76,16 @@ export function dayEntries(before: Snapshot, after: Snapshot): DayEntries {
     return next.filter((r) => !old.has(r.id));
   };
   const bank = fresh(before.bankTxns, after.bankTxns);
+  const invoiceBanks = new Set(after.invoices.map((invoice) => `${invoice.id}/bank`));
+  const payrollBanks = new Set(after.payroll.map((run) => `${run.id}/bank`));
+  const billBanks = new Set(after.bills.map((bill) => `${bill.id}/bank`));
   const isCustomer = (t: Snapshot["bankTxns"][number]) =>
-    t.amount > 0 && (t.id.startsWith("bank_ach_") || t.id.startsWith("bank_po_"));
-  const isPayroll = (t: Snapshot["bankTxns"][number]) => t.counterparty === "Gusto";
-  const isBill = (t: Snapshot["bankTxns"][number]) => t.id.startsWith("bank_bill_");
+    t.amount > 0 &&
+    (t.id.startsWith("bank_ach_") || t.id.startsWith("bank_po_") || invoiceBanks.has(t.id));
+  const isPayroll = (t: Snapshot["bankTxns"][number]) =>
+    t.counterparty === "Gusto" || payrollBanks.has(t.id);
+  const isBill = (t: Snapshot["bankTxns"][number]) =>
+    t.id.startsWith("bank_bill_") || billBanks.has(t.id);
   const customer = bank.filter(isCustomer);
   const payroll = bank.filter(isPayroll);
   const bills = fresh(before.bills, after.bills);
@@ -133,6 +151,19 @@ export interface Step {
  * day. Pure and deterministic: the same world, overlay and origin give the same step.
  */
 export function stepDays(world: WorldState, overlay: Overlay, origin: string, days = 1): Step {
+  if (isOperatingWorld(world)) {
+    const before = servedSnapshot(world, overlay);
+    const next = advanceOperatingDays(world, days);
+    const after = servedSnapshot(next, overlay);
+    return {
+      world: next,
+      overlay,
+      day: daysBetween(origin, next.today),
+      fired: [],
+      entries: dayEntries(before, after),
+      served: { before, after },
+    };
+  }
   const profile = profileOfWorld(world);
   if (!profile) throw new Error("The simulated clock runs on driver-based companies only");
   const before = servedSnapshot(world, overlay);
