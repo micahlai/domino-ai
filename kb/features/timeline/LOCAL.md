@@ -38,3 +38,7 @@ pnpm exec convex run historical:getCase '{"caseId":"twou-2023-cash-v1"}'
 Verified at setup: second seed call returns `created:false`, browser seam query returns 2U with seven facts, weekly fixture hash verification succeeds, and `/c/kestrel` renders Kestrel Data (computed prototype) from live backend subscriptions. Add event/fix simulation are available; week advancement is not implemented.
 
 Node 26.3.1 / pnpm 9.12.0 passed workspace checks on this machine. Both services were left running for the user. TL5 acceptance uses the labelled synthetic peer fixture; real Field exchange, production authentication, health handoff, automatic analysis and rejoin remain separate gates.
+
+## Separate TL6–TL7 checkpoint
+
+Worktree `/Users/micahlai/.codex/worktrees/tl7-checkpoint/domino-ai`, branch TL7-checkpoint. App http://127.0.0.1:3108; backend3250/3251. Use the same restart commands above with3250/3251 and3108, from this separate worktree. Reuse its existing ignored local deployment state. Never copy environments or reset TL5 data. No provider configured or needed for deterministic analysis. [Acceptance and saved analysis](TL7-acceptance.md); [smoke steps](SMOKE-TESTS.md). TL5 remains unchanged and open on3107. Do not merge into TL5 without the user's explicit instruction.

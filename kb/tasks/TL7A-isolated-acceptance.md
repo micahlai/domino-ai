@@ -7,6 +7,6 @@
 - **Notes:** user explicitly forbids merging into TL5. Integrate only TL7-checkpoint, own3250/3251/3108 data/services. No shared contracts/engine/root schema/dashboard/Field edits. Scoped worker results independently audited before integration; proposed Field envelope adoption remains separate.
 
 ## Result
-- Done:
-- What changed:
-- Watch out:
+- Done: Accepted locally: full1,942 tests, five typechecks, lint381, separate Convex typecheck and production build; actual API22 checks, browser start/response/export/history and390px screenshot review pass.
+- What changed: Added real backend-to-UI/output integration test, generated bindings and feature-local acceptance/runtime/smoke evidence.
+- Watch out: TL5 remains597fcc0 on3107/3240; no merge or data/env copying. Field adoption is separate. See kb/features/timeline/TL7-acceptance.md.

@@ -7,6 +7,6 @@
 - **Notes:** no source edits/services/env/provider/main/TL5 operations or delegation. User forbids TL5 merges. Preserve all worktrees. Author can repair; reviewer verifies stable diff. Proposed Field envelope adoption separate; baseline/rule-only scope is explicit.
 
 ## Result
-- Done:
-- What changed: none; read-only scratch audit.
-- Watch out:
+- Done: Accepted stable backend9e87c77; independent10 scratch probes and15 checked-in focused tests pass.
+- What changed: No feature source edits; read-only audit persisted at kb/features/timeline/TL7-backend-review.md.
+- Watch out: Intentional baseline/rule-only, bounded template and weighted-index limits recorded; no TL5/main merge or Field adoption authorized.
