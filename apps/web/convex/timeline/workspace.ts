@@ -19,6 +19,7 @@ import type { Doc } from "../_generated/dataModel";
 import { type MutationCtx, type QueryCtx, mutation, query } from "../_generated/server";
 import type { SavedBaseline } from "./baselines";
 import { baselineRefs } from "./refs";
+import { scenarioStart, startsBefore } from "./scenarioStart";
 import {
   ChangesSchema,
   ConstraintsSchema,
@@ -89,6 +90,8 @@ export type CatalogEntry = {
   lowPointCents: number;
   lowPointWeek: string;
   constraintVersion: string;
+  /** First date this run's own changes move cash; null when it changes no events. */
+  startsOn: string | null;
 };
 export type WorkspaceResult = { companyId: string; runId: string; created: boolean };
 
@@ -498,6 +501,8 @@ export const simulate = mutation({
     reviewed: v.boolean(),
     constraintsJson: v.optional(v.string()),
     constraintNote: v.optional(v.string()),
+    /** Automated responses may act before the scenario they answer; people's what-ifs may not. */
+    allowEarlierStart: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<WorkspaceResult> => {
     checkRequestId(args.requestId);
@@ -527,6 +532,16 @@ export const simulate = mutation({
     const prior = await priorRequest(ctx, args.companyId, args.requestId, inputHash);
     if (prior) return prior;
     const { node, baseline } = await loadParent(ctx, args.companyId, args.parentRunId);
+    const snapshot = baseline.seed.snapshot;
+    const floor = args.allowEarlierStart
+      ? null
+      : await branchFloor(ctx, args.companyId, args.parentRunId, snapshot);
+    const early = startsBefore(ownChanges, snapshot, floor)[0];
+    if (early)
+      reject(
+        "STARTS_BEFORE_PARENT",
+        `This change starts ${early.date}, before the scenario it builds on starts (${floor}). Date it on or after ${floor}, or build it on an earlier scenario.`,
+      );
     return saveChild(ctx, {
       companyId: args.companyId,
       requestId: args.requestId,
@@ -607,7 +622,8 @@ function projectRun(row: Doc<"timelineRuns">, baseline: SavedBaseline): Workspac
   };
 }
 
-function catalogEntry(row: Doc<"timelineRuns">): CatalogEntry {
+function catalogEntry(row: Doc<"timelineRuns">, baseline: SavedBaseline | null): CatalogEntry {
+  const own = ChangesSchema.safeParse(row.ownChanges);
   return {
     runId: row.runId,
     companyId: row.companyId,
@@ -619,7 +635,43 @@ function catalogEntry(row: Doc<"timelineRuns">): CatalogEntry {
     lowPointCents: row.lowPointCents,
     lowPointWeek: row.lowPointWeek,
     constraintVersion: row.constraintVersion,
+    startsOn: own.success && baseline ? scenarioStart(own.data, baseline.seed.snapshot) : null,
   };
+}
+
+/** Catalog entries with each run's start, reading every baseline behind them once. */
+async function catalogEntries(ctx: QueryCtx, companyId: string, rows: Doc<"timelineRuns">[]) {
+  const baselines = new Map<string, SavedBaseline | null>();
+  const out: CatalogEntry[] = [];
+  for (const row of rows) {
+    if (!baselines.has(row.baselineRunId))
+      baselines.set(row.baselineRunId, await loadBaseline(ctx, companyId, row.baselineRunId));
+    out.push(catalogEntry(row, baselines.get(row.baselineRunId) ?? null));
+  }
+  return out;
+}
+
+/**
+ * The branch point a new child must respect: the start of the nearest run in its ancestry
+ * that changes events. Before that date the child's forecast is its parent's, so an earlier
+ * event would fork it from the base instead of from the parent.
+ */
+export async function branchFloor(
+  ctx: QueryCtx | MutationCtx,
+  companyId: string,
+  parentRunId: string,
+  snapshot: SavedBaseline["seed"]["snapshot"],
+): Promise<string | null> {
+  let runId: string | null = parentRunId;
+  for (let hops = 0; runId && hops < 64; hops++) {
+    const row = await runRow(ctx, companyId, runId);
+    if (!row) return null;
+    const own = ChangesSchema.safeParse(row.ownChanges);
+    const start = own.success ? scenarioStart(own.data, snapshot) : null;
+    if (start) return start;
+    runId = row.parentRunId;
+  }
+  return null;
 }
 
 /** One saved run under its company, or null. Reads saved outputs only; never runs the engine. */
@@ -647,7 +699,7 @@ export const catalog = query({
       .order("desc")
       .paginate({ numItems, cursor: args.paginationOpts.cursor });
     return {
-      page: result.page.map(catalogEntry),
+      page: await catalogEntries(ctx, args.companyId, result.page),
       isDone: result.isDone,
       continueCursor: result.continueCursor,
     };
@@ -664,7 +716,7 @@ export const graph = query({
         q.eq("companyId", args.companyId).eq("baselineRunId", args.baselineRunId),
       )
       .take(MAX_GRAPH);
-    return rows.map(catalogEntry);
+    return catalogEntries(ctx, args.companyId, rows);
   },
 });
 

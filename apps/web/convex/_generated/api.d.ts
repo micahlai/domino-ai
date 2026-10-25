@@ -120,6 +120,7 @@ import type * as timeline_questions_receipt from "../timeline/questions/receipt.
 import type * as timeline_questions_resolve from "../timeline/questions/resolve.js";
 import type * as timeline_questions_table from "../timeline/questions/table.js";
 import type * as timeline_refs from "../timeline/refs.js";
+import type * as timeline_scenarioStart from "../timeline/scenarioStart.js";
 import type * as timeline_workspace from "../timeline/workspace.js";
 import type * as timeline_workspaceInput from "../timeline/workspaceInput.js";
 import type * as timeline_workspaceRefs from "../timeline/workspaceRefs.js";
@@ -245,6 +246,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/questions/resolve": typeof timeline_questions_resolve;
   "timeline/questions/table": typeof timeline_questions_table;
   "timeline/refs": typeof timeline_refs;
+  "timeline/scenarioStart": typeof timeline_scenarioStart;
   "timeline/workspace": typeof timeline_workspace;
   "timeline/workspaceInput": typeof timeline_workspaceInput;
   "timeline/workspaceRefs": typeof timeline_workspaceRefs;

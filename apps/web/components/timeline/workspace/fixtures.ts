@@ -6,6 +6,7 @@ import {
   WeeklySeedV1Schema,
 } from "@domino/contracts";
 import { weeklyBoundaryFixtures } from "@domino/contracts/fixtures";
+import { scenarioStart } from "../../../convex/timeline/scenarioStart";
 import { NEUTRAL_MODEL, type SavedBaseline } from "../baseline/api";
 import type { CatalogEntry, QuestionReceipt, WorkspaceRun } from "./api";
 
@@ -221,6 +222,7 @@ const entry = (r: WorkspaceRun): CatalogEntry => ({
   lowPointCents: r.forecast.lowPoint.usable,
   lowPointWeek: r.forecast.lowPoint.weekStart,
   constraintVersion: r.constraintVersion,
+  startsOn: scenarioStart(r.ownChanges, r.baseline.seed.snapshot),
 });
 
 export const fixtureGraph: CatalogEntry[] = [fixtureRoot, fixtureRules, fixtureScenario].map(entry);

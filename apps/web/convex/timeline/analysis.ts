@@ -323,6 +323,8 @@ export const saveStage = analysisInternalMutation({
       label: item.label,
       changesJson: JSON.stringify(item.changes),
       reviewed: true,
+      // A response may act before the risk lands (collecting early, drawing credit).
+      allowEarlierStart: true,
     });
     const result = source(
       await ctx.runQuery(workspaceGet, { companyId: r.companyId, runId: saved.runId }),

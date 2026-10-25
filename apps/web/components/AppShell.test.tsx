@@ -73,6 +73,8 @@ describe("AppShell navigation", () => {
   it("opens Timeline's own pages without the old demo sub-navigation", () => {
     const html = render("/c/kestrel-crunch/timeline");
     expect(current(html)).toEqual(["Timeline"]);
+    expect(html).toContain("flex h-dvh flex-col");
+    expect(render("/c/kestrel-crunch/timeline/analysis")).not.toContain("flex h-dvh flex-col");
     expect(html).not.toContain("/c/kestrel-crunch/learning");
     expect(current(render("/c/kestrel-crunch/timeline/analysis"))).toEqual(["Timeline"]);
   });

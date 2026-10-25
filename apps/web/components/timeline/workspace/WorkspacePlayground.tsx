@@ -22,7 +22,6 @@ export function WorkspacePlayground() {
     hrefFor: (id) => `#${encodeURIComponent(id)}`,
     simulate: refuse,
     reviseRules: refuse,
-    ask: refuse,
     confirmProposal: refuse,
     relink: refuse,
   };
@@ -56,7 +55,9 @@ export function WorkspacePlayground() {
           hrefFor={actions.hrefFor}
         />
       </div>
-      {run ? <FixtureWorkspace key={run.runId} run={run} actions={actions} /> : null}
+      <div className="h-[calc(100dvh-10rem)] min-h-[36rem] overflow-hidden rounded-lg border">
+        {run ? <FixtureWorkspace key={run.runId} run={run} actions={actions} /> : null}
+      </div>
     </section>
   );
 }

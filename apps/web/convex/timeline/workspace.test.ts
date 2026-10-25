@@ -921,6 +921,7 @@ describe("timeline workspace: catalog, graph and result ref (TL4)", () => {
         "lowPointCents",
         "lowPointWeek",
         "constraintVersion",
+        "startsOn",
       ].sort(),
     );
 

@@ -538,6 +538,42 @@ describe("Claude Timeline chat safety", () => {
   });
 });
 
+describe("one chat for questions and what-ifs", () => {
+  it("answers a plain question with its sources and leaves the draft alone, without a key", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    r = await t.mutation(chatRefs.send, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+      text: "When is the low point?",
+    });
+    expect(r.status).toBe("collecting");
+    expect(r.proposal).toBeNull();
+    expect(r.turns.at(-1)?.citations?.length).toBeGreaterThan(0);
+  });
+
+  it("answers a question in the assistant chat with the checked answer and sources", async () => {
+    const t = setup();
+    const src = await source(t);
+    scriptClaude([
+      toolUse("update_draft", {
+        intents: [{ kind: "question", topic: "low_point", weekText: null, itemText: null }],
+      }),
+      final({ done: true }),
+    ]);
+    let r = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+    r = await t.action(assistantSend, turn(r, "When is the low point?"));
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    let g = await t.mutation(chatRefs.begin, { ...src, requestId: rid() });
+    g = await t.mutation(chatRefs.send, { ...turn(g, "When is the low point?") });
+    expect(r.proposal).toBeNull();
+    expect(r.turns.at(-1)?.text).toBe(g.turns.at(-1)?.text);
+    expect(r.turns.at(-1)?.citations?.length).toBeGreaterThan(0);
+  });
+});
+
 describe("Claude question grounding", () => {
   it("uses checked financial answers and citations even if the model says $999m", async () => {
     const t = setup();
