@@ -1,5 +1,11 @@
 import { type Change, type Constraint, canonicalJson } from "@domino/contracts";
 import { forecast } from "@domino/engine/src/forecast";
+import {
+  buildPredictions,
+  predictionCatalog,
+  predictionTag,
+  resolvePredictions,
+} from "@domino/engine/src/predictions";
 import { ConvexError } from "convex/values";
 import { z } from "zod";
 import { type WorkspaceRun, recordsOf } from "../questions/context";
@@ -19,7 +25,15 @@ import {
   validateProposal,
 } from "./draft";
 import { type MacroEstimate, MacroEstimateSchema, detectExternalEvent } from "./externalEvent";
-import { planRequest } from "./planChanges";
+import { looseDate, planRequest } from "./planChanges";
+import {
+  PREDICTED_EXTERNAL,
+  type PredictionSet,
+  PredictionSetSchema,
+  type ProposalPart,
+  eventTone,
+  personalNumbers,
+} from "./predicted";
 import type { ChatReceipt } from "./receipt";
 
 /**
@@ -58,6 +72,8 @@ export const TurnPlanSchema = z
     planItems: PlanItemsSchema.nullable().optional(),
     /** Bounded AI estimate for an outside event in the plan; the save re-checks and clamps it. */
     macro: MacroEstimateSchema.nullable().optional(),
+    /** Predicted consequences per event part; the save clamps and rebuilds them. */
+    predictions: z.array(PredictionSetSchema).max(MAX_PLAN_ITEMS).optional(),
   })
   .strict();
 export type TurnPlan = z.infer<typeof TurnPlanSchema>;
@@ -274,7 +290,9 @@ const PLAN_DETAILS =
 /**
  * One part of a plan: an outside event, a plan computation (spend %, hires, layoffs, prices,
  * lost customers), or a one-time payment, receipt, late invoice or rule read by the fixed
- * grammar. Conditions and date ranges a plan cannot keep are refused, never dropped.
+ * grammar. Conditions and date ranges a plan cannot keep are refused, never dropped. `predict`
+ * marks an event in words (press, sentiment, launch, investment, competitor news) whose
+ * consequences are predicted instead.
  */
 export function checkPlanItem(
   run: WorkspaceRun,
@@ -282,30 +300,40 @@ export function checkPlanItem(
   floor: string | null,
   estimate: MacroEstimate | null,
   s: { conversationId: string; selectedItemId: string | null },
-): Result {
+): Result & { predict: boolean } {
+  const none = (answer: string, predict: boolean) => ({
+    draft: emptyDraft(),
+    answer,
+    proposal: null,
+    pendingField: null,
+    predict,
+  });
+  const kind = detectExternalEvent(text);
+  if (kind && PREDICTED_EXTERNAL.has(kind)) return none(PLAN_DETAILS, true);
   // Outside events read their own dates and wording ("if the Fed hikes 50 bp in December").
-  if (detectExternalEvent(text)) {
+  if (kind) {
     const external = plannedChange(run, emptyDraft(), text, floor, estimate);
-    if (external) return external;
+    if (external) return { ...external, predict: false };
   }
   const guarded =
     PLAN_QUALIFIER.test(text.replace(/\bwhat if\b/gi, " ")) ||
     (!DATED_PLAN.test(text) && dateTokens(text).length > 0);
   const planned = guarded ? null : plannedChange(run, emptyDraft(), text, floor);
-  if (planned) return planned;
-  // A plan shape whose condition the guard refused never falls through to the one-time reader.
-  if (!planRequest(run, text, floor)) {
+  if (planned) return { ...planned, predict: false };
+  // A plan shape whose condition the guard refused never falls through to another reader.
+  const shaped = planRequest(run, text, floor) !== null;
+  if (!shaped) {
     const once = advance(run, emptyDraft(), text, s.conversationId, s.selectedItemId, floor);
-    if (once.proposal || once.pendingField) return once;
+    if (once.proposal) return { ...once, predict: false };
+    if (eventTone(text)) return none(PLAN_DETAILS, true);
+    if (once.pendingField) return { ...once, predict: false };
   }
-  return {
-    draft: emptyDraft(),
-    answer: guarded
+  return none(
+    guarded
       ? "The plan cannot preserve that condition or date range. Clarify the assumption before creating a proposal."
       : PLAN_DETAILS,
-    proposal: null,
-    pendingField: null,
-  };
+    !guarded && !shaped,
+  );
 }
 
 /** "A + B + C", or "A + B + 3 more" when the parts do not fit a 200-character label. */
@@ -319,7 +347,13 @@ function planLabel(labels: string[]): string {
   return `${labels.length} changes: ${labels[0] ?? ""}`.slice(0, 200);
 }
 
-export type PlanItemOutcome = { item: string; modeled: boolean; note: string };
+export type PlanItemOutcome = {
+  item: string;
+  modeled: boolean;
+  note: string;
+  /** An event in words whose consequences need a prediction (none was supplied yet) */
+  predict?: boolean;
+};
 export type CompoundResult = Result & { items: PlanItemOutcome[] };
 
 const errorText = (e: unknown) =>
@@ -336,7 +370,8 @@ const closing =
  * through checkPlanItem; its values must be the person's own (never only in reference data
  * such as a Worker note), and the merged changes are validated together, part by part, so a
  * part that cannot be modeled or conflicts with an earlier one is reported while the others
- * still proceed. Deterministic: the save re-runs it on the same parts.
+ * still proceed. An event in words uses its stored predictions (each predicted consequence is
+ * its own droppable part). Deterministic: the save re-runs it on the same parts.
  */
 export function checkCompound(
   run: WorkspaceRun,
@@ -349,9 +384,11 @@ export function checkCompound(
     userTexts: string[];
     referenceText: string | null;
   },
+  predictions: ReadonlyMap<string, PredictionSet> = new Map(),
 ): CompoundResult {
-  const parts = PlanItemsSchema.parse(items);
+  const list = PlanItemsSchema.parse(items);
   const snapshot = run.baseline.seed.snapshot;
+  const model = run.baseline.model;
   const horizon = {
     asOf: snapshot.asOf,
     firstWeek: run.forecast.weeks[0]?.weekStart ?? "",
@@ -365,12 +402,77 @@ export function checkCompound(
   const outcomes: PlanItemOutcome[] = [];
   const labels: string[] = [];
   const notes: string[] = [];
+  const parts: ProposalPart[] = [];
   let changes: Change[] = [];
   let constraints: Constraint[] | null = null;
-  /** The planner's own full answer, kept when the plan has one part. */
+  /** The planner's own full answer, kept when the plan is one plain part. */
   let single: string | null = null;
-  const skip = (item: string, note: string) => outcomes.push({ item, modeled: false, note });
-  for (const item of parts) {
+  const skip = (item: string, note: string, predict = false) =>
+    outcomes.push({ item, modeled: false, note, ...(predict ? { predict } : {}) });
+  /** Add one part's changes after the earlier ones, or say why it cannot be combined. */
+  const add = (
+    proposed: Change[],
+    newRules: Constraint[] | null,
+    part: Omit<ProposalPart, "changes">,
+  ): string | null => {
+    // A customer lost twice, or slipping twice, would stack; the first part already covers it.
+    const taken = new Set(
+      [...run.changes, ...changes].flatMap((c) =>
+        c.kind === "churn" || c.kind === "delay_customer" ? [`${c.kind}:${c.customerId}`] : [],
+      ),
+    );
+    const own = proposed
+      .filter((c) => !("customerId" in c) || !taken.has(`${c.kind}:${c.customerId}`))
+      .map((c) => {
+        if (!("label" in c)) return c;
+        let label = c.label;
+        for (let n = 2; used.has(label); n++)
+          label = `${c.label.slice(0, 200 - ` (${n})`.length)} (${n})`;
+        return { ...c, label } as Change;
+      });
+    if (!own.length && !newRules) return "An earlier part of this plan already covers it.";
+    if (
+      changes.length + own.length > MAX_PLAN_CHANGES ||
+      run.changes.length + changes.length + own.length > MAX_TOTAL_CHANGES
+    )
+      return `This plan is full (${MAX_PLAN_CHANGES} changes at most). Model this part in a follow-up branch after saving.`;
+    const base: Constraint[] = constraints ?? run.constraints;
+    const rules: Constraint[] | null = newRules
+      ? [
+          ...base,
+          ...newRules.filter((r) => !base.some((b) => canonicalJson(b) === canonicalJson(r))),
+        ]
+      : constraints;
+    const next = [...changes, ...own];
+    try {
+      validateProposal(run, {
+        label: "plan",
+        changes: next,
+        constraints: rules,
+        constraintNote: null,
+      });
+      checkEffects(
+        [...run.changes, ...next],
+        snapshot,
+        model,
+        horizon,
+        run.changes.length + changes.length,
+      );
+    } catch (e) {
+      return `It cannot combine with the earlier parts of this plan: ${errorText(e)}`;
+    }
+    for (const c of own) if ("label" in c) used.add(c.label);
+    changes = next;
+    constraints = rules;
+    parts.push({ ...part, changes: own.length });
+    return null;
+  };
+  const eventStart = (item: string) => {
+    const from = floor && floor > snapshot.asOf ? floor : addDays(snapshot.asOf, 1);
+    const date = looseDate(item, snapshot.asOf);
+    return date && date > from ? date : from;
+  };
+  for (const item of list) {
     // A part's money must be what the person said; Claude may only normalize it ("90k").
     const foreign = moneyTokens(item).find((t) => {
       const c = parseMoneyText(t);
@@ -388,6 +490,57 @@ export function checkCompound(
     }
     const result = checkPlanItem(run, item, floor, estimate, s);
     const proposal = result.proposal;
+    if (!proposal && result.predict) {
+      const set = predictions.get(item);
+      if (!set) {
+        skip(item, "This event needs a prediction of its consequences.", true);
+        continue;
+      }
+      const prior = [...run.changes, ...changes];
+      const catalog = predictionCatalog(snapshot, model, prior);
+      const choices = resolvePredictions(
+        catalog,
+        { consequences: set.choices },
+        personalNumbers(item),
+      );
+      if (!choices) {
+        skip(item, "No predicted consequence fits this company's books.");
+        continue;
+      }
+      const lines: string[] = [];
+      let kept = 0;
+      for (const c of buildPredictions(
+        snapshot,
+        model,
+        prior,
+        choices,
+        eventStart(item),
+        set.source,
+      )) {
+        const tag = predictionTag(set.source, c.choice.probability);
+        const yours = c.choice.personal?.length ? " (your number)" : "";
+        const issue = c.changes.length
+          ? add(c.changes, null, {
+              label: `${tag}: ${c.title}`.slice(0, 200),
+              prediction: { item, source: set.source, choice: c.choice },
+            })
+          : "it would not move cash inside these 13 weeks";
+        if (issue) lines.push(`${tag}: ${c.effect}${yours}. Left out: ${issue.replace(/\.$/, "")}`);
+        else {
+          kept++;
+          lines.push(
+            `${tag}: ${c.effect}${yours}, because ${c.choice.reason.replace(/[.\s]+$/, "")}`,
+          );
+        }
+      }
+      if (kept) labels.push(`Predicted: ${item}`.slice(0, 120));
+      outcomes.push({
+        item,
+        modeled: kept > 0,
+        note: `Predicted consequences of "${item}": ${lines.join("; ")}.`,
+      });
+      continue;
+    }
     if (!proposal) {
       skip(item, result.answer);
       continue;
@@ -397,66 +550,14 @@ export function checkCompound(
       skip(item, `${copied} comes from reference data, not from your messages.`);
       continue;
     }
-    // A customer lost twice, or slipping twice, would stack; the first part already covers it.
-    const taken = new Set(
-      [...run.changes, ...changes].flatMap((c) =>
-        c.kind === "churn" || c.kind === "delay_customer" ? [`${c.kind}:${c.customerId}`] : [],
-      ),
-    );
-    const own = proposal.changes
-      .filter((c) => !("customerId" in c) || !taken.has(`${c.kind}:${c.customerId}`))
-      .map((c) => {
-        if (!("label" in c)) return c;
-        let label = c.label;
-        for (let n = 2; used.has(label); n++)
-          label = `${c.label.slice(0, 200 - ` (${n})`.length)} (${n})`;
-        used.add(label);
-        return { ...c, label } as Change;
-      });
-    if (!own.length && !proposal.constraints) {
-      skip(item, "An earlier part of this plan already covers it.");
+    const issue = add(proposal.changes, proposal.constraints, {
+      label: proposal.label,
+      prediction: null,
+    });
+    if (issue) {
+      skip(item, issue);
       continue;
     }
-    if (
-      changes.length + own.length > MAX_PLAN_CHANGES ||
-      run.changes.length + changes.length + own.length > MAX_TOTAL_CHANGES
-    ) {
-      skip(
-        item,
-        `This plan is full (${MAX_PLAN_CHANGES} changes at most). Model this part in a follow-up branch after saving.`,
-      );
-      continue;
-    }
-    const base: Constraint[] = constraints ?? run.constraints;
-    const rules: Constraint[] | null = proposal.constraints
-      ? [
-          ...base,
-          ...proposal.constraints.filter(
-            (r) => !base.some((b) => canonicalJson(b) === canonicalJson(r)),
-          ),
-        ]
-      : constraints;
-    const next = [...changes, ...own];
-    try {
-      validateProposal(run, {
-        label: "plan",
-        changes: next,
-        constraints: rules,
-        constraintNote: null,
-      });
-      checkEffects(
-        [...run.changes, ...next],
-        snapshot,
-        run.baseline.model,
-        horizon,
-        run.changes.length + changes.length,
-      );
-    } catch (e) {
-      skip(item, `It cannot combine with the earlier parts of this plan: ${errorText(e)}`);
-      continue;
-    }
-    changes = next;
-    constraints = rules;
     labels.push(proposal.label);
     if (proposal.constraintNote) notes.push(proposal.constraintNote);
     single = result.answer;
@@ -475,27 +576,33 @@ export function checkCompound(
         : `Nothing could be modeled yet. ${outcomes.map((o, i) => `${i + 1}. ${o.item}: ${o.note}`).join(" ")}`;
     return { draft: emptyDraft(), answer, proposal: null, pendingField: null, items: outcomes };
   }
+  const predicted = parts.some((p) => p.prediction !== null);
   const plan: QuestionProposal = {
     label: planLabel(labels),
     changes,
     constraints,
     constraintNote: notes.length ? notes.join(" ").slice(0, 500) : null,
+    // One plain part keeps the proposal exactly as before; otherwise each part can be dropped.
+    ...(parts.length > 1 || predicted ? { parts } : {}),
   };
-  if (outcomes.length === 1)
+  if (outcomes.length === 1 && !predicted && single)
     return {
       draft: emptyDraft(),
-      answer: single ?? PLAN_DETAILS,
+      answer: single,
       proposal: plan,
       pendingField: null,
       items: outcomes,
     };
-  const after = forecast(snapshot, run.baseline.model, [...run.changes, ...changes]);
+  const after = forecast(snapshot, model, [...run.changes, ...changes]);
   const delta = after.lowPoint.usable - run.forecast.lowPoint.usable;
   const answer = [
     `Ready to model ${labels.length} of ${outcomes.length} parts together as one scenario.`,
     ...outcomes.map((o, i) => `${i + 1}. ${o.modeled ? "" : `Not modeled (${o.item}): `}${o.note}`),
     `Together, the engine puts the lowest usable cash at ${compactMoney(after.lowPoint.usable)} (week of ${shortDate(after.lowPoint.weekStart)}), ${delta === 0 ? "the same as now" : `${compactMoney(Math.abs(delta))} ${delta < 0 ? "lower" : "higher"} than now`}.`,
     failed.length ? "The parts not modeled are left out of the proposal." : "",
+    predicted
+      ? "Predictions are estimates; the person can untick any predicted part before saving."
+      : "",
     "Domino effects run automatically once you confirm. Check the details below, then confirm.",
   ]
     .filter(Boolean)

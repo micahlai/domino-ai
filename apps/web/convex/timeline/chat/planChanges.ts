@@ -49,7 +49,7 @@ function basisPoints(text: string): number | null {
 const share = (cents: number, bp: number) => Math.round((Math.abs(cents) * bp) / 10_000);
 const pctText = (bp: number) => `${bp / 100}%`;
 
-function horizon(run: WorkspaceRun, floor: string | null) {
+export function horizon(run: WorkspaceRun, floor: string | null) {
   const weeks = run.forecast.weeks;
   const asOf = run.baseline.seed.snapshot.asOf;
   const from = floor && floor > asOf ? floor : addDays(asOf, 1);
@@ -154,7 +154,7 @@ function spendChange(run: WorkspaceRun, text: string, floor: string | null): Pla
 }
 
 /** "Dec 1", "December 1", "2026-12-01": the next such date on or after the books' date. */
-function looseDate(text: string, asOf: string): string | null {
+export function looseDate(text: string, asOf: string): string | null {
   const iso = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(text);
   if (iso) return iso[0];
   const m =

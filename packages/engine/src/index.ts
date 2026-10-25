@@ -252,3 +252,20 @@ export {
   clampExternalParams,
   externalEventChanges,
 } from "./external-events";
+export {
+  MAX_PREDICTIONS,
+  MAX_START_DAYS,
+  PREDICTIONS_VERSION,
+  type EventTone,
+  type PredictedConsequence,
+  type PredictionCatalogEntry,
+  type PredictionChoice,
+  type PredictionKind,
+  type PredictionParam,
+  type PredictionParamName,
+  buildPredictions,
+  predictionCatalog,
+  predictionTag,
+  resolvePredictions,
+  rulePredictions,
+} from "./predictions";

@@ -379,7 +379,7 @@ const isReceipt = (i: CashItem) => i.kind === "invoice" || i.kind === "deal" || 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Customers by expected receipts in these items, largest first. */
-function topCustomers(items: CashItem[], n: number): string[] {
+export function topCustomers(items: CashItem[], n: number): string[] {
   const by = new Map<string, number>();
   for (const i of items)
     if (i.customerId) by.set(i.customerId, (by.get(i.customerId) ?? 0) + i.amount);
@@ -394,7 +394,7 @@ function topCustomers(items: CashItem[], n: number): string[] {
  * their share of recurring revenue stays near the target. Each cancels from its next recurring
  * bill (renewal) in the horizon. Without billing plans, all expected receipts count.
  */
-function atRiskCustomers(
+export function atRiskCustomers(
   snapshot: Snapshot,
   model: CompanyModel,
   schedule: CashSchedule,
@@ -438,7 +438,7 @@ function atRiskCustomers(
  * Keep, in order, only changes that move expected cash dated inside the forecast and never move
  * cash onto or before the books' date, the same effect rules a saved scenario must pass.
  */
-function effective(
+export function effective(
   snapshot: Snapshot,
   model: CompanyModel,
   prior: Change[],

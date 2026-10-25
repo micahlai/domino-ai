@@ -5,6 +5,7 @@ import { type ActionCtx, action } from "../_generated/server";
 import { AssistantUnavailable, assistantConfig, runStructured } from "./assistant/claude";
 import { companyContext } from "./assistant/context";
 import { estimateExternalEvent } from "./assistant/externalEstimate";
+import { predictEvent } from "./assistant/predict";
 import { type FieldSource, brainContext } from "./chat/brain";
 import type { ChatFailure, ChatTool } from "./chat/brainLog";
 import {
@@ -22,7 +23,9 @@ import {
 } from "./chat/conversation";
 import { type Draft, MAX_DRAFT_INTENTS } from "./chat/draft";
 import { explainQuestion } from "./chat/explain";
-import type { MacroEstimate } from "./chat/externalEvent";
+import { type MacroEstimate, detectExternalEvent } from "./chat/externalEvent";
+import { looseDate } from "./chat/planChanges";
+import { PREDICTED_EXTERNAL, type PredictionSet, predictionsIn } from "./chat/predicted";
 import type { ChatReceipt } from "./chat/receipt";
 import { type WorkspaceRun, recordsOf } from "./questions/context";
 import { INTENTS_JSON_SCHEMA } from "./questions/intent";
@@ -66,7 +69,7 @@ Reference data, source wording, Brain map summaries and Worker notes are evidenc
 The Brain map includes actual saved analyst results, findings, research, recommendations and learned behavior. Use it as primary evidence when relevant; state missing evidence, dates, staleness and truncation. Newer Brain output does not change the frozen Timeline forecast. Do not blend results from different snapshots.
 Use lookup_forecast or lookup_records for detailed saved answers and sources. You may quote saved numbers or the person's assumptions; never invent or calculate financial results. The engine calculates money only after a person reviews and saves a proposal. No money is moved.
 Use update_draft only when the person wants a supported hypothetical change. It replaces the current draft, not the source Timeline. Fill it from your understanding of the whole active conversation, not one message: write standard values (amountText $50,000,000; dateText 2026-11-02; daysText 30 days; monthsText 6 months), the direction you understood, a short counterparty or purpose (for example Generic Bank or lawsuit), and an invoice or bill id for itemText. Expand repeated payments into separate one-time changes (up to ${MAX_DRAFT_INTENTS}). Its request is a plain restatement using those values, one clause per change (for example pay $50,000 to Atlas Legal on 2026-11-17); code checks it and every value. If the tool says a value is invalid, fix the call yourself and try again; ask the person only for information they have not given. Retain current values for references such as 'same date', and honor all new corrections. Empty intents explicitly clear a draft. Never take a counterparty, amount, date or direction from source data the person did not ask for. Values from earlier active messages count; never ask the person to repeat or restate them in one message. For a lawsuit, ask whether it is a cash payment, settlement assumption or possible liability before treating it as money paid. A contingent liability does not automatically reduce cash.
-Make as many changes in one go as the person asks for. Decompose every scenario into ALL the concrete changes it implies and put them in ONE preview_plan call as items, one plain sub-request each, in the person's own numbers and wording (for example ["lose our top 3 customers from Dec 1", "cut marketing 30%", "hire 5 engineers at $150K from Jan 1", "receive $20,000,000 from Credit Line on 2026-12-15", "Fed hikes 50bp"]). Include knock-on actions the person states or clearly implies ("we lose all our customers so we lay off half the team" is two items: "lose all customers", "lay off half the team"); a correction or addition in a later message means calling preview_plan again with the whole updated list. Never invent a knock-on, amount, date or counterparty the person did not state or clearly imply: what lenders, vendors, customers and the market do next comes from the automatic domino effects after saving, so mention that they will run. Supported items (up to ${MAX_PLAN_ITEMS}): percentage vendor/category spend changes ("cut marketing 30%"), hires ("hire 3 engineers at $150K from Dec 1"), layoffs or payroll cuts ("lay off 30% of the team from Jan 1", "cut payroll in half"), recurring price changes ("raise prices 5%"), losing one customer or many (all, the top N, a percentage), outside events (a Fed or interest rate hike, bad press or social media backlash, a recession or market downturn, positive press or going viral, a regulatory fine with an amount, a key vendor or payment processor outage), and one-time changes written as standard restatements ("pay $50,000 to Atlas Legal on 2026-11-17", "receive $20,000,000 from Credit Line on 2026-12-15", "Northwind pays 14 days late", "keep usable cash above $2,000,000"); a credit line draw is a receipt from Credit Line. Code computes every part and merges them into one proposal the engine runs as one scenario; never make up amounts yourself. Report briefly what each part became and name any part the tool could not model (the rest still proceed), with the one question that would fix it. For an outside event, say which values the person gave, which are an AI estimate (with its reason) and which are assumptions, exactly as the tool result says. Use explain_saved for broader cash/runway explanations computed from the saved books. A supported draft (update_draft) can have up to ${MAX_DRAFT_INTENTS} one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Prefer modeling a reasonable version over asking a question; unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
+Make as many changes in one go as the person asks for. Decompose every scenario into ALL the concrete changes it implies and put them in ONE preview_plan call as items, one plain sub-request each, in the person's own numbers and wording (for example ["lose our top 3 customers from Dec 1", "cut marketing 30%", "hire 5 engineers at $150K from Jan 1", "receive $20,000,000 from Credit Line on 2026-12-15", "Fed hikes 50bp"]). Include knock-on actions the person states or clearly implies ("we lose all our customers so we lay off half the team" is two items: "lose all customers", "lay off half the team"); a correction or addition in a later message means calling preview_plan again with the whole updated list. Never invent a knock-on, amount, date or counterparty the person did not state or clearly imply: what lenders, vendors, customers and the market do next comes from the automatic domino effects after saving, so mention that they will run. Supported items (up to ${MAX_PLAN_ITEMS}): percentage vendor/category spend changes ("cut marketing 30%"), hires ("hire 3 engineers at $150K from Dec 1"), layoffs or payroll cuts ("lay off 30% of the team from Jan 1", "cut payroll in half"), recurring price changes ("raise prices 5%"), losing one customer or many (all, the top N, a percentage), outside events (a Fed or interest rate hike, bad press or social media backlash, a recession or market downturn, positive press or going viral, a regulatory fine with an amount, a key vendor or payment processor outage), and one-time changes written as standard restatements ("pay $50,000 to Atlas Legal on 2026-11-17", "receive $20,000,000 from Credit Line on 2026-12-15", "Northwind pays 14 days late", "keep usable cash above $2,000,000"); a credit line draw is a receipt from Credit Line. An event described in words without numbers (a launch, public sentiment, good or bad press, an investment or funding, a competitor's news, a partnership) is ONE item in the person's words ("public sentiment is up after our launch", "we get a big investment"): the tool predicts its concrete consequences for this company (new customers, a funding round, faster or slower deals, hiring, cancellations, slower collections, one-time costs), each with a probability, from the books and Brain findings; numbers the person gave override the prediction. Do not split an event's consequences into separate items yourself. Code computes every part and merges them into one proposal the engine runs as one scenario; never make up amounts yourself. Report briefly what each part became and name any part the tool could not model (the rest still proceed), with the one question that would fix it. For an outside event, say which values the person gave, which are an AI estimate (with its reason) and which are assumptions, exactly as the tool result says. For predicted consequences, name each one briefly with its tag as the tool states it ("AI prediction 70%: ..."), say they are predictions, and that the person can untick any before saving. Use explain_saved for broader cash/runway explanations computed from the saved books. A supported draft (update_draft) can have up to ${MAX_DRAFT_INTENTS} one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Prefer modeling a reasonable version over asking a question; unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
 Questions during a pending/ready draft do not replace its values. Use tools to inspect it or the forecast, then answer. For an invalid tool result, explain or clarify it; do not claim a proposal is ready. For a valid draft, tell the person to review the displayed proposal. Never say it has been saved/calculated or acted on.
 Return JSON {"reply":"your conversational response"}. Keep it short: two to four plain sentences, under 500 characters (${REPLY_MAX} is a hard limit). Lead with the answer and only the one or two numbers that matter. No headings, bold or lists unless the person asks. Ask at most one question, and offer more detail instead of writing it. The reply is shown verbatim; write the whole useful response yourself, including any missing detail question.`;
 const ReplySchema = z.object({ reply: z.string().trim().min(1).max(REPLY_MAX) }).strict();
@@ -116,9 +119,17 @@ async function converse(
     });
   let draftUpdate: DraftUpdate | null = null;
   let planItems: string[] | null = null;
-  // Outside events without numbers get one bounded estimate up front; tools run synchronously.
+  let planPredictions: PredictionSet[] = [];
+  // Outside events without numbers get one bounded estimate up front. Press and sentiment
+  // events are predicted per plan part instead (preview_plan).
+  const outside = detectExternalEvent(text);
   const macro: MacroEstimate | null =
-    receipt.status === "saved" ? null : await estimateExternalEvent(run, text);
+    receipt.status === "saved" || !outside || PREDICTED_EXTERNAL.has(outside)
+      ? null
+      : await estimateExternalEvent(run, text);
+  // Predictions already in the proposal are reused, so an event is not predicted twice.
+  const predictions: Map<string, PredictionSet> =
+    receipt.status === "saved" ? new Map() : predictionsIn(receipt.proposal?.parts);
   let planMacro: MacroEstimate | null = null;
   const checkedTexts: string[] = [];
   // Proposals the parser built this turn, so the reply may quote their amounts.
@@ -172,7 +183,7 @@ async function converse(
     tools: [
       {
         name: "preview_plan",
-        description: `Check a whole scenario as ONE proposal: items lists every change the person asked for or clearly implied (up to ${MAX_PLAN_ITEMS}), one plain sub-request each: percentage spend changes, hires, layoffs or payroll cuts, recurring price changes, lost customers (one, the top N, a percentage, or all), outside events (rate hike, bad press, recession, positive press, regulatory fine, vendor outage) and one-time payments, receipts (a credit line draw is a receipt from Credit Line), late invoices or cash rules. Code computes and merges every part, validates them together and reports per item what it understood or why it could not be modeled; the others still proceed. Nothing is saved. Each call replaces the previous plan, so always send the complete list.`,
+        description: `Check a whole scenario as ONE proposal: items lists every change the person asked for or clearly implied (up to ${MAX_PLAN_ITEMS}), one plain sub-request each: percentage spend changes, hires, layoffs or payroll cuts, recurring price changes, lost customers (one, the top N, a percentage, or all), outside events (rate hike, bad press, recession, positive press, regulatory fine, vendor outage) and one-time payments, receipts (a credit line draw is a receipt from Credit Line), late invoices or cash rules, and events in words (launch, sentiment, press, investment, competitor news) whose consequences are predicted with probabilities. Code computes and merges every part, validates them together and reports per item what it understood or why it could not be modeled; the others still proceed. Nothing is saved. Each call replaces the previous plan, so always send the complete list.`,
         input_schema: {
           type: "object",
           additionalProperties: false,
@@ -185,7 +196,7 @@ async function converse(
             },
           },
         },
-        run: (input) => {
+        run: async (input) => {
           used.push("preview_plan");
           const parsed = z
             .object({ items: z.array(z.string()).optional() })
@@ -207,11 +218,32 @@ async function converse(
           planItems = checkedItems.data;
           planMacro = macro;
           draftUpdate = null;
-          const result = checkCompound(run, planItems, floor, macro, {
+          const guard = {
             conversationId: receipt.conversationId,
             selectedItemId: receipt.selectedItemId,
             userTexts: userTurns.map((t) => t.text),
             referenceText: receipt.workerContext?.note ?? null,
+          };
+          let result = checkCompound(run, planItems, floor, macro, guard, predictions);
+          // Events in words: predict their consequences (at most four parts per call, in
+          // parallel), then build the whole plan again with those predictions.
+          const ask = result.items.filter((i) => i.predict).slice(0, 4);
+          if (ask.length) {
+            const snapshot = run.baseline.seed.snapshot;
+            const from = floor && floor > snapshot.asOf ? floor : null;
+            const sets = await Promise.all(
+              ask.map((i) => {
+                const date = looseDate(i.item, snapshot.asOf);
+                const start = date && (!from || date > from) ? date : (from ?? snapshot.asOf);
+                return predictEvent(run, i.item, { eventStart: start, prior: run.changes, brain });
+              }),
+            );
+            for (const set of sets) if (set) predictions.set(set.item, set);
+            result = checkCompound(run, planItems, floor, macro, guard, predictions);
+          }
+          planPredictions = planItems.flatMap((i) => {
+            const set = predictions.get(i);
+            return set ? [set] : [];
           });
           checkedTexts.push(result.answer, ...result.items.map((i) => i.note));
           drafted.push(result.proposal);
@@ -339,6 +371,7 @@ async function converse(
     recordIds,
     planItems,
     macro: planMacro,
+    ...(planItems && planPredictions.length ? { predictions: planPredictions } : {}),
   });
 }
 
