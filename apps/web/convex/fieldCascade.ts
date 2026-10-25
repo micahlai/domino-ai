@@ -4,16 +4,18 @@
  * of its parent (so the chart draws it as a branch from the trigger week). Idempotent: request
  * ids hash the parent run, its input hash, the cascade version and each node's changes.
  *
- * Reactions: for each trigger, Claude may pick up to two reactions from the engine's catalog
- * (with a probability, a one-line reason and bounded parameters) when a key and the hourly AI
- * budget allow it; the engine still builds every Change and computes every forecast. Each
- * choice is cached on its aiCalls row per (parent run, trigger), so reruns never call again.
- * Without a key, budget or a valid answer the fixed rules apply ("Rule-based").
+ * Reactions: at every level (up to four deep), Claude may pick up to two alternative branches
+ * per trigger, each combining one to three reactions from the engine's catalog that happen
+ * together (with a probability, a one-line reason and bounded parameters), when a key and the
+ * hourly AI budget allow it; the engine still builds every Change and computes every forecast.
+ * Each choice is cached on its aiCalls row per (parent run, trigger), so reruns never call
+ * again. Without a key, budget or a valid answer the fixed rules apply ("Rule-based").
  */
 import { canonicalJson } from "@domino/contracts";
 import {
   CASCADE_VERSION,
   type CascadeNode,
+  type ReactionChoice,
   type ReactionRequest,
   cascadeWith,
   money,
@@ -282,33 +284,49 @@ export const cachedReaction = internalQuery({
   },
 });
 
-/** Compact cache form: [kindId, probability, param, reason] per reaction, under 300 chars. */
-function cacheDetail(
-  reactions: { kindId: string; probability: number; param: number | null; reason: string }[],
-) {
-  for (let room = 120; room >= 20; room -= 20) {
+/**
+ * Compact cache form, under 300 chars: [catalog indexes, params, probability, reason] per
+ * branch. The scope hashes the catalog's kind ids in order, so an index names the same kind.
+ */
+function cacheDetail(catalog: ReactionRequest["catalog"], branches: ReactionChoice[]) {
+  for (let room = 120; room >= 0; room -= 20) {
     const text = JSON.stringify(
-      reactions.map((r) => [r.kindId, r.probability, r.param, r.reason.slice(0, room)]),
+      branches.map((b) => [
+        b.kinds.map((k) => catalog.findIndex((c) => c.kindId === k.kindId)),
+        b.kinds.map((k) => k.param),
+        b.probability,
+        b.reason.slice(0, room),
+      ]),
     );
     if (text.length <= CACHE_DETAIL_MAX) return text;
   }
   return null;
 }
-function fromCache(detail: string): unknown | null {
+function fromCache(catalog: ReactionRequest["catalog"], detail: string): unknown | null {
   try {
     const rows = JSON.parse(detail) as unknown;
     if (!Array.isArray(rows)) return null;
     return {
-      reactions: rows.map((r) =>
-        Array.isArray(r) ? { kindId: r[0], probability: r[1], param: r[2], reason: r[3] } : null,
-      ),
+      branches: rows.map((r) => {
+        if (!Array.isArray(r) || !Array.isArray(r[0]) || !Array.isArray(r[1])) return null;
+        const params = r[1] as unknown[];
+        return {
+          kinds: (r[0] as unknown[]).map((i, n) => ({
+            kindId: typeof i === "number" ? catalog[i]?.kindId : undefined,
+            param: params[n] ?? null,
+          })),
+          probability: r[2],
+          reason: r[3],
+        };
+      }),
     };
   } catch {
     return null;
   }
 }
 
-const SYSTEM = `You estimate how a company's lenders, vendors, customers and market most likely react to one cash event in its 13-week forecast. Choose at most two reactions, only from the catalog given, each with a probability from 0 to 1, a one-line plain-English reason (under 120 characters, no jargon) and, when the catalog entry has a parameter, a value inside its bounds (otherwise null). Never invent amounts: the engine computes all cash. Return JSON only.`;
+const SYSTEM = `You estimate how a company, its lenders, vendors, customers and market most likely react to one cash event in its 13-week forecast. Companies under pressure usually respond with several actions at once (for example stretch vendors and draw the credit line together), and effects compound: each reaction changes the cash the next one sees. Read the whole chain so far (the scenario, then chainSoFar, oldest first) and the branch's lowest cash, and react to where the company is now, not only to the latest trigger.
+Return up to branchesAllowed alternative branches (different futures; their probabilities should reflect how likely each is). Each branch lists one to three catalog kinds that happen together in that future, only kindIds from the catalog, each with a value inside its parameter bounds when it has a parameter (otherwise null). Combine kinds only when they plausibly happen together; a single kind is fine. Give each branch a probability from 0 to 1 and one plain-English reason under 120 characters, no jargon. Never invent amounts: the engine computes all cash. Return JSON only.`;
 
 /**
  * One trigger's reactions from Claude, or null for the fixed rules. Cached per (parent run,
@@ -324,14 +342,8 @@ async function estimateReactions(
   },
 ): Promise<unknown | null> {
   const { fieldId, parent, req, rows } = a;
-  // The first two levels only: deeper reactions keep the fixed rules, bounding calls and time.
-  if (
-    !fieldId ||
-    req.depth > 1 ||
-    !process.env.ANTHROPIC_API_KEY?.trim() ||
-    req.catalog.length === 0
-  )
-    return null;
+  // Every level asks Claude; the engine's node and branch limits bound the number of calls.
+  if (!fieldId || !process.env.ANTHROPIC_API_KEY?.trim() || req.catalog.length === 0) return null;
   const scope = `cascade:${(
     await sha256(
       canonicalJson({
@@ -341,6 +353,7 @@ async function estimateReactions(
         key: req.key,
         week: req.trigger.weekStart,
         catalog: req.catalog.map((c) => c.kindId),
+        branches: req.branches,
         CASCADE_VERSION,
       }),
     )
@@ -363,7 +376,7 @@ async function estimateReactions(
     companyId: fieldId,
     scope,
   });
-  if (cached) return fromCache(cached);
+  if (cached) return fromCache(req.catalog, cached);
   const reservation: { ok: boolean; callId?: Id<"aiCalls">; reason?: string } =
     await ctx.runMutation(internal.fieldAi.reserve, {
       companyId: fieldId,
@@ -400,6 +413,9 @@ async function estimateReactions(
             books: companyContext(parent),
             agentFindings: await agentFindings(ctx, fieldId, parent),
             scenario: req.event,
+            chainSoFar: req.chain,
+            depth: req.depth + 1,
+            branchesAllowed: req.branches,
             branchLowestCash: `${money(req.lowPoint.usable)} in the week of ${req.lowPoint.weekStart}`,
             trigger: req.trigger.label,
             catalog: req.catalog.map((c) => ({
@@ -415,28 +431,38 @@ async function estimateReactions(
       schema: {
         type: "object",
         additionalProperties: false,
-        required: ["reactions"],
+        required: ["branches"],
         properties: {
-          reactions: {
+          branches: {
             type: "array",
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["kindId", "probability", "reason", "param"],
+              required: ["kinds", "probability", "reason"],
               properties: {
-                kindId: { type: "string", enum: ids },
+                kinds: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["kindId", "param"],
+                    properties: {
+                      kindId: { type: "string", enum: ids },
+                      param: { type: ["number", "null"] },
+                    },
+                  },
+                },
                 probability: { type: "number" },
                 reason: { type: "string" },
-                param: { type: ["number", "null"] },
               },
             },
           },
         },
       },
     });
-    const chosen = resolveReactions(req.catalog, value);
+    const chosen = resolveReactions(req.catalog, value, req.branches);
     if (!chosen) throw new Error("no usable reaction in the answer");
-    const detail = cacheDetail(chosen);
+    const detail = cacheDetail(req.catalog, chosen);
     await ctx.runMutation(internal.fieldAi.settle, {
       callId: reservation.callId,
       status: "ok",
@@ -445,10 +471,10 @@ async function estimateReactions(
     rows.push(
       row(
         "done",
-        `Claude estimated reactions to '${req.trigger.label}': ${chosen.map((c) => `${c.kindId} ${Math.round(c.probability * 100)}% (${c.reason})`).join("; ")}`,
+        `Claude estimated reactions to '${req.trigger.label}': ${chosen.map((c) => `${c.kinds.map((k) => k.kindId).join(" + ")} ${Math.round(c.probability * 100)}% (${c.reason})`).join("; ")}`,
       ),
     );
-    return { reactions: chosen };
+    return { branches: chosen };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await ctx.runMutation(internal.fieldAi.settle, {

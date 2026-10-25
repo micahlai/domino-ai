@@ -167,8 +167,8 @@ describe("cascade", () => {
   it("respects depth, fan-out and node bounds", () => {
     for (const cash of [100 * K, 200 * K, 500 * K]) {
       const out = cascade(input({ snapshot: company(cash) }));
-      expect(out.nodes.length).toBeLessThanOrEqual(8);
-      expect(Math.max(...out.nodes.map((n) => n.depth))).toBeLessThanOrEqual(3);
+      expect(out.nodes.length).toBeLessThanOrEqual(14);
+      expect(Math.max(...out.nodes.map((n) => n.depth))).toBeLessThanOrEqual(4);
       const kids = new Map<string | null, number>();
       for (const n of out.nodes) kids.set(n.parentId, (kids.get(n.parentId) ?? 0) + 1);
       for (const count of kids.values()) expect(count).toBeLessThanOrEqual(2);

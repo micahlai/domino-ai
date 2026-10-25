@@ -273,6 +273,80 @@ function prices(run: WorkspaceRun, text: string, floor: string | null): PlanRepl
   };
 }
 
+/**
+ * "Lay off half the team from Jan 1", "cut payroll 30%": payroll shrinks by that share from the
+ * start date (the next day by default). One shift_hire change saves the share of the average
+ * monthly payroll, spread evenly over the days from the start, so the line bends from then on.
+ */
+function layoffs(run: WorkspaceRun, text: string, floor: string | null): PlanReply | null {
+  const laid = /\b(lay(?:ing)?\s*offs?|laid\s+off|let\s+go\s+of|downsiz\w*|fire|firing)\b/i.test(
+    text,
+  );
+  const cut =
+    /\b(cut|cuts|cutting|reduce|reducing|lower|trim|shrink)\s+(?:our\s+|the\s+)?(payroll|headcount|staff|team|workforce|salar(?:y|ies))\b/i.test(
+      text,
+    );
+  if (!laid && !cut) return null;
+  const pct = /(\d{1,3}(?:\.\d{1,2})?)\s*(?:%|percent)/i.exec(text);
+  const bp = pct
+    ? basisPoints(pct[1] ?? "")
+    : /\bhalf\b/i.test(text)
+      ? 5_000
+      : /\b(?:a|one)\s+third\b/i.test(text)
+        ? 3_333
+        : /\b(?:a|one)\s+quarter\b/i.test(text)
+          ? 2_500
+          : /\b(everyone|everybody|all\s+(?:of\s+)?(?:our\s+|the\s+)?(?:staff|team|employees|people|workforce))\b/i.test(
+                text,
+              )
+            ? 10_000
+            : null;
+  if (bp === null)
+    return {
+      answer:
+        'What share of payroll goes? For example, "lay off 30% of the team from Dec 1" or "cut payroll in half".',
+      proposal: null,
+    };
+  const snapshot = run.baseline.seed.snapshot;
+  const { from: earliest, end } = horizon(run, floor);
+  const start = looseDate(text, snapshot.asOf);
+  const from = start && start > earliest ? start : earliest;
+  if (from > end)
+    return {
+      answer: `${shortDate(from)} is after these 13 weeks, so the payroll cut would not change this forecast.`,
+      proposal: null,
+    };
+  const payroll = futureItems(run, floor).filter((i) => i.kind === "payroll");
+  const total = -payroll.reduce((s, i) => s + i.amount, 0);
+  if (total <= 0)
+    return {
+      answer:
+        "No payroll runs are scheduled in these 13 weeks, so a payroll cut would not move cash.",
+      proposal: null,
+    };
+  const days = (Date.parse(end) - Date.parse(earliest)) / 86_400_000 + 1;
+  const monthly = Math.round((total * 30.4) / Math.max(1, days));
+  const monthlyCost = share(monthly, bp);
+  if (monthlyCost <= 0)
+    return { answer: `A ${pctText(bp)} payroll cut rounds to nothing.`, proposal: null };
+  const label = `Payroll cut ${pctText(bp)} (layoffs) from ${shortDate(from)}`;
+  const change: Change = {
+    kind: "shift_hire",
+    label,
+    monthlyCost,
+    fromDate: from,
+    toDate: addDays(end, 1),
+  };
+  // The engine's own schedule gives the savings inside the forecast.
+  const saved = cashSchedule(snapshot, run.baseline.model, [...run.changes, change])
+    .items.filter((i) => i.kind === "change" && i.id === label)
+    .reduce((s, i) => s + i.amount, 0);
+  return {
+    answer: `Ready to model a ${pctText(bp)} payroll cut from ${shortDate(from)}: about ${compactMoney(monthlyCost)} a month less payroll, ${compactMoney(saved)} saved over these 13 weeks. Severance and notice pay are not included; the saving is spread evenly from the start date. Check the details below, then confirm.`,
+    proposal: { label, changes: [change], constraints: null, constraintNote: null },
+  };
+}
+
 /** "We lose Northwind", "Northwind churns/leaves/cancels": all its later billing stops. */
 function lostCustomer(run: WorkspaceRun, text: string, floor: string | null): PlanReply | null {
   if (
@@ -472,6 +546,7 @@ export function planRequest(
   return (
     prices(run, text, floor) ??
     hires(run, text, floor) ??
+    layoffs(run, text, floor) ??
     spendChange(run, text, floor) ??
     externalEvent(run, text, floor, estimate) ??
     lostCustomer(run, text, floor)

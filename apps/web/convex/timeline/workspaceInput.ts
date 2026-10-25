@@ -255,13 +255,15 @@ const itemOf = (s: CashSchedule, kind: Item["kind"], id: string) =>
  * ordered changes with the frozen model, so relative changes are judged where the cash really
  * lands: never on or before asOf, never with no remaining cash, never entirely after the forecast.
  * Moving in-forecast cash past the end is allowed: removing it from the 13 weeks is the effect.
- * Run after checkChanges, which bounds every loop the schedule performs.
+ * Run after checkChanges, which bounds every loop the schedule performs. `from` skips changes
+ * already checked in this order (a plan checked part by part replays only the new part).
  */
 export function checkEffects(
   changes: Change[],
   snapshot: Snapshot,
   model: CompanyModel,
   horizon: Horizon,
+  from = 0,
 ) {
   const schedule = (n: number) => {
     try {
@@ -291,8 +293,9 @@ export function checkEffects(
       "HISTORICAL_CHANGE",
       `${message}, on or before ${horizon.asOf}. Observed history is fixed; simulate only future events`,
     );
-  let before = schedule(0);
-  changes.forEach((change, i) => {
+  let before = schedule(from);
+  changes.slice(from).forEach((change, k) => {
+    const i = from + k;
     const after = schedule(i + 1);
     const moved = (kind: Item["kind"], id: string, what: string) => {
       const b = itemOf(before, kind, id);
