@@ -99,6 +99,7 @@ function LiveWorker() {
   const suggestions = useLiveSuggestions(companyId);
   return (
     <WorkerBody
+      companyId={companyId ?? null}
       dashboard={dashboard}
       latest={latest ?? undefined}
       suggestions={suggestions.state}
@@ -116,6 +117,7 @@ function DemoWorker() {
   );
   return (
     <WorkerBody
+      companyId={null}
       dashboard={dashboard}
       latest={undefined}
       suggestions={suggestions.state}
@@ -140,11 +142,13 @@ export function effectContext(d: DashboardData, risks: WatchedRisk[]): EffectCon
 }
 
 function WorkerBody({
+  companyId,
   dashboard,
   latest,
   suggestions,
   onDecide,
 }: {
+  companyId: string | null;
   dashboard: DashboardData;
   latest: AnalystLatest | undefined;
   suggestions: SuggestionsState;
@@ -226,6 +230,7 @@ function WorkerBody({
       </div>
 
       <WorkerSections
+        companyId={companyId}
         suggestions={suggestions}
         context={context}
         onDecide={onDecide}

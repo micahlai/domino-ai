@@ -12,6 +12,7 @@ import type { EffectContext } from "./suggestions";
 
 /** The three sections, always in this order. Pure, so the order and empty states are testable. */
 export function WorkerSections({
+  companyId,
   suggestions,
   context,
   onDecide,
@@ -21,6 +22,7 @@ export function WorkerSections({
   findings,
   now,
 }: {
+  companyId?: string | null;
   suggestions: SuggestionsState;
   context: EffectContext;
   onDecide: DecideSuggestion;
@@ -32,7 +34,12 @@ export function WorkerSections({
 }) {
   return (
     <div className="space-y-10">
-      <SuggestionsSection state={suggestions} context={context} onDecide={onDecide} />
+      <SuggestionsSection
+        state={suggestions}
+        context={context}
+        onDecide={onDecide}
+        companyId={companyId}
+      />
       <RisksSection rows={risks} loading={risksLoading} action={timelineAction} />
       <FlagsSection findings={findings} now={now} />
     </div>

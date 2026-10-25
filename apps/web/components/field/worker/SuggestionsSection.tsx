@@ -1,7 +1,9 @@
 "use client";
 
 import { Check, Lightbulb, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+import { fieldTraceHref } from "../../../lib/trace-links";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -39,10 +41,12 @@ export function SuggestionsSection({
   state,
   context,
   onDecide,
+  companyId,
 }: {
   state: SuggestionsState;
   context: EffectContext;
   onDecide: DecideSuggestion;
+  companyId?: string | null;
 }) {
   const { open, decided } =
     state.kind === "ready" ? splitSuggestions(state.list) : { open: [], decided: [] };
@@ -85,7 +89,13 @@ export function SuggestionsSection({
       ) : (
         <ul className="divide-y overflow-hidden rounded-lg border bg-card shadow-xs">
           {open.map((s) => (
-            <SuggestionCard key={s.id} suggestion={s} context={context} onDecide={onDecide} />
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              context={context}
+              onDecide={onDecide}
+              companyId={companyId}
+            />
           ))}
         </ul>
       )}
@@ -106,6 +116,19 @@ export function SuggestionsSection({
                 {s.note ? (
                   <p className="mt-0.5 text-[13px] text-muted-foreground">Note: {s.note}</p>
                 ) : null}
+                {companyId && s.runId && s.scenarioId && typeof s.fix !== "string" && s.fix.kind ? (
+                  <Link
+                    className="mt-1 inline-block text-[13px] font-medium text-primary underline-offset-4 hover:underline"
+                    href={fieldTraceHref({
+                      companyId,
+                      runId: s.runId,
+                      scenarioId: s.scenarioId,
+                      fixKind: s.fix.kind,
+                    })}
+                  >
+                    Why this suggestion
+                  </Link>
+                ) : null}
               </div>
             </li>
           ))}
@@ -121,7 +144,13 @@ function SuggestionCard({
   suggestion: s,
   context,
   onDecide,
-}: { suggestion: Suggestion; context: EffectContext; onDecide: DecideSuggestion }) {
+  companyId,
+}: {
+  suggestion: Suggestion;
+  context: EffectContext;
+  onDecide: DecideSuggestion;
+  companyId?: string | null;
+}) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<SuggestionDecision | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -189,6 +218,19 @@ function SuggestionCard({
           <span className="font-medium text-foreground">Why: </span>
           {s.recommendation}
         </p>
+      ) : null}
+      {companyId && s.runId && s.scenarioId && typeof s.fix !== "string" && s.fix.kind ? (
+        <Link
+          className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+          href={fieldTraceHref({
+            companyId,
+            runId: s.runId,
+            scenarioId: s.scenarioId,
+            fixKind: s.fix.kind,
+          })}
+        >
+          Why this suggestion
+        </Link>
       ) : null}
 
       <div className="mt-3 space-y-1.5">
