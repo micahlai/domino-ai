@@ -31,6 +31,7 @@ import { VENDOR_OF_TOOL } from "./BrainMapConnections";
 import {
   FIELD_OPERATING_API,
   chooseReplay,
+  rememberDemoCopy,
   selectOperating,
   useOperatingSelection,
   useSelectedCompany,
@@ -351,6 +352,7 @@ function LiveReplayAction() {
               setError(null);
               try {
                 const next = await replay({ companyId: selected.companyId });
+                rememberDemoCopy(selection.company, "fresh", next.companyId);
                 chooseReplay(selection, next.companyId);
               } catch (e) {
                 setError(errorText(e));

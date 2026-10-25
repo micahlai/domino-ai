@@ -93,6 +93,19 @@ export const fieldTables = {
     // scenario. The original row is left untouched; the picker prefers it unless a browser
     // chose the replay.
     replayOf: v.optional(v.id("companies")),
+    // Demo state (fieldOperating.openDemoState, optional): a "Fresh start" idle copy, or an
+    // "Up to date" copy whose agents ran over several fast-forwarded simulated weeks. `week` of
+    // `weeks` is the build progress; a fresh copy is "ready" at once.
+    demoState: v.optional(
+      v.object({
+        kind: v.union(v.literal("fresh"), v.literal("upToDate")),
+        status: v.union(v.literal("building"), v.literal("ready"), v.literal("failed")),
+        week: v.number(),
+        weeks: v.number(),
+        updatedAt: v.string(),
+        error: v.optional(v.string()),
+      }),
+    ),
     operatingDemo: v.optional(
       v.object({
         company: v.union(
