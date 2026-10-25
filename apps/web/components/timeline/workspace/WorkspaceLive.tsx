@@ -206,15 +206,16 @@ function RunReady({
       : graph.state === "ready"
         ? (graph.value.find((e) => e.kind === "baseline" && e.parentRunId === null)?.runId ?? null)
         : null;
-  // Opening a saved what-if shows it; the bare timeline shows only the base forecast.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened run
+  // Opening a saved what-if shows it; the bare timeline shows only the base forecast. Its
+  // parents are added once the family graph loads, so a deep link lands with its full branch.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened run and graph read
   useEffect(() => {
-    if (run.kind !== "baseline" && !shown.ids.includes(run.runId)) show(run.runId);
+    if (run.kind !== "baseline") show(run.runId);
   }, [run.runId, graph.state]);
   // A scenario is drawn with every scenario it builds on, so its branch leaves a visible line.
   const show = (id: string) => {
     const next = showWithAncestors(shown.ids, id, familyEntries(run, graph), baseRunId ?? "");
-    if (next) shown.set(next);
+    if (next && next.length !== shown.ids.length) shown.set(next);
   };
   const selectedComparisons = comparisonIds(shown.ids, baseRunId ?? "");
   const comparisonKey = selectedComparisons.join("\n");

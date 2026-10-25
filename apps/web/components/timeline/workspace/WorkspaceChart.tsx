@@ -915,6 +915,8 @@ function RangeBar({
     const delta = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
     if (!delta) return;
     e.preventDefault();
+    // A handle sits inside the window; without this the window's pan handler undoes the zoom.
+    e.stopPropagation();
     apply(mode, start, end, delta);
   };
   // Overview geometry in a 0..100 x 0..24 box.
@@ -1107,6 +1109,7 @@ function CashBar({
     const delta = e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0;
     if (!delta) return;
     e.preventDefault();
+    e.stopPropagation();
     apply(mode, lo, hi, delta);
   };
   const pctTop = ((max - hi) / span) * 100;
