@@ -1,6 +1,6 @@
 # Timeline local runtime
 
-Worktree: `/Users/micahlai/code/domino-timeline`, branch `timeline/main`.
+Worktree: `/Users/micahlai/code/domino-timeline`, branch `TL1-checkpoint` (checkpoint preview; `timeline/main` is the lane base).
 
 - App: http://127.0.0.1:3107
 - Live computed timeline: http://127.0.0.1:3107/c/kestrel

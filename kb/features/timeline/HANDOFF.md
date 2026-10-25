@@ -1,5 +1,10 @@
 # Timeline handoff
 
+## 2026-10-24: checkpoint branch names
+
+- User requests branch names by checkpoint. Preview/review checkout now uses TL1-checkpoint; implementation worker branch renamed TL1-saved-baseline in ../domino-TL1. Repository main remains untouched; no TL1 feature code is written on timeline/main.
+- Next milestones use TL1C-constraints, TL2-events, TL3-questions and TL4-catalog-style checkpoint names. Do not silently merge into repository or lane main.
+
 ## 2026-10-24: local backend running and shared shell merged
 
 - Done: `origin/shared/shell` published and fast-forward merged at f20f0c4. Repeated fetch/merge at user's request: already up to date. Dashboard slot is available; content remains its placeholder.
