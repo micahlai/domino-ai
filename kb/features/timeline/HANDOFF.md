@@ -1,5 +1,12 @@
 # Timeline handoff
 
+## 2026-10-24: TL6–TL7 isolated background work
+
+- User requests TL6/TL7 while keeping TL5 smoke test open, then explicitly forbids merging into TL5 until told. TL5 stays597fcc0 in ../domino-timeline with its existing3107/3240 preview.
+- New integration TL7-checkpoint; separate TL6-handoff, TL7-analysis-backend and TL7-analysis-ui workers. Codex only; capped3 implementation workers. Interface/cards committed before launch. No dashboard/shared-contract/root-schema/engine/peer edits.
+- Proposed TL6 versioned financial JSON read interface does not change WeeklyResultRefV1. Field adoption remains a joint gate. TL7 initially analyzes baseline/rule-only runs without cumulative events, because shared stressTest lacks ancestor input. Ambiguous/synthetic risk chances remain labelled assumptions.
+- Verification and new writes use separate3108/3250/3251 services/data; never TL5. Implementation not yet accepted.
+
 ## 2026-10-24: TL5 accepted locally
 
 - Done: TL1C–TL5 integrated on TL5-checkpoint. Codex repaired/reviewed backend, UI and questions in parallel; immutable constraints/events, evidence questions, confirmed language proposals, nested scenarios and saved catalog work. [Acceptance](TL5-acceptance.md) records exact scope and evidence; [smoke guide](SMOKE-TESTS.md) has working links.
