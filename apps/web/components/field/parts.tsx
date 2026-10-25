@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/badge";
@@ -81,9 +79,15 @@ export const SEVERITY_BADGE: Record<
   low: "secondary",
 };
 
-/** Says where the numbers come from. Demo data is always labelled as such. */
-export function DataLabel({ className }: { className?: string }) {
-  const { source, sourceNote } = useFieldData();
+/**
+ * Says where the numbers come from, the same way on every page. "Demo data" appears only when
+ * no backend is configured; with a backend the page shows live numbers or an error, never demo.
+ */
+export function SourceBadge({
+  source,
+  note,
+  className,
+}: { source: "live" | "demo" | "loading"; note?: string; className?: string }) {
   if (source === "live")
     return (
       <Badge variant="success" className={cn("gap-1.5", className)}>
@@ -100,13 +104,20 @@ export function DataLabel({ className }: { className?: string }) {
   return (
     <Badge
       variant="outline"
-      title={sourceNote}
+      title={note}
       className={cn("gap-1.5 border-dashed font-normal text-muted-foreground", className)}
     >
       <span aria-hidden="true" className="size-1.5 rounded-full bg-clay" />
-      Demo data · {sourceNote.toLowerCase()}
+      Demo data
+      {note ? <span className="sr-only">: {note}</span> : null}
     </Badge>
   );
+}
+
+/** SourceBadge for the pages that read the field.* data provider. */
+export function DataLabel({ className }: { className?: string }) {
+  const { source, sourceNote } = useFieldData();
+  return <SourceBadge source={source} note={sourceNote} className={className} />;
 }
 
 /** "Plant an anomaly" choice for the next "New entries arrive". Empty means plain new entries. */
@@ -173,38 +184,5 @@ export function AutoIngestToggle() {
       </label>
       {error ? <span className="text-[hsl(var(--danger-text))]">{error}</span> : null}
     </span>
-  );
-}
-
-const TABS = [
-  { href: "/field", label: "Review and actions" },
-  { href: "/field/map", label: "Brain map" },
-  { href: "/field/connect", label: "Connected tools" },
-];
-
-export function FieldTabs() {
-  const pathname = usePathname();
-  return (
-    <nav
-      aria-label="Agent workspace"
-      className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md bg-secondary p-0.5"
-    >
-      {TABS.map((tab) => {
-        const active = pathname === tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "inline-flex h-7 shrink-0 items-center rounded-[5px] px-2.5 text-[13px] font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
-              active && "bg-card text-foreground shadow-sm",
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }

@@ -27,7 +27,7 @@ import {
 import { PageHeader, Section, StatTile } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
 import { ConnectDataProvider, type ConnectTool, useConnectData } from "./connect-data";
-import { FieldTabs, timeAgo, useNow } from "./parts";
+import { SourceBadge, timeAgo, useNow } from "./parts";
 
 const LIST_LABEL: Record<string, [string, string]> = {
   customers: ["customer", "customers"],
@@ -89,9 +89,14 @@ export function ConnectView() {
             <SourceLabel />
           </span>
         }
-        title="Connect your tools"
-        description="Domino reads the tools your company already uses: the bank, billing, books, payroll, cards and sales. It turns them into one set of books and checks that the tools agree with each other. Domino only reads. It never moves money."
-        actions={<FieldTabs />}
+        title={
+          !data.tools || on.length === 0
+            ? "Connect your tools"
+            : on.length === TOOLS.length
+              ? `All ${TOOLS.length} tools connected`
+              : `${on.length} of ${TOOLS.length} tools connected`
+        }
+        description="Domino reads the bank, billing, books, payroll, cards and sales, turns them into one set of books and checks that they agree. It only reads. It never moves money."
       />
 
       <section aria-label="Summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -150,7 +155,7 @@ export function ConnectView() {
       >
         {data.tools === null ? (
           <div className="rounded-lg border border-dashed bg-card p-6 text-sm text-muted-foreground">
-            There is no company yet. Start the live feed on Review and actions, then come back to
+            There is no company yet. Pick one in the company switcher at the top, then come back to
             connect its tools.
           </div>
         ) : (
@@ -198,29 +203,7 @@ export function ConnectView() {
 
 function SourceLabel() {
   const { source, note } = useConnectData();
-  if (source === "live")
-    return (
-      <Badge variant="success" className="gap-1.5">
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-safe" />
-        Live
-      </Badge>
-    );
-  if (source === "loading")
-    return (
-      <Badge variant="secondary" className="font-normal">
-        Connecting...
-      </Badge>
-    );
-  return (
-    <Badge
-      variant="outline"
-      title={note}
-      className="gap-1.5 border-dashed font-normal text-muted-foreground"
-    >
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-clay" />
-      Demo data · recorded mock sync
-    </Badge>
-  );
+  return <SourceBadge source={source} note={note} />;
 }
 
 function StatusBadge({ tool }: { tool: ConnectTool }) {

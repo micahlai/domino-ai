@@ -3,8 +3,9 @@
 import { scaleLinear } from "d3-scale";
 import { line as d3line } from "d3-shape";
 import { useEffect, useId, useRef, useState } from "react";
-import { formatCents, formatDate } from "../../../lib/format";
+import { formatDate } from "../../../lib/format";
 import type { CashPoint, DashboardBar, Marker } from "./derive";
+import { formatCents } from "./money";
 
 // Hand-drawn SVG charts on the theme tokens. Text stays in text tokens; colors carry identity
 // only. Each chart has a hover readout and a screen-reader table with the same numbers.

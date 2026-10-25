@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import {
   type ReactNode,
@@ -78,31 +78,10 @@ const Context = createContext<ConnectData>(LOADING);
 export const useConnectData = () => useContext(Context);
 
 export function ConnectDataProvider({ children }: { children: ReactNode }) {
+  // With a backend configured the page is always live; demo data only without one.
   if (!CONVEX_URL)
     return createElement(DemoConnectData, { note: "Backend not configured", children });
-  return createElement(Probed, null, children);
-}
-
-function Probed({ children }: { children: ReactNode }) {
-  const client = useConvex();
-  const [probe, setProbe] = useState<"checking" | "live" | "missing">("checking");
-  useEffect(() => {
-    let alive = true;
-    client.query(CONNECT_API.list, {}).then(
-      () => alive && setProbe("live"),
-      () => alive && setProbe("missing"),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [client]);
-  if (probe === "live") return createElement(Live, null, children);
-  if (probe === "missing")
-    return createElement(DemoConnectData, {
-      note: "Connections backend not deployed yet",
-      children,
-    });
-  return createElement(Context.Provider, { value: LOADING }, children);
+  return createElement(Live, null, children);
 }
 
 function Live({ children }: { children: ReactNode }) {

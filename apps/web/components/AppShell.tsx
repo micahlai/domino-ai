@@ -8,7 +8,9 @@ import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
 import { CompanySwitcher } from "./field/CompanySwitcher";
 
-// Top-level pages of the weekly product, in reading order.
+// Top-level pages of the weekly product, in reading order. Dev routes (/playground, the seam
+// harnesses, /investigate, /historical) stay reachable by URL but are never listed here. The 2U
+// case study opens from the company switcher.
 const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
 const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
 const primaryLinks = [
@@ -16,9 +18,14 @@ const primaryLinks = [
   {
     href: "/field",
     label: "Worker",
-    on: (p: string) => under(p, "/field") && !under(p, "/field/map"),
+    on: (p: string) => under(p, "/field") && !under(p, "/field/map") && !under(p, "/field/connect"),
   },
   { href: "/field/map", label: "Brain map", on: (p: string) => under(p, "/field/map") },
+  {
+    href: "/field/connect",
+    label: "Connected tools",
+    on: (p: string) => under(p, "/field/connect"),
+  },
   {
     href: "/c/kestrel",
     label: "Timeline",
@@ -26,6 +33,9 @@ const primaryLinks = [
   },
   { href: "/simulations", label: "Simulations", on: (p: string) => SIMULATIONS.test(p) },
 ];
+
+/** Routes that own the whole window under the top bar and pin the Original dark tokens. */
+export const isFullWindow = (p: string) => under(p, "/investigate") || under(p, "/case/2u");
 
 // The old Kestrel demo pages keep their sub-navigation inside the Timeline routes.
 const demoLinks = [
@@ -41,20 +51,72 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inDemo = pathname.startsWith("/c/");
   const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
-  // The agent canvas and the case workspace own the whole window and pin Original tokens, so they skip the shared header.
-  if (pathname.startsWith("/investigate") || pathname.startsWith("/case/")) {
-    return (
-      <main id="main" className="min-h-dvh">
-        {children}
-      </main>
-    );
-  }
   const demoNav = demoLinks.map((l) => ({
     ...l,
     href: l.href.replace("/c/kestrel", `/c/${companyId}`),
   }));
+  // The agent canvas and the case workspace keep the same top bar, then fill the rest of the
+  // window with their own (dark) layout.
+  if (isFullWindow(pathname)) {
+    return (
+      <div className="flex h-dvh flex-col">
+        <TopBar pathname={pathname} />
+        <main id="main" className="min-h-0 flex-1">
+          {children}
+        </main>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen">
+      <TopBar pathname={pathname} />
+      <div
+        className={cn(
+          "mx-auto max-w-[1600px]",
+          inDemo && "lg:grid lg:grid-cols-[216px_minmax(0,1fr)]",
+        )}
+      >
+        {inDemo ? (
+          <aside className="border-b px-4 py-3 md:px-6 lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:border-b-0 lg:border-r lg:px-3 lg:py-6">
+            <p className="mb-2 hidden px-2.5 text-xs font-medium text-muted-foreground lg:block">
+              Demo company
+            </p>
+            <nav aria-label="Timeline pages" className="flex flex-wrap gap-1 lg:flex-col">
+              {demoNav.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={pathname === href ? "page" : undefined}
+                  className={cn(
+                    "flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+                    focusRing,
+                    pathname === href && "bg-secondary font-medium text-foreground",
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            <p className="mt-8 hidden px-2.5 text-xs leading-5 text-muted-foreground lg:block">
+              Your judgment comes first.
+              <br />
+              Domino never moves money.
+            </p>
+          </aside>
+        ) : null}
+        <main id="main" className="min-w-0 px-4 py-6 md:px-8 md:py-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/** Logo, page links, then the company switcher. On small screens the page links drop to their
+ * own scrollable row under the logo. Always the light style, even above the dark pages. */
+function TopBar({ pathname }: { pathname: string }) {
+  return (
+    <>
       <Suspense fallback={null}>
         <StyleSync />
       </Suspense>
@@ -64,9 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      {/* Top bar: logo, page links, then company and case study on the right. On small screens the
-          page links drop to their own scrollable row under the logo. */}
-      <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+      <header className="sticky top-0 z-40 shrink-0 border-b bg-card/95 text-foreground backdrop-blur supports-[backdrop-filter]:bg-card/85">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 px-4 md:h-14 md:flex-nowrap md:px-6">
           <Link
             href="/"
@@ -107,60 +167,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </ul>
           </nav>
-          <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
-            <Link
-              href="/case"
-              aria-current={pathname === "/case" ? "page" : undefined}
-              className={cn(
-                "flex h-9 items-center rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground",
-                focusRing,
-              )}
-            >
-              2U case study
-            </Link>
-            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+          <div className="ml-auto flex shrink-0 items-center">
             <CompanySwitcher />
           </div>
         </div>
       </header>
-      <div
-        className={cn(
-          "mx-auto max-w-[1600px]",
-          inDemo && "lg:grid lg:grid-cols-[216px_minmax(0,1fr)]",
-        )}
-      >
-        {inDemo ? (
-          <aside className="border-b px-4 py-3 md:px-6 lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:border-b-0 lg:border-r lg:px-3 lg:py-6">
-            <p className="mb-2 hidden px-2.5 text-xs font-medium text-muted-foreground lg:block">
-              Demo company
-            </p>
-            <nav aria-label="Timeline pages" className="flex flex-wrap gap-1 lg:flex-col">
-              {demoNav.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={pathname === href ? "page" : undefined}
-                  className={cn(
-                    "flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
-                    focusRing,
-                    pathname === href && "bg-secondary font-medium text-foreground",
-                  )}
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-            <p className="mt-8 hidden px-2.5 text-xs leading-5 text-muted-foreground lg:block">
-              Your judgment comes first.
-              <br />
-              Domino never moves money.
-            </p>
-          </aside>
-        ) : null}
-        <main id="main" className="min-w-0 px-4 py-6 md:px-8 md:py-8">
-          {children}
-        </main>
-      </div>
-    </div>
+    </>
   );
 }

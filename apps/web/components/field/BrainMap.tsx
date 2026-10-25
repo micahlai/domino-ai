@@ -11,6 +11,7 @@ import {
   ReactFlow,
   useNodesState,
   useReactFlow,
+  useStore,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ArrowDownLeft, ArrowUpRight, Check, Download, RefreshCw, X } from "lucide-react";
@@ -32,6 +33,8 @@ import { VENDORS, type VendorId } from "../icons/vendors";
 import { STATUS_LABEL } from "../investigate/graph";
 import type { CanvasStatus } from "../investigate/types";
 import { Button } from "../ui/button";
+import { PageHeader } from "../ui/page";
+import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import {
   type BrainGraph,
@@ -692,6 +695,18 @@ function FitOnGrow({ width, height }: { width: number; height: number }) {
     const id = requestAnimationFrame(() => fitView({ padding: 0.04, maxZoom: 1, duration: 400 }));
     return () => cancelAnimationFrame(id);
   }, [width, height, fitView]);
+  // The pane narrows when the details panel docks beside it (or the window resizes): refit so
+  // the Outputs lane stays in view instead of hiding under the panel.
+  const pane = useStore((s) => s.width);
+  const paneSeen = useRef<number | null>(null);
+  useEffect(() => {
+    if (!pane) return;
+    const before = paneSeen.current;
+    paneSeen.current = pane;
+    if (before === null || Math.abs(before - pane) < 24) return;
+    const id = requestAnimationFrame(() => fitView({ padding: 0.04, maxZoom: 1, duration: 300 }));
+    return () => cancelAnimationFrame(id);
+  }, [pane, fitView]);
   return null;
 }
 
@@ -715,6 +730,7 @@ const ownerOf = (id: string) => id.split("|")[0] ?? id;
 
 export function BrainMap() {
   const data = useFieldData();
+  const company = useSelectedCompanyName();
   const demo = data.source === "demo";
   const swarm = useDemoSwarm(demo);
   const operations = useMemo(
@@ -984,9 +1000,11 @@ export function BrainMap() {
         })()
       : working.length
         ? `${plural(working.length, "agent")} working now`
-        : counts.agents
+        : counts.agents && counts.outputs
           ? `${plural(counts.agents, "agent")} turned ${plural(counts.sources, "data source")} into ${plural(counts.outputs, "output")}`
-          : "No agent has recorded work yet";
+          : counts.agents
+            ? `${plural(counts.agents, "agent")} read ${plural(counts.sources, "data source")}; no outputs yet`
+            : "No agent has recorded work yet";
   const kindsShown = [...new Set(agents.map(kindOf))];
   const vendorsShown = [
     ...new Set(graph.nodes.flatMap((n) => (n.kind === "source" && n.vendor ? [n.vendor] : []))),
@@ -994,42 +1012,40 @@ export function BrainMap() {
   const apifyUsed = graph.nodes.some((n) => n.kind === "tool" && n.tool?.category === "apify");
 
   return (
-    <div className="space-y-4">
-      <header className="max-w-3xl space-y-2">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>Brain map</span>
-          <DataLabel />
-          {demo ? (
-            <span className="rounded-full border border-dashed px-2 py-0.5 text-xs">
-              Demo swarm: scripted agents, refreshed every second
-            </span>
-          ) : null}
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{headline}</h1>
-        <p className="text-sm leading-6 text-muted-foreground">
-          {latest
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-2">
+            {company}
+            <DataLabel />
+            {demo ? <span className="text-xs">Scripted demo agents</span> : null}
+          </span>
+        }
+        title={headline}
+        description={
+          latest
             ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
-            : "Work appears here as soon as it is recorded."}
-        </p>
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <span>
-            <strong className="font-semibold tabular-nums">{working.length}</strong>{" "}
-            <span className="text-muted-foreground">working now</span>
-          </span>
-          <span>
-            <strong className="font-semibold tabular-nums">{finished}</strong>{" "}
-            <span className="text-muted-foreground">copies finished</span>
-          </span>
-          <span>
-            <strong className="font-semibold tabular-nums">{Math.round(messages)}</strong>{" "}
-            <span className="text-muted-foreground">messages between agents</span>
-          </span>
-        </p>
-      </header>
+            : "Work appears here as soon as it is recorded."
+        }
+      />
+      <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        <span>
+          <strong className="font-semibold tabular-nums">{working.length}</strong>{" "}
+          <span className="text-muted-foreground">working now</span>
+        </span>
+        <span>
+          <strong className="font-semibold tabular-nums">{finished}</strong>{" "}
+          <span className="text-muted-foreground">copies finished</span>
+        </span>
+        <span>
+          <strong className="font-semibold tabular-nums">{Math.round(messages)}</strong>{" "}
+          <span className="text-muted-foreground">messages between agents</span>
+        </span>
+      </p>
       <MapActions />
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl border bg-card",
+          "relative flex overflow-hidden rounded-lg border bg-card shadow-xs",
           // Cards glide when the web re-settles. A media query, so server and client agree.
           "motion-safe:[&_.react-flow__node]:transition-transform motion-safe:[&_.react-flow__node]:duration-500",
         )}
@@ -1038,64 +1054,77 @@ export function BrainMap() {
           height: `max(360px, min(calc(100dvh - 240px), ${Math.max(layout.height * 0.75, 560)}px, calc(${(layout.height / Math.max(layout.width, 1)).toFixed(3)} * (100vw - 32px) + 48px)))`,
         }}
       >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onPaneClick={() => setSelected(null)}
-          colorMode="light"
-          style={flowStyle}
-          fitView
-          fitViewOptions={{ padding: 0.04, maxZoom: 1 }}
-          minZoom={0.25}
-          maxZoom={1.6}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          nodesFocusable={false}
-          edgesFocusable={false}
-          elementsSelectable={false}
-          zoomOnScroll={false}
-          preventScrolling={false}
-          deleteKeyCode={null}
-          multiSelectionKeyCode={null}
-          selectionKeyCode={null}
-          proOptions={{ hideAttribution: true }}
-        >
-          <FitOnGrow width={layout.width} height={layout.height} />
-          <Controls
-            showInteractive={false}
-            position="bottom-left"
-            className="overflow-hidden rounded-lg border [&_.react-flow__controls-button]:size-8 [&_.react-flow__controls-button]:border-border"
-          />
-        </ReactFlow>
-        {data.source === "loading" ? (
-          <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
-            Loading the agent map...
-          </p>
-        ) : null}
+        <div className="relative min-w-0 flex-1">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onPaneClick={() => setSelected(null)}
+            colorMode="light"
+            style={flowStyle}
+            fitView
+            fitViewOptions={{ padding: 0.04, maxZoom: 1 }}
+            minZoom={0.25}
+            maxZoom={1.6}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            nodesFocusable={false}
+            edgesFocusable={false}
+            elementsSelectable={false}
+            zoomOnScroll={false}
+            preventScrolling={false}
+            deleteKeyCode={null}
+            multiSelectionKeyCode={null}
+            selectionKeyCode={null}
+            proOptions={{ hideAttribution: true }}
+          >
+            <FitOnGrow width={layout.width} height={layout.height} />
+            <Controls
+              showInteractive={false}
+              position="bottom-left"
+              className="overflow-hidden rounded-lg border [&_.react-flow__controls-button]:size-8 [&_.react-flow__controls-button]:border-border"
+            />
+          </ReactFlow>
+          {data.source === "loading" ? (
+            <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+              Loading the agent map...
+            </p>
+          ) : null}
+        </div>
         {detailNode || detailStack ? (
-          <div className="absolute bottom-3 right-3 top-3 z-10 w-[min(24rem,calc(100%-1.5rem))]">
-            {detailStack ? (
-              <StackPanel
-                stack={detailStack}
-                graph={graph}
-                now={now}
-                onClose={() => setSelected(null)}
-                onSelect={setSelected}
-              />
-            ) : detailNode ? (
-              <DetailPanel
-                node={detailNode}
-                chip={detailChip}
-                chips={layout.chips.get(detailNode.id) ?? []}
-                graph={graph}
-                onClose={() => setSelected(null)}
-                onSelect={setSelected}
-              />
-            ) : null}
-          </div>
+          <>
+            {/* On wide screens the panel docks beside the map and the map refits into the space
+                left, so no lane is hidden. Narrower, it slides over the map above a backdrop. */}
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Close details"
+              onClick={() => setSelected(null)}
+              className="absolute inset-0 z-10 cursor-default bg-foreground/15 lg:hidden"
+            />
+            <div className="absolute inset-y-0 right-0 z-20 w-[min(24rem,100%)] border-l bg-card shadow-lg lg:static lg:z-auto lg:w-[22rem] lg:shrink-0 lg:shadow-none xl:w-[24rem]">
+              {detailStack ? (
+                <StackPanel
+                  stack={detailStack}
+                  graph={graph}
+                  now={now}
+                  onClose={() => setSelected(null)}
+                  onSelect={setSelected}
+                />
+              ) : detailNode ? (
+                <DetailPanel
+                  node={detailNode}
+                  chip={detailChip}
+                  chips={layout.chips.get(detailNode.id) ?? []}
+                  graph={graph}
+                  onClose={() => setSelected(null)}
+                  onSelect={setSelected}
+                />
+              ) : null}
+            </div>
+          </>
         ) : null}
       </div>
       <Legend kinds={kindsShown} vendors={vendorsShown} apify={apifyUsed} />
@@ -1133,10 +1162,12 @@ function Legend({
             {VENDORS[v].name}
           </span>
         ))}
-        <span className={cn(item, !apify && "opacity-60")}>
-          <ToolLogo vendor="apify" size={18} />
-          Apify (demo actors)
-        </span>
+        {vendors.includes("apify") ? null : (
+          <span className={cn(item, !apify && "opacity-60")}>
+            <ToolLogo vendor="apify" size={18} />
+            Apify (demo actors)
+          </span>
+        )}
       </div>
       <div className={group}>
         <span className="w-32 font-medium text-foreground">Lines</span>
@@ -1193,12 +1224,12 @@ function MapActions() {
         disabled={off}
         onClick={() => run(() => actions.advanceFeed(anomaly || undefined))}
       >
-        <Download aria-hidden="true" className="mr-1.5 size-3.5" />
+        <Download aria-hidden="true" className="size-3.5" />
         New entries arrive
       </Button>
       <AnomalyPicker value={anomaly} onChange={setAnomaly} disabled={off} />
       <Button size="sm" variant="outline" disabled={off} onClick={() => run(actions.ingestNow)}>
-        <RefreshCw aria-hidden="true" className="mr-1.5 size-3.5" />
+        <RefreshCw aria-hidden="true" className="size-3.5" />
         Ingest now
       </Button>
       <AutoIngestToggle />
@@ -1390,7 +1421,7 @@ function PanelShell({
   return (
     <section
       aria-label={`${title} details`}
-      className="flex max-h-full flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-[0_16px_40px_-16px_hsl(var(--foreground)/0.3)]"
+      className="flex h-full flex-col overflow-hidden bg-card text-card-foreground"
     >
       <div className="flex items-start gap-3 p-4">
         {icon}

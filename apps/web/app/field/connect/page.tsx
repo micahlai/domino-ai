@@ -1,6 +1,6 @@
 import { ConnectPage } from "@/components/field/ConnectPage";
 
-export const metadata = { title: "Connect your tools" };
+export const metadata = { title: "Connected tools" };
 
 export default function Page() {
   return <ConnectPage />;

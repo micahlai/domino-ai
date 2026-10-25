@@ -4,7 +4,7 @@ import { type CompanyModel, CompanyModelSchema } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { auditSnapshot } from "@domino/engine";
 import { type ProfileId, createProfileCompany } from "@domino/sim";
-import { useConvex, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import {
   type ReactNode,
@@ -18,7 +18,8 @@ import { DEFAULT_FIELD_COMPANY, fieldCompany } from "../../../convex/lib/fieldCo
 import { useSelectedCompany, useSelectedProfile } from "../company";
 import { type DashboardResult, deriveDashboard } from "./derive";
 
-// The one switch between the fieldDashboard.summary Convex query and labelled demo data.
+// The one switch between the fieldDashboard.summary Convex query and labelled demo data (only
+// when no backend is configured).
 // Demo data is the selected picker company (sim v2 driver profile, seed 1, as field.setupAll
 // creates it) run through the same engine derivation as the backend, so demo numbers match live.
 
@@ -126,30 +127,10 @@ const LOADING: DashboardData = { source: "loading", note: "Connecting to the bac
 const DashboardContext = createContext<DashboardData>(LOADING);
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
+  // With a backend configured the page is always live: an empty feed shows its own empty state
+  // and a backend error surfaces as an error, never as demo numbers.
   if (!CONVEX_URL) return createElement(DemoData, { note: "Backend not configured", children });
-  return createElement(ProbedData, null, children);
-}
-
-/** Try the query once. A missing function (not deployed yet) or no feed falls back to demo. */
-function ProbedData({ children }: { children: ReactNode }) {
-  const client = useConvex();
-  const [probe, setProbe] = useState<"checking" | "live" | "missing" | "empty">("checking");
-  useEffect(() => {
-    let alive = true;
-    client.query(DASHBOARD_API.summary, {}).then(
-      (r) => alive && setProbe(r ? "live" : "empty"),
-      () => alive && setProbe("missing"),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [client]);
-  if (probe === "live") return createElement(LiveData, null, children);
-  if (probe === "missing")
-    return createElement(DemoData, { note: "Dashboard backend not available yet", children });
-  if (probe === "empty")
-    return createElement(DemoData, { note: "No connected company yet", children });
-  return createElement(DashboardContext.Provider, { value: LOADING }, children);
+  return createElement(LiveData, null, children);
 }
 
 function LiveData({ children }: { children: ReactNode }) {

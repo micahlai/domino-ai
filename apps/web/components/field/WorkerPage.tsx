@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "../ui/input";
 import { PageHeader, StatTile } from "../ui/page";
 import { Skeleton } from "../ui/skeleton";
+import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import { byTime } from "./graph";
 import { EmptyRow, Panel } from "./panel";
@@ -31,7 +32,6 @@ import {
   AutoIngestToggle,
   DataLabel,
   FINDING_LABEL,
-  FieldTabs,
   OPERATION_LABEL,
   SEVERITY_BADGE,
   SEVERITY_LABEL,
@@ -43,6 +43,7 @@ import type { Anomaly, Decision, FieldFinding, FieldOperation } from "./types";
 
 export function WorkerPage() {
   const data = useFieldData();
+  const company = useSelectedCompanyName();
   const now = useNow();
   const open = data.findings?.filter((f) => f.status === "open") ?? [];
   const decided = data.findings?.filter((f) => f.status !== "open") ?? [];
@@ -57,13 +58,12 @@ export function WorkerPage() {
       <PageHeader
         eyebrow={
           <span className="flex flex-wrap items-center gap-2">
-            Finance agent
+            {company}
             <DataLabel />
           </span>
         }
         title={headline}
-        description="The finance agent reads new entries from billing, customer records, cards, books, payroll and the bank, then checks them for anything odd. You decide every flag. Domino never moves money."
-        actions={<FieldTabs />}
+        description="The finance agent reads new entries from your six tools and flags anything odd. You decide every flag. Domino never moves money."
       />
 
       {data.needsSetup ? <SetupCard /> : null}
@@ -122,7 +122,7 @@ function StatusStrip({ now }: { now: number }) {
           value: timeAgo(status.feed.lastAdvanceAt, now),
           note:
             status.week !== undefined
-              ? `Mock books as of ${status.asOf ?? "unknown"} · week ${status.week}`
+              ? `Books as of ${status.asOf ? shortDay(status.asOf) : "unknown"} · week ${status.week}`
               : status.feed.enabled
                 ? "Mock feed on"
                 : "Mock feed off",
@@ -160,6 +160,16 @@ function StatusStrip({ now }: { now: number }) {
     </section>
   );
 }
+
+/** "2026-10-30" -> "Oct 30"; anything else is shown as is. */
+const shortDay = (iso: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(iso)
+    ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      })
+    : iso;
 
 const RUN_NOTE: Record<string, string> = {
   ok: "last run saved new entries",
