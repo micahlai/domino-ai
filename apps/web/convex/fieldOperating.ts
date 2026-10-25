@@ -9,8 +9,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { createFeedCompany } from "./field";
 
-const companyArg = v.union(...OPERATING_COMPANY_IDS.map((id) => v.literal(id)));
-const scenarioArg = v.union(...OPERATING_SCENARIO_IDS.map((id) => v.literal(id)));
+const companyArg = v.union(
+  v.literal(OPERATING_COMPANY_IDS[0]),
+  v.literal(OPERATING_COMPANY_IDS[1]),
+  v.literal(OPERATING_COMPANY_IDS[2]),
+);
+const scenarioArg = v.union(
+  v.literal(OPERATING_SCENARIO_IDS[0]),
+  v.literal(OPERATING_SCENARIO_IDS[1]),
+  v.literal(OPERATING_SCENARIO_IDS[2]),
+  v.literal(OPERATING_SCENARIO_IDS[3]),
+);
 
 export const ensure = mutation({
   args: { company: companyArg, scenario: scenarioArg },
