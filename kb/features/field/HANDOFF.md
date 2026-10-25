@@ -1,3 +1,8 @@
+## Claude lead resumed, Oct 25 ~04:40
+- Lead: Claude (took over from Codex at field/main 3c2402b). Live 3114/3260 untouched.
+- Five workers (worktrees ../domino-w-*): tl-friend (merge friend origin/claude-timeline-chat b9f25bb..bae9a8e + remove superseded Timeline UI), how-got-here (visual 4-step story + contributing-node mini map, money/label formatting), start-agents (companies start idle; Brain map Start agents; empty states; existing started companies incl. 2U 91-day baseline preserved), header-ui (combined company/scenario control, one-line provenance, clock in header, plain status line), backtest (2U Nov 2023: frozen forecast -> suggestion then -> reveal -> labelled counterfactual).
+- Merge order planned: tl-friend -> how-got-here -> header-ui -> start-agents -> backtest, each in a fresh branch in ../domino-merge, then ff ../domino-field, push, restart 3114.
+
 # Field lane handoff, Oct 25
 
 ## Live release verified, Oct25
