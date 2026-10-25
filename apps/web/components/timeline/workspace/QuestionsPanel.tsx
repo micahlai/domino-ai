@@ -9,6 +9,7 @@ import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { inputClass } from "./RuleEditor";
 import { Panel, WhenDate } from "./RunPanels";
 import type { QuestionReceipt, Read } from "./api";
+import { BranchNote } from "./branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "./chatFrame";
 import { changeText } from "./drafts";
 import { type Outcome, isConfirmed } from "./requests";
@@ -97,6 +98,7 @@ function ProposalCard({ q, actions }: { q: QuestionReceipt; actions: QuestionAct
   return (
     <div className="space-y-2 rounded-md border p-3" data-testid={`proposal-${q.id}`}>
       <p className="text-sm font-medium">Suggested scenario: {proposal.label}</p>
+      {linkedRunId ? null : <BranchNote changes={proposal.changes} />}
       {proposal.changes.length ? (
         <ul className="list-disc space-y-0.5 pl-5 text-sm">
           {proposal.changes.map((c, i) => (
@@ -277,6 +279,8 @@ export type QuestionsPanelProps = {
   disabled?: string;
   /** Inside the assistant panel: no card border of its own. */
   bare?: boolean;
+  /** Earlier questions only: new questions go to the chat, saved suggestions stay confirmable. */
+  historyOnly?: boolean;
 };
 
 /** One-shot questions about the saved scenario. Suggestions run only after confirmation. */
@@ -412,10 +416,19 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
         <ChatScrollFrame
           label="Questions and answers"
           followKey={`${all.length}:${all.at(-1)?.status ?? ""}:${pending}`}
-          composer={form}
+          composer={p.historyOnly ? undefined : form}
         >
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask about this forecast</h3>
-          {intro}
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">
+            {p.historyOnly ? "Earlier questions" : "Ask about this forecast"}
+          </h3>
+          {p.historyOnly ? (
+            <p className="text-sm text-muted-foreground">
+              One-off questions asked before the chat could answer them. Ask new questions in the
+              chat.
+            </p>
+          ) : (
+            intro
+          )}
           {list}
           {pending ? <TypingDots label="Reading the saved forecast…" /> : null}
           {status}

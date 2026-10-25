@@ -2,7 +2,7 @@ import { scaleLinear } from "d3-scale";
 import { formatExactCents } from "../baseline/format";
 
 /** Drawing geometry only. Flat saved values need space above and below the curve. */
-export function cashScale(values: number[], range: [number, number]) {
+export function cashScale(values: number[], range: [number, number], tickCount = 4) {
   const safe = values.filter(Number.isSafeInteger);
   const low = safe.length ? Math.min(...safe) : 0;
   const high = safe.length ? Math.max(...safe) : 0;
@@ -13,7 +13,7 @@ export function cashScale(values: number[], range: [number, number]) {
   ];
   const scale = scaleLinear().domain(domain).range(range);
   // D3 may propose fractional-cent ticks on very small ranges. Axis guides stay in safe cents.
-  const ticks = scale.ticks(4).filter(Number.isSafeInteger);
+  const ticks = scale.ticks(tickCount).filter(Number.isSafeInteger);
   return { scale, ticks: ticks.length ? ticks : [...new Set(domain)] };
 }
 

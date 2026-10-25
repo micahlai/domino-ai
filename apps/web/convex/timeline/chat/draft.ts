@@ -14,7 +14,9 @@ import {
   parseMonthsText,
 } from "../questions/parse";
 import type { QuestionProposal } from "../questions/receipt";
+import type { Citation } from "../questions/resolve";
 import { resolve } from "../questions/resolve";
+import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
 
 const FieldSchema = z.enum([
@@ -40,11 +42,13 @@ export const emptyDraft = (): Draft => ({ intents: [], pending: null });
 export type Result = {
   draft: Draft;
   answer: string;
+  /** Sources for a factual answer about the saved run. */
+  citations?: Citation[];
   proposal: QuestionProposal | null;
   pendingField: string | null;
 };
 const intro =
-  "Describe a one-time payment or receipt, a late invoice, or a rule for minimum usable cash, runway, or a bill deadline. I will ask for missing details. Nothing runs until you review and save.";
+  "Ask about the forecast, a week, a bill or the rules, or describe a what-if: a one-time payment or receipt, a late invoice, or a rule for minimum usable cash, runway, or a bill deadline. I will ask for missing details. Nothing runs until you review and save.";
 export const GREETING = intro;
 const fieldWords: Record<Field, string> = {
   amountText: "amount",
@@ -215,12 +219,18 @@ export function evaluateIntents(
   conversationId: string,
   originalText: string,
   selectedItemId: string | null = null,
+  floor: string | null = null,
 ): Result {
   const issue = groundingIssue(originalText, intents, selectedItemId ? [selectedItemId] : []);
   if (issue) return { draft: emptyDraft(), answer: issue, proposal: null, pendingField: null };
-  return finish(run, DraftSchema.parse({ intents, pending: null }), conversationId);
+  return finish(run, DraftSchema.parse({ intents, pending: null }), conversationId, floor);
 }
-function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result {
+function finish(
+  run: WorkspaceRun,
+  draft: Draft,
+  conversationId: string,
+  floor: string | null,
+): Result {
   for (const [index, intent] of draft.intents.entries()) {
     for (const field of fields(intent)) {
       const word = value(intent, field);
@@ -253,6 +263,15 @@ function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result
       pendingField: null,
     };
   const proposal = distinctCashLabels(run, outcome.proposal);
+  // A branch forks from its parent's start; an earlier event would fork from the base.
+  const early = startsBefore(proposal.changes, run.baseline.seed.snapshot, floor)[0];
+  if (early)
+    return {
+      draft,
+      answer: `This what-if builds on a scenario that starts ${floor}, but this change starts ${early.date}. Choose a date on or after ${floor}, or start from an earlier scenario.`,
+      proposal: null,
+      pendingField: null,
+    };
   try {
     validateProposal(run, proposal);
   } catch {
@@ -288,6 +307,7 @@ export function advance(
   text: string,
   conversationId: string,
   selectedItemId: string | null,
+  floor: string | null = null,
 ): Result {
   const draft = DraftSchema.parse(previous);
   // The fixed grammar only models unconditional events on one exact date. Keep
@@ -323,9 +343,9 @@ export function advance(
     draft.pending = { index: matches[0] as number, field };
     const intent = draft.intents[draft.pending.index] as Intent;
     draft.intents[draft.pending.index] = set(intent, field, null);
-    return fill(run, draft, correction[2] ?? "", conversationId);
+    return fill(run, draft, correction[2] ?? "", conversationId, floor);
   }
-  if (draft.pending) return fill(run, draft, text, conversationId);
+  if (draft.pending) return fill(run, draft, text, conversationId, floor);
   if (draft.intents.length)
     return {
       draft,
@@ -336,6 +356,22 @@ export function advance(
     };
   const records = recordsOf(run);
   const parsed = readWithGrammar(text, records, { week: false, item: selectedItemId !== null });
+  // A plain question is answered from the saved run with its sources; the draft is unchanged.
+  if (parsed?.length && parsed.every((i) => i.kind === "question")) {
+    const outcome = resolve(run, parsed, {
+      questionId: conversationId,
+      prompt: text,
+      selectedWeek: null,
+      selectedItemId,
+    });
+    return {
+      draft,
+      answer: outcome.answer,
+      ...(outcome.citations.length ? { citations: outcome.citations } : {}),
+      proposal: null,
+      pendingField: null,
+    };
+  }
   if (!parsed || parsed.some((i) => i.kind === "question" || i.kind === "unclear"))
     return {
       draft,
@@ -408,9 +444,15 @@ export function advance(
       i = { ...i, daysText: "0 days" };
     return i;
   });
-  return finish(run, draft, conversationId);
+  return finish(run, draft, conversationId, floor);
 }
-function fill(run: WorkspaceRun, draft: Draft, text: string, conversationId: string): Result {
+function fill(
+  run: WorkspaceRun,
+  draft: Draft,
+  text: string,
+  conversationId: string,
+  floor: string | null,
+): Result {
   const pending = draft.pending;
   if (!pending) throw new Error("Missing typed pending field");
   const intent = draft.intents[pending.index];
@@ -427,5 +469,5 @@ function fill(run: WorkspaceRun, draft: Draft, text: string, conversationId: str
     return { draft, answer: issue, proposal: null, pendingField: fieldWords[pending.field] };
   draft.intents[pending.index] = set(intent, pending.field, word);
   draft.pending = null;
-  return finish(run, draft, conversationId);
+  return finish(run, draft, conversationId, floor);
 }

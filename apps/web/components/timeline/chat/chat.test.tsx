@@ -230,6 +230,42 @@ describe("chat review rendering", () => {
     });
   });
 
+  it("offers the composer before any message and shows an answer's sources", () => {
+    const empty = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: null,
+        history: { state: "ready", value: [] },
+        actions: { write: vi.fn(), beginNavigates: true },
+        sidebar: true,
+      }),
+    );
+    expect(empty).toContain("Ask Domino");
+    expect(empty).toContain("Ask or describe a what-if");
+    expect(empty).not.toContain(">Start new chat</button>");
+    const answered = {
+      ...fixtureChat,
+      turns: [
+        ...fixtureChat.turns.slice(0, -1),
+        {
+          ...fixtureChat.turns.at(-1)!,
+          citations: [{ ref: "forecast:low", label: "Lowest forecast week" }],
+        },
+      ],
+    };
+    const shown = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: { state: "ready", value: answered },
+        history: { state: "ready", value: [answered] },
+        actions: { write: vi.fn() },
+        sidebar: true,
+      }),
+    );
+    expect(shown).toContain("Where this comes from (1)");
+    expect(shown).toContain("forecast:low");
+  });
+
   function html(receipt: typeof fixtureChat | null) {
     return renderToStaticMarkup(
       createElement(ChatView, {

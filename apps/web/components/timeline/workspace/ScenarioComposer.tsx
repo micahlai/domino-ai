@@ -10,9 +10,12 @@ export function ScenarioComposer({
   selectedWeek,
   open: openProp,
   onOpenChange,
+  buildsOn,
   ...form
 }: Omit<EventFormProps, "defaultDate"> & {
   selectedWeek: string | null;
+  /** The scenario new events branch from, and when it starts. */
+  buildsOn?: { label: string; startsOn: string | null };
   /** Optional control from the page actions ("Try an event"). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -47,6 +50,18 @@ export function ScenarioComposer({
               </>
             )}
           </p>
+          {buildsOn ? (
+            <p className="text-xs text-muted-foreground" data-testid="composer-builds-on">
+              Builds on {buildsOn.label}
+              {buildsOn.startsOn ? (
+                <>
+                  , which starts <WhenDate iso={buildsOn.startsOn} />. New events start on or after
+                  that date
+                </>
+              ) : null}
+              .
+            </p>
+          ) : null}
           {form.suggestion && !open ? (
             <p className="text-xs text-muted-foreground">
               The scheduled item you picked is ready in the editor.

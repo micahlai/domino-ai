@@ -36,6 +36,10 @@ const CatalogSchema = exact(
       lowPointCents: CentsSchema,
       lowPointWeek: MondaySchema,
       constraintVersion: z.string().min(1).max(128),
+      startsOn: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .nullable(),
     })
     .strict(),
 );

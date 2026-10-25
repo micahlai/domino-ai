@@ -493,7 +493,9 @@ describe("workspace view", () => {
     expect(html).toContain("Outside the rule");
     expect(html).toContain("New in this scenario");
     expect(html).toContain("-$240,000.00");
-    expect(html).toContain('data-testid="parent-line"');
+    // The base forecast is the main line; the opened what-if is drawn in its own color.
+    expect(html).toContain("Base forecast (no what-ifs)");
+    expect(html).toContain('data-testid="comparison-line"');
     expect(html).toContain("Lender&#x27;s limit $3,150,000.00");
   });
 

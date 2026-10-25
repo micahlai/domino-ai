@@ -251,6 +251,8 @@ const CatalogEntryObject = z
     lowPointCents: z.number().int(),
     lowPointWeek: ISODateSchema,
     constraintVersion: Text,
+    /** First date the run's own changes move cash; null when it changes no events. */
+    startsOn: ISODateSchema.nullable(),
   })
   .strict();
 export const CatalogEntrySchema = exactLocal(CatalogEntryObject, (e) => [

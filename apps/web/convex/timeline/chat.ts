@@ -11,6 +11,7 @@ import {
 } from "../_generated/server";
 import { groundingIssue } from "./assistant/grounding";
 import {
+  type Result as DraftResult,
   DraftSchema,
   GREETING,
   advance,
@@ -28,6 +29,8 @@ import {
 } from "./chat/receipt";
 import { checkPinned, checkSelection, source } from "./chat/source";
 import { IntentSchema } from "./questions/intent";
+import type { Citation } from "./questions/resolve";
+import { branchFloor } from "./workspace";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
 
@@ -119,6 +122,7 @@ function append(
   text: string,
   now: string,
   choices?: ChatChoice[],
+  citations?: Citation[],
 ): ChatReceipt {
   if (receipt.turns.length >= 42)
     reject("CHAT_LIMIT", "This chat has reached 42 messages. Start a new chat to continue.");
@@ -132,6 +136,7 @@ function append(
         text,
         createdAt: now,
         ...(choices?.length ? { choices } : {}),
+        ...(citations?.length ? { citations: citations.slice(0, 12) } : {}),
       },
     ],
   };
@@ -233,7 +238,15 @@ export const send = mutation({
         "CHAT_LIMIT",
         "This chat has reached 20 user turns or 42 messages. Start a new chat to continue.",
       );
-    const next = advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId);
+    const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    const next = advance(
+      run,
+      draft,
+      args.text,
+      receipt.conversationId,
+      receipt.selectedItemId,
+      floor,
+    );
     const unchangedReady =
       receipt.status === "ready" &&
       !next.draft.pending &&
@@ -248,7 +261,14 @@ export const send = mutation({
       pendingField: proposal ? null : next.pendingField,
       updatedAt: now,
     };
-    updated = append(append(updated, "user", args.text, now), "assistant", next.answer, now);
+    updated = append(
+      append(updated, "user", args.text, now),
+      "assistant",
+      next.answer,
+      now,
+      undefined,
+      next.citations,
+    );
     checkRowSize({ receipt: updated, draft: next.draft });
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
     return accept(ctx, args, prior.hash, updated);
@@ -425,7 +445,8 @@ export const claimAssistantTurn = internalMutation({
     checkRowSize(claim);
     if (prior.prior) await ctx.db.patch(prior.prior._id, claim);
     else await ctx.db.insert("timelineChatRequests", claim);
-    return { kind: "claimed" as const, receipt, draft, run, attempt };
+    const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    return { kind: "claimed" as const, receipt, draft, run, attempt, floor };
   },
 });
 
@@ -470,11 +491,21 @@ export const saveAssistantTurn = internalMutation({
     // Enforce the original wording even when no model ran or returned no usable intents.
     // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
     const sourceIssue = groundingIssue(args.text, []);
-    const next = sourceIssue
+    const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    // Questions are always answered by the deterministic resolver, never by model wording.
+    const asksOnly = intents?.length && intents.every((i) => i.kind === "question");
+    const next: DraftResult = sourceIssue
       ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
-      : draft.intents.length || intents === null
-        ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId)
-        : evaluateIntents(run, intents, receipt.conversationId, args.text, receipt.selectedItemId);
+      : draft.intents.length || intents === null || asksOnly
+        ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId, floor)
+        : evaluateIntents(
+            run,
+            intents,
+            receipt.conversationId,
+            args.text,
+            receipt.selectedItemId,
+            floor,
+          );
     const unchangedReady =
       !sourceIssue &&
       receipt.status === "ready" &&
@@ -490,7 +521,14 @@ export const saveAssistantTurn = internalMutation({
       pendingField: proposal ? null : next.pendingField,
       updatedAt: now,
     };
-    updated = append(append(updated, "user", args.text, now), "assistant", next.answer, now);
+    updated = append(
+      append(updated, "user", args.text, now),
+      "assistant",
+      next.answer,
+      now,
+      undefined,
+      next.citations,
+    );
     checkRowSize({ receipt: updated, draft: next.draft });
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
     await ctx.db.patch(prior.prior._id, {
