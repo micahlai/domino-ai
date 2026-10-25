@@ -11,10 +11,13 @@ import { Panel, WhenDate } from "../workspace/RunPanels";
 import { WorkspaceChart } from "../workspace/WorkspaceChart";
 import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
 import { changeText } from "../workspace/drafts";
-import { type ChatReceipt, chatHref, newerReceipt } from "./api";
+import { type ChatReceipt, chatHref, displayedReceipt, newerReceipt } from "./api";
 import { type ChatCommand, type ChatOutcome, ChatWriteGuard } from "./requests";
 
-export type ChatActions = { write: (command: ChatCommand) => Promise<ChatOutcome> };
+export type ChatActions = {
+  write: (command: ChatCommand) => Promise<ChatOutcome>;
+  beginNavigates?: boolean;
+};
 export type ChatViewProps = {
   run: WorkspaceRun;
   selected: Read<ChatReceipt> | null;
@@ -99,12 +102,14 @@ export function ChatView({
   const [previewWeek, setPreviewWeek] = useState<string | null>(null);
   const [latest, setLatest] = useState<ChatReceipt | null>(null);
   const [text, setText] = useState("");
-  const [pending, setPending] = useState(false);
+  const [writing, setPending] = useState(false);
   const busy = useRef(false);
   const [error, setError] = useState<string>();
   const [reviewedFor, setReviewedFor] = useState<string | null>(null);
   const queryReceipt = selected?.state === "ready" ? selected.value : null;
-  const receipt = queryReceipt ? newerReceipt(latest, queryReceipt) : latest;
+  const opening = actions.beginNavigates === true && latest !== null && queryReceipt === null;
+  const pending = writing || opening;
+  const receipt = displayedReceipt(latest, queryReceipt, actions.beginNavigates === true);
   const token = receipt ? `${receipt.conversationId}:${receipt.revision}` : null;
   const reviewed = token !== null && reviewedFor === token;
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
@@ -392,6 +397,20 @@ export function ChatView({
           ) : null}
           {pending ? (
             <output className="block text-sm text-muted-foreground">Saving your reply…</output>
+          ) : null}
+          {opening && latest ? (
+            <Link
+              className="block text-sm text-primary hover:underline"
+              href={chatHref(
+                run.companyId,
+                run.runId,
+                latest.conversationId,
+                latest.selectedWeek ?? undefined,
+                latest.selectedItemId ?? undefined,
+              )}
+            >
+              Open the saved conversation
+            </Link>
           ) : null}
           {blocked ? (
             <div className="space-y-2 rounded-lg border p-3 text-sm">

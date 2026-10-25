@@ -156,6 +156,14 @@ export function readChats(raw: unknown, key: RunKey, run?: WorkspaceRun): Read<C
 export function newerReceipt(a: ChatReceipt | null, b: ChatReceipt): ChatReceipt {
   return a?.conversationId === b.conversationId && a.revision >= b.revision ? a : b;
 }
+/** A new route must commit before its composer accepts text that a remount could discard. */
+export function displayedReceipt(
+  local: ChatReceipt | null,
+  selected: ChatReceipt | null,
+  beginNavigates: boolean,
+): ChatReceipt | null {
+  return selected ? newerReceipt(local, selected) : beginNavigates ? null : local;
+}
 export type BeginArgs = RunKey & {
   requestId: string;
   selectedWeek?: string;
