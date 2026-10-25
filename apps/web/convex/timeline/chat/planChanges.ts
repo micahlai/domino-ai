@@ -1,10 +1,16 @@
 import type { Change } from "@domino/contracts";
-import { cashSchedule } from "@domino/engine/src/forecast";
+import {
+  EXTERNAL_EVENT_PARAMS,
+  type ExternalParamName,
+  externalEventChanges,
+} from "@domino/engine/src/external-events";
+import { cashSchedule, forecast } from "@domino/engine/src/forecast";
 import type { CashItem } from "@domino/engine/src/schedule";
 import type { WorkspaceRun } from "../questions/context";
 import { addDays } from "../questions/parse";
 import type { QuestionProposal } from "../questions/receipt";
 import { compactMoney, shortDate } from "../recordNames";
+import { type MacroEstimate, detectExternalEvent, paramPhrase, typedParams } from "./externalEvent";
 
 /**
  * Plan-level what-ifs the one-event grammar cannot express: a percentage cut or increase in
@@ -311,15 +317,110 @@ function lostCustomer(run: WorkspaceRun, text: string, floor: string | null): Pl
   };
 }
 
+/**
+ * Outside events (rate hike, bad press, downturn, good press, fine, vendor outage). Numbers the
+ * person typed win; then a bounded AI estimate for the same event; then the engine's stated
+ * defaults. The engine picks the records and builds every change; the low point it reports is
+ * a full engine forecast of the whole scenario. Every source is named in the answer.
+ */
+function externalEvent(
+  run: WorkspaceRun,
+  text: string,
+  floor: string | null,
+  estimate: MacroEstimate | null,
+): PlanReply | null {
+  const kind = detectExternalEvent(text);
+  if (!kind) return null;
+  const snapshot = run.baseline.seed.snapshot;
+  const typed = typedParams(kind, text);
+  const ai = estimate?.kind === kind ? estimate : null;
+  const sources: Partial<Record<ExternalParamName, string>> = {};
+  const params = { ...typed };
+  for (const name of Object.keys(EXTERNAL_EVENT_PARAMS[kind]) as ExternalParamName[]) {
+    if (typed[name] !== undefined) sources[name] = "Your number";
+    else if (ai?.values[name] !== undefined) {
+      params[name] = ai.values[name];
+      sources[name] = "AI estimate";
+    } else sources[name] = "Assumption";
+  }
+  if (kind === "regulatory_fine" && params.amount === undefined)
+    return {
+      answer: 'How much is the fine? For example, "a $250,000 regulatory fine".',
+      proposal: null,
+    };
+  const { from, end } = horizon(run, floor);
+  const date = looseDate(text, snapshot.asOf);
+  const start = date && date > from ? date : from;
+  if (start > end)
+    return {
+      answer: `${shortDate(start)} is after these 13 weeks, so this would not change the forecast.`,
+      proposal: null,
+    };
+  const result = externalEventChanges(snapshot, run.baseline.model, kind, params, start, {
+    priorChanges: run.changes,
+    sources,
+  });
+  if (!result.changes.length)
+    return {
+      answer:
+        `A ${result.title.toLowerCase()} would not move any expected cash in these 13 weeks with these records. ${result.notes.join(" ")}`.trim(),
+      proposal: null,
+    };
+  const used = Object.entries(result.params) as [ExternalParamName, number][];
+  const bySource = (source: string) =>
+    used.filter(([n]) => sources[n] === source).map(([n, v]) => paramPhrase(n, v));
+  const yours = bySource("Your number");
+  const estimated = bySource("AI estimate");
+  const assumed = bySource("Assumption");
+  const lines = [
+    yours.length ? `Your numbers: ${yours.join(", ")}.` : "",
+    estimated.length
+      ? `AI estimate: ${estimated.join(", ")}, because ${ai?.reason.replace(/[.\s]+$/, "")}.`
+      : "",
+    assumed.length
+      ? `Assumption: ${assumed.join(", ")} (stated defaults; give your own numbers to change them).`
+      : "",
+  ].filter(Boolean);
+  const after = forecast(snapshot, run.baseline.model, [...run.changes, ...result.changes]);
+  const before = run.forecast.lowPoint.usable;
+  const delta = after.lowPoint.usable - before;
+  const impact =
+    delta === 0
+      ? "The lowest usable cash stays the same; the timing of cash changes."
+      : `The engine puts the lowest usable cash at ${compactMoney(after.lowPoint.usable)} (week of ${shortDate(after.lowPoint.weekStart)}), ${compactMoney(Math.abs(delta))} ${delta < 0 ? "lower" : "higher"} than now.`;
+  const answer = [
+    `Ready to model a ${result.title.toLowerCase()} from ${shortDate(start)}.`,
+    ...lines,
+    result.effects.length ? `Effects: ${result.effects.join("; ")}.` : "",
+    impact,
+    ...result.notes,
+    "Domino effects run automatically once you confirm. Check the details below, then confirm.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const headline = used.length ? `: ${used.map(([n, v]) => paramPhrase(n, v)).join(", ")}` : "";
+  return {
+    answer: answer.slice(0, 1_900),
+    proposal: {
+      label: `${result.title}${headline}`.slice(0, 200),
+      changes: result.changes,
+      constraints: null,
+      constraintNote: null,
+    },
+  };
+}
+
 export function planRequest(
   run: WorkspaceRun,
   text: string,
   floor: string | null,
+  estimate: MacroEstimate | null = null,
 ): PlanReply | null {
   return (
     prices(run, text, floor) ??
     hires(run, text, floor) ??
     spendChange(run, text, floor) ??
+    externalEvent(run, text, floor, estimate) ??
     lostCustomer(run, text, floor)
   );
 }

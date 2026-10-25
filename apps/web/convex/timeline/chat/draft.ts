@@ -19,6 +19,7 @@ import { resolve } from "../questions/resolve";
 import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
 import { explainQuestion, normalizeQuestion } from "./explain";
+import type { MacroEstimate } from "./externalEvent";
 import { planRequest, withContagion } from "./planChanges";
 
 const FieldSchema = z.enum([
@@ -336,8 +337,9 @@ export function plannedChange(
   draft: Draft,
   text: string,
   floor: string | null,
+  estimate: MacroEstimate | null = null,
 ): Result | null {
-  const reply = planRequest(run, text, floor);
+  const reply = planRequest(run, text, floor, estimate);
   if (!reply) return null;
   if (!reply.proposal) return { draft, answer: reply.answer, proposal: null, pendingField: null };
   const proposal = distinctCashLabels(run, reply.proposal);

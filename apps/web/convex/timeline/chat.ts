@@ -673,7 +673,7 @@ export const saveAssistantTurn = internalMutation({
         receipt.status === "saved"
           ? null
           : plan.planText
-            ? checkPlan(run, args.text, floor)
+            ? checkPlan(run, args.text, floor, plan.macro ?? null)
             : plan.draft === null
               ? null
               : checkDraft(run, plan.draft, {

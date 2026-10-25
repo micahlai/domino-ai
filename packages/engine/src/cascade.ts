@@ -98,7 +98,7 @@ export const CASCADE_LIMITS: CascadeLimits = { maxDepth: 3, maxBranches: 2, maxN
 const WAIVER_FEE_BPS = 25n; // amendment/waiver fee ~0.25% of the covenant level
 const MIN_WAIVER_FEE = 1_000_000; // $10K floor for lender legal costs
 const DEFAULT_RATE_BPS = 200n; // default interest step-up +2%/yr
-const REVOLVER_RATE_BPS = 800n; // drawn revolver ~8%/yr (SOFR + ~3.5%)
+export const REVOLVER_RATE_BPS = 800n; // drawn revolver ~8%/yr (SOFR + ~3.5%)
 const LATE_FEE_BPS = 150n; // 1.5% per month late fee on net-30 invoices
 const STRETCH_DAYS = 30;
 const PEER_DELAY_DAYS = 7;
@@ -106,7 +106,7 @@ const HIRE_PAUSE_BPS = 500n; // planned hires ~5% of monthly payroll
 const HIRE_PULL_BPS = 1_000n; // pulled-forward hiring ~10% of the windfall per month
 const DRAW_ROUND = 5_000_000; // draws in $50K steps
 const MAX_BILLS = 8;
-const DRAW_LABEL = /credit line|revolver|line draw/i;
+export const DRAW_LABEL = /credit line|revolver|line draw/i;
 
 type Ctx = {
   input: CascadeInput;
@@ -1041,7 +1041,7 @@ export function startOf(changes: Change[], snapshot: Snapshot): ISODate | null {
 }
 
 /** A label no change in `changes` uses yet (the engine keys added cash by label). */
-function unique(changes: Change[], label: string): string {
+export function unique(changes: Change[], label: string): string {
   const used = new Set(changes.flatMap((c) => ("label" in c ? [c.label] : [])));
   let out = label;
   for (let n = 2; used.has(out); n++) out = `${label} (${n})`;
@@ -1049,7 +1049,7 @@ function unique(changes: Change[], label: string): string {
 }
 
 /** amount * bps/10000 * days/365, in whole cents. */
-function interest(amount: Cents, bps: bigint, days: number): Cents {
+export function interest(amount: Cents, bps: bigint, days: number): Cents {
   if (amount <= 0 || days <= 0) return 0;
   return Number((BigInt(amount) * bps * BigInt(days) + 1_825_000n) / 3_650_000n);
 }

@@ -4,6 +4,7 @@ import { IntentSchema } from "../questions/intent";
 import { dateTokens, moneyTokens, parseMoneyText } from "../questions/parse";
 import { type Citation, resolve } from "../questions/resolve";
 import { type Result, emptyDraft, evaluateIntents, plannedChange } from "./draft";
+import { type MacroEstimate, MacroEstimateSchema, detectExternalEvent } from "./externalEvent";
 import type { ChatReceipt } from "./receipt";
 
 /**
@@ -31,6 +32,8 @@ export const TurnPlanSchema = z
     questions: z.array(LookupSchema).max(8),
     recordIds: z.array(z.string().min(1).max(240)).max(24),
     planText: z.string().min(1).max(1000).nullable().optional(),
+    /** Bounded AI estimate for an outside event in planText; the save re-checks and clamps it. */
+    macro: MacroEstimateSchema.nullable().optional(),
   })
   .strict();
 export type TurnPlan = z.infer<typeof TurnPlanSchema>;
@@ -237,7 +240,17 @@ export function unverifiedAmounts(reply: string, saved: unknown[], texts: string
 }
 
 /** Existing plan computations run only as an LLM-requested, checked tool. */
-export function checkPlan(run: WorkspaceRun, text: string, floor: string | null): Result {
+export function checkPlan(
+  run: WorkspaceRun,
+  text: string,
+  floor: string | null,
+  estimate: MacroEstimate | null = null,
+): Result {
+  // Outside events read their own dates and wording ("if the Fed hikes 50 bp in December").
+  if (detectExternalEvent(text)) {
+    const external = plannedChange(run, emptyDraft(), text, floor, estimate);
+    if (external) return external;
+  }
   const unsupported =
     /\b(not|never|don['’]?t|avoid|cancel|unless|except|excluding|including|provided|conditional|contingent|if|before|after|between|through|until|only|without|either|or|daily|tax|maximum|max|at most|at least|monthly|per month)\b/i.test(
       text.replace(/\bwhat if\b/gi, " "),
@@ -256,7 +269,7 @@ export function checkPlan(run: WorkspaceRun, text: string, floor: string | null)
     plannedChange(run, emptyDraft(), text, floor) ?? {
       draft: emptyDraft(),
       answer:
-        "That plan needs more details. State the vendor and percentage, the number of hires, cost and start date, or the customer you lose.",
+        "That plan needs more details. State the vendor and percentage, the number of hires, cost and start date, the customer you lose, or an outside event such as a Fed rate hike, bad press, a recession or positive press.",
       proposal: null,
       pendingField: null,
     }

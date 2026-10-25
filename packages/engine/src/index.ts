@@ -239,3 +239,16 @@ export {
 } from "./cascade";
 export { money } from "./dominoes";
 export { type OutOfCash, outOfCash } from "./out-of-cash";
+/** Outside events (rate hike, bad press, downturn, good press...) as bounded Changes. */
+export {
+  EXTERNAL_EVENTS_VERSION,
+  EXTERNAL_EVENT_PARAMS,
+  type ExternalEventKind,
+  type ExternalEventOptions,
+  type ExternalEventParams,
+  type ExternalEventResult,
+  type ExternalParamBound,
+  type ExternalParamName,
+  clampExternalParams,
+  externalEventChanges,
+} from "./external-events";

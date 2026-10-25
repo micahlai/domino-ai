@@ -259,13 +259,13 @@ export function changeText(
     case "remove_cash":
       return `${money(c.amount)} goes out on ${day(c.date)}: ${c.label}`;
     case "delay_bill":
-      return `${bill(c.billId)} is paid ${c.days} days later`;
+      return `${bill(c.billId)} is paid ${Math.abs(c.days)} days ${c.days < 0 ? "earlier" : "later"}`;
     case "discount_early_pay":
       return `${inv(c.invoiceId)} is paid on ${day(c.payOn)} for a ${c.percent}% discount`;
     case "shift_hire":
       return `${c.label}: hire moves from ${day(c.fromDate)} to ${day(c.toDate)}`;
     case "delay_customer":
-      return `Later payments from ${snapshot ? customerName(snapshot, c.customerId) : `Customer ${c.customerId}`} slip ${c.days} days from ${day(c.fromDate)} (${c.basis})`;
+      return `Later payments from ${snapshot ? customerName(snapshot, c.customerId) : `Customer ${c.customerId}`} ${c.days < 0 ? `arrive ${-c.days} days sooner` : `slip ${c.days} days`} from ${day(c.fromDate)} (${c.basis})`;
     case "recurring_cash":
       return `${money(c.amount)} ${c.direction === "in" ? "comes in" : "goes out"} every ${c.everyDays} days from ${day(c.fromDate)}: ${c.label}`;
     case "scale_recurring":
