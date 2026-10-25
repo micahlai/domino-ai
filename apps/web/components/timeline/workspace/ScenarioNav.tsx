@@ -55,6 +55,9 @@ type RowContext = {
   toggle: (id: string) => void;
   buildOn?: (runId: string) => void;
   hrefFor: (id: string) => string;
+  /** The hovered scenario and the ones it builds on. */
+  highlighted: Set<string>;
+  onHover?: (runId: string | null) => void;
 };
 
 /**
@@ -71,6 +74,8 @@ export function ScenarioNav({
   hrefFor,
   catalogHref,
   wide = false,
+  highlighted,
+  onHover,
 }: {
   run: WorkspaceRun;
   graph: Read<CatalogEntry[]>;
@@ -80,6 +85,8 @@ export function ScenarioNav({
   hrefFor: (id: string) => string;
   catalogHref: string;
   wide?: boolean;
+  highlighted?: string[] | null;
+  onHover?: (runId: string | null) => void;
 }) {
   const entries = familyEntries(run, graph);
   const root = treeOf(entries, baseRunId);
@@ -96,6 +103,8 @@ export function ScenarioNav({
     },
     buildOn,
     hrefFor,
+    highlighted: new Set(highlighted ?? []),
+    onHover,
   };
   return (
     <nav
@@ -132,7 +141,7 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(true);
   const { entry, children } = node;
-  const { run, comparisons, byId, canShow, toggle, buildOn, hrefFor } = ctx;
+  const { run, comparisons, byId, canShow, toggle, buildOn, hrefFor, highlighted, onHover } = ctx;
   const blocked = !comparisons.ids.includes(entry.runId) && depth > 0 && !canShow(entry.runId);
   const isBase = depth === 0;
   const shown = isBase || comparisons.ids.includes(entry.runId);
@@ -158,7 +167,13 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
         className={cn(
           "group relative flex min-w-0 items-start gap-1.5 rounded-md px-1.5 py-1.5",
           !building && "hover:bg-accent/60",
+          !building && highlighted.has(entry.runId) && "bg-accent/40",
         )}
+        onPointerEnter={() => onHover?.(entry.runId)}
+        onPointerLeave={() => onHover?.(null)}
+        onFocus={() => onHover?.(entry.runId)}
+        onBlur={() => onHover?.(null)}
+        data-highlighted={highlighted.has(entry.runId) || undefined}
       >
         {building ? (
           <motion.span
