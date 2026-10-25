@@ -214,4 +214,17 @@ describe("question provider adapter", () => {
       ]),
     ).toBe(false);
   });
+
+  it("cannot use a null date span to discard an explicit source date", () => {
+    const question = {
+      kind: "question" as const,
+      topic: "week" as const,
+      weekText: null,
+      itemText: null,
+    };
+    expect(
+      copiedFromPrompt([question], "What happens in the week of Nov 17, 2027?", ["2026-11-16"]),
+    ).toBe(false);
+    expect(copiedFromPrompt([question], "What happens this week?", ["2026-11-16"])).toBe(true);
+  });
 });

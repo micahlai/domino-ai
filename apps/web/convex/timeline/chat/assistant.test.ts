@@ -49,7 +49,7 @@ const assistantSend = makeFunctionReference<
 >("timeline/chatAssistant:send");
 const ask = makeFunctionReference<
   "action",
-  { companyId: string; runId: string; requestId: string; prompt: string },
+  { companyId: string; runId: string; requestId: string; prompt: string; selectedWeek?: string },
   QuestionReceipt
 >("timeline/questions:ask");
 
@@ -486,6 +486,19 @@ describe("Claude Timeline chat safety", () => {
     expect(question.answer).toMatch(/verify every suggested value/);
   });
 
+  it("rejects a missing model date when the original chat already specifies a year", async () => {
+    const t = setup();
+    classify([{ ...atlas, dateText: null }]);
+    const r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const after = await t.action(
+      assistantSend,
+      turn(r, "pay $50,000 to Atlas Legal on Nov 17, 2027"),
+    );
+    expect(after.proposal).toBeNull();
+    expect(after.pendingField).toBeNull();
+    expect(after.turns.at(-1)?.text).toMatch(/verify every suggested value|complete date/);
+  });
+
   it("does not borrow a whole date from another cash clause to drop an explicit year", async () => {
     const t = setup();
     const src = await source(t);
@@ -568,6 +581,59 @@ describe("Claude question grounding", () => {
     expect(r.status).toBe("clarification");
     expect(r.citations).toEqual([]);
     expect(r.answer).toMatch(/verify every suggested value/);
+  });
+
+  it("cannot replace an omitted explicit date with the selected week", async () => {
+    const t = setup();
+    const src = await source(t);
+    scriptClaude([
+      toolUse("check_request", {
+        intents: [{ kind: "question", topic: "week", weekText: null, itemText: null }],
+      }),
+      final({ answer: "Checked" }),
+    ]);
+    const r = await t.action(ask, {
+      ...src,
+      requestId: rid(),
+      prompt: "What happens in the week of Nov 17, 2027?",
+      selectedWeek: "2026-11-16",
+    });
+    expect(r.status).toBe("clarification");
+    expect(r.citations).toEqual([]);
+    expect(r.answer).toMatch(/verify every suggested value|complete date/);
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const spy = noNetwork();
+    const fallback = await t.action(ask, {
+      ...src,
+      requestId: rid(),
+      prompt: "What happens in the week of Nov 17, 2027?",
+      selectedWeek: "2026-11-16",
+    });
+    expect(fallback.status).toBe("clarification");
+    expect(fallback.citations).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("rejects recurring cash in no-key fallback while retaining weekly minimum rules", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const t = setup();
+    const src = await source(t);
+    const spy = noNetwork();
+    const r = await t.action(ask, {
+      ...src,
+      requestId: rid(),
+      prompt: "pay $50,000 to Atlas Legal on 2026-11-17 weekly",
+    });
+    expect(r.status).toBe("clarification");
+    expect(r.proposal).toBeNull();
+    expect(r.answer).toMatch(/Recurring cash events/);
+    const minimum = await t.action(ask, {
+      ...src,
+      requestId: rid(),
+      prompt: "keep usable cash above $50,000 weekly",
+    });
+    expect(minimum.status).toBe("proposal");
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("does not accept unverified quantitative or qualitative financial narrative", async () => {

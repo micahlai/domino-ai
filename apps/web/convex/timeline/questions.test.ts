@@ -17,6 +17,7 @@ import {
 } from "./questions.fake-workspace.test-support";
 import { formatCents, formatDate } from "./questions/parse";
 import type { QuestionReceipt } from "./questions/receipt";
+import { resolve } from "./questions/resolve";
 import { timelineQuestionsTable } from "./questions/table";
 
 // Vite writes this folder's files as "./x.ts"; convex-test resolves paths from the convex root.
@@ -67,6 +68,30 @@ const q = {
 
 const BASE = "timeline:run/kestrel-base";
 const base = makeRun({ runId: BASE });
+it("resolver cannot substitute a selection for an omitted explicit date", () => {
+  const intent = {
+    kind: "question" as const,
+    topic: "week" as const,
+    weekText: null,
+    itemText: null,
+  };
+  const explicit = resolve(base, [intent], {
+    questionId: "null-date-regression",
+    prompt: "What happens in the week of Nov 17, 2027?",
+    selectedWeek: "2026-11-16",
+    selectedItemId: null,
+  });
+  expect(explicit.status).toBe("clarification");
+  expect(explicit.citations).toEqual([]);
+  const selected = resolve(base, [intent], {
+    questionId: "selected-date-regression",
+    prompt: "What happens this week?",
+    selectedWeek: "2026-11-16",
+    selectedItemId: null,
+  });
+  expect(selected.status).toBe("answered");
+  expect(selected.citations[0]?.ref).toBe("forecast:week/2026-11-16");
+});
 let counter = 0;
 const rid = () => `req-question-${++counter}`;
 const ask = (

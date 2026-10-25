@@ -11,8 +11,6 @@ export function groundingIssue(prompt: string, intents: Intent[], selected: stri
     )
   )
     return "Negations, conditions, recurring events, ranges, daily or upper limits need clarification. State one unconditional event on an exact date, or a supported weekly minimum rule.";
-  if (intents.some((i) => i.kind === "cash_change") && /\bweekly\b/i.test(prompt))
-    return "Recurring cash events are unsupported. Give one payment or receipt on one exact date.";
   if (
     intents.some((i) => i.kind === "min_cash_rule" || i.kind === "runway_rule") &&
     findDateText(prompt)

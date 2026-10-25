@@ -20,9 +20,15 @@ export function meaningIssue(prompt: string, intents: Intent[]): string | null {
         : intent.kind === "question"
           ? intent.weekText
           : null;
-    if (date !== null && dates.length && !dates.includes(date))
+    if (
+      (intent.kind === "cash_change" || intent.kind === "question") &&
+      dates.length &&
+      (date === null || !dates.includes(date))
+    )
       return "Give the complete date, including its year. I cannot drop part of a date or replace an explicit date with the selected week.";
   }
+  if (intents.some((i) => i.kind === "cash_change") && /\bweekly\b/i.test(prompt))
+    return "Recurring cash events are unsupported. Give one payment or receipt on one exact date.";
   const proposals = intents.filter(
     (i) => i.kind !== "question" && i.kind !== "unsupported" && i.kind !== "unclear",
   );

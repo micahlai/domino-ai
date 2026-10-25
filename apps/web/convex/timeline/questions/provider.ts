@@ -88,6 +88,9 @@ export function copiedFromPrompt(intents: Intent[], prompt: string, selected: st
     if (i.kind === "runway_rule" && i.monthsText !== null && !counts.includes(i.monthsText))
       return false;
     const date = i.kind === "cash_change" ? i.dateText : i.kind === "question" ? i.weekText : null;
+    // Null is not permission to discard an explicit date and use selected context instead.
+    if ((i.kind === "cash_change" || i.kind === "question") && dates.length && date === null)
+      return false;
     if (
       date !== null &&
       !dates.includes(date) &&
