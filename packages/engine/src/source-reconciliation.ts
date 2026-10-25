@@ -19,8 +19,8 @@ import { type MappedSource, type Result, mapSecRecords } from "./source-normaliz
 
 /**
  * L2 source evidence reconciliation. Pure and synchronous: no network, clock, AI or
- * randomness. Every caller-owned input is structured-cloned once at entry, before any
- * validation, and only that private snapshot is read afterwards.
+ * randomness. Every caller-owned input is copied once at entry as plain JSON data (anything
+ * else is rejected), before any validation, and only that private copy is read afterwards.
  *
  * Candidates are L1 normalized observations, re-derived here from validated packages with
  * mapSecRecords, never taken from the caller. Values are compared only inside one
@@ -30,9 +30,8 @@ import { type MappedSource, type Result, mapSecRecords } from "./source-normaliz
  * Values must match in exact cents: companyfacts carries no XBRL decimals, so no rounding
  * precision can be authenticated. Any difference is a conflict that blocks the key unless
  * exactly one applicable, dated authority rule or accepted user resolution selects one
- * value. Nothing is averaged,
- * majority-voted or preferred for being retrieved later. Every result is sorted by content,
- * so input order cannot change it.
+ * value. Nothing is averaged, majority-voted or preferred for being retrieved later. Every
+ * result is sorted by content, so input order cannot change it.
  */
 
 export const SOURCE_RECONCILER = { methodId: "source-reconciliation", version: "1.0.0" } as const;
@@ -60,15 +59,66 @@ const latestOf = (ts: readonly string[]): string =>
   [...ts].sort((a, b) => ms(b) - ms(a) || byText(a, b))[0] as string;
 const periodLabel = (p: ObservationKey["period"]): string =>
   p.kind === "instant" ? p.date : `${p.start}..${p.end}`;
+/** Raised only inside snapshot and always caught there. */
+class NotPlainData extends Error {}
+
 /**
- * One private plain-data copy of caller input, taken before any validation. Each accessor is
- * read exactly once here; nothing caller-owned is read again.
+ * Recursive copy that is also the plain-JSON check: null, booleans, finite numbers, strings,
+ * arrays and objects whose prototype is Object.prototype or null. Anything else anywhere in
+ * the tree (class instances, Date, BigInt, Map/Set, typed arrays, functions, symbols,
+ * non-finite numbers, cycles, hidden or symbol keys, array holes) is rejected, including in
+ * fields L2 otherwise ignores. Each property is read exactly once, here.
  */
-function snapshot<T>(input: T): Result<T> {
+function plainCopy(v: unknown, path: string, ancestors: Set<object>): unknown {
+  if (v === null || typeof v === "boolean" || typeof v === "string") return v;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) throw new NotPlainData(`${path} is a non-finite number`);
+    return v;
+  }
+  if (typeof v !== "object") throw new NotPlainData(`${path} is a ${typeof v}, not JSON data`);
+  if (ancestors.has(v)) throw new NotPlainData(`${path} is a cycle`);
+  const proto = Object.getPrototypeOf(v);
+  const isArray = Array.isArray(v);
+  if (isArray ? proto !== Array.prototype : proto !== Object.prototype && proto !== null)
+    throw new NotPlainData(`${path} is not a plain object or array`);
+  if (Object.getOwnPropertySymbols(v).length > 0) throw new NotPlainData(`${path} has symbol keys`);
+  const keys = Object.keys(v);
+  // Hidden (non-enumerable) own properties are state JSON would drop; arrays add only length.
+  if (Object.getOwnPropertyNames(v).length !== keys.length + (isArray ? 1 : 0))
+    throw new NotPlainData(`${path} has non-enumerable properties`);
+  ancestors.add(v);
   try {
-    return ok(structuredClone(input));
+    if (isArray) {
+      const items = v as unknown[];
+      const n = items.length;
+      if (keys.length !== n) throw new NotPlainData(`${path} has holes or extra keys`);
+      const out: unknown[] = [];
+      for (let i = 0; i < n; i++) out.push(plainCopy(items[i], `${path}[${i}]`, ancestors));
+      return out;
+    }
+    const out: Record<string, unknown> = {};
+    for (const k of keys) {
+      if (k === "__proto__") throw new NotPlainData(`${path} has a __proto__ key`);
+      const x = (v as Record<string, unknown>)[k];
+      // An undefined property is absent, as in JSON.
+      if (x !== undefined) out[k] = plainCopy(x, `${path}.${k}`, ancestors);
+    }
+    return out;
+  } finally {
+    ancestors.delete(v);
+  }
+}
+
+/**
+ * One private plain-JSON copy of caller input, taken before any validation; only it is read
+ * afterwards. The declared type is not trusted: the copy is validated field by field later.
+ */
+function snapshot<T>(input: T, name: string): Result<T> {
+  try {
+    return ok(plainCopy(input, name, new Set()) as T);
   } catch (e) {
-    return err(`input is not plain data: ${e instanceof Error ? e.message : String(e)}`);
+    if (e instanceof NotPlainData) return err(`input is not plain JSON data: ${e.message}`);
+    throw e;
   }
 }
 
@@ -466,7 +516,7 @@ function buildKey(
  * Packages must come from L1's authenticated intake (readSecSource); L2 adds no authentication.
  */
 export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
-  const snap = snapshot(args);
+  const snap = snapshot(args, "args");
   if (!snap.ok) return snap;
   const own: Record<string, unknown> = snap.value ?? {};
   const { id, cutoff, computedAt, sourceSignature } = own;
@@ -684,7 +734,7 @@ const gate = (vs: readonly ReconciledValue[]) => ({
  * must end first. The result keeps both lineages and the latest availability/eligibility.
  */
 export function quarterFlow(ytd: ReconciledValue, prior: ReconciledValue): Result<ReconciledValue> {
-  const snap = snapshot([ytd, prior] as const);
+  const snap = snapshot([ytd, prior] as const, "values");
   if (!snap.ok) return snap;
   const a = readValue(snap.value[0], "ytd");
   const b = readValue(snap.value[1], "prior");
@@ -760,7 +810,7 @@ export type CashIdentity =
  * ending, in exact cents. A blocked or missing term blocks the identity; it is never zero.
  */
 export function cashIdentity(terms: Readonly<Record<CashTerm, KeyOutcome>>): Result<CashIdentity> {
-  const snap = snapshot(terms);
+  const snap = snapshot(terms, "terms");
   if (!snap.ok) return snap;
   const own: Partial<Record<CashTerm, KeyOutcome>> = snap.value ?? {};
   const given = CASH_TERMS.map((t) => [t, own[t]] as const);

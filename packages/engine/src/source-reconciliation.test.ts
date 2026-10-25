@@ -888,6 +888,134 @@ describe("eligibility ordering and private input snapshots", () => {
     (pkg.accessions[1] as { acceptedAt: string }).acceptedAt = "2020-01-01T00:00:00Z";
     expect(JSON.stringify(rec)).toBe(before);
   });
+
+  describe("plain JSON boundary at every entry point", () => {
+    class Box {
+      v = 1;
+    }
+    const kinds: [string, () => unknown][] = [
+      ["class instance", () => new Box()],
+      ["Date", () => new Date(0)],
+      ["BigInt", () => 1n],
+      ["Map", () => new Map([["a", 1]])],
+      ["Set", () => new Set([1])],
+      ["typed array", () => new Uint8Array([1])],
+      ["function", () => () => 1],
+      ["symbol", () => Symbol("x")],
+      ["NaN", () => Number.NaN],
+      ["Infinity", () => Number.POSITIVE_INFINITY],
+      ["boxed string", () => new String("x")],
+      [
+        "cycle",
+        () => {
+          const o: Record<string, unknown> = {};
+          o.self = o;
+          return o;
+        },
+      ],
+      ["symbol key", () => ({ [Symbol("k")]: 1 })],
+      ["hidden property", () => Object.defineProperty({}, "h", { value: 1, enumerable: false })],
+      [
+        "array hole",
+        () => {
+          const a = [1];
+          a[2] = 3;
+          return a;
+        },
+      ],
+      ["array extra key", () => Object.assign([1], { extra: 2 })],
+    ];
+    const pkg = synthetic("p1", [{ tag: TOTAL, accession: ORIG, raw: "1000", period: Q3_END }]);
+    const sel = (v: ReconciledValue): KeyOutcome => ({ status: "selected", value: v });
+    const fxKey = { ...keyOf(OCF, YTD_9M), metric: "fx_effect_on_cash" as const };
+    const t: Record<CashTerm, KeyOutcome> = {
+      beginning: sel(value(TOTAL, BEGIN, 100_000)),
+      operating: sel(value(OCF, YTD_9M, -10_000)),
+      investing: sel(value(ICF, YTD_9M, 0)),
+      financing: sel(value(FCF, YTD_9M, 0)),
+      fx: sel({ ...value(OCF, YTD_9M, -1), key: fxKey }),
+      ending: sel(value(TOTAL, Q3_END, 89_999)),
+    };
+    const reconcileOk = (args: unknown) => reconcileSources(args as ReconcileArgs).ok;
+    const quarterOk = (a: unknown, b: unknown = h1) =>
+      quarterFlow(a as ReconciledValue, b as ReconciledValue).ok;
+    const cashOk = (terms: unknown) => cashIdentity(terms as Record<CashTerm, KeyOutcome>).ok;
+
+    it("the clean baselines succeed", () => {
+      expect(reconcileOk({ ...BASE, packages: [pkg] })).toBe(true);
+      expect(quarterOk(ytd)).toBe(true);
+      expect(cashOk(t)).toBe(true);
+    });
+
+    for (const [kind, make] of kinds)
+      it(`rejects ${kind} anywhere in the tree, including ignored fields`, () => {
+        // reconcileSources: top-level ignored field, inside a package, deep inside a record.
+        expect(reconcileOk({ ...BASE, packages: [pkg], ignored: make() })).toBe(false);
+        expect(reconcileOk({ ...BASE, packages: [{ ...pkg, ignored: make() }] })).toBe(false);
+        const records = [{ ...pkg.records[0], ignored: { deep: [make()] } }];
+        expect(reconcileOk({ ...BASE, packages: [{ ...pkg, records }] })).toBe(false);
+        // quarterFlow: either value, top level or nested.
+        expect(quarterOk({ ...ytd, ignored: make() })).toBe(false);
+        expect(quarterOk(ytd, { ...h1, ignored: { deep: [make()] } })).toBe(false);
+        // cashIdentity: the terms record, one term, or a term's value.
+        expect(cashOk({ ...t, ignored: make() })).toBe(false);
+        expect(cashOk({ ...t, fx: { ...t.fx, ignored: make() } })).toBe(false);
+        const ending = t.ending.status === "selected" ? t.ending.value : undefined;
+        expect(
+          cashOk({
+            ...t,
+            ending: sel({ ...(ending as ReconciledValue), ignored: [make()] } as ReconciledValue),
+          }),
+        ).toBe(false);
+      });
+
+    it("rejects class-instance arguments, packages, values and terms", () => {
+      const asBox = <T extends object>(o: T): T => Object.assign(new Box(), o);
+      expect(reconcileOk(asBox({ ...BASE, packages: [pkg] }))).toBe(false);
+      expect(reconcileOk({ ...BASE, packages: [asBox(pkg)] })).toBe(false);
+      expect(reconcileOk({ ...BASE, packages: [pkg], rules: [asBox({})] })).toBe(false);
+      expect(quarterOk(asBox(ytd))).toBe(false);
+      expect(quarterOk(ytd, asBox(h1))).toBe(false);
+      expect(cashOk(asBox(t))).toBe(false);
+      expect(cashOk({ ...t, beginning: asBox(t.beginning) })).toBe(false);
+      // A null-prototype object is still plain data.
+      expect(quarterOk(Object.assign(Object.create(null), ytd))).toBe(true);
+    });
+
+    it("SYNTHETIC: accessors are still read exactly once at each entry point", () => {
+      let reads = 0;
+      const once = <T>(first: T, later: T) => {
+        reads += 1;
+        return reads === 1 ? first : later;
+      };
+      const args = {
+        ...BASE,
+        get packages() {
+          return once([pkg], []);
+        },
+      };
+      expect(reconcileOk(args)).toBe(true);
+      expect(reads).toBe(1);
+      reads = 0;
+      const tricky = {
+        ...ytd,
+        get cents() {
+          return once(-78_600_000, 123);
+        },
+      };
+      expect(unwrap(quarterFlow(tricky, h1)).cents).toBe(-313_900_000);
+      expect(reads).toBe(1);
+      reads = 0;
+      const terms = {
+        ...t,
+        get ending() {
+          return once(t.ending, t.beginning);
+        },
+      };
+      expect(unwrap(cashIdentity(terms))).toMatchObject({ status: "ties" });
+      expect(reads).toBe(1);
+    });
+  });
 });
 
 // ---------- REAL development package: Amplitude, Inc. (data/evaluation/development) ----------
