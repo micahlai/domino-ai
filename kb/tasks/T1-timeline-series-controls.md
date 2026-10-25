@@ -1,4 +1,5 @@
 # T1: timeline comparison controls
+> Superseded as the whole friend assignment by ../features/timeline/BRIEF.md. Optional internal subtask after accepted P0; old sole-UI/global-dispatch restrictions below describe the earlier bounded plan. Use ../spec/independent-feature-lanes.md for current ownership.
 - **Goal:** users isolate available forecast/observed/alternative series and inspect exact points without changing saved financial data.
 - **Owner:** friend; sole UI writer while active. Claude lead assigns after verifying any S2 session is safely checkpointed/stopped. S2 remains friend-owned, never duplicated.
 - **Folder:** apps/web/components/historical only: HistoricalChart.tsx/test and HistoricalReplay.tsx/test; own Result. No types/live adapters, API/backend/schema/contracts, global styles, other frontend folders or dependencies.

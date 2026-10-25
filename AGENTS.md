@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Latest ownership direction: prepare two independent full-stack feature lanes per `kb/spec/independent-feature-lanes.md`. Jayden owns Company Knowledge/Agent Workspace; friend owns Timeline/Simulations. P0 shared setup must be implemented/audited before the long fork. After P0, each feature lead owns its internal queue/UI/backend and feature-local documentation; the older single-global-brain/one-UI-writer rule is replaced by one writer per owned domain. Shared cap remains three implementation processes total. Main untouched, monitor PAUSED, preserve current L1/S2 work. Codex audits/integrates; Claude implements. Planning docs alone do not establish readiness.
+
 Current scope (2026-10-24): historical public-company case study. Read `kb/context/historical-case-study-2026-10-24.md` and `kb/spec/historical-case-study-plan.md` before applying the original product description below. The user has requested an overnight launch handoff. Follow `kb/spec/project-stages-2026-10-24.md` and the C0 supervisor prompt (Claude implements, Codex audits) for isolated worker/preview branches. No main merges; Codex owns final integration. Preserve completed UI and existing interfaces. The latest visual scope is `kb/spec/ui-styles-motion-2026-10-24.md`: H4 follows H3, with four shared-component styles and actual-event motion.
 
 Rules for every AI coding agent in this repo (Claude Code, Codex, Cursor, CREAO).

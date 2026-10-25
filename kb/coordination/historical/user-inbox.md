@@ -4,6 +4,15 @@ Codex records requests from this chat here. Claude lead owns triage, acknowledgm
 
 This is a durable file inbox, not an instant-message transport or a new background monitor. Record acknowledgment in the roadmap request row so Codex can distinguish queued from received. Keep implementation in workers; Codex audits/integrates and does not start a competing lead. Do not promise continuous supervision from a finished chat turn; the existing monitor stays PAUSED.
 
+## U6: complete independently steerable features, later merge
+
+- Jayden clarified that each person needs a complete feature with UI/backend/acceptance, their own continuously steered agent and a substantial merge much later. A tiny T1 prompt or globally serialized feature queue does not satisfy this. Supersedes U5's narrow split after P0 readiness.
+- Plan: ../../spec/independent-feature-lanes.md. Jayden owns Company Knowledge/Agent Workspace; friend owns Timeline/Simulations. Full briefs and local roadmaps: ../../features/field/ and ../../features/timeline/.
+- First current lead inspects actual L1/S2 activity and checkpoints safely. P0-C/P0-S/P0-H implement/audit the shared exchange/schema ownership/peer harnesses before the long fork. Current L1 first review rejected 57a1581; repair activity is unverified by this planning update. Preserve it and friend's S2, do not duplicate.
+- Shared setup prompt: ../../../prompts/shared/prepare-independent-features.md. Then each person uses their feature-owner prompt. Both lanes own UI/backend/internal dispatch; one writer per owned domain, cap THREE implementation processes total including helpers. Separate local databases; root docs belong to integration owner, feature docs to their leads.
+- No routine cross-merges/per-task preview integration during the independent stretch. Breaking shared changes require a deliberate versioned checkpoint. Later Codex integrates and checks the real joined journey; main remains untouched. All learning/improvement/real CREAO gates remain honest and required.
+- Prepared docs only. No new worker/long branch/runtime/provider call launched. P0 not implemented or accepted; no instant-delivery/Claude acknowledgment or native Goal resumption claimed. Monitor remains PAUSED. Acknowledge RQ11 at next safe boundary.
+
 ## U1: continuous user steering and current takeover
 
 - From: Jayden, October 24, in this Codex chat.

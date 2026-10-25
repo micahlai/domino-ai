@@ -1,5 +1,7 @@
 # Friend: timeline playground and feature
 
+Superseded as the feature-owner prompt. Use friend-timeline-feature-owner.md and ../../kb/features/timeline/BRIEF.md after accepted P0. First give the current lead prepare-independent-features.md. The old prompt below is a historical bounded T1 task, not the complete independently owned feature.
+
 Use your existing project clone/session. First inspect branch/status and any active S2 work. You still own S2; do not discard edits or run a second writer. If S2 is active, commit a safe checkpoint and stop it before starting this separate T1 task. Claude lead owns assignment and the sole UI slot. No implementation was launched by this prompt's author.
 
 Fetch the current origin/preview/historical-overnight and create/reuse a dedicated T1 worktree/branch without reset, rebase, stash or overwriting existing work. Read AGENTS.md, HANDOFF.md, ROADMAP.md, kb/tasks/T1-timeline-series-controls.md and kb/coordination/historical/parallel-feature-split.md. Apply orchestrator/ponytail; for UI read repository taste and installed ui-ux-pro-max. You are not alone: Jayden's Claude owns engine/onboarding/knowledge backend and later agent-map operations. Never revert their work or edit their files. No nested workers.

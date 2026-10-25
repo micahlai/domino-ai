@@ -1,5 +1,7 @@
 # Status board
 
+Latest planning checkpoint: two full-stack features, Field/Knowledge for Jayden and Timeline/Simulations for friend. See ../spec/independent-feature-lanes.md. P0 shared setup is planned, not implemented; after audit each lane owns its UI/backend/queue on a long-lived branch. Current lead first verifies/checkpoints existing L1/S2; L1 57a1581 first review rejected (../reviews/L1-57a1581-codex-audit.md), repair state unverified here. Older ready/sole-UI/global-queue rows below are history where superseded. No new worker launched; main/monitor/runtimes unchanged.
+
 Current authority: ../../ROADMAP.md and ../coordination/historical/claude-lead-control.md. User launches ONE Claude lead which owns queue/dispatch. Codex provides independent audit/integration support on request. S3 repair 5ecae8a passed independent scoped code audit and is integrated at 16a3a56; combined uncached preview check passed 1,208 tests/typechecks/lint. Friend S2 remains exclusive. Monitor PAUSED, main unchanged. Older rows below are history, not a launch queue.
 
 ## Required-loop takeover queue

@@ -1,5 +1,7 @@
 # Proposed parallel split: timeline and knowledge backend
 
+**SUPERSEDED as the feature split.** Jayden requested two complete independently steerable full-stack features, not T1 chores. Current plan: [independent feature lanes](../../spec/independent-feature-lanes.md), [shared setup prompt](../../../prompts/shared/prepare-independent-features.md), [Field brief](../../features/field/BRIEF.md), [Timeline brief](../../features/timeline/BRIEF.md). P0 must pass before the long fork; it is not implemented. The remainder records the earlier bounded proposal and existing playground setup only. T1 can become an internal Timeline task. After P0, both lanes own UI/backend and their own agents, with one writer per domain and three implementation processes total. S2 remains friend-owned.
+
 Prepared for Jayden's request. No worker/session/server launched by this proposal. Claude lead owns actual assignment; Codex audits/integrates. Main and monitor unchanged. Source checkpoint efde049 includes accepted S3/L0/E0 and the combined 1,251-test/typecheck/lint result (some cached).
 
 ## Readiness call

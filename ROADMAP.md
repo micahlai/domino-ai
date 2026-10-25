@@ -1,6 +1,8 @@
 # Domino roadmap and request inbox
 
-**RESUMED October 24.** Claude lead PID 78153 owns dispatch. L0 is integrated d4e24d9. Jayden approved existing E0 follow-up 5f1d772; Codex accepted/integrated E0 at 05f10db and combined checks pass. L1 is READY for lead assignment. Monitor remains PAUSED; no competing dispatcher.
+**Latest user direction: two independent full-stack features with a later merge.** [Ownership/interface plan](kb/spec/independent-feature-lanes.md), [Field outcome](kb/features/field/BRIEF.md), [Timeline outcome](kb/features/timeline/BRIEF.md). First finish shared P0 contracts/schema composition/harnesses and independent acceptance. Then each feature owns UI/backend/internal queue on its own long-lived branch, one writer per owned domain; cap three implementation processes across both people. P0 is NOT implemented. [Give current lead this setup prompt](prompts/shared/prepare-independent-features.md). Preserve/checkpoint active L1/S2 work first. Older one-global-dispatcher/one-UI-writer routing applies only until P0, not the independent stretch.
+
+**Current accepted foundation.** L0 is integrated d4e24d9; user-approved E0 is integrated 05f10db with combined checks. L1 57a1581 first review rejected; lead owns checking repair state. Claude lead 78153 was the last verified shared dispatcher, not reverified by this planning update. Monitor remains PAUSED.
 
 Live chat steering: [user inbox](kb/coordination/historical/user-inbox.md). Claude lead checks new entries before dispatch/integration and between worker results, then records acknowledgment/disposition here. Feature code stays with implementation workers; new messages do not automatically cancel active work.
 
@@ -24,12 +26,12 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
-| T1 timeline controls, proposed friend lane | Friend, sole UI writer when assigned | Verify/checkpoint any active S2 writer; dedicated worktree | [Card](kb/tasks/T1-timeline-series-controls.md), [handoff](prompts/shared/T1-friend-timeline.md). Playground testing and series controls use stable existing props/APIs. Our lane stays engine/backend. No launch yet |
-| L1 normalization | Opus worker done 57a1581; Codex audit running | L1-source-normalization / ../domino-L1 (base bb8c7d6) | Await Codex audit; lead reran 233 engine tests, typecheck, biome | Worker flags: fiscalYearEnd not bound to submissions hash; equal multi-candidates block (deferred to L2); no FX tag in dev data so fx_ytd missing_input |
+| P0-C / P0-S shared setup | Current Claude lead assigns scoped workers | Actual L1/S2 ownership/checkpoint and available slots | [Contracts](kb/tasks/P0-C-feature-boundary.md), [schema](kb/tasks/P0-S-schema-ownership.md). Prepared cards only; independent audit required |
+| T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
 
-L0/E0 are accepted and integrated. No implementation worker launched by this Codex integration turn. Friend S2 remains reserved; lead verifies actual slot count before L1 assignment. No UI writer launched.
+L0/E0 are accepted and integrated. No implementation worker launched by this planning update. Friend S2 remains reserved; lead checks actual L1 repair/S2 activity and available slots before P0 assignment. Active repairs are preserved through a safe checkpoint.
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
@@ -38,11 +40,13 @@ L0/E0 are accepted and integrated. No implementation worker launched by this Cod
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
+| L1 normalization 57a1581 | Claude lead owns repair/checkpoint; Codex audits | First review REJECT | [Audit](kb/reviews/L1-57a1581-codex-audit.md): invalid restricted-cash row selection and unauthenticated fiscal calendar. Repair activity must be checked before dispatch; not accepted |
 
 ## Blocked
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
+| P0-H + independent branch release | Current Claude lead; Codex acceptance | Accepted P0-C/P0-S, reviewed S2 index, combined checks | [Harness card](kb/tasks/P0-H-independent-harnesses.md); record exact common base/fixture hashes/namespace ownership before long forks |
 | C2 credential/input setup | Jayden enters APP_ID + API_KEY privately; then verifier | Config separated from verification (Jayden, Oct 24) | Adapter sends `inputs.prompt` (creao.ts:299). Keep DOMINO_CREAO_VERIFIED_PROFILES UNSET until verified: (1) names set + app id MATCH, (2) key scoped to this app only, (3) instructions frozen-input + `<<<DOMINO_RESULT>>>`, hash as profileVersion, (4) remote field `prompt`, (5) offline parser compatibility, (6) memory isolation (account/team inheritance needs docs or one approved canary), then (7) set gate |
 | L2 reconciliation | Lead-assigned engine worker | Accepted L1 | [Card](kb/tasks/L2-source-reconciliation.md): true conflicts block affected roles; duplicates/timing/definitions and totals handled honestly |
 | L3 scoped feedback | Lead-assigned engine worker | Accepted L2 | [Card](kb/tasks/L3-scoped-rules.md): later eligible behavior changes, unrelated-company isolation, rejection/reversal/rollback |
@@ -58,8 +62,11 @@ L0/E0 are accepted and integrated. No implementation worker launched by this Cod
 
 Lead triages each request into a card, owner, dependency and acceptance before dispatch. A request does not bypass existing gates or ownership.
 
+RQ11 / U6 supersedes RQ10's tiny T1 assignment: each person owns a complete feature and can continuously steer their own agent. Prepared full feature briefs, owner prompts and P0 setup cards; no implementation launched. The global roadmap tracks P0/joint acceptance; feature-local roadmaps own internal tasks after P0. L1-L5/E1/C2 belong to Field, S2/S4/U2 Timeline portions belong to Timeline; older cross-feature runner/serial dependencies must be reconciled under the new ownership plan before dispatch, not used to restore a single global queue.
+
 | Request | Owner | Dependency | Acceptance / disposition |
 | --- | --- | --- | --- |
+| RQ11 complete independent features / U6 | Current lead prepares P0; then each person steers their own feature lead | Accepted common base and frozen exchange/schema ownership/harnesses | Prepared full briefs, feature prompts and setup cards. Not yet acknowledged by Claude; no implementation/readiness claimed. Supersedes RQ10's small T1 assignment after P0 |
 | RQ1 all onboarding/reconciliation/learning/improvement required | Claude lead | Latest required scope | Accepted into L0-L5/E0/E1/L4; not complete |
 | RQ2 one Claude lead with a queue and subagents | Claude lead | User launches C0; actual slots verified | This roadmap/control handoff ready; Codex stops competing dispatch |
 | RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
@@ -67,6 +74,6 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
 | RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | ACKNOWLEDGED by lead 78153, Oct 24. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
-| RQ10 parallel feature split | Claude lead assigns; friend owns timeline, Jayden engine/backend | [Split plan](kb/coordination/historical/parallel-feature-split.md); preserve S2/one UI writer | Prepared T1 test/play/feature handoff. Backend stable for existing 2U but onboarding/learning/scenario persistence unfinished. No automatic worker launch or ownership transfer. ACKNOWLEDGED by lead 78153: split approved. Friend gets sole UI slot for T1 after checkpointing S2 (one friend process). Our lane: L1 -> L2 -> L3 -> L5 engine/backend, no friend timeline files |
+| RQ10 earlier bounded split | Historical acknowledgment | Superseded by RQ11 | Lead acknowledged small T1/sole-UI proposal before Jayden clarified complete independent ownership. Preserve S2; use RQ11/P0 and full feature briefs for the new plan |
 | RQ7 run the gated sequence / U2 | Claude lead dispatch; Codex audit/integration | Read [U2](kb/coordination/historical/user-inbox.md); accepted L0/E0 before L1 | Superseded by U3 pause, then resumed by RQ8. ACKNOWLEDGED. Continue active repairs/re-audits, integrate passing work and launch L1 when eligible; no duplicate lead or weakened gates |
 | RQ8 resume via claude-lead-goal prompt | Claude lead 78153 | U3 pause | ACKNOWLEDGED Oct 24. Pause lifted; final audits read; L0 to integration, E0 stopped for Jayden |

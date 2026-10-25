@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-24 Independent full-feature ownership prepared
+- Done: replaced tiny T1 split with complete Field/Knowledge and Timeline/Simulations briefs, continuous owner prompts, explicit UI/backend ownership and shared P0 setup cards. See spec/independent-feature-lanes.md. Documentation only, no worker/branch/runtime launch.
+- Next: current Claude lead reads ../prompts/shared/prepare-independent-features.md, checks actual L1/S2 activity, checkpoints safely, then assigns P0. Exact accepted common base precedes long forks; each lane then steers its own internal queue.
+- Watch out: P0 is not implemented or tested. L1 57a1581 first audit rejected; current repair state unverified. Existing combined 1,251-test result predates these planning docs. No new feature/build/browser acceptance or Goal resumption claimed. Main untouched, monitor PAUSED.
+
 ## 2026-10-24 E0 user-approved follow-up integrated
 - Jayden approved audit/integration of existing config fix 5f1d772 after third rejection. Narrow audit passes six synthetic boundary probes, fresh self-check and real E0 lint. Independent CLI round 4 audit also ACCEPT. No protected values opened.
 - Integrated 05f10db. Combined pnpm check passes 1,251 tests/five typechecks/lint 265 files; contracts fresh, other package tasks cached. Fresh Python synthetic self-check passes. No new build/browser/provider/database acceptance.
