@@ -1,14 +1,54 @@
-// Lane: Timeline (historical case study). Owns the historical* tables below.
+// Lane: Timeline (dashboard, 13-week timeline, simulations). Owns the weekly forecast core
+// (risks, branches, fixes, resilience, history, grades, explanations; P0 v2) and historical*.
 // Root ../schema.ts composition is frozen: change it, or any table owned by another lane, only
 // through a versioned checkpoint reviewed by both lanes.
 // Seams (document, do not change without a checkpoint):
 // - Field's investigation.ts writes historicalRuns only through historical.ts helpers
 //   (saveBaselineIn, computeAlternativeIn, revealIn, loadRun), passing the `owner` column.
 // - Timeline's S2 catalog (investigationCatalog.ts) reads Field tables from ./field.schema.ts.
+// - Weekly tables key on Field's companies (companyId from ./legacy.schema.ts). Approvals and
+//   log stay Field-owned. Weekly state arrives as WeeklySeedV1 JSON text.
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
+import { companyId } from "./legacy.schema";
 
 export const timelineTables = {
+  // Weekly forecast core (P0 v2): risks, branches, fixes, resilience, history, grades.
+  risks: defineTable({ companyId, asOf: v.string(), data: v.any() }).index("by_company", [
+    "companyId",
+  ]),
+  branches: defineTable({
+    companyId,
+    branchId: v.string(),
+    parentId: v.union(v.string(), v.null()),
+    kind: v.union(v.literal("base"), v.literal("event"), v.literal("fix")),
+    data: v.any(),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_branchId", ["branchId"]),
+  fixes: defineTable({ companyId, branchId: v.string(), data: v.any(), gain: v.number() }).index(
+    "by_branch",
+    ["branchId"],
+  ),
+  resilience: defineTable({
+    companyId,
+    asOf: v.string(),
+    withFixes: v.boolean(),
+    data: v.any(),
+  }).index("by_company_withFixes", ["companyId", "withFixes"]),
+  history: defineTable({ companyId, weeks: v.any(), pastEvents: v.any() }).index("by_company", [
+    "companyId",
+  ]),
+  grades: defineTable({ companyId, week: v.string(), errorPct: v.number(), misses: v.any() }).index(
+    "by_company",
+    ["companyId"],
+  ),
+  explanations: defineTable({
+    branchId: v.string(),
+    inputHash: v.string(),
+    text: v.string(),
+  }).index("by_branch", ["branchId"]),
+  // Historical case study.
   // Historical case study (H2c). Runs are append-only; reveal state lives in its own table.
   historicalRuns: defineTable({
     runId: v.string(),

@@ -8,3 +8,4 @@ export * from "./historical-specialist";
 export * from "./historical-scenario";
 export * from "./learning-loop";
 export * from "./feature-boundary";
+export * from "./weekly-boundary";

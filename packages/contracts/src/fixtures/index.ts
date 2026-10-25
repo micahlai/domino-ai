@@ -594,3 +594,6 @@ export * as historicalFixtures from "./historical";
 
 /** P0-C feature-boundary exchange fixtures; see ./feature-boundary/index.ts. */
 export * as featureBoundaryFixtures from "./feature-boundary/index";
+
+/** Weekly seam v2 fixtures (WeeklySeedV1); see ./weekly-boundary/index.ts. */
+export * as weeklyBoundaryFixtures from "./weekly-boundary/index";

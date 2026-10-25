@@ -5,11 +5,14 @@ import {
   FIXTURE_NAMES,
   type FixtureName,
   PINNED_FIXTURE_HASHES,
+  PINNED_WEEKLY_FIXTURE_HASHES,
   fixtureText,
   sha256Hex,
   verifyFixtureText,
   verifyResultRefText,
   verifySeedText,
+  verifyWeeklySeedText,
+  weeklyFixtureText,
 } from "./verify";
 
 const VALID: FixtureName[] = ["validTwoUSeed", "blockedSeed", "savedResultRef", "postRevealTwoU"];
@@ -103,5 +106,21 @@ describe("deferred P0-C parity", () => {
     expect(TIMELINE_METHODS.map(({ id, version }) => ({ id, version }))).toEqual([
       { ...QUARTER_BRIDGE_METHOD },
     ]);
+  });
+});
+
+describe("weekly seed verifier (P0 v2)", () => {
+  it("verifies the Kestrel weekly fixture against its pins and rejects the tampered copy", async () => {
+    const pins = PINNED_WEEKLY_FIXTURE_HASHES.validKestrelWeeklySeed;
+    const ok = await verifyWeeklySeedText(weeklyFixtureText("validKestrelWeeklySeed"), {
+      expectedFixtureHash: pins.fixtureHash,
+    });
+    expect(ok.ok && ok.contentHash).toBe(pins.contentHash);
+    const bad = await verifyWeeklySeedText(weeklyFixtureText("tamperedKestrelWeeklySeed"));
+    expect(bad).toEqual({
+      ok: false,
+      reason: "weekly seed contentHash does not match its content",
+    });
+    expect((await verifyWeeklySeedText("{")).ok).toBe(false);
   });
 });

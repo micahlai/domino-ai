@@ -1,8 +1,12 @@
 import {
   FIXTURE_NAMES,
   PINNED_FIXTURE_HASHES,
+  PINNED_WEEKLY_FIXTURE_HASHES,
+  WEEKLY_FIXTURE_NAMES,
   fixtureText,
   verifyFixtureText,
+  verifyWeeklySeedText,
+  weeklyFixtureText,
 } from "../../../lib/feature-boundary/verify";
 import { Badge } from "../../ui/badge";
 import { FieldBackendSmoke } from "./FieldBackendSmoke";
@@ -19,9 +23,51 @@ export async function FieldSeamHarness() {
       result: await verifyFixtureText(name, fixtureText(name)),
     })),
   );
+  const weeklyText = weeklyFixtureText("validKestrelWeeklySeed");
+  const weeklyPin = PINNED_WEEKLY_FIXTURE_HASHES.validKestrelWeeklySeed.fixtureHash;
+  const weeklyRows = await Promise.all(
+    WEEKLY_FIXTURE_NAMES.map(async (name) => ({
+      name,
+      result: await verifyWeeklySeedText(weeklyFixtureText(name), {
+        expectedFixtureHash: name === "validKestrelWeeklySeed" ? weeklyPin : undefined,
+      }),
+    })),
+  );
   return (
     <div className="space-y-6">
       <FieldBackendSmoke caseId={PEER_SEED_CASE_ID} />
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Weekly seed (WeeklySeedV1, seam v2)</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="border-dashed text-clay">
+            Peer fixture
+          </Badge>
+          <a
+            className="text-sm underline"
+            download="weekly-seed-kestrel.fixture.json"
+            href={`data:application/json;charset=utf-8,${encodeURIComponent(weeklyText)}`}
+          >
+            Download WeeklySeedV1 JSON text
+          </a>
+        </div>
+        <pre
+          aria-label="Exported weekly seed JSON text"
+          className="max-h-64 overflow-auto rounded-md border p-2 font-mono text-xs"
+        >
+          {weeklyText}
+        </pre>
+        <ul className="font-mono text-xs">
+          {weeklyRows.map(({ name, result }) => (
+            <li key={name} data-testid={`weekly-${name}`}>
+              {name}: {result.ok ? `verified ${result.contentHash}` : `rejected: ${result.reason}`}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Built from the sim Kestrel snapshot, not by the Field ingestion agent. The tampered copy
+          is expected to be rejected.
+        </p>
+      </section>
       <section className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-dashed text-clay">
