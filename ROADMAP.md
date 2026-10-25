@@ -8,6 +8,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 
 | ID | Owner | Dependency | Acceptance / evidence |
 | --- | --- | --- | --- |
+| C0 queue takeover | Claude lead | Codex checkpoint finished (clean tree at 16a3a56) | Lead owns ROADMAP.md/HANDOFF.md and dispatch from 2026-10-24; Codex CLI 0.159.2 logged in for audits |
 | G6/G7/G8a/G8/S1/U1 | Prior workers; Codex audit | Prior gates | Accepted grouped map, frozen knowledge, scenario contracts, early product UI; feature checkpoint 0f87ed2, prior 1,185 tests/build/browser |
 | D0 required-loop design | Codex; independent design auditor | Latest user scope | Reuse inventory, supported SEC JSON boundary, exact S4 and evaluation recipe reviewed; 1fce04a. Data/candidate seals and improvement are not done |
 | S3 quarterly scenario engine | Claude implementation; Codex audit/integration | Accepted S1 | Integrated at 16a3a56. [Independent audit](kb/reviews/S3-repair-5ecae8a-audit.md): 54 focused tests and 14 probes. Combined uncached preview check passed 1,208 tests, typechecks and lint. S4 persistence and U2 UI remain separate gates |
@@ -16,14 +17,16 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| C0 queue takeover | Claude lead, user launches once | Read HANDOFF and control rules; verify slots | Own queue, confirm existing writers, choose bounded tasks; no duplicate supervisor |
-| L0 contracts | Lead-assigned Claude worker | C0 ownership and free slot | [Card](kb/tasks/L0-learning-contracts.md): additive schemas/tests, preserve old contracts; independent audit |
-| E0 data custody | Separate lead-assigned worker | C0 ownership and free slot | [Card](kb/tasks/E0-evaluation-custody.md): development package, coverage/exposure ledger and real hashes; no test-value release |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
 
 ## In progress
 
-No implementation worker is independently confirmed active in this checkpoint. Friend's remote activity is unknown; S2 remains reserved in Ready. Claude lead must inspect actual processes/branches before filling this section; do not infer progress from a reserved card.
+Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no coding. No UI writer active.
+
+| ID | Owner | Branch / worktree | Next action | Acceptance evidence |
+| --- | --- | --- | --- | --- |
+| L0 contracts | Claude worker (lead subagent, Opus), launched 2026-10-24 | L0-learning-contracts / ../domino-L0 from 16a3a56 | Worker commits and stops; lead runs `codex review` audit | [Card](kb/tasks/L0-learning-contracts.md): additive schemas, synthetic tests, focused test/typecheck/lint; Codex audit |
+| E0 data custody | Claude worker (lead subagent, Opus), launched 2026-10-24 | E0-evaluation-custody / ../domino-E0 from 16a3a56 | One SEC probe; stops if 403 (no authorized contact User-Agent). Offline ledger/manifest regardless | [Card](kb/tasks/E0-evaluation-custody.md): hashes, coverage, exposure ledger, nothing sealed committed; Codex audit |
 
 ## Review
 
@@ -56,4 +59,5 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ2 one Claude lead with a queue and subagents | Claude lead | User launches C0; actual slots verified | This roadmap/control handoff ready; Codex stops competing dispatch |
 | RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
 | RQ4 CREAO setup says done | Lead-assigned verifier | User-reported empty memory/data access and input/key steps | Verify remote `prompt` and backend config; no isolation/provider-success claim yet |
+| RQ5 SEC contact User-Agent for E0 | User decision | E0 network work | SEC returns 403 without declared contact UA. Needs user to authorize a contact identity, or E0 stays offline-only |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
