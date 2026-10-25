@@ -81,16 +81,26 @@ export function scanRisks(
     const impact = base.forecast.lowPoint.usable - scenario.forecast.lowPoint.usable;
     return [{ ...c, impactLowPoint: impact }];
   });
-  return pickDiverse(scored);
+  // The customer a risk is about, so one large customer cannot fill the list on its own.
+  const customerOf = new Map(snapshot.invoices.map((i) => [i.id, i.customerId]));
+  const subject = (r: RiskEvent) => {
+    const c = r.changes.find((x) => "invoiceId" in x);
+    return c && "invoiceId" in c ? (customerOf.get(c.invoiceId) ?? r.id) : r.id;
+  };
+  return pickDiverse(scored, subject);
 }
 
 /**
  * Downside risks: the top risk of each kind first (in score order), then fill by score with
  * at most two of one kind, so one large kind (renewals) cannot crowd out the rest. The best
  * upside event, if any, takes the last slot so the list is not all bad news; it stays last
- * because callers that show only the first few risks expect downside first.
+ * because callers that show only the first few risks expect downside first. A customer
+ * (subject) appears at most twice while other risks remain; repeats only fill leftover slots.
  */
-export function pickDiverse(risks: RiskEvent[]): RiskEvent[] {
+export function pickDiverse(
+  risks: RiskEvent[],
+  subject: (r: RiskEvent) => string = (r) => r.id,
+): RiskEvent[] {
   // A zero chance is not a scenario worth showing.
   const sorted = risks.filter((r) => r.probability > 0).sort(compareRisks);
   const downside = sorted.filter((r) => riskKind(r.id) !== "upside" && r.impactLowPoint >= 0);
@@ -105,10 +115,19 @@ export function pickDiverse(risks: RiskEvent[]): RiskEvent[] {
   const picked: RiskEvent[] = [];
   const count = (kind: string) => picked.filter((r) => riskKind(r.id) === kind).length;
   const room = MAX_RISKS - (upside.length ? 1 : 0);
-  for (const r of downside) if (picked.length < room && count(riskKind(r.id)) === 0) picked.push(r);
+  const seen = (r: RiskEvent) =>
+    picked.filter((p) => subject(p) === subject(r)).length >= MAX_PER_KIND;
   for (const r of downside)
-    if (picked.length < room && !picked.includes(r) && count(riskKind(r.id)) < MAX_PER_KIND)
-      picked.push(r);
+    if (picked.length < room && count(riskKind(r.id)) === 0 && !seen(r)) picked.push(r);
+  for (const unique of [true, false])
+    for (const r of downside)
+      if (
+        picked.length < room &&
+        !picked.includes(r) &&
+        count(riskKind(r.id)) < MAX_PER_KIND &&
+        !(unique && seen(r))
+      )
+        picked.push(r);
   picked.sort(compareRisks);
   if (upside[0]) picked.push(upside[0]);
   return picked;

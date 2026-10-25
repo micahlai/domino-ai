@@ -39,6 +39,13 @@ const SCHEDULED = /\b(tax|insurance|premium)\b/i;
 const NOT_PRICED =
   /\b(tax|insurance|premium|interest|loan|principal|fee|fees|rent|lease|statement|card|capex)\b/i;
 
+const addMonths = (date: string, n: number) => {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  const t = y * 12 + (m - 1) + n;
+  const last = new Date(Date.UTC(Math.floor(t / 12), (t % 12) + 1, 0)).getUTCDate();
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+};
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "$1.2M", "$340K", "$85": display only; stored values stay integer cents. */
@@ -229,7 +236,8 @@ export function scheduledPayments(snapshot: Snapshot): Candidate[] {
     const prev = bills[bills.length - 2];
     const gap = prev ? daysBetween(prev.due, last.due) : 365;
     if (gap < 20) continue;
-    const next = addDays(last.due, gap);
+    // A calendar-quarter cadence keeps its day of month (Jul 20 -> Oct 20 -> Jan 20).
+    const next = gap >= 85 && gap <= 95 ? addMonths(last.due, 3) : addDays(last.due, gap);
     if (!inHorizon(snapshot, next)) continue;
     const booked = snapshot.bills.some(
       (b) => b.vendor === vendor && b !== last && Math.abs(daysBetween(b.due, next)) <= 15,

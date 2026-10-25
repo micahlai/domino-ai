@@ -125,7 +125,11 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
     });
   }
   for (const days of [30, 60]) {
-    const late = top.flatMap((c) => c.open).slice(0, MAX_CHANGES);
+    // An overdue invoice delayed by fewer days than it is already late would land in the past.
+    const late = top
+      .flatMap((c) => c.open)
+      .filter((i) => addDays(i.due, days) > s.asOf)
+      .slice(0, MAX_CHANGES);
     if (late.length === 0) break;
     add({
       id: `top_payers_${days}_late`,
@@ -191,7 +195,10 @@ export function pickScenarios(inputs: Inputs): Scenario[] {
         : items.filter(
             (i) => i.kind === "receivable" && i.dueWeek >= before && i.dueWeek < heavy[0],
           )
-    ).slice(0, MAX_CHANGES);
+    )
+      // Overdue items (at_risk) slipping two weeks could still land in the past.
+      .filter((i) => i.status !== "at_risk")
+      .slice(0, MAX_CHANGES);
     if (slips.length)
       add({
         id: "debt_service_week",
