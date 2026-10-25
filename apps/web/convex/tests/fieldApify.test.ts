@@ -137,7 +137,7 @@ function stubApify(opts: { creao?: boolean } = {}) {
 
 async function setup(t: T) {
   const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
-  await drain(t, 20);
+  await drain(t, 40);
   return companyId;
 }
 
@@ -200,7 +200,10 @@ describe("Apify public signals", () => {
       expect(r.items).toEqual([`No public signals found for ${r.input}`]);
 
     const rows = await logRows(t, companyId);
-    const tools = rows.filter((r) => r.toolCategory === "apify");
+    // Actor runs only; toolbox rows (fieldTools.ts) name tools without running them.
+    const tools = rows.filter(
+      (r) => r.toolCategory === "apify" && !r.action.startsWith("toolbox."),
+    );
     expect(tools).toHaveLength(searched.length);
     for (const r of tools) {
       expect(r).toMatchObject({
@@ -219,7 +222,7 @@ describe("Apify public signals", () => {
     const n1 = searched.length;
     const rerun = async () => {
       await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
-      await drain(t, 20);
+      await drain(t, 40);
       return t.query(api.fieldAnalyst.latest, { companyId });
     };
     const second = await rerun();
@@ -298,7 +301,10 @@ describe("Apify public signals", () => {
     expect(rows.map((r) => r.summary)).toContainEqual(
       expect.stringMatching(/skipped for .+: daily cap of 20 Apify runs reached; no signals$/),
     );
-    expect(rows.some((r) => r.toolCategory === "apify")).toBe(false);
+    // No actor run; the toolbox seed row only names the search tool.
+    expect(rows.some((r) => r.toolCategory === "apify" && !r.action.startsWith("toolbox."))).toBe(
+      false,
+    );
   }, 120_000);
 
   it("passes the signals to the CREAO counterparty job as facts", async () => {

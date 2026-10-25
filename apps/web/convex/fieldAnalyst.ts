@@ -99,6 +99,7 @@ import {
 import { wantsCatchUp } from "./fieldClock";
 import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
+import { checkWebsite, ensureTool } from "./fieldTools";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
 import {
   type FixResult,
@@ -113,10 +114,12 @@ import {
   scoreFixes,
   usd,
 } from "./lib/analystScenarios";
-import { APIFY_ACTOR, searchOrder, signalFacts } from "./lib/apify";
+import { APIFY_ACTOR, searchName, searchOrder, signalFacts } from "./lib/apify";
+import { websiteOf } from "./lib/apifyStore";
 import { type CoordinatorRecord, coordinatorRecordArg } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
 import { parse } from "./lib/parse";
+import { SWARM_LIMIT } from "./lib/swarm";
 
 export const ANALYST = "analyst#1";
 export const RESEARCH = "research#1";
@@ -241,6 +244,19 @@ async function startRun(ctx: Ctx, companyId: Id<"companies">, trigger: string, p
   return { runId, skipped: false };
 }
 
+/** A forecaster slot freed up: start the next queued forecaster, if any. */
+async function startQueued(ctx: Ctx, run: Doc<"analystRuns">) {
+  const scenarios = run.children - 1;
+  const started = run.started ?? scenarios;
+  if (started >= scenarios) return;
+  await ctx.db.patch("analystRuns", run._id, { started: started + 1 });
+  await ctx.scheduler.runAfter(run.paceMs, internal.fieldAnalyst.forecasterStep, {
+    runId: run.runId,
+    index: started,
+    step: 0,
+  });
+}
+
 /** A child finished (done or failed); the last report triggers aggregation. */
 async function childReported(ctx: Ctx, run: Doc<"analystRuns">) {
   const reported = run.reported + 1;
@@ -349,6 +365,7 @@ export const record = internalMutation({
         step: args.next.step,
       });
     }
+    if (args.reported && args.index !== undefined) await startQueued(ctx, run);
     if (args.reported) await childReported(ctx, run);
     return true;
   },
@@ -407,7 +424,9 @@ export const spawn = internalMutation({
       refs: scenarios.map((s) => s.id),
       summary: `Picked ${scenarios.length} scenarios from records, scheduled items and engine risks`,
     });
-    await ctx.db.patch("analystRuns", run._id, { children: scenarios.length + 1 });
+    // Forecaster swarm: at most SWARM_LIMIT at once; each report starts the next queued one.
+    const first = Math.min(SWARM_LIMIT, scenarios.length);
+    await ctx.db.patch("analystRuns", run._id, { children: scenarios.length + 1, started: first });
     for (const [index, sc] of scenarios.entries()) {
       const agentId = forecasterId(index);
       await ctx.db.insert("analystScenarios", {
@@ -427,7 +446,7 @@ export const spawn = internalMutation({
         parentAgentId: ANALYST,
         event: "status",
         status: "spawned",
-        currentTask: task(index, sc.title, "queued"),
+        currentTask: task(index, sc.title, index < first ? "starting" : "queued for a free slot"),
         refs: [sc.id],
         summary: `Analyst spawned ${agentId} for scenario ${index + 1}: ${sc.title}`,
       });
@@ -441,11 +460,12 @@ export const spawn = internalMutation({
         summary: `Run scenario ${index + 1} on ${version}: ${sc.title} (${sc.basis})`,
       });
       // Small stagger so parallel children interleave visibly; the work itself is real.
-      await ctx.scheduler.runAfter(
-        Math.floor((index * paceMs) / 4),
-        internal.fieldAnalyst.forecasterStep,
-        { runId, index, step: 0 },
-      );
+      if (index < first)
+        await ctx.scheduler.runAfter(
+          Math.floor((index * paceMs) / 4),
+          internal.fieldAnalyst.forecasterStep,
+          { runId, index, step: 0 },
+        );
     }
     await log({
       action: "agent.spawned",
@@ -627,6 +647,16 @@ export const researchStep = internalAction({
       const inputs: Inputs = await ctx.runQuery(internal.fieldAnalyst.inputs, { runId });
       const targets = searchOrder(counterpartyJob(inputs.snapshot, "").counterparties);
       const configured = apifyConfigured();
+      const who = {
+        companyId: c.companyId,
+        runId,
+        agentId: RESEARCH,
+        parentAgentId: ANALYST,
+        log: (rows: AgentRow[]) => write({ rows }),
+      };
+      // The toolbox starts with the public web search this agent uses (fieldTools.ts).
+      if (step === 0 && configured)
+        await ensureTool(ctx, who, "web_search", "public news on top counterparties");
       const target = configured ? targets[step] : undefined;
       if (target) {
         const { name, role } = target;
@@ -661,6 +691,14 @@ export const researchStep = internalAction({
         (r) => r.provider === "apify",
       );
       const flagged = found.filter((r) => (r.signals?.length ?? 0) > 0).length;
+      if (configured)
+        await websiteStep(
+          ctx,
+          who,
+          c.companyId,
+          runId,
+          found as { input?: string; signals?: { url: string }[] }[],
+        );
       await write({
         rows: [
           ...(configured
@@ -710,6 +748,89 @@ export const researchStep = internalAction({
     return null;
   },
 });
+
+/**
+ * Research grows the toolbox: after the news searches it wants the top searched counterparty's
+ * own website (to confirm a same-name match, or that a quiet name is an operating business).
+ * That capability is added from the Apify Store once; the crawler runs, within the caps, only
+ * when the counterparty's own site is among its search results.
+ */
+async function websiteStep(
+  ctx: ActionCtx,
+  who: Parameters<typeof ensureTool>[1],
+  companyId: Id<"companies">,
+  runId: string,
+  found: { provider?: string; input?: string; signals?: { url: string }[] }[],
+) {
+  const first = found.find((r) => r.input);
+  const name = first?.input;
+  if (!first || !name) return;
+  const quiet = (first.signals?.length ?? 0) === 0;
+  const tool = await ensureTool(
+    ctx,
+    who,
+    "website_check",
+    quiet
+      ? `no public news on ${name}; check whether it runs a website`
+      : `news mentions ${name}; check its own website to confirm it is the same business`,
+  );
+  if (!tool) return;
+  const url = websiteOf(
+    searchName(name),
+    (first.signals ?? []).map((s) => s.url),
+  );
+  const as = (r: Omit<AgentRow, "agentKind" | "agentId" | "parentAgentId">): AgentRow => ({
+    agentKind: "domino",
+    agentId: RESEARCH,
+    parentAgentId: ANALYST,
+    ...r,
+  });
+  if (!url) {
+    await who.log([
+      as({
+        action: "research.websiteSkipped",
+        event: "status",
+        status: "working",
+        currentTask: `Research: website check (${name})`,
+        refs: [tool.actorId, name],
+        summary: `No website for ${name} among its search results; ${tool.name} not run (no actor run spent)`,
+      }),
+    ]);
+    return;
+  }
+  const check = await checkWebsite(ctx, {
+    tool,
+    counterparty: name,
+    url,
+    companyId,
+    analystRunId: runId,
+  });
+  await who.log([
+    "remoteRunId" in check &&
+    check.remoteRunId &&
+    (check.outcome === "live" || check.outcome === "cached")
+      ? as({
+          action: "agent.tool",
+          event: "tool",
+          tool: tool.actorId,
+          toolCategory: "apify",
+          toolLabel: tool.name,
+          source: "apify",
+          refs: [check.remoteRunId, name],
+          summary: `${check.outcome === "cached" ? "Cached " : ""}Apify run ${check.remoteRunId}: ${url} ${
+            check.title ? `"${check.title}"` : "(no title)"
+          }`,
+        })
+      : as({
+          action: "research.websiteSkipped",
+          event: "status",
+          status: "working",
+          currentTask: `Research: website check (${name})`,
+          refs: [tool.actorId, name],
+          summary: `Website check of ${name} ${check.outcome}: ${"reason" in check ? check.reason : ""}`,
+        }),
+  ]);
+}
 
 export const aggregate = internalMutation({
   args: { runId: v.string() },
@@ -823,7 +944,9 @@ type AiSummary = Infer<typeof aiSummaryArg>;
  *   summarize (coordinator plan, executed deterministically)
  *   -> summaryStep (three-sentence summary leading with the focus scenario; CREAO first,
  *      Claude fallback)
- *   -> counterpartyStep (CREAO counterparty notes, the coordinator's pick first) -> finish.
+ *   -> counterpartyStep (CREAO counterparty notes, the coordinator's pick first)
+ *   -> fieldAdvisor.advisorStep / recommendStep (advisor swarm, only when a scenario breaks the
+ *      lender's minimum) -> finish.
  * A step that finds another CREAO run in flight for the company reschedules itself every
  * CREAO_WAIT_MS (`wait` counts), and after CREAO_MAX_WAITS proceeds without CREAO. Without a
  * provider, over budget or on failure the run closes on the engine summary alone and the log
@@ -926,7 +1049,13 @@ export const counterpartyStep = internalAction({
       });
       return null;
     }
-    await ctx.runMutation(internal.fieldAnalyst.finish, { runId, summary, aiSummary, coordinator });
+    // Advisors (fieldAdvisor.ts) only when a scenario breaks the lender's minimum; then finish.
+    await ctx.scheduler.runAfter(0, internal.fieldAdvisor.advisorStep, {
+      runId,
+      summary,
+      coordinator,
+      aiSummary,
+    });
     return null;
   },
 });

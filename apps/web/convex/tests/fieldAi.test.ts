@@ -51,10 +51,10 @@ async function logRows(t: T, companyId: Id<"companies">) {
 /** Ingest once, plant a duplicate, ingest again: new findings plus a finished analyst run. */
 async function companyWithFindings(t: T) {
   const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
-  await drain(t, 20);
+  await drain(t, 40);
   await t.mutation(api.field.advanceFeed, { companyId, advance: false, anomaly: "duplicate" });
   await t.mutation(api.field.ingestNow, { companyId });
-  await drain(t, 20);
+  await drain(t, 40);
   return companyId;
 }
 
@@ -147,7 +147,7 @@ describe("field AI agents", () => {
     vi.stubGlobal("fetch", fetch);
     const t = newBackend();
     const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
-    await drain(t, 20);
+    await drain(t, 40);
     expect(fetch).not.toHaveBeenCalled();
     const rows = await logRows(t, companyId);
     expect(rows.map((r) => r.summary)).toContainEqual(
@@ -206,7 +206,7 @@ describe("field AI agents", () => {
     // A second run on the same snapshot version makes no new model call.
     const before = fetch.mock.calls.length;
     await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
-    await drain(t, 20);
+    await drain(t, 40);
     expect(fetch.mock.calls.length).toBe(before);
     const again = await t.query(api.fieldAnalyst.latest, { companyId });
     expect(again?.runId).not.toBe(latest?.runId);

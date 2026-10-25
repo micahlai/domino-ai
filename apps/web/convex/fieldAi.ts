@@ -76,9 +76,10 @@ const kindArg = v.union(
   v.literal("analyst"),
   v.literal("research"),
   v.literal("coordinator"),
+  v.literal("advisor"),
 );
 const providerArg = v.union(v.literal("claude"), v.literal("creao"));
-export type Kind = "audit" | "analyst" | "research" | "coordinator";
+export type Kind = "audit" | "analyst" | "research" | "coordinator" | "advisor";
 export type Provider = "claude" | "creao";
 /** Per CREAO run: create, polls and answer. Claude has its own 60 s client timeout. */
 export const CREAO_STEP_DEADLINE_MS = 150_000;

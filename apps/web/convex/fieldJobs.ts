@@ -1,8 +1,7 @@
 import { type Snapshot, SnapshotSchema, WorldStateSchema, canonicalJson } from "@domino/contracts";
-import { auditSnapshot } from "@domino/engine";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   type ActionCtx,
   type MutationCtx,
@@ -15,6 +14,7 @@ import { toolInfo } from "./connectors/catalog";
 import { inProcessFetcher } from "./connectors/inProcess";
 import { nessieFetcher, withNessie } from "./connectors/nessie";
 import type { ToolId } from "./connectors/types";
+import { runAuditSwarm } from "./fieldAudit";
 import { type Overlay, servedSnapshot } from "./fieldFeed";
 import { type Prepared, prepareNessie } from "./fieldNessie";
 import {
@@ -31,7 +31,8 @@ import { computedRefs } from "./lib/refs";
  * Field ingestion agent (internal). One run: read every connected tool through the connectors
  * (connectors/pullAll over the in-process vendor mocks, and the bank from the Capital One
  * Nessie sandbox after posting the week's lines to Domino's own accounts there; the simulated
- * bank stands in when Nessie cannot be used), map and validate, then commit a new immutable snapshot version, audit it, store
+ * bank stands in when Nessie cannot be used), map and validate, then commit a new immutable snapshot version, audit it
+ * with the audit swarm (fieldAudit.ts: parallel checker agents), store
  * findings and recompute the forecast. Every step writes a `log` row naming the agent, tool
  * and data source. Deterministic code only: no money estimate, no real API. The one model call
  * (Claude explaining new flags) runs separately in fieldAi.explainNewFindings.
@@ -197,12 +198,15 @@ export const commit = internalMutation({
     stale: v.array(v.string()),
     results: v.array(toolResult),
     tieOut: v.object({ checked: v.number(), mismatches: v.array(v.string()) }),
+    tieOutFailed: v.array(v.object({ name: v.string(), ref: v.string(), detail: v.string() })),
     bankFallback: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
     const { companyId, runId, hash, pulls, skipped, stale, results, tieOut } = args;
     const snapshot = SnapshotSchema.parse(args.snapshot);
     const feed = await requireFeed(ctx, companyId);
+    // The previous version must finish its audit before another snapshot can replace its inputs.
+    if (feed.auditPending) return { changed: false as const, pending: feed.auditPending };
     const at = new Date().toISOString();
     if (args.bankFallback)
       await writeLog(ctx, companyId, runId, {
@@ -251,7 +255,7 @@ export const commit = internalMutation({
         lastIngestStatus: "no_change",
         lastError: null,
       });
-      return { changed: false as const };
+      return { changed: false as const, pending: null };
     }
     const prevRow = feed.lastSnapshotId ? await ctx.db.get("snapshots", feed.lastSnapshotId) : null;
     const previous = prevRow ? SnapshotSchema.parse(prevRow.data) : null;
@@ -282,66 +286,59 @@ export const commit = internalMutation({
       summary: `Wrote snapshot version ${version} as of ${snapshot.asOf}`,
     });
 
-    const found = auditSnapshot({ snapshot, previous, detectedAt: at });
-    const added: string[] = [];
-    for (const f of found) {
-      const existing = await ctx.db
-        .query("findings")
-        .withIndex("by_companyId_and_findingId", (q) =>
-          q.eq("companyId", companyId).eq("findingId", f.id),
-        )
-        .first();
-      if (existing) continue;
-      const escalated = f.severity === "high";
-      await ctx.db.insert("findings", {
-        companyId,
-        findingId: f.id,
-        snapshotId,
-        version,
-        kind: f.kind,
-        severity: f.severity,
-        summary: f.summary,
-        refs: f.refs,
-        detectedAt: f.detectedAt,
-        escalated,
-        status: "open",
-      });
-      added.push(f.id);
-      if (escalated)
-        await writeLog(ctx, companyId, runId, {
-          actor: "engine",
-          action: "audit.escalated",
-          refs: [f.id, ...f.refs],
-          agent: "field.audit",
-          tool: "engine.auditSnapshot",
-          summary: f.summary,
-        });
-    }
-    await writeLog(ctx, companyId, runId, {
-      actor: "engine",
-      action: "audit.completed",
-      refs: added,
-      agent: "field.audit",
-      tool: "engine.auditSnapshot",
-      summary: `Audit found ${found.length} issue${found.length === 1 ? "" : "s"}, ${added.length} new`,
-    });
-
     await ctx.db.patch("companies", companyId, {
       today: snapshot.asOf,
       currentWeek: feed.week,
       status: "ready",
     });
+    const pending = {
+      snapshotId,
+      ...(feed.lastSnapshotId && { previousId: feed.lastSnapshotId }),
+      version,
+      tieOut: args.tieOutFailed,
+      phase: "audit" as const,
+      newFindings: 0,
+    };
     await ctx.db.patch("feeds", feed._id, {
       snapshotVersion: version,
       lastSnapshotId: snapshotId,
       lastSnapshotHash: hash,
       lastSnapshotAt: at,
       lastIngestAt: at,
-      lastIngestStatus: "ok",
+      lastIngestStatus: null,
       lastError: null,
       recordCounts,
+      auditPending: pending,
     });
-    return { changed: true as const, snapshotId, version, newFindings: added.length };
+    // The audit swarm (fieldAudit.ts) checks this version next, from the ingest action.
+    return {
+      changed: true as const,
+      snapshotId,
+      version,
+      pending,
+    };
+  },
+});
+
+/** Read pending work before fetching sources, so an unchanged retry can finish it directly. */
+export const pendingAudit = internalQuery({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, { companyId }) => (await requireFeed(ctx, companyId)).auditPending ?? null,
+});
+
+export const finishPendingAudit = internalMutation({
+  args: { companyId: v.id("companies"), snapshotId: v.id("snapshots") },
+  handler: async (ctx, { companyId, snapshotId }) => {
+    const feed = await requireFeed(ctx, companyId);
+    if (feed.auditPending?.snapshotId !== snapshotId || feed.auditPending.phase !== "recompute")
+      return false;
+    await ctx.db.patch("feeds", feed._id, {
+      auditPending: undefined,
+      lastIngestAt: new Date().toISOString(),
+      lastIngestStatus: "ok",
+      lastError: null,
+    });
+    return true;
   },
 });
 
@@ -377,6 +374,72 @@ export type IngestResult =
       recomputed: boolean;
     };
 
+type PendingAudit = NonNullable<Doc<"feeds">["auditPending"]>;
+
+/** Finish the exact snapshot committed earlier; a failed check or recompute leaves it retryable. */
+async function completePendingAudit(
+  ctx: ActionCtx,
+  companyId: Id<"companies">,
+  runId: string,
+  pending: PendingAudit,
+): Promise<IngestResult> {
+  const { snapshotId, version } = pending;
+  let newFindings = pending.newFindings;
+  if (pending.phase === "audit") {
+    await runAuditSwarm(ctx, {
+      companyId,
+      ingestRunId: runId,
+      snapshotId,
+      ...(pending.previousId && { previousId: pending.previousId }),
+      version,
+      tieOut: pending.tieOut,
+    });
+    const latest: PendingAudit | null = await ctx.runQuery(internal.fieldJobs.pendingAudit, {
+      companyId,
+    });
+    if (!latest || latest.snapshotId !== snapshotId || latest.phase !== "recompute")
+      return { changed: false };
+    newFindings = latest.newFindings;
+  }
+  try {
+    const r = await recomputeWithRetry(ctx, companyId);
+    await ctx.runMutation(internal.fieldJobs.logStep, {
+      companyId,
+      runId,
+      actor: "engine",
+      action: "ingest.recomputed",
+      refs: [snapshotId],
+      agent: AGENT,
+      tool: "engine.recompute",
+      summary: `Forecast and risks recomputed as of ${r.asOf}${r.changed ? "" : " (unchanged)"}`,
+    });
+  } catch (error) {
+    await ctx.runMutation(internal.fieldJobs.logStep, {
+      companyId,
+      runId,
+      actor: "engine",
+      action: "ingest.recomputeFailed",
+      refs: [snapshotId],
+      agent: AGENT,
+      tool: "engine.recompute",
+      summary: `Forecast recompute refused: ${message(error)}`,
+    });
+    throw error;
+  }
+  const finished: boolean = await ctx.runMutation(internal.fieldJobs.finishPendingAudit, {
+    companyId,
+    snapshotId,
+  });
+  if (!finished) return { changed: false };
+  if (newFindings > 0)
+    await ctx.scheduler.runAfter(0, internal.fieldAi.explainNewFindings, {
+      companyId,
+      runId,
+      version,
+    });
+  return { changed: true, snapshotId, version, newFindings, recomputed: true };
+}
+
 /**
  * One full ingest run. Never throws: a failure is logged and recorded on the feed. The flag
  * explainer and the analyst are scheduled only after the forecast recompute committed, so they
@@ -392,6 +455,10 @@ export async function runIngest(
   const runId = `ingest-${Date.now().toString(36)}`;
   const step = (s: Omit<Step, "agent"> & { failed?: string }) =>
     ctx.runMutation(internal.fieldJobs.logStep, { companyId, runId, agent: AGENT, ...s });
+  const analyst = async (changed: boolean) => {
+    if (options.analyst === false) return;
+    await ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, { companyId, changed });
+  };
   try {
     await step({
       actor: "connector",
@@ -399,6 +466,14 @@ export async function runIngest(
       refs: [trigger],
       summary: `Ingestion agent started (${trigger})`,
     });
+    const prior: PendingAudit | null = await ctx.runQuery(internal.fieldJobs.pendingAudit, {
+      companyId,
+    });
+    if (prior) {
+      const resumed = await completePendingAudit(ctx, companyId, runId, prior);
+      if (resumed.changed) await analyst(true);
+      return resumed;
+    }
     const inputs: { served: Snapshot; connected: ToolId[]; previous: Snapshot | null } =
       await ctx.runQuery(internal.fieldJobs.ingestInputs, { companyId });
     const bank = inputs.connected.includes("nessie")
@@ -433,50 +508,17 @@ export async function runIngest(
       skipped: ingested.skipped,
       stale: ingested.stale,
       results: ingested.results,
-      tieOut: ingested.tieOut,
+      tieOut: { checked: ingested.tieOut.checked, mismatches: ingested.tieOut.mismatches },
+      tieOutFailed: ingested.tieOut.failed,
       bankFallback: ingested.bankFallback,
     });
-    // Field analyst after the ingest, only once the recompute below has committed.
-    const analyst = async () => {
-      if (options.analyst === false) return;
-      await ctx.scheduler.runAfter(0, internal.fieldAnalyst.afterIngest, {
-        companyId,
-        changed: result.changed,
-      });
-    };
-    if (!result.changed) {
-      await analyst();
+    if (!result.pending) {
+      await analyst(false);
       return { changed: false };
     }
-    let recomputed = false;
-    try {
-      const r = await recomputeWithRetry(ctx, companyId);
-      recomputed = true;
-      await step({
-        actor: "engine",
-        action: "ingest.recomputed",
-        refs: [result.snapshotId],
-        tool: "engine.recompute",
-        summary: `Forecast and risks recomputed as of ${r.asOf}${r.changed ? "" : " (unchanged)"}`,
-      });
-    } catch (error) {
-      await step({
-        actor: "engine",
-        action: "ingest.recomputeFailed",
-        refs: [result.snapshotId],
-        tool: "engine.recompute",
-        summary: `Forecast recompute refused: ${message(error)}`,
-      });
-    }
-    // Claude explains the new rule-based flags in the background (budgeted, skipped without a key).
-    if (result.newFindings > 0)
-      await ctx.scheduler.runAfter(0, internal.fieldAi.explainNewFindings, {
-        companyId,
-        runId,
-        version: result.version,
-      });
-    await analyst();
-    return { ...result, recomputed };
+    const completed = await completePendingAudit(ctx, companyId, runId, result.pending);
+    if (completed.changed) await analyst(true);
+    return completed;
   } catch (error) {
     await step({
       actor: "connector",

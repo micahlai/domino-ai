@@ -39,7 +39,7 @@ describe("field analyst", () => {
     const t = newBackend();
     const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel-crunch" });
     await drain(t); // first ingest; the analyst is scheduled after recompute
-    await drain(t, 12); // afterIngest -> forecasters/research steps -> aggregate
+    await drain(t, 30); // afterIngest -> forecasters/research steps -> aggregate
 
     const result = await t.query(api.fieldAnalyst.latest, { companyId });
     expect(result?.status).toBe("done");
@@ -61,8 +61,36 @@ describe("field analyst", () => {
 
     const rows = (await logRows(t, companyId)).filter((r) => r.runId === result?.runId);
     const spawned = rows.filter((r) => r.event === "status" && r.status === "spawned");
-    expect(spawned.length).toBe(scenarios.length + 1);
+    const advisors = spawned.filter((r) => r.agentId?.startsWith("advisor."));
+    expect(spawned.length - advisors.length).toBe(scenarios.length + 1);
     expect(spawned.every((r) => r.parentAgentId === "analyst#1")).toBe(true);
+    // Forecaster swarm is bounded: at most four start before the first one reports.
+    const firstReport = [...rows]
+      .reverse()
+      .find(
+        (r) => r.event === "status" && r.status === "done" && r.agentId?.startsWith("forecaster#"),
+      );
+    const startedBefore = rows.filter(
+      (r) =>
+        r.agentId?.startsWith("forecaster#") &&
+        r.status === "working" &&
+        r.step === 1 &&
+        firstReport &&
+        r._creationTime < firstReport._creationTime,
+    );
+    expect(new Set(startedBefore.map((r) => r.agentId)).size).toBeLessThanOrEqual(4);
+    // kestrel-crunch breaks the lender's minimum: one advisor per candidate fix, saved as
+    // suggestions in engine order; no CREAO in tests, so no recommendation.
+    expect(advisors.length).toBeGreaterThanOrEqual(2);
+    const suggestions = await t.query(api.fieldSuggestions.list, { companyId });
+    expect(suggestions.map((s) => s.agentId).sort()).toEqual(advisors.map((r) => r.agentId).sort());
+    expect(suggestions.every((s) => s.status === "open" && !s.recommended)).toBe(true);
+    expect(suggestions.every((s) => Number.isInteger(s.effect.lowPoint))).toBe(true);
+    expect(rows.map((r) => r.summary)).toContainEqual(
+      expect.stringMatching(
+        /^CREAO unavailable \(app not configured\); suggestions stay in engine order/,
+      ),
+    );
     const messages = rows.filter((r) => r.event === "message");
     expect(
       messages.some((r) => r.fromAgentId === "analyst#1" && r.toAgentId === "forecaster#1"),
@@ -91,12 +119,12 @@ describe("field analyst", () => {
     const t = newBackend();
     const { companyId } = await t.mutation(api.field.setup, { profile: "kestrel" });
     await drain(t);
-    await drain(t, 12);
+    await drain(t, 30);
     const first = await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
     expect(first.skipped).toBe(false);
     const again = await t.mutation(api.fieldAnalyst.run, { companyId, paceMs: 0 });
     expect(again).toEqual({ runId: first.runId, skipped: true });
-    await drain(t, 12);
+    await drain(t, 30);
     expect((await t.query(api.fieldAnalyst.latest, { companyId }))?.runId).toBe(first.runId);
 
     await t.mutation(api.field.setAutoIngest, { companyId, enabled: true });

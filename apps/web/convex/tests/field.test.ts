@@ -200,7 +200,12 @@ describe("field ingest", () => {
       await t.mutation(api.field.advanceFeed, { companyId, anomaly: kind });
       await ingest(t, companyId);
       const found = await t.query(api.field.findings, { companyId });
-      expect(found.map((f) => [f.kind, f.severity])).toEqual([[kind, severity]]);
+      expect(found.map((f) => [f.kind, f.severity])).toContainEqual([kind, severity]);
+      // Anything else is the tie-out checker seeing the same planted line from the bank side.
+      const others = found.filter((f) => f.kind !== kind);
+      expect(others.every((f) => f.kind === "conflict" && /does not tie out/.test(f.summary))).toBe(
+        true,
+      );
     },
     60_000,
   );
