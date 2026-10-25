@@ -35,11 +35,11 @@ const primaryLinks = (profile: string) => [
       !under(p, "/field/customers"),
   },
   { href: "/field/customers", label: "Customers", on: (p: string) => under(p, "/field/customers") },
-  { href: "/field/map", label: "Brain map", on: (p: string) => under(p, "/field/map") },
+  // Connected tools (/field/connect) opens from the Brain map header and highlights Brain map.
   {
-    href: "/field/connect",
-    label: "Connected tools",
-    on: (p: string) => under(p, "/field/connect"),
+    href: "/field/map",
+    label: "Brain map",
+    on: (p: string) => under(p, "/field/map") || under(p, "/field/connect"),
   },
   {
     href: `/c/${profile}/timeline`,
@@ -48,7 +48,7 @@ const primaryLinks = (profile: string) => [
   },
   // /simulations (saved-run catalog) stays reachable by URL; Timeline already lists scenarios.
   // Judge sandbox: a fresh simulated company to try scenarios on.
-  { href: "/judge", label: "Try it", on: (p: string) => under(p, "/judge") },
+  { href: "/judge", label: "Judge sandbox", on: (p: string) => under(p, "/judge") },
 ];
 
 /** Routes that own the whole window under the top bar and pin the Original dark tokens. */
@@ -156,12 +156,11 @@ const isRecordedPath = (pathname: string) =>
   pathname.startsWith("/field/analysis/") ||
   (TIMELINE.test(pathname) && pathname.replace(/\/$/, "").endsWith("/calculation"));
 
-/** One row above the page title: where the books come from, then simulated time on the pages
- * that move with the clock. Wraps to two rows on phones. */
+/** One row above the page title: simulated time on the pages that move with the clock. Where the
+ * books come from is one badge next to the company name in the top bar. */
 function PageContext({ pathname }: { pathname: string }) {
   return (
-    <div className="mb-5 flex min-h-9 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b pb-3 md:mb-6">
-      <OperatingProvenanceStrip />
+    <div className="mb-5 flex min-h-9 flex-wrap items-center justify-end gap-x-6 gap-y-2 border-b pb-3 md:mb-6">
       <SimClockBar pathname={pathname} />
     </div>
   );
@@ -247,11 +246,14 @@ function TopBarContent({
               })}
             </ul>
           </nav>
-          <div className="ml-auto flex shrink-0 items-center">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {recorded ? (
               <span className="text-[13px] text-muted-foreground">Recorded run</span>
             ) : (
-              <CompanySwitcher />
+              <>
+                <CompanySwitcher />
+                {isOperatingProduct(pathname) ? <OperatingProvenanceStrip /> : null}
+              </>
             )}
           </div>
         </div>

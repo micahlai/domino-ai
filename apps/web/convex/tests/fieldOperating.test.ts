@@ -170,4 +170,25 @@ describe("fieldOperating", { timeout: 60_000 }, () => {
     expect(late.companyId).not.toBe(baseline.companyId);
     expect(await t.query(api.fieldOperating.list, {})).toHaveLength(2);
   });
+
+  it("gives a fresh demo copy its own Timeline baseline after its first books", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const original = await t.mutation(api.fieldOperating.ensure, {
+      company: "2u",
+      scenario: "baseline",
+    });
+    const copy = await t.mutation(api.fieldOperating.resetDemo, {
+      companyId: original.companyId,
+    });
+    expect(await t.query(api.fieldTimeline.latest, { companyId: copy.companyId })).toBeNull();
+    for (let i = 0; i < 4; i++) {
+      vi.runOnlyPendingTimers();
+      await t.finishInProgressScheduledFunctions();
+    }
+    const link = await t.query(api.fieldTimeline.latest, { companyId: copy.companyId });
+    expect(link?.timelineCompanyId).toBe("operating/2u/baseline");
+    expect(link?.seedId).toContain(copy.companyId);
+    expect(await t.query(api.fieldTimeline.latest, { companyId: original.companyId })).toBeNull();
+  });
 });

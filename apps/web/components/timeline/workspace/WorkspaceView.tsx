@@ -698,7 +698,7 @@ function Provenance({ run, resultRef }: { run: WorkspaceRun; resultRef: Read<Wee
       data-testid="provenance"
     >
       <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium">
-        Where this came from
+        Technical details
       </summary>
       <dl className="grid gap-2 border-t p-4 sm:grid-cols-2">
         {(

@@ -22,28 +22,28 @@ const current = (html: string) =>
   [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
 
 describe("AppShell navigation", () => {
-  it("lists the six product pages, then the judge sandbox, in order and hides dev routes", () => {
+  it("lists the five product pages, then the judge sandbox, in order and hides dev routes", () => {
     const html = render("/");
     const order = [
       "/",
       "/field",
       "/field/customers",
       "/field/map",
-      "/field/connect",
       "/c/operating%2F2u%2Fbaseline/timeline",
       "/judge",
     ].map((h) => html.indexOf(`href="${h}"`));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
+    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(6);
+    expect(html).not.toContain('href="/field/connect"');
+    expect(html).toContain("Judge sandbox");
     expect(html).toContain("Main navigation");
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain("Company: ");
     expect(html).toContain("2U (historical)");
     expect(html).toContain("Public filings");
-    expect(html).toContain("as of Sep 30, 2023");
-    expect(html).not.toContain("Simulated books");
-    // Full dates live in the Sources sheet; the row never repeats the long filing sentence.
+    expect(html).not.toContain("Simulated from public filings");
+    // One header badge; full dates live in the Sources sheet, never a repeated banner.
     expect(html).toContain('aria-label="Sources and cash bridge"');
     expect(html).not.toContain("Starting reconstructed books as of");
     expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
@@ -65,10 +65,10 @@ describe("AppShell navigation", () => {
     expect(current(render("/"))).toEqual(["Dashboard"]);
     expect(current(render("/field"))).toEqual(["Worker"]);
     expect(current(render("/field/map"))).toEqual(["Brain map"]);
-    expect(current(render("/field/connect"))).toEqual(["Connected tools"]);
+    expect(current(render("/field/connect"))).toEqual(["Brain map"]);
     expect(current(render("/simulations"))).toEqual([]);
     expect(current(render("/c/kestrel/simulations"))).toEqual(["Timeline"]);
-    expect(current(render("/judge"))).toEqual(["Try it"]);
+    expect(current(render("/judge"))).toEqual(["Judge sandbox"]);
     expect(current(render("/case"))).toEqual([]);
   });
 
@@ -86,11 +86,11 @@ describe("AppShell navigation", () => {
     expect(current(html)).toEqual(["Timeline"]);
     expect(html).toContain("Legacy operating demo");
     expect(html).not.toContain('aria-haspopup="menu"');
-    expect(html).not.toContain("Simulated books");
+    expect(html).not.toContain("Simulated from public filings");
     const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
     expect(currentHtml).toContain('aria-haspopup="menu"');
     // The default selection is 2U, whose books are its public filings.
-    expect(currentHtml).toMatch(/Simulated books|Public filings/);
+    expect(currentHtml).toMatch(/Simulated from public filings|Public filings/);
   });
 
   it("shows saved calculation routes without the live company picker, feed strip or clock", () => {
@@ -103,7 +103,7 @@ describe("AppShell navigation", () => {
       const html = render(at);
       expect(html).toContain("Recorded run");
       expect(html).not.toContain('aria-haspopup="menu"');
-      expect(html).not.toContain("Simulated books");
+      expect(html).not.toContain("Simulated from public filings");
       expect(html).not.toContain("Simulated date");
     }
     const current = render("/c/operating%2Fasana-current%2Fbaseline/timeline/calculation");

@@ -50,7 +50,7 @@ describe("provenance row", () => {
     const gitlab = entry("gitlab-current");
     const { badge, line } = provenanceSummary(gitlab);
     expect(`${badge} ${line}`).toBe(
-      "Simulated books based on GitLab Inc. filings · as of Oct 25, 2026",
+      "Simulated from public filings based on GitLab Inc. filings · as of Oct 25, 2026",
     );
     expect(line).not.toContain(gitlab.label);
     expect(line).not.toMatch(/published|filed|period ended/i);

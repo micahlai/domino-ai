@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CircleCheck, Eye, Flag, Inbox, Network, TriangleAlert } from "lucide-react";
+import { ArrowRight, CircleCheck, Eye, Flag, Inbox, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { formatDate } from "../../../lib/format";
@@ -889,7 +889,7 @@ function PublicSignals({ signals }: { signals: NonNullable<RiskFeed["signals"]> 
               </ul>
             )}
             <p className="text-xs text-muted-foreground">
-              Apify run {s.runId}
+              Found with Apify
               {s.fetchedAt ? `, ${formatDate(s.fetchedAt.slice(0, 10))}` : ""}
             </p>
           </li>
@@ -911,7 +911,7 @@ function Attention({ header }: { header?: DashboardHeader }) {
   return (
     <section
       aria-label="Needs your attention"
-      className="grid overflow-hidden rounded-lg border bg-card shadow-xs md:grid-cols-2"
+      className="grid overflow-hidden rounded-lg border bg-card shadow-xs"
     >
       <AttentionLink
         href="/field"
@@ -922,13 +922,6 @@ function Attention({ header }: { header?: DashboardHeader }) {
             : `${open} open flag${open === 1 ? "" : "s"} to review`
         }
         body={`${urgent > 0 ? `${urgent} marked urgent by the audit. ` : ""}Review flagged entries in the worker.`}
-      />
-      <AttentionLink
-        href="/field/map"
-        icon={<Network />}
-        title="Brain map"
-        body="See every agent and tool at work"
-        className="border-t md:border-l md:border-t-0"
       />
     </section>
   );
