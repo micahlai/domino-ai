@@ -11,7 +11,7 @@ import {
 } from "@domino/contracts";
 import { engine, rankFixes } from "@domino/engine";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
   type Computation,
   type Inputs,
@@ -30,13 +30,14 @@ import { Cents, parse } from "./parse";
 import { branchRecord, candidateRecord, missing, requireCompany } from "./records";
 
 type Ctx = Pick<MutationCtx, "db">;
+type Reader = Pick<QueryCtx, "db">;
 type BranchRow = Doc<"branches">;
 type Stored = { row: BranchRow; data: Branch };
 
 const decided = (branch: Branch) => branch.status === "approved" || branch.status === "rejected";
 
 /** Latest snapshot, highest model version and every constraint; nothing is invented. */
-export async function loadInputs(ctx: Ctx, companyId: Id<"companies">): Promise<Inputs> {
+export async function loadInputs(ctx: Reader, companyId: Id<"companies">): Promise<Inputs> {
   await requireCompany(ctx, companyId);
   const snapshotRow = await ctx.db
     .query("snapshots")
@@ -74,7 +75,7 @@ function checkLinks({ snapshot, constraints }: Inputs) {
   if (rule) reject("LEGACY_DATA", `Rule ${rule.id} needs the bill it applies to`);
 }
 
-async function companyBranches(ctx: Ctx, companyId: Id<"companies">): Promise<Stored[]> {
+async function companyBranches(ctx: Reader, companyId: Id<"companies">): Promise<Stored[]> {
   const rows = await ctx.db
     .query("branches")
     .withIndex("by_company", (q) => q.eq("companyId", companyId))
@@ -89,7 +90,7 @@ async function companyBranches(ctx: Ctx, companyId: Id<"companies">): Promise<St
   return stored;
 }
 
-async function branchFixes(ctx: Ctx, companyId: Id<"companies">, branchId: string) {
+async function branchFixes(ctx: Reader, companyId: Id<"companies">, branchId: string) {
   const rows = await ctx.db
     .query("fixes")
     .withIndex("by_branch", (q) => q.eq("branchId", branchId))
@@ -98,7 +99,7 @@ async function branchFixes(ctx: Ctx, companyId: Id<"companies">, branchId: strin
 }
 
 /** Proposals already saved on this company's computed futures. */
-async function storedProposals(ctx: Ctx, companyId: Id<"companies">, branches: Stored[]) {
+async function storedProposals(ctx: Reader, companyId: Id<"companies">, branches: Stored[]) {
   const proposals: FixCandidate[] = [];
   for (const branch of branches)
     for (const row of await branchFixes(ctx, companyId, branch.data.id))
@@ -116,7 +117,7 @@ const ORDER = "engine.proposal-order";
  * Reads only this company's order rows (index by_company_and_action), never the whole log: the
  * old filtered scan grew with every ingest and collided with the agents writing log rows.
  */
-async function savedOrder(ctx: Ctx, companyId: Id<"companies">) {
+async function savedOrder(ctx: Reader, companyId: Id<"companies">) {
   const row = await ctx.db
     .query("log")
     .withIndex("by_company_and_action", (q) => q.eq("companyId", companyId).eq("action", ORDER))
@@ -130,7 +131,7 @@ async function savedOrder(ctx: Ctx, companyId: Id<"companies">) {
  * Missing order, missing payloads and conflicting payloads are refused, never guessed.
  */
 async function proposalPool(
-  ctx: Ctx,
+  ctx: Reader,
   companyId: Id<"companies">,
   existing: Stored[],
   explicit: FixCandidate[],
@@ -152,37 +153,144 @@ async function proposalPool(
 export type RecomputeOptions = {
   /** Explicit extra proposals (the demo seed); saved ones are always included. */
   proposals?: FixCandidate[];
-  action: "engine.recompute" | "engine.addEvent";
+  action: RecomputeAction;
   /** Runs on the fresh computation before any write; throwing leaves the database unchanged. */
   check?: (computation: Computation) => void;
 };
+export type RecomputeAction = "engine.recompute" | "engine.addEvent";
 
 /**
- * Load, calculate and publish in one mutation, so readers never see a mix of two runs and a
- * failed run changes nothing. Returns whether anything was written.
+ * A run is split into load (query) -> calculate (action) -> write (mutation), because the
+ * engine alone can exceed Convex's 1 s query/mutation limit on the larger companies. The write
+ * commits only if the rows the load read are byte-identical; `stamp` fingerprints them.
+ */
+export type RecomputeLoad = {
+  inputs: Inputs;
+  pool: FixCandidate[];
+  order: string[] | null;
+  stamp: string;
+};
+export type RecomputePlan = {
+  computation: Computation;
+  /** The useful proposal IDs in pool order: the next engine.proposal-order entry. */
+  nextOrder: string[];
+};
+
+/** Every row a recompute's result depends on: inputs, saved proposals and their order. */
+async function recomputeRows(ctx: Reader, companyId: Id<"companies">) {
+  const snapshot = await ctx.db
+    .query("snapshots")
+    .withIndex("by_company_asOf", (q) => q.eq("companyId", companyId))
+    .order("desc")
+    .first();
+  const model = await ctx.db
+    .query("models")
+    .withIndex("by_company_version", (q) => q.eq("companyId", companyId))
+    .order("desc")
+    .first();
+  const constraints = await ctx.db
+    .query("constraints")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .collect();
+  const branches = await ctx.db
+    .query("branches")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .collect();
+  const fixes = [];
+  for (const branch of branches)
+    fixes.push(...(await branchFixes(ctx, companyId, (branch.data as Branch).id)));
+  const order = await ctx.db
+    .query("log")
+    .withIndex("by_company_and_action", (q) => q.eq("companyId", companyId).eq("action", ORDER))
+    .order("desc")
+    .first();
+  return [snapshot, model, constraints, fixes, order];
+}
+
+/** Convex returns object keys sorted, so equal rows always stringify equally. */
+async function stampOf(rows: unknown): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(rows));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Load: the exact inputs and proposal pool, validated, plus the fingerprint of their rows. */
+export async function loadRecompute(
+  ctx: Reader,
+  companyId: Id<"companies">,
+  proposals: FixCandidate[] = [],
+): Promise<RecomputeLoad> {
+  const inputs = await loadInputs(ctx, companyId);
+  const existing = await companyBranches(ctx, companyId);
+  const { order, pool } = await proposalPool(ctx, companyId, existing, proposals);
+  return { inputs, pool, order, stamp: await stampOf(await recomputeRows(ctx, companyId)) };
+}
+
+/** Calculate: pure engine work, no database. `check` throwing stops the run before any write. */
+export function planRecompute(
+  companyId: Id<"companies">,
+  { inputs, pool }: RecomputeLoad,
+  check?: (computation: Computation) => void,
+): RecomputePlan {
+  const computation = calculate(companyId, inputs, pool);
+  check?.(computation);
+  const useful = new Set([...computation.candidates.values()].flat().map((c) => c.fix.id));
+  return { computation, nextOrder: pool.filter((fix) => useful.has(fix.id)).map((f) => f.id) };
+}
+
+/**
+ * Write: publish only if the loaded rows are unchanged ({ stale: true } otherwise, nothing
+ * written). Readers never see a mix of two runs and a refused run changes nothing.
+ */
+export async function writeRecompute(
+  ctx: MutationCtx,
+  companyId: Id<"companies">,
+  load: Pick<RecomputeLoad, "order" | "stamp">,
+  { computation, nextOrder }: RecomputePlan,
+  action: RecomputeAction,
+): Promise<{ stale: true } | { stale: false; changed: boolean }> {
+  await requireCompany(ctx, companyId);
+  if ((await stampOf(await recomputeRows(ctx, companyId))) !== load.stamp) return { stale: true };
+  const existing = await companyBranches(ctx, companyId);
+  await guardDecisions(ctx, companyId, existing, computation);
+  let changed = await publish(ctx, companyId, existing, computation);
+  if (canonical(nextOrder) !== canonical(load.order ?? [])) {
+    await log(ctx, companyId, ORDER, nextOrder);
+    changed = true;
+  }
+  const base = computation.branches[0];
+  if (changed && base) await log(ctx, companyId, action, [base.id]);
+  return { stale: false, changed };
+}
+
+/**
+ * The whole run in one mutation (seed and tests; small companies only). Production entry
+ * points (engine.ts, ingest) use the same three steps across query/action/mutation instead.
  */
 export async function recomputeCompany(
   ctx: MutationCtx,
   companyId: Id<"companies">,
   options: RecomputeOptions,
 ) {
-  const inputs = await loadInputs(ctx, companyId);
-  const existing = await companyBranches(ctx, companyId);
-  const { order, pool } = await proposalPool(ctx, companyId, existing, options.proposals ?? []);
-  const computation = calculate(companyId, inputs, pool);
-  options.check?.(computation);
-  await guardDecisions(ctx, companyId, existing, computation);
-  let changed = await publish(ctx, companyId, existing, computation);
-  const useful = new Set([...computation.candidates.values()].flat().map((c) => c.fix.id));
-  const nextOrder = pool.filter((fix) => useful.has(fix.id)).map((fix) => fix.id);
-  if (canonical(nextOrder) !== canonical(order ?? [])) {
-    await log(ctx, companyId, ORDER, nextOrder);
-    changed = true;
-  }
-  const base = computation.branches[0];
-  if (changed && base) await log(ctx, companyId, options.action, [base.id]);
-  return { computation, changed };
+  const load = await loadRecompute(ctx, companyId, options.proposals ?? []);
+  const plan = planRecompute(companyId, load, options.check);
+  const result = await writeRecompute(ctx, companyId, load, plan, options.action);
+  if (result.stale) reject("INVALID_DATA", "Inputs changed inside one transaction");
+  return { computation: plan.computation, changed: result.changed };
 }
+
+/** Computation crosses function boundaries as plain values: a Map is not a Convex value. */
+export type WireComputation = Omit<Computation, "candidates"> & {
+  candidates: [string, RankedCandidate[]][];
+};
+export const toWire = (computation: Computation): WireComputation => ({
+  ...computation,
+  candidates: [...computation.candidates],
+});
+export const fromWire = (wire: WireComputation): Computation => ({
+  ...wire,
+  candidates: new Map(wire.candidates),
+});
 
 /**
  * Fixed-snapshot rule: a decided fix branch, its ancestors and the candidate it was decided
@@ -404,32 +512,80 @@ async function log(ctx: Ctx, companyId: Id<"companies">, action: string, refs: s
   });
 }
 
-/** engine.addEvent: identify the exact current risk, then publish the same consistent run. */
+/**
+ * engine.addEvent: identify the exact current risk on the fresh computation, before any write.
+ * `found` is filled by `check`; a risk with no built future is refused, so nothing is saved.
+ */
+export function eventCheck(companyId: Id<"companies">, label: string, changes: Change[]) {
+  const input = parse(ChangeSchema.array().min(1), changes);
+  const found = { riskId: "", branchId: "" };
+  const check = (fresh: Computation) => {
+    const riskId = matchRisk(fresh.risks, label, input).id;
+    const branchId = eventBranchId(companyId, fresh.asOf, [riskId]);
+    if (!fresh.branches.some((b) => b.id === branchId))
+      reject("ENGINE_REJECTED", `No future was built for risk ${riskId}`);
+    found.riskId = riskId;
+    found.branchId = branchId;
+  };
+  return { check, found };
+}
+
+/** engine.addEvent in one mutation (tests); production runs it through the split steps. */
 export async function addEventToCompany(
   ctx: MutationCtx,
   companyId: Id<"companies">,
   label: string,
   changes: Change[],
 ) {
-  const input = parse(ChangeSchema.array().min(1), changes);
-  let riskId = "";
-  const { computation } = await recomputeCompany(ctx, companyId, {
-    action: "engine.addEvent",
-    check: (fresh) => {
-      riskId = matchRisk(fresh.risks, label, input).id;
-    },
-  });
-  const branchId = eventBranchId(companyId, computation.asOf, [riskId]);
-  if (!computation.branches.some((b) => b.id === branchId))
-    reject("ENGINE_REJECTED", `No future was built for risk ${riskId}`);
-  return { riskId, branchId };
+  const { check, found } = eventCheck(companyId, label, changes);
+  await recomputeCompany(ctx, companyId, { action: "engine.addEvent", check });
+  return { ...found };
+}
+
+type RawFix = { data: unknown; gain: unknown };
+
+/** Everything engine.simulateFix reads, validated, plus the fingerprint of those rows. */
+export type SimulateFixLoad = {
+  companyId: Id<"companies">;
+  fixId: string;
+  parent: Branch;
+  /** Root-to-parent ancestors, excluding the parent. */
+  ancestors: Branch[];
+  candidate: { fix: FixCandidate; gain: number };
+  inputs: Inputs;
+  pool: FixCandidate[];
+  /** Saved fix rows under each chain branch, for rebuilding futures nested below the map. */
+  chainFixes: [string, RawFix[]][];
+  storedRisks: unknown[];
+  stamp: string;
+};
+
+/** Rows a simulation depends on beyond a recompute's: the chain and the saved risks. */
+async function simulateRows(ctx: Reader, companyId: Id<"companies">, chainIds: string[]) {
+  const chain = [];
+  for (const id of chainIds)
+    chain.push(
+      await ctx.db
+        .query("branches")
+        .withIndex("by_branchId", (q) => q.eq("branchId", id))
+        .unique(),
+    );
+  const risks = await ctx.db
+    .query("risks")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .collect();
+  return [await recomputeRows(ctx, companyId), chain, risks];
 }
 
 /**
- * engine.simulateFix: score one saved candidate under its parent using the complete
- * root-to-parent chain. Never touches external systems; decided branches are preserved.
+ * Load for engine.simulateFix: the saved candidate under its parent, the complete
+ * root-to-parent chain and the current inputs. Refusals keep the original order.
  */
-export async function simulateFixForBranch(ctx: MutationCtx, branchId: string, fixId: string) {
+export async function loadSimulateFix(
+  ctx: Reader,
+  branchId: string,
+  fixId: string,
+): Promise<SimulateFixLoad> {
   const parent = await branchRecord(ctx, branchId);
   if (!parent) missing("Future not found");
   const companyId = parent.row.companyId;
@@ -440,34 +596,88 @@ export async function simulateFixForBranch(ctx: MutationCtx, branchId: string, f
   if (!candidate || candidate.row.companyId !== companyId) missing("Fix not found for this future");
   const ancestors = await loadAncestors(ctx, companyId, parent);
   const inputs = await loadInputs(ctx, companyId);
+  const existing = await companyBranches(ctx, companyId);
+  const { pool } = await proposalPool(ctx, companyId, existing, []);
+  const chainIds = [...ancestors.map((b) => b.id), parent.data.id];
+  const chainFixes: [string, RawFix[]][] = [];
+  for (const id of chainIds)
+    chainFixes.push([
+      id,
+      (await branchFixes(ctx, companyId, id)).map((row) => ({ data: row.data, gain: row.gain })),
+    ]);
+  const riskRows = await ctx.db
+    .query("risks")
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    .collect();
+  return {
+    companyId,
+    fixId,
+    parent: parent.data,
+    ancestors,
+    candidate: { fix: candidate.fix, gain: candidate.gain },
+    inputs,
+    pool,
+    chainFixes,
+    storedRisks: riskRows.filter((row) => row.asOf === inputs.snapshot.asOf).map((r) => r.data),
+    stamp: await stampOf(await simulateRows(ctx, companyId, chainIds)),
+  };
+}
+
+/**
+ * Calculate for engine.simulateFix: rebuild the current context, refuse a stale chain,
+ * candidate or risk set, then score the candidate under its parent. Pure; no database.
+ */
+export function planSimulateFix(load: SimulateFixLoad): Branch {
+  const { parent, ancestors, candidate, inputs } = load;
   const ancestorChanges = ancestors.flatMap((b) => b.changes);
-  await checkContext(ctx, companyId, inputs, [...ancestors, parent.data], candidate);
-  if (!appliesTo(candidate.fix, parent.data.riskIds ?? []))
+  checkContext(load, [...ancestors, parent]);
+  if (!appliesTo(candidate.fix, parent.riskIds ?? []))
     reject("INVALID_PROPOSAL", "This fix does not target the risks in this future");
   const { snapshot, model, constraints } = inputs;
-  const context = parent.data.parentId === null ? undefined : { ancestorChanges };
-  const branch = parse(
+  const context = parent.parentId === null ? undefined : { ancestorChanges };
+  return parse(
     BranchSchema,
     runEngine("scoreFix", () =>
-      engine.scoreFix(parent.data, candidate.fix, snapshot, model, constraints, context),
+      engine.scoreFix(parent, candidate.fix, snapshot, model, constraints, context),
     ),
   );
+}
+
+/** Write for engine.simulateFix; { stale: true } (nothing written) if any loaded row moved. */
+export async function writeSimulateFix(
+  ctx: MutationCtx,
+  load: Pick<SimulateFixLoad, "companyId" | "fixId" | "parent" | "ancestors" | "stamp">,
+  branch: Branch,
+): Promise<{ stale: true } | { stale: false; branchId: string; changed: boolean }> {
+  const { companyId, fixId } = load;
+  await requireCompany(ctx, companyId);
+  const chainIds = [...load.ancestors.map((b) => b.id), load.parent.id];
+  if ((await stampOf(await simulateRows(ctx, companyId, chainIds))) !== load.stamp)
+    return { stale: true };
   const prior = await foreign(ctx, companyId, branch.id);
   if (prior && decided(prior.data)) {
     if (canonical({ ...branch, status: prior.data.status }) !== canonical(prior.data))
       changedDecision(branch.id);
-    return { branchId: branch.id, changed: false };
+    return { stale: false, branchId: branch.id, changed: false };
   }
   if (prior && canonical(prior.data) === canonical(branch))
-    return { branchId: branch.id, changed: false };
+    return { stale: false, branchId: branch.id, changed: false };
   if (prior) await ctx.db.replace(prior.row._id, branchFields(companyId, branch));
   else await ctx.db.insert("branches", branchFields(companyId, branch));
   await log(ctx, companyId, "engine.simulateFix", [fixId, branch.id]);
-  return { branchId: branch.id, changed: true };
+  return { stale: false, branchId: branch.id, changed: true };
+}
+
+/** engine.simulateFix in one mutation (tests); production runs it through the split steps. */
+export async function simulateFixForBranch(ctx: MutationCtx, branchId: string, fixId: string) {
+  const load = await loadSimulateFix(ctx, branchId, fixId);
+  const result = await writeSimulateFix(ctx, load, planSimulateFix(load));
+  if (result.stale) reject("INVALID_DATA", "Inputs changed inside one transaction");
+  return { branchId: result.branchId, changed: result.changed };
 }
 
 /** Root-to-parent ancestors (excluding the parent), all present, same company, acyclic. */
-async function loadAncestors(ctx: Ctx, companyId: Id<"companies">, parent: Stored) {
+async function loadAncestors(ctx: Reader, companyId: Id<"companies">, parent: Stored) {
   const chain: Branch[] = [];
   const seen = new Set([parent.data.id]);
   let next = parent.data.parentId;
@@ -490,25 +700,19 @@ async function loadAncestors(ctx: Ctx, companyId: Id<"companies">, parent: Store
  * cash, so a forecast check alone would score a new fix beneath an old assessment. Fixes nested
  * below the generated map are rebuilt level by level from their rebuilt parent, never trusted.
  */
-async function checkContext(
-  ctx: Ctx,
-  companyId: Id<"companies">,
-  inputs: Inputs,
-  chain: Branch[],
-  candidate: { fix: FixCandidate; gain: number },
-) {
+function checkContext(load: SimulateFixLoad, chain: Branch[]) {
+  const { companyId, inputs, pool, candidate } = load;
   const stale = () =>
     reject("STALE_FUTURE", "This future is out of date; recompute the forecast first");
-  const existing = await companyBranches(ctx, companyId);
-  const { pool } = await proposalPool(ctx, companyId, existing, []);
   const computation = calculate(companyId, inputs, pool);
   const fresh = nextBranches(computation);
+  const savedFixes = new Map(load.chainFixes);
   let parent: Branch | undefined;
   const before: Change[] = [];
   for (const branch of chain) {
     const next =
       fresh.get(branch.id) ??
-      (parent && (await rebuildNested(ctx, companyId, inputs, parent, before, branch.id)));
+      (parent && rebuildNested(inputs, savedFixes.get(parent.id) ?? [], parent, before, branch.id));
     if (!next || canonical({ ...next, status: branch.status }) !== canonical(branch)) stale();
     if (parent) before.push(...parent.changes);
     parent = next;
@@ -523,30 +727,25 @@ async function checkContext(
     )
       stale();
   } else if (!scoreSaved(inputs, parent, before, candidate)) stale();
-  const rows = await ctx.db
-    .query("risks")
-    .withIndex("by_company", (q) => q.eq("companyId", companyId))
-    .collect();
-  const stored = rows.filter((row) => row.asOf === computation.asOf).map((row) => row.data);
+  const stored = load.storedRisks as { id: string }[];
   if (canonical(byRiskId(stored)) !== canonical(byRiskId(computation.risks))) stale();
 }
 
 /** The one saved candidate under `parent` whose engine branch ID is `branchId`, rebuilt. */
-async function rebuildNested(
-  ctx: Ctx,
-  companyId: Id<"companies">,
+function rebuildNested(
   inputs: Inputs,
+  saved: RawFix[],
   parent: Branch,
   before: Change[],
   branchId: string,
 ) {
-  const matches = (await branchFixes(ctx, companyId, parent.id))
+  const matches = saved
     .map((row) => ({ fix: parse(FixCandidateSchema, row.data), gain: parse(Cents, row.gain) }))
     .filter((c) => `${parent.id}__${c.fix.id}` === branchId);
   if (matches.length > 1) reject("INVALID_DATA", `Future ${branchId} has two saved candidates`);
-  const [saved] = matches;
-  if (!saved || !appliesTo(saved.fix, parent.riskIds ?? [])) return undefined;
-  return scoreSaved(inputs, parent, before, saved);
+  const [match] = matches;
+  if (!match || !appliesTo(match.fix, parent.riskIds ?? [])) return undefined;
+  return scoreSaved(inputs, parent, before, match);
 }
 
 /**

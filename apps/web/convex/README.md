@@ -36,9 +36,12 @@ gain, report and history row comes from `@domino/engine`.
 pnpm --filter @domino/web exec convex run dev/seedComputed:seed
 ```
 
-`engine.recompute`, `engine.addEvent` and `engine.simulateFix` are internal actions that each
-run one transactional internal mutation in `computed.ts` (logic in `lib/computed.ts` and
-`lib/publish.ts`). Computed IDs start with `c_<companyId>_`; `fixes.forBranch` returns those
+`engine.recompute`, `engine.addEvent` and `engine.simulateFix` are internal actions that load
+inputs in an internal query, run the pure engine in the action (it can exceed the 1 s
+query/mutation limit) and write in an internal mutation that commits only if a hash of the
+loaded rows is unchanged; otherwise the cycle reruns, at most 3 times (`lib/engineRun.ts`, logic
+in `lib/computed.ts` and `lib/publish.ts`). The single-mutation versions in `computed.ts` are
+for tests and the demo seed. `node scripts/time-engine.mjs` compares both paths per company. Computed IDs start with `c_<companyId>_`; `fixes.forBranch` returns those
 rows in engine rank order. The order proposals apply in is a separate log entry
 (`engine.proposal-order`, first-seen caller order). `engine.simulateFix` rebuilds the current
 context and refuses a parent whose chain, candidate or risks differ (`STALE_FUTURE`). Decided futures are fixed to their snapshot: a run that would change

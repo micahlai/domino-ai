@@ -25,7 +25,7 @@ import {
   ingestConnected,
 } from "./fieldSources";
 import { storeToolResults, toolArg, toolResult } from "./lib/connectionRows";
-import { computedRefs } from "./lib/refs";
+import { recomputeFresh } from "./lib/engineRun";
 
 /**
  * Field ingestion agent (internal). One run: read every connected tool through the connectors
@@ -547,18 +547,22 @@ export async function runIngest(
 }
 
 /**
- * The recompute is one heavy mutation (a few hundred ms of engine work against Convex's 1 s
- * limit). Under load, with the agents' actions computing beside it, it can time out; that is
- * transient, so it gets one more try after a short pause. Refusals (bad data, decided futures)
- * are not retried.
+ * The recompute runs the engine in this action between a load query and a guarded write
+ * (lib/engineRun.ts), so it no longer races the 1 s mutation limit. A write conflict under
+ * load is still transient, so it gets one more try after a short pause. Refusals (bad data,
+ * decided futures) are not retried.
  */
 async function recomputeWithRetry(ctx: ActionCtx, companyId: Id<"companies">) {
+  const run = async () => {
+    const { computation, changed } = await recomputeFresh(ctx, companyId, "engine.recompute");
+    return { asOf: computation.asOf, changed };
+  };
   try {
-    return await ctx.runMutation(computedRefs.recompute, { companyId });
+    return await run();
   } catch (error) {
-    if (!/timed out|conflict|retry/i.test(message(error))) throw error;
+    if (!/timed out|conflict|retry|kept changing/i.test(message(error))) throw error;
     await new Promise((resolve) => setTimeout(resolve, RECOMPUTE_RETRY_MS));
-    return ctx.runMutation(computedRefs.recompute, { companyId });
+    return run();
   }
 }
 const RECOMPUTE_RETRY_MS = 750;
