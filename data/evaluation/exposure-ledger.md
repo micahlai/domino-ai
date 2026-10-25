@@ -23,7 +23,7 @@ Limits: this checks the tracked repo only. It cannot rule out prior human or mod
 
 ## Sealed reads
 
-Every read of data/evaluation/sealed/ or withheld/ (including hashing) is appended to read-ledger.jsonl (time, reader, file, purpose). Through this commit only the E0 custodian read sealed files, to verify identity, filing metadata, coverage and build slices/labels. No test amounts, labels or errors were returned to the lead or any model worker. Isolation is procedural (shared filesystem), not an enforced security boundary.
+Since the round-1 audit repair (commit 217bd44), every read of data/evaluation/sealed/ or withheld/ by build.py, including hashing, is appended to read-ledger.jsonl (time, reader, file, purpose). Earlier build runs hashed sealed raw, slice and label files without logging; read-ledger.jsonl carries a retrospective entry for those reads with timestamps and counts marked unknown. Manual custodian reads were logged by hand. Through this commit only the E0 custodian read sealed files, to verify identity, filing metadata, coverage and build slices/labels. No test amounts, labels or errors were returned to the lead or any model worker. Isolation is procedural (shared filesystem), not an enforced security boundary.
 
 ## Network
 

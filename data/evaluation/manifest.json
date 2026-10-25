@@ -50,7 +50,7 @@
   "sealed/labels.json": "e41452358e8251d5850200804c97a6541665f91a4e66171d16bdfe7c9693b938",
   "withheld/labels-freshworks.json": "ab96dff34b3ac6ade50778d15e37e8f859634ea04aa7e66a15e1eb1d4af2f3ff"
  },
- "method": "inputs pinned to the first original 10-Q/10-K accession for each period, no substitution; origin acceptance strictly inside target quarter (boundary days excluded); visibility = acceptanceDateTime <= origin; USD us-gaap only",
+ "method": "inputs pinned to the first original 10-Q/10-K accession for each period (filing chronology), no substitution; origin acceptance strictly inside target quarter (boundary days excluded); visibility = acceptanceDateTime <= origin; USD us-gaap only",
  "pairs": [
   {
    "company": "tenable",

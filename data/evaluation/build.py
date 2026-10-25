@@ -51,9 +51,10 @@ def inside_quarter(accepted, y, q):
 
 
 def first_original(filings, period_end):
-    """First original 10-Q/10-K for the period; filings without an acceptance instant sort last."""
+    """First original 10-Q/10-K for the period by filing chronology (filed date, then accession number).
+    Acceptance time plays no part, so an unverified first filing is never skipped for a later one."""
     c = [f for f in filings if f["form"] in ORIGINAL_FORMS and f["report"] == period_end]
-    return min(c, key=lambda f: f["accepted"] or "9") if c else None
+    return min(c, key=lambda f: (f["filed"], f["accn"])) if c else None
 
 
 def pinned(rows, concept, end, start, accn):
@@ -79,8 +80,12 @@ def origin_reasons(filings, rows, y, q):
     if oq > 1:  # candidate single-quarter flows need the compatible preceding YTD from its own original filing
         p_end = qend(oy, oq - 1)
         pred = first_original(filings, p_end)
-        if not pred or not pred["accepted"] or pred["accepted"] > origin["accepted"]:
+        if not pred:
             reasons.append("predecessor_original_filing_unavailable")
+        elif not pred["accepted"]:
+            reasons.append("predecessor_acceptance_missing")
+        elif pred["accepted"] > origin["accepted"]:
+            reasons.append("predecessor_accepted_after_origin")
         else:
             needs += [(OCF, p_end, ytd, pred, "predecessor_ytd_ocf"), (ICF, p_end, ytd, pred, "predecessor_ytd_icf")]
     for concept, end, start, filing, role in needs:
@@ -127,8 +132,8 @@ def build_company(name, cik, pkg, targets):
     subs = load(base / f"raw/{name}-submissions.json", "filing acceptance metadata for origin/label selection")
     facts = load(base / f"raw/{name}-companyfacts.json", "build origin slices, labels and coverage reasons")
     r = subs["filings"]["recent"]
-    filings = [dict(form=f, report=rd, accepted=a or None, accn=n)
-               for f, rd, a, n in zip(r["form"], r["reportDate"], r["acceptanceDateTime"], r["accessionNumber"])]
+    filings = [dict(form=f, report=rd, filed=fd, accepted=a or None, accn=n) for f, rd, fd, a, n in
+               zip(r["form"], r["reportDate"], r["filingDate"], r["acceptanceDateTime"], r["accessionNumber"])]
     accepted = {f["accn"]: f["accepted"] for f in filings}
     rows, non_usd = [], 0
     for concept, body in facts.get("facts", {}).get("us-gaap", {}).items():
@@ -139,7 +144,15 @@ def build_company(name, cik, pkg, targets):
             for it in items:
                 rows.append({"concept": concept, **{k: it.get(k) for k in ("start", "end", "val", "accn", "form", "fy", "fp", "filed")},
                              "acceptedAt": accepted.get(it["accn"])})
+    pairs, labels = build_pairs(name, base, filings, rows, targets)
+    ident = {"name": subs["name"], "cik": cik, "tickers": subs["tickers"], "fiscalYearEnd": subs["fiscalYearEnd"],
+             "package": pkg, "nonUsdRequiredRows": non_usd,
+             "rowsWithoutAcceptance": sum(1 for x in rows if not x["acceptedAt"])}
+    return ident, pairs, labels, base
 
+
+def build_pairs(name, base, filings, rows, targets):
+    """Pairs (safe metadata) and labels (custody only); writes origin slices under base/slices."""
     pairs, labels = [], []
     for (y, q), role in targets.items():
         t_end = qend(y, q)
@@ -170,15 +183,12 @@ def build_company(name, cik, pkg, targets):
                       "targetAccession": target and target["accn"], "targetForm": target and target["form"],
                       "targetAcceptedAt": target and target["accepted"],
                       "originSliceSha256": slice_sha, "eligible": not reasons, "missing": sorted(set(reasons))})
-    ident = {"name": subs["name"], "cik": cik, "tickers": subs["tickers"], "fiscalYearEnd": subs["fiscalYearEnd"],
-             "package": pkg, "nonUsdRequiredRows": non_usd,
-             "rowsWithoutAcceptance": sum(1 for x in rows if not x["acceptedAt"])}
-    return ident, pairs, labels, base
+    return pairs, labels
 
 
 def main():
     manifest = {"protocol": {"path": "kb/spec/forecast-evaluation-protocol-v1.md", "sha256": sha(PROTOCOL)},
-                "method": "inputs pinned to the first original 10-Q/10-K accession for each period, no substitution; "
+                "method": "inputs pinned to the first original 10-Q/10-K accession for each period (filing chronology), no substitution; "
                           "origin acceptance strictly inside target quarter (boundary days excluded); "
                           "visibility = acceptanceDateTime <= origin; USD us-gaap only",
                 "companies": {}, "pairs": [], "raw": {}, "labels": {}}
