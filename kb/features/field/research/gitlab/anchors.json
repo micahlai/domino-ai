@@ -1,0 +1,84 @@
+{
+  "caseId": "gitlab-inspired-2023-q3",
+  "fictionalCompanyType": "developer platform SaaS",
+  "referenceCompany": "GitLab Inc.",
+  "currency": "USD",
+  "reportedUnit": "USD thousands",
+  "reportedValueEncoding": "Strings preserve filing presentation: parentheses indicate negative values; commas are digit separators.",
+  "demoPeriod": { "start": "2023-08-01", "end": "2023-10-31" },
+  "sources": {
+    "q3": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023040671/gtlb-20231031.htm",
+      "indexUrl": "https://www.sec.gov/Archives/edgar/data/1653482/0001628280-23-040671-index.htm",
+      "form": "10-Q",
+      "periodEnd": "2023-10-31",
+      "filingDate": "2023-12-05",
+      "acceptedAt": "2023-12-04 19:13:35"
+    },
+    "q2": {
+      "url": "https://www.sec.gov/Archives/edgar/data/1653482/000162828023031433/gtlb-20230731.htm",
+      "indexUrl": "https://www.sec.gov/Archives/edgar/data/1653482/0001628280-23-031433-index.htm",
+      "form": "10-Q",
+      "periodEnd": "2023-07-31",
+      "filingDate": "2023-09-06",
+      "acceptedAt": "2023-09-05 19:16:30"
+    }
+  },
+  "reported": {
+    "cashOpeningQuarter": { "value": "273,225", "unit": "USD thousands", "asOf": "2023-07-31", "source": "q2", "section": "Condensed Consolidated Balance Sheets", "line": "Cash and cash equivalents" },
+    "cashClosingQuarter": { "value": "285,309", "unit": "USD thousands", "asOf": "2023-10-31", "source": "q3", "section": "Condensed Consolidated Balance Sheets", "line": "Cash and cash equivalents" },
+    "cashComparativeFiscalOpening": { "value": "295,402", "unit": "USD thousands", "asOf": "2023-01-31", "source": "q3", "section": "Condensed Consolidated Balance Sheets", "line": "Cash and cash equivalents" },
+    "shortTermInvestmentsClosing": { "value": "704,325", "unit": "USD thousands", "asOf": "2023-10-31", "source": "q3", "section": "Condensed Consolidated Balance Sheets", "line": "Short-term investments", "note": "Excluded from cash and cash equivalents." },
+    "quarterIncome": {
+      "periodStart": "2023-08-01",
+      "periodEnd": "2023-10-31",
+      "periodLabel": "Three months ended October 31, 2023",
+      "unit": "USD thousands",
+      "source": "q3",
+      "section": "Condensed Consolidated Statements of Operations",
+      "lines": {
+        "subscriptionRevenue": "130,993",
+        "licenseRevenue": "18,675",
+        "totalRevenue": "149,668",
+        "subscriptionCostOfRevenue": "11,559",
+        "licenseCostOfRevenue": "3,525",
+        "totalCostOfRevenue": "15,084",
+        "salesAndMarketing": "86,978",
+        "researchAndDevelopment": "49,058",
+        "generalAndAdministrative": "38,815",
+        "totalOperatingExpenses": "174,851",
+        "operatingLoss": "(40,267)",
+        "incomeTaxProvision": "256,788",
+        "netLoss": "(286,355)"
+      }
+    },
+    "quarterStockBasedCompensation": { "value": "41,334", "unit": "USD thousands", "periodStart": "2023-08-01", "periodEnd": "2023-10-31", "source": "q3", "section": "Note 10, Equity; Stock-Based Compensation Expense", "line": "Total stock-based compensation expense", "note": "Noncash expense; do not map to payroll disbursement." },
+    "cashFlowNineMonths": {
+      "periodStart": "2023-02-01", "periodEnd": "2023-10-31", "periodLabel": "Nine months ended October 31, 2023", "unit": "USD thousands", "source": "q3", "section": "Condensed Consolidated Statements of Cash Flows",
+      "lines": { "operating": "10,187", "investing": "(50,466)", "financing": "30,243", "foreignExchangeEffect": "(2,557)", "netCashChange": "(12,593)", "purchasesOfShortTermInvestments": "(573,676)", "maturitiesOfShortTermInvestments": "526,979", "propertyAndEquipmentPurchases": "(1,269)", "cashTaxesPaid": "6,015" }
+    },
+    "cashFlowSixMonths": {
+      "periodStart": "2023-02-01", "periodEnd": "2023-07-31", "periodLabel": "Six months ended July 31, 2023", "unit": "USD thousands", "source": "q2", "section": "Condensed Consolidated Statements of Cash Flows",
+      "lines": { "operating": "16,148", "investing": "(65,045)", "financing": "25,528", "foreignExchangeEffect": "(1,308)", "netCashChange": "(24,677)", "purchasesOfShortTermInvestments": "(334,996)", "maturitiesOfShortTermInvestments": "272,984", "propertyAndEquipmentPurchases": "(533)", "cashTaxesPaid": "4,187" }
+    }
+  },
+  "quarterCashFlowStatus": "Not directly reported. Derive each three-month component in deterministic code from nine-month less six-month reported values; reconcile to reported July 31 and October 31 cash and equivalents.",
+  "syntheticAssumptions": {
+    "status": "invented for a fictional demo; not reported GitLab operations",
+    "customerArchetypes": [
+      { "type": "regulated enterprise development team", "allocationWeight": 55, "billing": "annual renewal", "receiptLagDays": 45 },
+      { "type": "midmarket engineering team", "allocationWeight": 30, "billing": "quarterly in advance", "receiptLagDays": 30 },
+      { "type": "small self-serve team", "allocationWeight": 15, "billing": "monthly", "receiptLagDaysRange": [2, 4] }
+    ],
+    "vendorArchetypes": [ "cloud hosting and observability", "payment processing", "developer tooling", "sales programs", "general overhead" ],
+    "vendorTiming": { "hosting": "monthly invoice, net 30", "developerTooling": "monthly or annual renewal", "salesPrograms": "around campaign dates" },
+    "payroll": { "cadence": "15th and final day of each month", "groups": [ "engineering", "sales", "customer support", "operations" ], "benefitsAndEmployerTaxes": "follow payroll" },
+    "generationRules": [
+      "Generate no real customer, vendor, or individual names.",
+      "Keep accrual revenue and expenses distinct from cash receipts and payments.",
+      "Use integer-cent arithmetic to derive any quarter cash-flow amounts from the two reported year-to-date statements and reconcile both reported cash endpoints.",
+      "Treat stock compensation as noncash and do not convert the quarter tax provision into an assumed cash tax payment.",
+      "Separate investment transfers, financing, and foreign exchange from operating transactions."
+    ]
+  }
+}
