@@ -61,6 +61,19 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "engine.scorefix": { label: "Score a fix", category: "forecast" },
   "engine.scanrisks": { label: "Scan for risks", category: "forecast" },
   "convex.analystruns": { label: "Save analyst run", category: "other" },
+  // Audit swarm checks and merge (convex/fieldAudit.ts).
+  "engine.audit.duplicates": { label: "Find duplicates", category: "audit" },
+  "engine.audit.crosstooltieout": { label: "Tie out tools and bank", category: "audit" },
+  "engine.audit.amounts": { label: "Check amounts", category: "audit" },
+  "engine.audit.timing": { label: "Check timing", category: "audit" },
+  "engine.audit.overduecustomers": { label: "Find overdue customers", category: "audit" },
+  "engine.audit.missingexpected": { label: "Find missing items", category: "audit" },
+  "engine.audit.billingends": { label: "Find ending billing", category: "audit" },
+  "engine.mergeauditfindings": { label: "Merge checks", category: "audit" },
+  // Advisor swarm (convex/fieldAdvisor.ts).
+  "engine.advisefix": { label: "Score a fix", category: "forecast" },
+  "convex.suggestions": { label: "Save suggestions", category: "other" },
+  "creao.recommendfix": { label: "CREAO: recommend a fix", category: "other" },
   // Real model calls (convex/fieldAi.ts, convex/fieldAnalyst.ts).
   "claude.explainflags": { label: "Claude: explain flags", category: "audit" },
   "claude.summarizescenarios": { label: "Claude: summarize scenarios", category: "other" },

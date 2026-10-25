@@ -126,6 +126,8 @@ export const fieldTables = {
     paceMs: v.number(),
     children: v.number(),
     reported: v.number(),
+    /** Forecasters started so far; the rest wait for a free slot (lib/swarm.ts SWARM_LIMIT). */
+    started: v.optional(v.number()),
     startedAt: v.string(),
     finishedAt: v.optional(v.string()),
     summary: v.optional(v.string()),
@@ -176,6 +178,7 @@ export const fieldTables = {
       v.literal("analyst"),
       v.literal("research"),
       v.literal("coordinator"),
+      v.literal("advisor"),
     ),
     provider: v.union(v.literal("claude"), v.literal("creao")),
     /** Snapshot version this call belongs to, as "v3". */
@@ -269,6 +272,17 @@ export const fieldTables = {
       v.null(),
     ),
     lastError: v.union(v.string(), v.null()),
+    /** Durable post-commit work. A newer snapshot waits until this version is audited and recomputed. */
+    auditPending: v.optional(
+      v.object({
+        snapshotId: v.id("snapshots"),
+        previousId: v.optional(v.id("snapshots")),
+        version: v.number(),
+        tieOut: v.array(v.object({ name: v.string(), ref: v.string(), detail: v.string() })),
+        phase: v.union(v.literal("audit"), v.literal("recompute")),
+        newFindings: v.number(),
+      }),
+    ),
     /** Records per snapshot list in the latest version, so status never loads a snapshot. */
     recordCounts: v.union(v.record(v.string(), v.number()), v.null()),
   }).index("by_companyId", ["companyId"]),
@@ -342,6 +356,91 @@ export const fieldTables = {
   })
     .index("by_companyId_and_findingId", ["companyId", "findingId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
+  // Toolbox (fieldTools.ts): outside tools an agent added for this company, once each. Seeded
+  // with the Apify Google Search Results Scraper; others are found by searching the Apify Store
+  // (free listing) when an agent needs a capability the toolbox lacks. Runs stay capped
+  // (fieldApify.ts); adding a tool runs nothing.
+  tools: defineTable({
+    companyId,
+    provider: v.literal("apify"),
+    /** What the tool is for, e.g. "web_search", "website_check". */
+    capability: v.string(),
+    /** owner/name, e.g. "apify/website-content-crawler". */
+    actorId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    url: v.optional(v.string()),
+    pricing: v.optional(v.string()),
+    addedAt: v.string(),
+    /** Agent id that needed it ("research#1"). */
+    addedBy: v.string(),
+    reason: v.string(),
+    seed: v.boolean(),
+    /** Domino can build this actor's input; other tools are kept but not run. */
+    runnable: v.boolean(),
+    /** Store results considered when it was picked (0 for the seed). */
+    considered: v.number(),
+  })
+    .index("by_companyId_and_capability", ["companyId", "capability"])
+    .index("by_companyId_and_actorId", ["companyId", "actorId"]),
+  // Advisor suggestions (fieldAdvisor.ts, fieldSuggestions.ts): one row per scenario and fix
+  // kind, refreshed while open. Engine effect only; CREAO marks one recommended. Accept or
+  // decline records a decision; Domino never moves money.
+  suggestions: defineTable({
+    companyId,
+    /** `${scenarioId}:${fixKind}`, stable across runs. */
+    suggestionId: v.string(),
+    runId: v.string(),
+    snapshotVersion: v.number(),
+    scenarioId: v.string(),
+    scenarioTitle: v.string(),
+    agentId: v.string(),
+    fix: v.object({
+      id: v.string(),
+      kind: v.union(
+        v.literal("credit_line_draw"),
+        v.literal("delay_bill"),
+        v.literal("accelerate_collections"),
+        v.literal("defer_hires"),
+      ),
+      label: v.string(),
+      costNote: v.string(),
+      risk: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+      changes: v.any(),
+    }),
+    effect: v.object({
+      lowPoint: v.number(),
+      lowWeekStart: v.string(),
+      survives: v.boolean(),
+      gain: v.number(),
+      scenarioLow: v.number(),
+      lenderMinimum: v.number(),
+      breaksAt: v.optional(v.string()),
+      brokenConstraintId: v.optional(v.string()),
+    }),
+    /** Engine order within its scenario (0 = first). */
+    rank: v.number(),
+    recommended: v.boolean(),
+    recommendation: v.optional(
+      v.object({
+        text: v.string(),
+        provider: v.literal("creao"),
+        remoteRunId: v.string(),
+        at: v.string(),
+      }),
+    ),
+    status: v.union(v.literal("open"), v.literal("accepted"), v.literal("declined")),
+    decidedBy: v.optional(v.string()),
+    decidedAt: v.optional(v.string()),
+    note: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_companyId_and_suggestionId", ["companyId", "suggestionId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_companyId_and_updatedAt", ["companyId", "updatedAt"])
+    .index("by_companyId_and_status_and_updatedAt", ["companyId", "status", "updatedAt"])
+    .index("by_companyId_and_runId", ["companyId", "runId"]),
   // Connected tools (connections.ts): mock sign-in per tool, sync position and last counts.
   // No credentials are stored: the vendor APIs are in-process mocks.
   connections: defineTable({

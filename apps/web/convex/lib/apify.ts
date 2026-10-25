@@ -41,6 +41,16 @@ export const APIFY_LIMITS = {
 } as const;
 
 export const APIFY_TOKEN_ENV = "APIFY_TOKEN";
+
+/**
+ * Live runs per UTC day: APIFY_LIMITS.runsPerDay, or FIELD_APIFY_RUNS_PER_DAY when it is a
+ * whole number below that (an operator can lower the cap, never raise it).
+ */
+export function apifyDailyCap(env: Record<string, string | undefined> = process.env): number {
+  const raw = env.FIELD_APIFY_RUNS_PER_DAY?.trim();
+  const n = raw && /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  return n >= 0 && n < APIFY_LIMITS.runsPerDay ? n : APIFY_LIMITS.runsPerDay;
+}
 const API = "https://api.apify.com/v2";
 
 export type SignalKind =
@@ -292,14 +302,16 @@ const runOf = (body: unknown): RunData => {
 };
 
 /**
- * One actor run for one counterparty: start (waits up to 60 s), at most `polls` more waits of
- * 60 s, then the dataset items. A run that is still going is aborted and reported as timeout.
+ * One run of any actor: start (waits up to 60 s), at most `polls` more waits of 60 s, then up
+ * to `limit` dataset items and the settled cost. A run that is still going is aborted and
+ * reported as timeout. The per-run spending cap and timeout always apply.
  */
-export async function runSignalSearch(
+export async function runActor(
   token: string,
-  name: string,
-  opts: { fetch?: Fetch; polls?: number } = {},
-): Promise<ActorRun> {
+  path: string,
+  input: unknown,
+  opts: { fetch?: Fetch; polls?: number; limit?: number } = {},
+): Promise<{ remoteRunId: string; datasetId: string; items: unknown; usageUsd?: number }> {
   const fetchImpl: Fetch = opts.fetch ?? ((input, init) => fetch(input, init));
   if (!token.trim()) throw new ApifyError("config");
   const params = new URLSearchParams({
@@ -308,9 +320,9 @@ export async function runSignalSearch(
     maxTotalChargeUsd: String(APIFY_LIMITS.maxTotalChargeUsd),
   });
   let run = runOf(
-    await call(fetchImpl, token, `/acts/${APIFY_ACTOR.path}/runs?${params}`, {
+    await call(fetchImpl, token, `/acts/${path}/runs?${params}`, {
       method: "POST",
-      body: JSON.stringify(actorInput(name)),
+      body: JSON.stringify(input),
     }),
   );
   const id = run.id as string;
@@ -327,16 +339,10 @@ export async function runSignalSearch(
   const items = await call(
     fetchImpl,
     token,
-    `/datasets/${datasetId}/items?clean=true&format=json&limit=5`,
+    `/datasets/${datasetId}/items?clean=true&format=json&limit=${opts.limit ?? 5}`,
   ).catch((e: unknown) => {
     throw e instanceof ApifyError ? new ApifyError(e.category, id) : new ApifyError("http", id);
   });
-  let parsed: ReturnType<typeof parseSearchItems>;
-  try {
-    parsed = parseSearchItems(items, name);
-  } catch {
-    throw new ApifyError("parse", id);
-  }
   // Charges settle just after the run finishes, so read the final cost once more (free call).
   const settled = await call(fetchImpl, token, `/actor-runs/${id}`)
     .then(runOf)
@@ -345,9 +351,30 @@ export async function runSignalSearch(
   return {
     remoteRunId: id,
     datasetId,
+    items,
+    ...(typeof run.usageTotalUsd === "number" && { usageUsd: run.usageTotalUsd }),
+  };
+}
+
+/** One Google Search Results Scraper run for one counterparty, parsed into signals. */
+export async function runSignalSearch(
+  token: string,
+  name: string,
+  opts: { fetch?: Fetch; polls?: number } = {},
+): Promise<ActorRun> {
+  const run = await runActor(token, APIFY_ACTOR.path, actorInput(name), opts);
+  let parsed: ReturnType<typeof parseSearchItems>;
+  try {
+    parsed = parseSearchItems(run.items, name);
+  } catch {
+    throw new ApifyError("parse", run.remoteRunId);
+  }
+  return {
+    remoteRunId: run.remoteRunId,
+    datasetId: run.datasetId,
     status: "SUCCEEDED",
     ...parsed,
-    ...(typeof run.usageTotalUsd === "number" && { usageUsd: run.usageTotalUsd }),
+    ...(run.usageUsd !== undefined && { usageUsd: run.usageUsd }),
   };
 }
 

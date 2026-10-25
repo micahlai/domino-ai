@@ -41,6 +41,8 @@ export interface Pull {
 export interface TieOut {
   checked: number;
   mismatches: string[];
+  /** The failed checks with what disagreed, for the audit swarm's tie-out checker. */
+  failed: { name: string; ref: string; detail: string }[];
 }
 
 export interface Ingested {
@@ -180,6 +182,7 @@ export async function ingestConnected(args: {
     tieOut: {
       checked: r.checks.length,
       mismatches: r.checks.filter((c) => !c.ok).map((c) => c.ref),
+      failed: r.checks.filter((c) => !c.ok).map(({ name, ref, detail }) => ({ name, ref, detail })),
     },
     results,
     bankFallback,

@@ -38,19 +38,21 @@ import type { JsonSchema } from "./schemas";
  * caller can log them and send one repair run (`repair` next to `data`).
  */
 
-export type FieldCreaoRole = "explain" | "summary" | "coordinator" | "research";
+export type FieldCreaoRole = "explain" | "summary" | "coordinator" | "research" | "advisor";
 
 const PROFILE_NAME: Record<FieldCreaoRole, string> = {
   explain: "field_explain",
   summary: "field_summary",
   coordinator: "field_coordinator",
   research: "field_counterparty",
+  advisor: "field_advisor",
 };
 const TASK: Record<FieldCreaoRole, string> = {
   explain: "fieldExplainFlags",
   summary: "fieldScenarioSummary",
   coordinator: "fieldCoordinatorPlan",
   research: "fieldCounterpartyRisk",
+  advisor: "fieldRecommendFix",
 };
 
 const CREAO_SHARED_RULES = [
@@ -83,6 +85,13 @@ export const fieldCreaoRules: Record<FieldCreaoRole, readonly string[]> = {
     "Follow the shape of outputSchema.examples[0] but choose your own actions and reasons. reason: at most 200 characters. summary: one sentence, at most 240 characters.",
   ],
   research: counterpartyRules,
+  advisor: [
+    ...CREAO_SHARED_RULES,
+    "Task: a stress scenario takes the company's usable cash below the lender's minimum. Advisor agents scored candidate fixes with the engine; their results are in data.options. Recommend exactly one fix for the finance lead to consider first and say why. A person decides; never promise an outcome.",
+    "Prefer a fix that survives (stays above the lender's minimum) with lower risk; weigh the cost note. fixId must be one of data.options[].fixId, exactly as written.",
+    "The recommendation references the fix by id only: write no money amounts in rationale. Any amount in rationale is removed before anyone sees it.",
+    "rationale: one or two sentences, at most 300 characters.",
+  ],
 };
 
 const outputFormat = (keys: string) =>
@@ -93,6 +102,7 @@ export const fieldCreaoOutputFormat: Record<FieldCreaoRole, string> = {
   summary: outputFormat('"recommendation", "rationale", "citedScenarios"'),
   coordinator: outputFormat('"summary", "actions"'),
   research: counterpartyOutputFormat,
+  advisor: outputFormat('"fixId", "rationale"'),
 };
 
 /**
@@ -509,5 +519,91 @@ export function coordinatorCreaoJob(input: CoordinatorInput) {
     outputSchema: coordinatorOutputSchema(input),
     data: input,
     check: (json: unknown) => checkCoordinatorPlan(input, json),
+  } satisfies FieldCreaoJob<unknown>;
+}
+
+// ---------------------------------------------------------------- Advisor
+
+/** What the fix recommender sees: engine-computed, engine-formatted numbers only. */
+export type AdvisorInput = {
+  company: string;
+  asOf: string;
+  snapshotVersion: number;
+  scenario: {
+    id: string;
+    title: string;
+    lowPoint: string;
+    lenderMinimum: string;
+    breaksWeek: number | null;
+  };
+  options: {
+    fixId: string;
+    label: string;
+    costNote: string;
+    risk: "low" | "medium" | "high";
+    lowPointWithFix: string;
+    survives: boolean;
+    gainVsScenario: string;
+  }[];
+};
+
+export type AdvisorPick = { fixId: string; rationale: string };
+
+const MAX_RATIONALE = 300;
+const pickSchema = z.object({
+  fixId: z.string().trim().min(1),
+  rationale: z.string().trim().min(1).max(2_000),
+});
+
+export function advisorOutputSchema(input: AdvisorInput): JsonSchema {
+  const ids = input.options.map((o) => o.fixId);
+  return {
+    type: "object",
+    description: `fixId is one of: ${ids.join(", ")}.`,
+    properties: {
+      fixId: { type: "string", enum: ids, description: "One of data.options[].fixId" },
+      rationale: {
+        type: "string",
+        description: "One or two sentences, at most 300 characters, no money amounts",
+      },
+    },
+    required: ["fixId", "rationale"],
+    additionalProperties: false,
+    examples: [{ fixId: ids[0] ?? "", rationale: "Why a person should look at this fix first." }],
+  };
+}
+
+/** Validates a recommendation: a known fix id, and rationale text with new amounts removed. */
+export function checkAdvisorPick(input: AdvisorInput, json: unknown): Checked<AdvisorPick> {
+  const inner =
+    json && typeof json === "object" && !Array.isArray(json) && !("fixId" in json)
+      ? ((json as Record<string, unknown>).result ?? json)
+      : json;
+  const parsed = pickSchema.safeParse(inner);
+  if (!parsed.success) return { ok: false, issues: zodIssues(parsed.error) };
+  const ids = input.options.map((o) => o.fixId);
+  if (!ids.includes(parsed.data.fixId))
+    return {
+      ok: false,
+      issues: [
+        `fixId: unknown id "${clipText(parsed.data.fixId, 40)}"; use one of ${ids.join(", ")}`,
+      ],
+    };
+  return {
+    ok: true,
+    value: {
+      fixId: parsed.data.fixId,
+      rationale: clip(redactNewMoney(parsed.data.rationale, JSON.stringify(input)), MAX_RATIONALE),
+    },
+  };
+}
+
+export function advisorCreaoJob(input: AdvisorInput) {
+  if (input.options.length === 0) throw new Error("An advisor job needs at least one option");
+  return {
+    role: "advisor",
+    outputSchema: advisorOutputSchema(input),
+    data: input,
+    check: (json: unknown) => checkAdvisorPick(input, json),
   } satisfies FieldCreaoJob<unknown>;
 }

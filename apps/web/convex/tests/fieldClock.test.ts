@@ -25,7 +25,7 @@ async function drain(t: T, rounds = 1) {
 
 async function company(t: T, profile: "kestrel" | "kestrel-crunch") {
   const { companyId } = await t.mutation(api.field.setup, { profile });
-  await drain(t, 20); // first ingest and its analyst run
+  await drain(t, 40); // first ingest and its analyst run
   return companyId;
 }
 
@@ -38,7 +38,7 @@ async function playTo(t: T, companyId: Id<"companies">, day: number) {
     await drain(t);
   }
   await t.mutation(api.fieldClock.pause, { companyId });
-  await drain(t, 20); // let the agents the last days started finish
+  await drain(t, 40); // let the agents the last days started finish
 }
 
 async function rows(t: T, companyId: Id<"companies">) {
@@ -145,7 +145,7 @@ describe("simulated clock", () => {
     const companyId = await company(t, "kestrel-crunch");
     const jumped = await t.mutation(api.fieldClock.jump, { companyId });
     expect(jumped).toEqual({ day: 8, jumped: 8 });
-    await drain(t, 20);
+    await drain(t, 40);
     const before = await t.query(api.fieldClock.status, { companyId });
     expect(before?.nextEvent).toMatchObject({ day: 9, inDays: 1 });
     await playTo(t, companyId, 9);

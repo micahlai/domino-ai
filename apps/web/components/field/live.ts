@@ -72,6 +72,19 @@ const AGENT_NAME: Record<string, string> = {
   forecaster: "Forecaster",
   research: "Research agent",
   "analyst.loop": "Auto-run loop",
+  // Audit swarm (convex/fieldAudit.ts): checkers under the Audit agent ("field.audit").
+  "audit.duplicates": "Duplicates check",
+  "audit.crossToolTieOut": "Tie-out check",
+  "audit.amounts": "Amounts check",
+  "audit.timing": "Timing check",
+  "audit.overdueCustomers": "Overdue customers check",
+  "audit.missingExpected": "Missing items check",
+  "audit.billingEnds": "Billing ends check",
+  // Advisor swarm (convex/fieldAdvisor.ts): one advisor per candidate fix, under the Analyst.
+  "advisor.credit_line_draw": "Credit line advisor",
+  "advisor.delay_bill": "Bill timing advisor",
+  "advisor.accelerate_collections": "Collections advisor",
+  "advisor.defer_hires": "Hiring advisor",
 };
 
 /**

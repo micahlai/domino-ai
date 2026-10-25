@@ -7,7 +7,8 @@
  *
  * Cost control, enforced in `reserve` (a mutation, so concurrent runs cannot both pass):
  *   at most APIFY_LIMITS.runsPerAnalystRun live runs per analyst run (one ingest),
- *   at most APIFY_LIMITS.runsPerDay live runs per UTC day in total,
+ *   at most APIFY_LIMITS.runsPerDay live runs per UTC day in total (FIELD_APIFY_RUNS_PER_DAY may
+ *   lower it), toolbox actors included (fieldTools.ts),
  *   a counterparty searched in the last 24 h is answered from the apifyRuns row (cache).
  * Without APIFY_TOKEN nothing runs and the log says "Apify not configured"; there is no canned
  * stand-in anywhere.
@@ -38,6 +39,7 @@ import {
   APIFY_TOKEN_ENV,
   ApifyError,
   type Signal,
+  apifyDailyCap,
   isGenericName,
   runSignalSearch,
   signalKey,
@@ -89,7 +91,7 @@ async function usage(ctx: QueryCtx, now: number, analystRunId: string | undefine
     await ctx.db
       .query("apifyRuns")
       .withIndex("by_day", (q) => q.eq("day", dayOf(now)))
-      .take(APIFY_LIMITS.runsPerDay + 1)
+      .take(apifyDailyCap() + 1)
   ).length;
   const usedThisRun = analystRunId
     ? (
@@ -122,15 +124,17 @@ export const reserve = internalMutation({
     query: v.string(),
     companyId: v.optional(v.id("companies")),
     analystRunId: v.optional(v.string()),
+    /** Toolbox actors other than the seed search (fieldTools.ts); same caps. */
+    actorId: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    args,
+    { actorId, ...args },
   ): Promise<{ ok: true; id: Id<"apifyRuns"> } | { ok: false; reason: string }> => {
     const now = Date.now();
     const { usedToday, usedThisRun } = await usage(ctx, now, args.analystRunId);
-    if (usedToday >= APIFY_LIMITS.runsPerDay)
-      return { ok: false, reason: `daily cap of ${APIFY_LIMITS.runsPerDay} Apify runs reached` };
+    const cap = apifyDailyCap();
+    if (usedToday >= cap) return { ok: false, reason: `daily cap of ${cap} Apify runs reached` };
     if (args.analystRunId && usedThisRun >= APIFY_LIMITS.runsPerAnalystRun)
       return {
         ok: false,
@@ -138,7 +142,7 @@ export const reserve = internalMutation({
       };
     const id = await ctx.db.insert("apifyRuns", {
       ...args,
-      actorId: APIFY_ACTOR.id,
+      actorId: actorId ?? APIFY_ACTOR.id,
       day: dayOf(now),
       at: new Date(now).toISOString(),
       status: "reserved",
