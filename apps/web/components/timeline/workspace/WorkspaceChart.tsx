@@ -3,6 +3,7 @@
 import type { Forecast, HistoryWeek, ScheduledItem } from "@domino/contracts";
 import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
+import { motion, useReducedMotion } from "motion/react";
 import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
@@ -41,6 +42,11 @@ export type ChartProps = {
   breachNotes?: { weekStart: string; text: string; short?: string }[];
   selectedWeek: string | null;
   onSelectWeek: (weekStart: string) => void;
+  /**
+   * Where a proposal under review would branch: flashed on the parent's line. `forecast` is
+   * the parent's line when it is not otherwise drawn; without it the main line is the parent.
+   */
+  branchPreview?: { key: string; date: string; color: string; label: string; forecast?: Forecast };
 };
 
 const DEFAULT_W = 880;
@@ -82,6 +88,7 @@ export function WorkspaceChart(p: ChartProps) {
   const H = compact ? 280 : 340;
   const PAD = { right: compact ? 12 : 20, top: 30, bottom: 52 };
   const [hover, setHover] = useState<number | null>(null);
+  const reduced = useReducedMotion();
   const [chosenView, setView] = useState<[number, number] | null>(null);
   const [cashView, setCashView] = useState<[number, number] | null>(null);
   const history = p.history;
@@ -188,6 +195,17 @@ export function WorkspaceChart(p: ChartProps) {
     ),
   ];
   const anyBreach = breachedWeeks.size > 0 || notes.some((n) => "dot" in n);
+
+  // The branch point of a proposal under review: the forecast week containing its start date.
+  const preview = p.branchPreview;
+  const previewLine = preview?.forecast ?? p.forecast;
+  let previewIndex = -1;
+  if (preview)
+    previewLine.weeks.forEach((w, i) => {
+      if (w.weekStart <= preview.date) previewIndex = i;
+    });
+  const previewWeek = previewLine.weeks[previewIndex];
+  const previewPoint = previewWeek ? at(off + previewIndex, previewWeek.usable) : null;
 
   // Trackpad: two-finger swipes pan time and cash; a pinch zooms time around the pointer. The
   // scrollers set the scale. At an edge the swipe goes back to the page, so it never traps it.
@@ -563,6 +581,61 @@ export function WorkspaceChart(p: ChartProps) {
                   </g>
                 );
               })}
+              {preview && previewPoint ? (
+                <g key={preview.key} pointerEvents="none" data-testid="branch-preview">
+                  {preview.forecast ? (
+                    <path
+                      d={draw(preview.forecast.weeks.map((w, i) => at(off + i, w.usable))) ?? ""}
+                      fill="none"
+                      stroke={preview.color}
+                      strokeWidth={1.75}
+                      strokeDasharray="5 4"
+                      opacity={0.7}
+                    />
+                  ) : null}
+                  <motion.line
+                    x1={previewPoint.x}
+                    x2={previewPoint.x}
+                    y1={PAD.top - 4}
+                    y2={H - PAD.bottom}
+                    stroke={preview.color}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    initial={{ opacity: 0 }}
+                    animate={reduced ? { opacity: 0.7 } : { opacity: [0, 1, 0.2, 1, 0.2, 1, 0.7] }}
+                    transition={{ duration: 2.2, ease: "easeInOut" }}
+                  />
+                  {reduced ? null : (
+                    <motion.circle
+                      cx={previewPoint.x}
+                      cy={previewPoint.y}
+                      fill="none"
+                      stroke={preview.color}
+                      strokeWidth={2}
+                      initial={{ r: 5, opacity: 0.9 }}
+                      animate={{ r: [5, 16], opacity: [0.9, 0] }}
+                      transition={{ duration: 1.1, repeat: 2, ease: "easeOut" }}
+                    />
+                  )}
+                  <circle
+                    cx={previewPoint.x}
+                    cy={previewPoint.y}
+                    r={5}
+                    fill={preview.color}
+                    className="stroke-card"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={previewPoint.x + (previewPoint.x > W * 0.7 ? -6 : 6)}
+                    y={PAD.top + 8}
+                    textAnchor={previewPoint.x > W * 0.7 ? "end" : "start"}
+                    className="text-[11px] font-medium [paint-order:stroke] [stroke-linejoin:round] [stroke-width:3px] stroke-card"
+                    fill={preview.color}
+                  >
+                    Branches here · {formatFullDate(preview.date)}
+                  </text>
+                </g>
+              ) : null}
             </g>
             {/* Wide hit areas: recorded weeks show details on hover; forecast weeks can be chosen.
               Keyboard users pick weeks with the range control below the chart. */}

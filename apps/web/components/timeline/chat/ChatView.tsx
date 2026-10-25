@@ -11,6 +11,7 @@ import { inputClass } from "../workspace/RuleEditor";
 import { Panel, WhenDate } from "../workspace/RunPanels";
 import { WorkspaceChart } from "../workspace/WorkspaceChart";
 import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
+import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
 import { type ChatReceipt, chatHref, displayedReceipt, newerReceipt } from "./api";
@@ -361,6 +362,7 @@ export function ChatView({
     receipt?.status === "ready" ? (
       <motion.div {...enter} className="space-y-4 rounded-lg border p-4">
         <h4 className="text-sm font-medium">Review before calculating</h4>
+        <BranchNote changes={receipt.proposal?.changes ?? []} />
         <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
         <p className="text-xs text-muted-foreground">
           These events apply to the source scenario. Saving calculates a new timeline and checks its

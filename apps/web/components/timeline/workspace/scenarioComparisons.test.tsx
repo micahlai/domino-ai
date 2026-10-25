@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ScenarioNav } from "./ScenarioNav";
 import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
+import { BranchContext, BranchNote } from "./branchPreview";
 import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "./fixtures";
 import {
   SCENARIO_COLORS,
@@ -260,7 +261,7 @@ describe("saved scenario comparisons", () => {
         onSelectWeek={() => undefined}
       />,
     );
-    const line = html.match(/data-run-id="early"[^]*?<path d="M([\d.]+),([\d.]+)/);
+    const line = html.match(/data-run-id="early"[\s\S]*?<path d="M([\d.]+),([\d.]+)/);
     const recorded = html.match(
       /<path d="M[^"]*?L([\d.]+),([\d.]+)" fill="none" class="stroke-clay"/,
     );
@@ -268,6 +269,45 @@ describe("saved scenario comparisons", () => {
     // The branch's first point is the last recorded week, so it never floats loose.
     expect(line?.[1]).toBe(recorded?.[1]);
     expect(line?.[2]).toBe(recorded?.[2]);
+  });
+
+  it("names the branch and date before saving, and flashes that point on the chart", () => {
+    const note = renderToStaticMarkup(
+      <BranchContext.Provider
+        value={{
+          parent: { runId: "s1", label: "Legal settlement", color: SCENARIO_COLORS[2] },
+          startOf: () => "2026-12-01",
+          preview: null,
+          setPreview: () => undefined,
+        }}
+      >
+        <BranchNote changes={[]} />
+      </BranchContext.Provider>,
+    );
+    expect(note).toContain("Branches off");
+    expect(note).toContain("Legal settlement");
+    expect(note).toContain(`background:${SCENARIO_COLORS[2]}`);
+    expect(note).toContain("Dec 1, 2026");
+    const chart = renderToStaticMarkup(
+      <WorkspaceChart
+        history={fixtureRoot.baseline.history}
+        forecast={fixtureRoot.forecast}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+        branchPreview={{
+          key: "k",
+          date: fixtureRoot.forecast.weeks[3]!.weekStart,
+          color: SCENARIO_COLORS[2],
+          label: "Legal settlement",
+          forecast: fixtureScenario.forecast,
+        }}
+      />,
+    );
+    expect(chart).toContain('data-testid="branch-preview"');
+    expect(chart).toContain("Branches here");
+    expect(chart).toContain(`stroke="${SCENARIO_COLORS[2]}"`);
   });
 
   it("omits a branch that never leaves the line it builds on", () => {

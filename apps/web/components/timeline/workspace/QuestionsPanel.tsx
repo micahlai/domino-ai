@@ -9,6 +9,7 @@ import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { inputClass } from "./RuleEditor";
 import { Panel, WhenDate } from "./RunPanels";
 import type { QuestionReceipt, Read } from "./api";
+import { BranchNote } from "./branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "./chatFrame";
 import { changeText } from "./drafts";
 import { type Outcome, isConfirmed } from "./requests";
@@ -97,6 +98,7 @@ function ProposalCard({ q, actions }: { q: QuestionReceipt; actions: QuestionAct
   return (
     <div className="space-y-2 rounded-md border p-3" data-testid={`proposal-${q.id}`}>
       <p className="text-sm font-medium">Suggested scenario: {proposal.label}</p>
+      {linkedRunId ? null : <BranchNote changes={proposal.changes} />}
       {proposal.changes.length ? (
         <ul className="list-disc space-y-0.5 pl-5 text-sm">
           {proposal.changes.map((c, i) => (
