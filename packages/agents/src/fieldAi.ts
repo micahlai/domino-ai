@@ -55,7 +55,8 @@ const usageOf = (m: BetaMessage): Usage => ({
 
 /** Dollar amounts like "$12K", "-$1.2M" or "$4,200". */
 const MONEY = /-?\$\s?\d[\d,]*(?:\.\d+)?\s?[KMB]?/gi;
-const normalizeMoney = (s: string) => s.replace(/[\s-]/g, "").toUpperCase();
+/** Sign, spaces and thousands separators do not make a new amount: "$42,000.00" is "$42000.00". */
+const normalizeMoney = (s: string) => s.replace(/[\s,-]/g, "").toUpperCase();
 
 /** Amounts in `text` that do not appear in `allowed` (the engine-supplied input). */
 export function newMoneyMentions(text: string, allowed: string): string[] {
@@ -456,12 +457,14 @@ export type CounterpartyCreaoOptions = CreaoOptions & {
 };
 
 /**
- * Field runs tolerate two observed CREAO behaviors: a 429 on create (one repost after
- * Retry-After) and a run that reports completed before its artifacts are readable.
+ * Field runs tolerate three observed CREAO behaviors: a 429 on create (one repost after
+ * Retry-After), a run that reports completed before its artifacts are readable, and a result
+ * marker glued to the preceding chat text.
  */
 export const FIELD_CREAO_RETRY = {
   createRetryOn429: { maxWaitMs: 20_000 },
   resultRetryDelaysMs: [2_000, 4_000, 8_000],
+  markersOnOwnLine: true,
 } as const;
 
 /** CREAO app credentials for the research job (the evidence analyst's app and key). */

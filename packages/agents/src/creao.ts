@@ -302,6 +302,19 @@ export interface CreaoAppRun {
   resultRetryDelaysMs?: readonly number[];
   /** Awaited before each result retry; a throwing callback is ignored. */
   onResultRetry?: (retry: { attempt: number; delayMs: number }) => Promise<void> | void;
+  /**
+   * Opt-in: put each result marker on its own line before scanning. CREAO can join chat
+   * segments without a newline ("...manifest.<<<DOMINO_RESULT>>>"). The block must still be
+   * delimited at both ends and pass validation; prose alone never becomes an answer.
+   */
+  markersOnOwnLine?: boolean;
+}
+
+/** Splits a result marker glued to surrounding text onto its own line. */
+export function markersOnOwnLine(text: string): string {
+  return text
+    .replaceAll(RESULT_START, `\n${RESULT_START}\n`)
+    .replaceAll(RESULT_END, `\n${RESULT_END}\n`);
 }
 
 /** Retry-After as milliseconds: delta seconds or an HTTP date; undefined when unusable. */
@@ -453,7 +466,7 @@ export async function runCreaoApp(
     diag.resultPresent = true;
 
     const chatText = result.chatText ?? "";
-    const scan = scanChatText(chatText);
+    const scan = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(chatText) : chatText);
     const candidates = scan.candidates;
     Object.assign(diag, {
       chatTextPresent: chatText.length > 0,
@@ -482,7 +495,7 @@ export async function runCreaoApp(
         found = json === undefined ? [] : [{ json }];
       } else {
         // The same strict scan as chat text: prose alone is never an answer.
-        found = scanChatText(text).candidates;
+        found = scanChatText(spec.markersOnOwnLine ? markersOnOwnLine(text) : text).candidates;
       }
       if (found.length > 0) diag.parsedArtifacts[kind]++;
       diag.artifactCandidates += found.length;

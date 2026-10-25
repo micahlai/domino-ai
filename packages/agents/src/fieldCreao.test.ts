@@ -320,3 +320,42 @@ describe("field CREAO transport retries", () => {
     expect(invalid.calls).toHaveLength(2);
   });
 });
+
+describe("observed CREAO output quirks", () => {
+  it("accepts a start marker glued to prose, but still never accepts prose alone", async () => {
+    const glued = `I'll start by reading the skill manifest.${RESULT_START}\n${JSON.stringify({
+      explanations: [
+        { findingId: "f-high", explanation: "Counted twice.", suggestedCheck: "Void the copy." },
+      ],
+    })}\n${RESULT_END}`;
+    const reply = (chatText: string) =>
+      fakeRuntime((_call, i) =>
+        i === 0
+          ? json({ id: "run_g", status: "queued" }, 201)
+          : json({ id: "run_g", status: "completed", result: { chatText } }),
+      ).runtime;
+    const out = await runFieldCreaoJob(env, explainCreaoJob(findings), reply(glued));
+    expect(out.value[0]?.findingId).toBe("f-high");
+    await expect(
+      runFieldCreaoJob(
+        env,
+        explainCreaoJob(findings),
+        reply("f-high is counted twice; void the copy."),
+      ),
+    ).rejects.toMatchObject({ category: "no_result" });
+  });
+
+  it("treats thousands separators as the same engine amount, not a new one", () => {
+    const withCommas = {
+      ...goodPlan,
+      actions: [
+        { action: "escalate_flag", findingId: "f-mid", reason: "Bill is $42,000.00 vs $9,500.00." },
+      ],
+    };
+    const flags = input.flags.map((f) =>
+      f.findingId === "f-mid" ? { ...f, summary: "bill is $42000.00, usual $9500.00" } : f,
+    );
+    expect(acceptCoordinatorPlan({ ...input, flags }, withCommas)?.escalate).toHaveLength(1);
+    expect(acceptCoordinatorPlan(input, withCommas)).toBeUndefined();
+  });
+});
