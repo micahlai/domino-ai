@@ -111,6 +111,7 @@ export const simulate = action({
       label: `If: ${savedInputs.scenarioTitle}`.slice(0, 200),
       changesJson: savedInputs.scenarioChangesJson,
       reviewed: true,
+      autoCascade: true,
     });
     const fixKey = await hash({
       runId: args.runId,

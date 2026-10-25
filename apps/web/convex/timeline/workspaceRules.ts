@@ -56,7 +56,11 @@ export function changeLabel(change: Change): string {
     case "add_cash":
     case "remove_cash":
     case "shift_hire":
+    case "recurring_cash":
+    case "scale_recurring":
       return change.label;
+    case "delay_customer":
+      return `Customer ${change.customerId} pays ${Math.abs(change.days)} days ${change.days > 0 ? "later" : "earlier"} from ${change.fromDate}`;
     case "delay_invoice":
       return `Invoice ${change.invoiceId} paid ${Math.abs(change.days)} days ${change.days > 0 ? "later" : "earlier"}`;
     case "lose_invoice":

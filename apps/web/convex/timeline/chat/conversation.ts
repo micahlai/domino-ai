@@ -242,7 +242,8 @@ export function checkPlan(run: WorkspaceRun, text: string, floor: string | null)
     /\b(not|never|don['’]?t|avoid|cancel|unless|except|excluding|including|provided|conditional|contingent|if|before|after|between|through|until|only|without|either|or|daily|tax|maximum|max|at most|at least|monthly|per month)\b/i.test(
       text.replace(/\bwhat if\b/gi, " "),
     );
-  const timedNonHire = !/\bhire\b/i.test(text) && dateTokens(text).length > 0;
+  const timedNonHire =
+    !/\b(hire|lose|losing|churns?|leaves?|cancels?)\b/i.test(text) && dateTokens(text).length > 0;
   if (unsupported || timedNonHire)
     return {
       draft: emptyDraft(),
@@ -255,7 +256,7 @@ export function checkPlan(run: WorkspaceRun, text: string, floor: string | null)
     plannedChange(run, emptyDraft(), text, floor) ?? {
       draft: emptyDraft(),
       answer:
-        "That plan needs more details. State the vendor and percentage, or the number of hires, cost and start date.",
+        "That plan needs more details. State the vendor and percentage, the number of hires, cost and start date, or the customer you lose.",
       proposal: null,
       pendingField: null,
     }

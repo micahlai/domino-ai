@@ -12,7 +12,7 @@ import {
   parseWeeklyResultRefJson,
 } from "@domino/contracts";
 import { engine } from "@domino/engine";
-import { paginationOptsValidator } from "convex/server";
+import { makeFunctionReference, paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { z } from "zod";
 import type { Doc } from "../_generated/dataModel";
@@ -490,6 +490,11 @@ export const reviseConstraints = mutation({
   },
 });
 
+// By name, so this module does not import the Field cascade module (and its api types).
+const autoCascadeRef = makeFunctionReference<"action", { companyId: string; runId: string }, null>(
+  "fieldCascade:auto",
+);
+
 /** Simulate confirmed future changes (optionally with confirmed new rules) as one new run. */
 export const simulate = mutation({
   args: {
@@ -503,6 +508,8 @@ export const simulate = mutation({
     constraintNote: v.optional(v.string()),
     /** Automated responses may act before the scenario they answer; people's what-ifs may not. */
     allowEarlierStart: v.optional(v.boolean()),
+    /** Also compute and save this scenario's domino effects as child runs (scheduled once). */
+    autoCascade: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<WorkspaceResult> => {
     checkRequestId(args.requestId);
@@ -542,7 +549,7 @@ export const simulate = mutation({
         "STARTS_BEFORE_PARENT",
         `This change starts ${early.date}, before the scenario it builds on starts (${floor}). Date it on or after ${floor}, or build it on an earlier scenario.`,
       );
-    return saveChild(ctx, {
+    const saved = await saveChild(ctx, {
       companyId: args.companyId,
       requestId: args.requestId,
       inputHash,
@@ -554,6 +561,13 @@ export const simulate = mutation({
       constraintNote: rules ? rules.note : node.constraintNote,
       ownChanges,
     });
+    // Cascade children are saved through this mutation too; they never cascade again here.
+    if (args.autoCascade && saved.created && !args.requestId.startsWith("cascade."))
+      await ctx.scheduler.runAfter(0, autoCascadeRef, {
+        companyId: args.companyId,
+        runId: saved.runId,
+      });
+    return saved;
   },
 });
 

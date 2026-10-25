@@ -105,10 +105,12 @@ describe("cascade", () => {
     expect(out.nodes.some((n) => n.parentId === draw?.id && n.trigger.kind === "credit_draw")).toBe(
       true,
     );
-    // Stretched vendors lead to late fees or prepayment.
-    expect(
-      out.nodes.some((n) => n.parentId === top[0]?.id && n.trigger.kind === "vendor_stretch"),
-    ).toBe(true);
+    // The scenario runs out of cash. Stretching vendors does not rescue it, so that branch is
+    // terminal (no ordinary knock-ons); the credit draw rescues it, so its effects continue.
+    expect(out.outOfCash?.weekStart).toBeDefined();
+    expect(top[0]?.outOfCash).not.toBeNull();
+    expect(out.nodes.filter((n) => n.parentId === top[0]?.id)).toEqual([]);
+    expect(draw?.outOfCash).toBeNull();
   });
 
   it("fires on the largest customer churning: pause hiring and peers pay later", () => {

@@ -155,6 +155,11 @@ function applyChange(step: Step, change: Change, ledgerId: string) {
       if (!Number.isSafeInteger(change.monthlyCost) || change.monthlyCost < 0)
         fail("shift_hire monthlyCost must be nonnegative safe cents");
       return; // Read from the ledger by payrollSaving.
+    case "delay_customer":
+    case "recurring_cash":
+    case "scale_recurring":
+      // Forecast-only what-ifs; the ledger simulator does not act on them.
+      return fail(`${change.kind} is a forecast what-if, not an action the ledger can take`);
   }
 }
 

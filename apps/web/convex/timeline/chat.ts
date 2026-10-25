@@ -451,6 +451,7 @@ export const confirm = mutation({
           label: proposal.label,
           changesJson: canonicalJson(proposal.changes),
           reviewed: true,
+          autoCascade: true,
           ...(proposal.constraints
             ? {
                 constraintsJson: canonicalJson(proposal.constraints),
