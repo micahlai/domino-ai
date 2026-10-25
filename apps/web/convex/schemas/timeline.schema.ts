@@ -88,4 +88,28 @@ export const timelineTables = {
     sequence: v.number(),
     event: v.any(),
   }).index("by_feed", ["baselineRunId", "sequence"]),
+  // TL1: one append-only saved weekly baseline per accepted request. Keyed by the seed's own
+  // company id (a string, not Field's companies table). seedText is the canonical seed JSON;
+  // the other payloads are frozen engine inputs/outputs, parsed with contract schemas on read.
+  timelineBaselines: defineTable({
+    runId: v.string(),
+    companyId: v.string(),
+    requestId: v.string(),
+    seedId: v.string(),
+    seedHash: v.string(),
+    inputHash: v.string(),
+    methodVersion: v.string(),
+    assumptionNote: v.string(),
+    seedText: v.string(),
+    model: v.any(),
+    constraints: v.any(),
+    forecast: v.any(),
+    dominoes: v.any(),
+    history: v.any(),
+    pastEvents: v.any(),
+    savedAt: v.string(),
+  })
+    .index("by_company_and_runId", ["companyId", "runId"])
+    .index("by_company_and_requestId", ["companyId", "requestId"])
+    .index("by_company_and_seedId", ["companyId", "seedId"]),
 } as const;
