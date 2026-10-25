@@ -25,7 +25,7 @@ Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no 
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Claude worker finished at 10b500c; Codex exec audit running | L0-learning-contracts / ../domino-L0 from 16a3a56 | Await audit verdict | [Card](kb/tasks/L0-learning-contracts.md): additive schemas, synthetic tests, focused test/typecheck/lint; Codex audit |
+| L0 contracts | Claude worker, repair running | L0-learning-contracts / ../domino-L0 | Codex REJECTED 10b500c ([audit](kb/reviews/L0-10b500c-codex-audit.md)): 3 P1 (incomplete cohort can pass, unpaired observations, lost response taint), 4 P2. Repair then re-audit | Additive-only and exact money checks passed |
 | E0 data custody | Claude worker, repair running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED b441a2a ([audit](kb/reviews/E0-b441a2a-codex-audit.md)): original-accession pinning, acceptance instants, read logging, Freshworks package, strict boundary. Repair then re-audit | 16 pairs claimed eligible before the fix; recount after it |
 
 ## Review
