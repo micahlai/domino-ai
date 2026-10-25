@@ -40,8 +40,9 @@ describe("AppShell navigation", () => {
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain("Company and scenario");
     expect(html).toContain("2U (historical)");
-    expect(html).toContain("Simulated books");
-    expect(html).toContain("based on 2U, Inc. filings · as of Sep 30, 2023");
+    expect(html).toContain("Public filings");
+    expect(html).toContain("as of Sep 30, 2023");
+    expect(html).not.toContain("Simulated books");
     // Full dates live in the Sources sheet; the row never repeats the long filing sentence.
     expect(html).toContain('aria-label="Sources and cash bridge"');
     expect(html).not.toContain("Starting reconstructed books as of");
@@ -88,7 +89,8 @@ describe("AppShell navigation", () => {
     expect(html).not.toContain("Simulated books");
     const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
     expect(currentHtml).toContain('aria-haspopup="menu"');
-    expect(currentHtml).toContain("Simulated books");
+    // The default selection is 2U, whose books are its public filings.
+    expect(currentHtml).toMatch(/Simulated books|Public filings/);
   });
 
   it("shows saved calculation routes without the live company picker, feed strip or clock", () => {

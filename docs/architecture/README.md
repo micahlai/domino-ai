@@ -23,14 +23,14 @@ The script produces current and planned PNG/PDF files under `generated/`. It use
 - [Planned PNG](generated/domino-planned.png)
 - [Planned PDF](generated/domino-planned.pdf)
 
-## System architecture slide (field/main)
+## System architecture slide
 
-`system.py` draws one 16:9 slide of the Domino field app: data sources (mock vendor APIs, Capital One Nessie, CRS), the Convex backend (triggers, agents, learning loop, storage + realtime), the pure TypeScript engine, AI providers (CREAO, Claude fallback, Apify), frontend pages (including Customers and "What Domino learned" on the Worker), users and a tech stack panel. Edge colors: blue data in, purple AI calls, green results to the UI, gray people and triggers, amber learning loop. The learning loop is live on field/main 5c2e16f: flag and fix decisions become scoped rules that the next audit and advisor runs apply. Facts and their source files are listed in the script's docstring.
-
-The graph is built with diagrams, but every container, icon and edge route is set by hand on a grid and rendered with `neato -n2` (Graphviz), so spacing stays even and lines run at right angles around boxes. Move things by editing `BOXES`, `ICON_AT` and `routes()`.
+`slide.py` draws the current slide (v5) by hand at 1920 x 1080: five columns (Sources, Convex backend, Engine + AI, App, People), color-coded data-flow arrows inside and between them (blue data in, purple AI calls, green results to the UI, orange learning loop), and a tech stack strip. Every card, logo and arrow has exact coordinates in the script; there is no automatic layout. Facts and their source files are listed in its docstring.
 
 ```sh
-/tmp/domino-diagrams-venv/bin/python docs/architecture/system.py
+python3 docs/architecture/slide.py
 ```
 
-Output: [domino-system.png](domino-system.png) (about 3840 x 2160, 16:9) and [domino-system.svg](domino-system.svg) (icons embedded). Icon tiles live in `icons/`; `make_icons.py` rebuilds them offline from the committed sources in `icons/src` (simple-icons, lucide-static, the CRS site icon) and the app's own logos in `apps/web/public`.
+Needs only Python 3 and Google Chrome (headless, for the PNG). Output: [domino-system.png](domino-system.png) (3840 x 2160) and [domino-system.svg](domino-system.svg) (logos embedded). Logos come from `icons/src` (simple-icons 16.35.0, lucide-static 1.61.0, CRS site icon) and `apps/web/public/logos`.
+
+`system_v3.py` is the previous Graphviz version (diagrams + `neato -n2`), kept for reference; it writes to `generated/domino-system-v3.*` and uses the tiles built by `make_icons.py`.

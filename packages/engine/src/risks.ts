@@ -14,10 +14,27 @@ import { money } from "./dominoes";
 import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
 import { compareIds } from "./funding";
 import { decimalRatio } from "./money";
+import {
+  type Candidate,
+  concentration,
+  customerName,
+  day,
+  earlyCollection,
+  overdueUncollected,
+  payoutLate,
+  payrollGrowth,
+  pipelineClose,
+  riskKind,
+  scheduledPayments,
+  short,
+  vendorPriceRises,
+} from "./risk-kinds";
 import { evaluateOnSchedule } from "./rules";
 import { isOpenInvoice } from "./schedule";
 
 const MAX_RISKS = 5;
+/** Diversity cap: at most this many risks of one kind in the returned set. */
+const MAX_PER_KIND = 2;
 const LATE_DAYS = 14;
 const MIN_SAMPLES = 3;
 /** Build-spec §6.3 default when fewer than three paid invoices are observable. */
@@ -26,8 +43,6 @@ const RENEWAL_CHANCE = 0.25;
 const UNSIGNED_RENEWAL_CHANCE = 0.5;
 /** Demo assumption, not an estimated incidence rate: the spec gives no chance rule for spikes. */
 const SPIKE_CHANCE = 0.3;
-
-type Candidate = Omit<RiskEvent, "impactLowPoint">;
 
 /**
  * Build-spec §6.3 from real snapshot records and the learned model (never an answer key).
@@ -50,17 +65,53 @@ export function scanRisks(
     ...latePayments(snapshot, model),
     ...nonRenewals(snapshot),
     ...spendSpike(snapshot),
+    ...vendorPriceRises(snapshot),
+    ...payrollGrowth(snapshot),
+    ...scheduledPayments(snapshot),
+    ...concentration(snapshot, model),
+    ...overdueUncollected(snapshot),
+    ...payoutLate(snapshot),
+    ...earlyCollection(snapshot, model),
+    ...pipelineClose(snapshot, model),
   ];
-  return candidates
-    .flatMap((c) => {
-      const scenario = outcomes(c.changes);
-      const same = sameWeeks(base.forecast, scenario.forecast) && base.rules === scenario.rules;
-      if (same) return [];
-      const impact = base.forecast.lowPoint.usable - scenario.forecast.lowPoint.usable;
-      return [{ ...c, impactLowPoint: impact }];
-    })
-    .sort(compareRisks)
-    .slice(0, MAX_RISKS);
+  const scored = candidates.flatMap((c) => {
+    const scenario = outcomes(c.changes);
+    const same = sameWeeks(base.forecast, scenario.forecast) && base.rules === scenario.rules;
+    if (same) return [];
+    const impact = base.forecast.lowPoint.usable - scenario.forecast.lowPoint.usable;
+    return [{ ...c, impactLowPoint: impact }];
+  });
+  return pickDiverse(scored);
+}
+
+/**
+ * Downside risks: the top risk of each kind first (in score order), then fill by score with
+ * at most two of one kind, so one large kind (renewals) cannot crowd out the rest. The best
+ * upside event, if any, takes the last slot so the list is not all bad news; it stays last
+ * because callers that show only the first few risks expect downside first.
+ */
+export function pickDiverse(risks: RiskEvent[]): RiskEvent[] {
+  // A zero chance is not a scenario worth showing.
+  const sorted = risks.filter((r) => r.probability > 0).sort(compareRisks);
+  const downside = sorted.filter((r) => riskKind(r.id) !== "upside" && r.impactLowPoint >= 0);
+  const upside = sorted
+    .filter((r) => riskKind(r.id) === "upside")
+    .sort((a, b) =>
+      compareRisks(
+        { ...a, impactLowPoint: -a.impactLowPoint },
+        { ...b, impactLowPoint: -b.impactLowPoint },
+      ),
+    );
+  const picked: RiskEvent[] = [];
+  const count = (kind: string) => picked.filter((r) => riskKind(r.id) === kind).length;
+  const room = MAX_RISKS - (upside.length ? 1 : 0);
+  for (const r of downside) if (picked.length < room && count(riskKind(r.id)) === 0) picked.push(r);
+  for (const r of downside)
+    if (picked.length < room && !picked.includes(r) && count(riskKind(r.id)) < MAX_PER_KIND)
+      picked.push(r);
+  picked.sort(compareRisks);
+  if (upside[0]) picked.push(upside[0]);
+  return picked;
 }
 
 /** Highest probability × impact first, compared as exact decimals; ties by risk ID. */
@@ -141,7 +192,7 @@ function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
       return [
         {
           id: `risk_late_${inv.id}`,
-          label: `${name} pays ${money(inv.amount)} ${days} more days late`,
+          label: `${name} pays its ${short(inv.amount)} invoice due ${day(inv.due, snapshot.asOf)} ${days} days later than usual`,
           probability,
           changes,
           evidence,
@@ -170,7 +221,7 @@ function nonRenewals(snapshot: Snapshot): Candidate[] {
     return [
       {
         id: `risk_nonrenewal_${deal.id}`,
-        label: `${customerName(snapshot, deal.customerId)} does not renew (${money(inv.amount)} invoice lost)`,
+        label: `${customerName(snapshot, deal.customerId)} does not renew (${short(inv.amount)} due ${day(inv.due, snapshot.asOf)} lost)`,
         probability,
         changes: [{ kind: "lose_invoice", invoiceId: inv.id }],
         evidence: [
@@ -226,7 +277,7 @@ function spendSpike(snapshot: Snapshot): Candidate[] {
   return [
     {
       id: "risk_spend_spike",
-      label: `Card spend keeps running ${money(spike.extra)} above the prior four weeks`,
+      label: `Card spend keeps running ${short(spike.extra)} above the prior four weeks`,
       probability: SPIKE_CHANCE,
       changes: [
         { kind: "remove_cash", date: weekZero, amount: spike.extra, label: "Card spend spike" },
@@ -246,6 +297,3 @@ function spendSpike(snapshot: Snapshot): Candidate[] {
     },
   ];
 }
-
-const customerName = (snapshot: Snapshot, id: string) =>
-  snapshot.customers.find((c) => c.id === id)?.name ?? id;

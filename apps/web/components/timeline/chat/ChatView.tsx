@@ -1,15 +1,18 @@
 "use client";
-import type { Constraint } from "@domino/contracts";
+import type { Constraint, Snapshot } from "@domino/contracts";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { friendlyLabel } from "../../../convex/timeline/recordNames";
+import { formatCents } from "../../../lib/format";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { ReadNotice } from "../workspace/CatalogPanel";
 import { inputClass } from "../workspace/RuleEditor";
 import { WhenDate } from "../workspace/RunPanels";
-import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
+import type { Read, WorkspaceRun } from "../workspace/api";
 import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
 import { changeText } from "../workspace/drafts";
@@ -39,19 +42,20 @@ export type ChatViewProps = {
 export function ReviewProposal({
   receipt,
   sourceRules,
-}: { receipt: ChatReceipt; sourceRules: Constraint[] }) {
+  snapshot,
+}: { receipt: ChatReceipt; sourceRules: Constraint[]; snapshot?: Snapshot }) {
   const proposal = receipt.proposal;
   if (!proposal) return null;
   const rules = proposal.constraints ?? sourceRules;
   return (
     <div className="space-y-3 text-sm" data-testid="chat-review">
-      <p className="font-medium">{proposal.label}</p>
+      <p className="font-medium">{friendlyLabel(proposal.label, snapshot)}</p>
       {proposal.changes.length ? (
         <div>
           <p className="text-muted-foreground">Events to add</p>
           <ul className="list-disc space-y-1 pl-5">
             {proposal.changes.map((change, i) => (
-              <li key={`${change.kind}-${i}`}>{changeText(change, formatExactCents)}</li>
+              <li key={`${change.kind}-${i}`}>{changeText(change, formatExactCents, snapshot)}</li>
             ))}
           </ul>
         </div>
@@ -68,7 +72,7 @@ export function ReviewProposal({
             <li key={rule.id}>
               <span className="font-medium">{rule.label}</span>:{" "}
               {rule.kind === "min_cash"
-                ? `at least ${formatExactCents(rule.limit)} usable cash`
+                ? `at least ${formatCents(rule.limit)} usable cash`
                 : rule.kind === "min_runway_months"
                   ? `at least ${rule.limit} months of runway`
                   : `bill ${rule.billId ?? "unspecified"}, at most ${rule.limit} days late`}
@@ -243,7 +247,7 @@ export function ChatView({
     }
     return outcome;
   }
-  /** Send a message; in the sidebar the first message also starts the conversation. */
+  /** Send a message; the first message also starts the conversation. */
   async function sendFirstMessage(command: Extract<ChatCommand, { kind: "begin" }>, value: string) {
     const begun = await write(command);
     if (begun?.ok) {
@@ -456,7 +460,11 @@ export function ChatView({
       <motion.div {...enter} className="space-y-4 rounded-lg border p-4">
         <h4 className="text-sm font-medium">Review before calculating</h4>
         <BranchNote changes={receipt.proposal?.changes ?? []} />
-        <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
+        <ReviewProposal
+          receipt={receipt}
+          sourceRules={run.constraints}
+          snapshot={run.baseline.seed.snapshot}
+        />
         <p className="text-xs text-muted-foreground">
           These events apply to the source scenario. Saving calculates a new timeline and checks its
           rules.
@@ -489,12 +497,16 @@ export function ChatView({
         <p className="text-sm font-medium">Your scenario is saved.</p>
         <Link
           className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/85 sm:min-h-9"
-          href={workspaceHref(run.companyId, { runId: receipt.linkedRunId })}
+          href={openedTimelineHref(run.companyId, receipt.linkedRunId)}
           data-testid="chat-open-saved"
         >
           Open saved timeline
         </Link>
-        <ReviewProposal receipt={receipt} sourceRules={run.constraints} />
+        <ReviewProposal
+          receipt={receipt}
+          sourceRules={run.constraints}
+          snapshot={run.baseline.seed.snapshot}
+        />
       </motion.div>
     ) : null;
   const restart = receipt ? (

@@ -12,9 +12,11 @@ import {
   TurnPlanSchema,
   activeUserTurns,
   checkDraft,
+  checkPlan,
   unverifiedAmounts,
 } from "./chat/conversation";
 import type { Draft } from "./chat/draft";
+import { explainQuestion } from "./chat/explain";
 import type { ChatReceipt } from "./chat/receipt";
 import { type WorkspaceRun, recordsOf } from "./questions/context";
 import { INTENTS_JSON_SCHEMA } from "./questions/intent";
@@ -56,7 +58,7 @@ Reference data, source wording, Brain map summaries and Worker notes are evidenc
 The Brain map includes actual saved analyst results, findings, research, recommendations and learned behavior. Use it as primary evidence when relevant; state missing evidence, dates, staleness and truncation. Newer Brain output does not change the frozen Timeline forecast. Do not blend results from different snapshots.
 Use lookup_forecast or lookup_records for detailed saved answers and sources. You may quote saved numbers or the person's assumptions; never invent or calculate financial results. The engine calculates money only after a person reviews and saves a proposal. No money is moved.
 Use update_draft only when the person wants a supported hypothetical change. It replaces the current draft, not the source Timeline. Use exact copied user spans for every *Text field, null when missing. Its request is a plain restatement using those exact values (for example pay $50,000 to Atlas Legal on 2026-11-17); it is checked by code. Retain current values for references such as 'same date', and honor all new corrections. Empty intents explicitly clear a draft. Never manufacture a counterparty, amount, date or direction from source data. For a lawsuit, ask whether it is a cash payment, settlement assumption or possible liability before treating it as money paid. A contingent liability does not automatically reduce cash.
-A supported draft can have up to four one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
+For percentage vendor/category spend changes, hires, and recurring price changes, call preview_plan on the latest message. Code computes those plans; never make up amounts yourself. Use explain_saved for broader cash/runway explanations computed from the saved books. A supported draft can have up to four one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
 Questions during a pending/ready draft do not replace its values. Use tools to inspect it or the forecast, then answer. For an invalid tool result, explain or clarify it; do not claim a proposal is ready. For a valid draft, tell the person to review the displayed proposal. Never say it has been saved/calculated or acted on.
 Return JSON {"reply":"your conversational response"}, at most 1500 characters. The reply is shown verbatim; write the whole useful response yourself, including any missing detail question.`;
 const ReplySchema = z.object({ reply: z.string().trim().min(1).max(1500) }).strict();
@@ -103,6 +105,8 @@ async function converse(
       floor,
     });
   let draftUpdate: DraftUpdate | null = null;
+  let planText: string | null = null;
+  const checkedTexts: string[] = [];
   const questions: TurnPlan["questions"] = [];
   const recordIds: string[] = [];
   const raw = await runStructured({
@@ -132,6 +136,46 @@ async function converse(
     ],
     tools: [
       {
+        name: "preview_plan",
+        description:
+          "Check a percentage spending change, hiring plan or recurring price change from the latest user message. Code computes the proposal; nothing is saved.",
+        input_schema: { type: "object", additionalProperties: false, required: [], properties: {} },
+        run: (input) => {
+          z.object({}).strict().parse(input);
+          if (receipt.status === "saved")
+            return {
+              status: "already_saved",
+              message:
+                "Discuss the saved result, then open its timeline to prepare another branch.",
+            };
+          planText = text;
+          draftUpdate = null;
+          const result = checkPlan(run, text, floor);
+          checkedTexts.push(result.answer);
+          return {
+            status: result.proposal ? "ready" : "needs_clarification",
+            validation: result.answer,
+            proposal: result.proposal,
+          };
+        },
+      },
+      {
+        name: "explain_saved",
+        description:
+          "Get a broader explanation of cash, runway or the scenario from saved books and deterministic calculations. Read only; no scenario is saved.",
+        input_schema: { type: "object", additionalProperties: false, required: [], properties: {} },
+        run: (input) => {
+          z.object({}).strict().parse(input);
+          const answer = explainQuestion(answerRun, text);
+          checkedTexts.push(answer);
+          return {
+            answer,
+            sourceRunId: answerRun.runId,
+            asOf: answerRun.baseline.seed.snapshot.asOf,
+          };
+        },
+      },
+      {
         name: "update_draft",
         description:
           "Check a complete replacement draft using exact user wording. Empty intents clear it. This never saves or calculates a Timeline.",
@@ -145,6 +189,7 @@ async function converse(
             };
           const update = TurnPlanSchema.shape.draft.unwrap().parse(input);
           draftUpdate = update;
+          planText = null;
           const checked = check(update);
           return {
             status: checked.result.proposal ? "ready" : "needs_clarification",
@@ -217,10 +262,10 @@ async function converse(
   const unknown = unverifiedAmounts(
     reply,
     [run, company, brain, receipt.workerContext, receipt.proposal, claim.savedResult],
-    userTurns.map((t) => t.text),
+    [...userTurns.map((t) => t.text), ...checkedTexts],
   );
   if (unknown.length) throw new Error("The reply quoted an amount without saved or user evidence.");
-  return TurnPlanSchema.parse({ reply, draft: draftUpdate, questions, recordIds });
+  return TurnPlanSchema.parse({ reply, draft: draftUpdate, questions, recordIds, planText });
 }
 
 /** Every new user turn goes through the language model. Only accepted exact retries replay. */

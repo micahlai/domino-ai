@@ -4,9 +4,11 @@ import { ChevronRight, GitBranch } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
+import { friendlyLabel } from "../../../convex/timeline/recordNames";
+import { formatCents } from "../../../lib/format";
 import { timelineCalculationHref } from "../../../lib/trace-links";
 import { cn } from "../../../lib/utils";
-import { formatExactCents, formatFullDate } from "../baseline/format";
+import { formatFullDate } from "../baseline/format";
 import type { CatalogEntry, Read, WorkspaceRun } from "./api";
 import {
   MAX_COMPARISONS,
@@ -57,7 +59,7 @@ type RowContext = {
 
 /**
  * Left rail: every saved scenario of these books as a branch tree. Ticking a box draws that
- * scenario on the chart in its own color without leaving the page; "Build on" makes it the
+ * scenario on the chart in its own color without leaving the page; "Add scenario on top" makes it the
  * scenario new what-ifs branch from.
  */
 export function ScenarioNav({
@@ -136,7 +138,8 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
   const shown = isBase || comparisons.ids.includes(entry.runId);
   const color = !isBase && shown ? colorFor(comparisons, entry.runId) : undefined;
   const building = entry.runId === run.runId;
-  const name = isBase ? "Base forecast" : entry.label || KIND[entry.kind];
+  const snapshot = run.baseline.seed.snapshot;
+  const name = isBase ? "Base forecast" : friendlyLabel(entry.label, snapshot) || KIND[entry.kind];
   const parent = entry.parentRunId ? byId.get(entry.parentRunId) : undefined;
   const checkboxId = `scenario-show-${entry.runId}`;
   return (
@@ -232,11 +235,11 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
                 type="button"
                 onClick={() => buildOn(entry.runId)}
                 className="inline-flex items-center gap-1 rounded text-primary hover:underline"
-                aria-label={`Build new what-ifs on ${name}`}
+                aria-label={`Add a scenario on top of ${name}`}
                 data-testid={`scenario-build-${entry.runId}`}
               >
                 <GitBranch aria-hidden="true" className="size-3" />
-                Build on
+                Add scenario on top
               </button>
             ) : (
               <Link
@@ -258,7 +261,7 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
             <div className="space-y-1 pb-1 text-muted-foreground">
               {!isBase && parent && parent.parentRunId !== null ? (
                 <span className="block break-words text-[11px] leading-4 text-muted-foreground">
-                  Built on {parent.label || KIND[parent.kind]}
+                  Added on top of {friendlyLabel(parent.label, snapshot) || KIND[parent.kind]}
                 </span>
               ) : null}
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -269,8 +272,7 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
                       ? `Starts ${formatFullDate(entry.startsOn)}`
                       : "Same events, other rules"}
                   {" · low "}
-                  {formatExactCents(entry.lowPointCents)}, week of{" "}
-                  {formatFullDate(entry.lowPointWeek)}
+                  {formatCents(entry.lowPointCents)}, week of {formatFullDate(entry.lowPointWeek)}
                 </span>
                 <Link
                   href={timelineCalculationHref(run.companyId, entry.runId)}

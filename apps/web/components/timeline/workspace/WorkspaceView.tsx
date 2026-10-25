@@ -11,8 +11,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useMemo, useState } from "react";
+import { friendlyLabel } from "../../../convex/timeline/recordNames";
 import { scenarioStart } from "../../../convex/timeline/scenarioStart";
+import { formatCents } from "../../../lib/format";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { timelineCalculationHref } from "../../../lib/trace-links";
+import { DominoEffects } from "../../field/DominoEffects";
 import { Button } from "../../ui/button";
 import { StatTile } from "../../ui/page";
 import { analysisHref } from "../analysis/links";
@@ -89,8 +93,8 @@ function breachesOf(r: WorkspaceRun) {
           Number.isSafeInteger(receipt.shortfall)
             ? {
                 weekStart: receipt.weekStart,
-                text: `Below ${receipt.label} · short ${formatExactCents(receipt.shortfall)}`,
-                short: `Short ${formatExactCents(receipt.shortfall)}`,
+                text: `Below ${receipt.label} · short ${formatCents(receipt.shortfall)}`,
+                short: `Short ${formatCents(receipt.shortfall)}`,
               }
             : { weekStart: receipt.weekStart, text: `Below ${receipt.label}` },
         ]
@@ -173,6 +177,7 @@ export function WorkspaceView({
     return saved?.state === "ready" ? saved.value.forecast : null;
   };
   const curves = selectedIds.flatMap((id) => {
+    if (selection.waitingRunIds?.includes(id)) return [];
     const saved = selection.reads[id];
     const read = saved?.state === "ready" ? readComparison(saved.value, run, id) : saved;
     if (read?.state !== "ready") return [];
@@ -183,7 +188,7 @@ export function WorkspaceView({
       {
         runId: id,
         reveal: selection.revealRunIds?.includes(id),
-        label: read.value.label || "Untitled scenario",
+        label: friendlyLabel(read.value.label, b.seed.snapshot) || "Untitled scenario",
         href: actions.hrefFor(id),
         forecast: read.value.forecast,
         color: colorFor(selection, id),
@@ -191,6 +196,7 @@ export function WorkspaceView({
         // A branch that differs from the first forecast week forks from the last recorded week (-1).
         fromIndex: diverges < 0 ? null : diverges - 1,
         startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
+        note: catchUpNote(read.value, anchor, diverges),
         breaches: breachesOf(read.value),
       },
     ];
@@ -203,10 +209,12 @@ export function WorkspaceView({
   const branchParent = useMemo(
     () => ({
       runId: run.runId,
-      label: parentIsBase ? "Base forecast" : run.label || KIND[run.kind],
+      label: parentIsBase
+        ? "Base forecast"
+        : friendlyLabel(run.label, run.baseline.seed.snapshot) || KIND[run.kind],
       color: parentIsBase ? "hsl(var(--primary))" : colorFor(selection, run.runId),
     }),
-    [run.runId, run.label, run.kind, parentIsBase, selection],
+    [run.runId, run.label, run.kind, run.baseline.seed.snapshot, parentIsBase, selection],
   );
   const snapshot = b.seed.snapshot;
   const branchContext = useMemo(
@@ -408,7 +416,7 @@ export function WorkspaceView({
                 <div>
                   <p className="text-xs text-muted-foreground">Without this fix</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums">
-                    {formatExactCents(parent.value.forecast.lowPoint.usable)}
+                    {formatCents(parent.value.forecast.lowPoint.usable)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Lowest cash, week of {formatFullDate(parent.value.forecast.lowPoint.weekStart)}
@@ -417,7 +425,7 @@ export function WorkspaceView({
                 <div>
                   <p className="text-xs text-muted-foreground">With this fix</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums">
-                    {formatExactCents(low.usable)}
+                    {formatCents(low.usable)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Lowest cash, week of {formatFullDate(low.weekStart)}
@@ -516,7 +524,7 @@ export function WorkspaceView({
                   <div className="pb-3">
                     <StatTile
                       label="Lowest point"
-                      value={formatExactCents(low.usable)}
+                      value={formatCents(low.usable)}
                       delta={`Week of ${formatFullDate(low.weekStart)}`}
                       data-testid="tile-low"
                     />
@@ -526,7 +534,7 @@ export function WorkspaceView({
                   <div className="pb-3">
                     <StatTile
                       label={floor?.label ?? "Cash minimum"}
-                      value={floor ? formatExactCents(floor.limit) : "None set"}
+                      value={floor ? formatCents(floor.limit) : "None set"}
                       tone={
                         floor?.status === "breached"
                           ? "negative"
@@ -537,7 +545,7 @@ export function WorkspaceView({
                       delta={
                         floor
                           ? floor.status === "breached"
-                            ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatExactCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
+                            ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
                             : floor.status === "clear"
                               ? "Stays above in every week"
                               : "Could not be checked"
@@ -576,7 +584,7 @@ export function WorkspaceView({
                           label:
                             run.runId === baseRunId
                               ? "the base forecast"
-                              : run.label || KIND[run.kind],
+                              : friendlyLabel(run.label, b.seed.snapshot) || KIND[run.kind],
                           startsOn: buildsOnStart,
                         }}
                         invoices={options.invoices}
@@ -589,9 +597,17 @@ export function WorkspaceView({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {run.label || KIND[run.kind]} · {KIND[run.kind]}, saved{" "}
-                      {formatSavedAt(run.savedAt)}. Saved results never change.
+                      {friendlyLabel(run.label, b.seed.snapshot) || KIND[run.kind]} ·{" "}
+                      {KIND[run.kind]}, saved {formatSavedAt(run.savedAt)}. Saved results never
+                      change.
                     </p>
+                    {run.kind === "scenario" ? (
+                      <DominoEffects
+                        companyId={run.companyId}
+                        runId={run.runId}
+                        hrefFor={(id) => openedTimelineHref(run.companyId, id)}
+                      />
+                    ) : null}
                     <details className="group min-w-0">
                       <summary className={SUMMARY}>
                         <ChevronRight aria-hidden="true" className={CHEVRON} />
@@ -722,4 +738,36 @@ function Provenance({ run, resultRef }: { run: WorkspaceRun; resultRef: Read<Wee
       </dl>
     </details>
   );
+}
+
+/**
+ * A late payment only moves timing, so its line rejoins the line it left once the money
+ * arrives. Say so on the focus line instead of leaving the snap-back unexplained. Cash changes
+ * (discounts, fees, lost customers, cut costs) stay offset and get no note.
+ */
+export function catchUpNote(
+  run: WorkspaceRun,
+  anchor: WorkspaceRun["forecast"],
+  diverges: number,
+): string | null {
+  if (diverges < 0) return null;
+  const last = run.forecast.weeks.length - 1;
+  if (run.forecast.weeks[last]?.usable !== anchor.weeks[last]?.usable) return null;
+  const timing = run.ownChanges.filter(
+    (c) => c.kind === "delay_invoice" || c.kind === "delay_bill",
+  );
+  if (!timing.length || timing.length !== run.ownChanges.length) return null;
+  // The week the late money lands: from there on the two saved lines match again.
+  let back = last;
+  while (back > diverges && run.forecast.weeks[back - 1]?.usable === anchor.weeks[back - 1]?.usable)
+    back--;
+  const week = run.forecast.weeks[back]?.weekStart;
+  if (!week || back <= diverges) return null;
+  const what =
+    timing.length > 1
+      ? "the late payments land"
+      : timing[0]?.kind === "delay_bill"
+        ? "the bill is paid"
+        : "the invoice is paid";
+  return `Cash catches up in the week of ${formatFullDate(week)}, when ${what}`;
 }

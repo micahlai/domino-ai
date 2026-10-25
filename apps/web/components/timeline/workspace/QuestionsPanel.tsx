@@ -25,7 +25,7 @@ export type QuestionActions = {
 
 const FAILURES: Record<string, string> = {
   PROVIDER_UNAVAILABLE:
-    'I could not read that. Try something like "Why did cash drop this week?" Nothing was calculated.',
+    'I could not read that. A question like "Why did cash drop this week?" works. Nothing was calculated.',
   PROVIDER_TIMEOUT:
     "The language reader took too long. Nothing was calculated. Ask again to retry.",
   PROVIDER_ERROR:

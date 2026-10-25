@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { assignColors } from "./scenarioComparisons";
@@ -19,12 +20,14 @@ type Shown = {
   /** Shown run ids in color-slot order. */
   ids: string[];
   colors: Record<string, number>;
+  revealedEntries: Set<string>;
   set: (ids: SetStateAction<string[]>) => void;
 };
 
 const ShownContext = createContext<Shown | null>(null);
 
 export function ShownScenariosProvider({ children }: { children: ReactNode }) {
+  const revealedEntries = useRef(new Set<string>()).current;
   const [colors, setColors] = useState<Record<string, number>>({});
   const set = useCallback(
     (ids: SetStateAction<string[]>) =>
@@ -38,9 +41,10 @@ export function ShownScenariosProvider({ children }: { children: ReactNode }) {
     () => ({
       ids: Object.keys(colors).sort((a, b) => (colors[a] ?? 0) - (colors[b] ?? 0)),
       colors,
+      revealedEntries,
       set,
     }),
-    [colors, set],
+    [colors, set, revealedEntries],
   );
   return <ShownContext.Provider value={value}>{children}</ShownContext.Provider>;
 }
@@ -48,6 +52,7 @@ export function ShownScenariosProvider({ children }: { children: ReactNode }) {
 /** Shared selection when a provider is mounted; a local one otherwise (playground, tests). */
 export function useShownScenarios(): Shown {
   const shared = useContext(ShownContext);
+  const revealedEntries = useRef(new Set<string>()).current;
   const [colors, setColors] = useState<Record<string, number>>({});
   const set = useCallback(
     (ids: SetStateAction<string[]>) =>
@@ -61,9 +66,10 @@ export function useShownScenarios(): Shown {
     () => ({
       ids: Object.keys(colors).sort((a, b) => (colors[a] ?? 0) - (colors[b] ?? 0)),
       colors,
+      revealedEntries,
       set,
     }),
-    [colors, set],
+    [colors, set, revealedEntries],
   );
   return shared ?? local;
 }

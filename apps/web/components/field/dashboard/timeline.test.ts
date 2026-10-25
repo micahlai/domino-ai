@@ -104,7 +104,9 @@ describe("Timeline outputs on the dashboard", () => {
       const card = cards[i];
       expect(card?.impact).toBe(risk.forecast.lowPoint.usable - 290_000_000);
       expect(card?.route).toBe(
-        risk.runId ? `/c/kestrel/timeline?runId=${encodeURIComponent(risk.runId)}` : null,
+        risk.runId
+          ? `/c/kestrel/timeline?runId=${encodeURIComponent(risk.runId)}&reveal=${encodeURIComponent(risk.runId)}`
+          : null,
       );
       const responses = fixtureAnalysis.responses.filter((r) => r.riskId === risk.id);
       if (responses.length === 0) expect(card?.response).toBeNull();

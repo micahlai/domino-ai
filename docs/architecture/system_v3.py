@@ -452,7 +452,7 @@ def inline_svg_images(svg: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", type=Path, default=HERE / "domino-system",
+    parser.add_argument("--out", type=Path, default=HERE / "generated" / "domino-system-v3",
                         help="output path without extension")
     parser.add_argument("--formats", default="png,svg")
     args = parser.parse_args()

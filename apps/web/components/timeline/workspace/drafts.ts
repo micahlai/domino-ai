@@ -3,8 +3,15 @@ import {
   ChangeSchema,
   type Constraint,
   ConstraintSchema,
+  type Snapshot,
   type WeeklySeedV1,
 } from "@domino/contracts";
+import {
+  billName,
+  customerName,
+  invoiceName,
+  shortDate,
+} from "../../../convex/timeline/recordNames";
 
 // Form text to wire objects. Parsing only: amounts are read digit by digit into integer cents,
 // never through floating point, and no money is added, scaled or compared here.
@@ -232,23 +239,30 @@ export function eventFromItem(
 }
 
 /** Plain sentence for a saved change. Amounts formatted by the caller's exact formatter. */
-export function changeText(c: Change, money: (cents: number) => string): string {
+export function changeText(
+  c: Change,
+  money: (cents: number) => string,
+  snapshot?: Snapshot | null,
+): string {
+  const inv = (id: string) => (snapshot ? `The ${invoiceName(snapshot, id)}` : `Invoice ${id}`);
+  const bill = (id: string) => (snapshot ? `The ${billName(snapshot, id)}` : `Bill ${id}`);
+  const day = (iso: string) => (snapshot ? shortDate(iso) : iso);
   switch (c.kind) {
     case "delay_invoice":
-      return `Invoice ${c.invoiceId} is paid ${c.days} days late`;
+      return `${inv(c.invoiceId)} is paid ${c.days} days late`;
     case "lose_invoice":
-      return `Invoice ${c.invoiceId} is never paid`;
+      return `${inv(c.invoiceId)} is never paid`;
     case "churn":
-      return `Customer ${c.customerId} leaves from ${c.fromDate}`;
+      return `${snapshot ? customerName(snapshot, c.customerId) : `Customer ${c.customerId}`} leaves from ${day(c.fromDate)}`;
     case "add_cash":
-      return `${money(c.amount)} comes in on ${c.date}: ${c.label}`;
+      return `${money(c.amount)} comes in on ${day(c.date)}: ${c.label}`;
     case "remove_cash":
-      return `${money(c.amount)} goes out on ${c.date}: ${c.label}`;
+      return `${money(c.amount)} goes out on ${day(c.date)}: ${c.label}`;
     case "delay_bill":
-      return `Bill ${c.billId} is paid ${c.days} days later`;
+      return `${bill(c.billId)} is paid ${c.days} days later`;
     case "discount_early_pay":
-      return `Invoice ${c.invoiceId} paid early on ${c.payOn} for a ${c.percent}% discount`;
+      return `${inv(c.invoiceId)} is paid on ${day(c.payOn)} for a ${c.percent}% discount`;
     case "shift_hire":
-      return `${c.label}: hire moves from ${c.fromDate} to ${c.toDate}`;
+      return `${c.label}: hire moves from ${day(c.fromDate)} to ${day(c.toDate)}`;
   }
 }

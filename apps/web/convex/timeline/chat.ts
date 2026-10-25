@@ -27,6 +27,8 @@ import {
   advance,
   emptyDraft,
   evaluateIntents,
+  isQuestion,
+  plannedChange,
   validateProposal,
 } from "./chat/draft";
 import {
@@ -40,6 +42,7 @@ import {
 import { checkPinned, checkSelection, source } from "./chat/source";
 import { IntentSchema } from "./questions/intent";
 import type { Citation } from "./questions/resolve";
+import { compactMoney, shortDate } from "./recordNames";
 import { branchFloor } from "./workspace";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
@@ -461,6 +464,11 @@ export const confirm = mutation({
           note: proposal.constraintNote ?? "Rules reviewed in Timeline chat",
           reviewed: true,
         });
+    const result = (await ctx.runQuery(workspaceRefs.get, {
+      companyId: receipt.companyId,
+      runId: saved.runId,
+    })) as { forecast?: { lowPoint?: { usable: number; weekStart: string } } } | null;
+    const low = result?.forecast?.lowPoint;
     const now = new Date().toISOString();
     const updated = append(
       {
@@ -471,7 +479,9 @@ export const confirm = mutation({
         updatedAt: now,
       },
       "assistant",
-      "Saved and calculated this reviewed proposal as a new timeline. Open the saved result to inspect its cash forecast and rule checks.",
+      low
+        ? `Saved as a new scenario. With this change, lowest cash is ${compactMoney(low.usable)} in the week of ${shortDate(low.weekStart)}.`
+        : "Saved as a new scenario.",
       now,
     );
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft, segmentStart } });
@@ -683,22 +693,26 @@ export const saveAssistantTurn = internalMutation({
     // path. A model cannot silently replace them or pull values from an earlier reset draft.
     // Enforce the original wording even when no model ran or returned no usable intents.
     // A rejection cannot fall through to the weaker fixed grammar or retain a ready proposal.
-    const sourceIssue = groundingIssue(args.text, []);
+    // A question is answered as a question; qualifier words in it are not a modeling request.
     const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    const plan = draft.intents.length ? null : plannedChange(run, draft, args.text, floor);
+    const sourceIssue = isQuestion(args.text) || plan ? null : groundingIssue(args.text, []);
     // Questions are always answered by the deterministic resolver, never by model wording.
     const asksOnly = intents?.length && intents.every((i) => i.kind === "question");
-    const next: DraftResult = sourceIssue
-      ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
-      : draft.intents.length || intents === null || asksOnly
-        ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId, floor)
-        : evaluateIntents(
-            run,
-            intents,
-            receipt.conversationId,
-            args.text,
-            receipt.selectedItemId,
-            floor,
-          );
+    const next: DraftResult = plan
+      ? plan
+      : sourceIssue
+        ? { draft, answer: sourceIssue, proposal: null, pendingField: receipt.pendingField }
+        : draft.intents.length || intents === null || asksOnly
+          ? advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId, floor)
+          : evaluateIntents(
+              run,
+              intents,
+              receipt.conversationId,
+              args.text,
+              receipt.selectedItemId,
+              floor,
+            );
     const unchangedReady =
       !sourceIssue &&
       receipt.status === "ready" &&

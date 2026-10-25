@@ -182,6 +182,7 @@ describe("independent saved suggestion action", () => {
       const route = new URL(out.route, "http://localhost");
       expect(route.pathname).toBe(`/c/${out.timelineCompanyId}/timeline`);
       expect(route.searchParams.get("runId")).toBe(out.fixRunId);
+      expect(route.searchParams.get("reveal")).toBe(out.fixRunId);
       expect(route.searchParams.get("conversationId")).toBe(out.conversationId);
       expect(route.hash).toBe("#timeline-chat");
       expect(route.searchParams.has("note")).toBe(false);

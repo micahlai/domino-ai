@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatCents } from "../../../lib/format";
 import { formatExactCents, formatFullDate } from "../baseline/format";
 import { placeChartAnnotations } from "./chartAnnotations";
 import { type FocusCurve, type FocusPoint, nearestCurveAt, pointOnCurve } from "./chartFocus";
@@ -48,6 +49,8 @@ export type ChartProps = {
     fromIndex?: number | null;
     /** First date the scenario's own changes act, shown in the legend. */
     startsOn?: string | null;
+    /** Plain note for the focus line, e.g. why a timing-only line rejoins its parent. */
+    note?: string | null;
     /** This scenario's own saved breach notes, marked on its line. */
     breaches?: { weekStart: string; text: string; short?: string }[];
   }[];
@@ -322,6 +325,7 @@ export function WorkspaceChart(p: ChartProps) {
       ? `between ${formatFullDate(before)} and ${formatFullDate(after)}`
       : `week of ${formatFullDate(before ?? "")}`;
   };
+  const focusNote = comparisons.find((entry) => entry.runId === focusCurve.runId)?.note;
   const focusLabel = `${focusCurve.label} · ${focusDate(focusSlot)}`;
   const selectAt = (event: MouseEvent<SVGRectElement>) => {
     const svg = event.currentTarget.ownerSVGElement;
@@ -371,7 +375,7 @@ export function WorkspaceChart(p: ChartProps) {
           id: `limit:${limit.id}`,
           x: left + 5,
           y: y(limit.cents),
-          text: `${limit.label} ${formatExactCents(limit.cents)}`,
+          text: `${limit.label} ${formatCents(limit.cents)}`,
         })),
       ...notes.map((note, index) => ({
         id: `note:${index}`,
@@ -581,7 +585,7 @@ export function WorkspaceChart(p: ChartProps) {
             <ul className="space-y-1 pl-2">
               {p.limits.map((limit) => (
                 <li key={limit.id}>
-                  {limit.label} · {formatExactCents(limit.cents)}
+                  {limit.label} · {formatCents(limit.cents)}
                 </li>
               ))}
               {notes.map((note, index) => (
@@ -620,7 +624,7 @@ export function WorkspaceChart(p: ChartProps) {
           >
             <title
               id={titleId}
-            >{`Usable cash: ${history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatExactCents(low.usable)}.`}</title>
+            >{`Usable cash: ${history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatCents(low.usable)}.`}</title>
             {/* Lines are drawn for every week and clipped to the plot, so panning stays smooth. */}
             <defs>
               <clipPath id={clipId}>
@@ -1053,7 +1057,7 @@ export function WorkspaceChart(p: ChartProps) {
                 <span className="text-muted-foreground">
                   {hovered.kind === "Forecast" ? mainLabel : "Usable cash"}
                 </span>
-                <span className="tabular-nums">{formatExactCents(hovered.usable)}</span>
+                <span className="tabular-nums">{formatCents(hovered.usable)}</span>
               </p>
               {hovered.kind === "Forecast"
                 ? comparisons.map((entry) => {
@@ -1070,7 +1074,7 @@ export function WorkspaceChart(p: ChartProps) {
                           ) : null}
                           <span className="truncate">{entry.label}</span>
                         </span>
-                        <span className="shrink-0 tabular-nums">{formatExactCents(v)}</span>
+                        <span className="shrink-0 tabular-nums">{formatCents(v)}</span>
                       </p>
                     );
                   })
@@ -1151,7 +1155,8 @@ export function WorkspaceChart(p: ChartProps) {
           data-testid="chart-focus-label"
           aria-live="polite"
         >
-          Focus: {focusLabel}. Week details use the open scenario.
+          Focus: {focusLabel}.{focusNote ? ` ${focusNote}.` : ""} Week details use the open
+          scenario.
         </p>
       ) : null}
     </figure>

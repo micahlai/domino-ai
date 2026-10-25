@@ -59,6 +59,45 @@ const runs = (t: T) => t.run((ctx) => ctx.db.query("timelineRuns").collect());
 afterEach(() => vi.restoreAllMocks());
 
 describe("durable Timeline clarification chat", () => {
+  it("models percentage spend cuts, hires and price changes from the saved schedule", async () => {
+    const t = setup();
+    let r = await start(t);
+    r = await send(t, r, "what if we cut marketing 20%");
+    expect(r.status).toBe("ready");
+    expect(r.turns.at(-1)?.text).toMatch(/20% cut to marketing spend \(Northlight Marketing\)/);
+    expect(r.proposal?.changes.every((c) => c.kind === "add_cash" && c.amount > 0)).toBe(true);
+    r = await start(t);
+    r = await send(t, r, "hire 3 engineers at $150K from Dec 1");
+    expect(r.status).toBe("ready");
+    expect(
+      r.proposal?.changes.every((c) => c.kind === "remove_cash" && c.date >= "2026-12-01"),
+    ).toBe(true);
+    r = await start(t);
+    r = await send(t, r, "cut snacks 20%");
+    expect(r.proposal).toBeNull();
+    expect(r.turns.at(-1)?.text).toMatch(/Which vendor should I cut: Cloud provider/);
+  });
+  it("answers why/how questions as questions instead of a modeling refusal", async () => {
+    const t = setup();
+    let r = await start(t);
+    const before = (await runs(t)).length;
+    r = await send(t, r, "why is the 2% offer branch starting before the invoice parent branch");
+    const answer = r.turns.at(-1)?.text ?? "";
+    expect(answer).toMatch(/starts the week its own change first moves cash/);
+    expect(answer).not.toMatch(/Negations|clarification|grammar/);
+    expect(r.proposal).toBeNull();
+    r = await send(t, r, "why does the late invoice line snap back to the base?");
+    expect(r.turns.at(-1)?.text).toMatch(/only moves timing/);
+    r = await send(t, r, "wht is teh lowest cash and wen");
+    expect(r.turns.at(-1)?.text).toMatch(/^Cash is lowest in the week of/);
+    r = await send(t, r, "what's our runway");
+    expect(r.turns.at(-1)?.text).toMatch(/runway|months/);
+    r = await send(t, r, "what happens if we lose our biggest customer");
+    expect(r.turns.at(-1)?.text).toMatch(/largest customer by open invoices/);
+    r = await send(t, r, "pay $50,000 to Atlas Legal on 2026-11-17 unless it rains");
+    expect(r.turns.at(-1)?.text).toMatch(/For example/);
+    expect((await runs(t)).length).toBe(before);
+  });
   it("clarifies amount, date and counterparty in typed turns; only explicit confirmation calculates", async () => {
     const t = setup();
     let r = await start(t);

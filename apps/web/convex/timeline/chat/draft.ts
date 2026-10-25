@@ -1,6 +1,6 @@
 import { BOUNDARY_INTEGER_MAX, canonicalJson } from "@domino/contracts";
 import { z } from "zod";
-import { groundingIssue } from "../assistant/grounding";
+import { groundingIssue, unsupportedReply } from "../assistant/grounding";
 import { type WorkspaceRun, matchRecords, recordsOf } from "../questions/context";
 import { IN, OUT, SCENARIO, clauses, readWithGrammar } from "../questions/grammar";
 import { type Intent, IntentSchema } from "../questions/intent";
@@ -18,6 +18,8 @@ import type { Citation } from "../questions/resolve";
 import { resolve } from "../questions/resolve";
 import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
+import { explainQuestion, normalizeQuestion } from "./explain";
+import { planRequest } from "./planChanges";
 
 const FieldSchema = z.enum([
   "amountText",
@@ -287,7 +289,7 @@ function finish(
   return {
     draft,
     answer:
-      "Here is the complete proposal. Review the event details and full rule set, then confirm to save and calculate. Nothing has run yet.",
+      "Ready to model this. Check the details below, then confirm to add it to the chart. Nothing has run yet.",
     proposal,
     pendingField: null,
   };
@@ -325,6 +327,94 @@ export function plainPhrasing(text: string): string {
   return out;
 }
 
+/**
+ * Spend cuts, hires and price changes, computed from the saved schedule into ordinary cash
+ * events, then held to the same branch-start and validation checks as any proposal.
+ */
+export function plannedChange(
+  run: WorkspaceRun,
+  draft: Draft,
+  text: string,
+  floor: string | null,
+): Result | null {
+  const reply = planRequest(run, text, floor);
+  if (!reply) return null;
+  if (!reply.proposal) return { draft, answer: reply.answer, proposal: null, pendingField: null };
+  const proposal = distinctCashLabels(run, reply.proposal);
+  try {
+    if (startsBefore(proposal.changes, run.baseline.seed.snapshot, floor).length) throw new Error();
+    validateProposal(run, proposal);
+  } catch {
+    return {
+      draft,
+      answer:
+        "I could not turn that into supported cash events for this saved run. Nothing was calculated.",
+      proposal: null,
+      pendingField: null,
+    };
+  }
+  return { draft, answer: reply.answer, proposal, pendingField: null };
+}
+
+/** One or two plain sentences with one example that works. Nothing changed. */
+export const CANT_MODEL =
+  'I can model one change at a time on a specific date, so I could not run that one as written. For example, "Northwind pays its invoice 14 days late" or "Pay $250,000 for a roof repair on Nov 17" works.';
+
+/** "why ...", "how does ...", "what is ...?" but not "what if ..." or "could you ...". */
+export function isQuestion(text: string): boolean {
+  const t = normalizeQuestion(text).trim();
+  if (/^what if\b/i.test(t) || /^(suppose|assume|imagine)\b/i.test(t)) return false;
+  return (
+    // "is/do/does" open a question only with a question mark: "do not pay..." is a request.
+    (/^(why|how|what|when|where|which|who|explain)\b/i.test(t) ||
+      (/^(is|are|does|do|did)\b/i.test(t) && /\?\s*$/.test(t))) &&
+    // "How about paying Acme on Nov 3" is a request, not a question.
+    !/^how about\b/i.test(t)
+  );
+}
+
+/**
+ * Answer a question from the saved run. The fixed question grammar handles low point, weeks,
+ * items, rules and dominoes with citations; anything else gets a plain explanation of what the
+ * saved scenario does, how branches start, and why timing-only lines rejoin.
+ */
+export function answerQuestion(
+  run: WorkspaceRun,
+  draft: Draft,
+  text: string,
+  conversationId: string,
+  selectedItemId: string | null,
+): Result {
+  // Low point, runway, cash now and customer-loss questions get a direct computed answer,
+  // keeping the fixed reader's sources when it also understood the question.
+  const direct =
+    /\b(lowest|low point|runway|run out|how much cash|biggest customer|largest customer|lose|lost)\b/i.test(
+      normalizeQuestion(text),
+    );
+  const parsed = readWithGrammar(text, recordsOf(run), {
+    week: false,
+    item: selectedItemId !== null,
+  });
+  if (parsed?.length && parsed.every((i) => i.kind === "question")) {
+    const outcome = resolve(run, parsed, {
+      questionId: conversationId,
+      prompt: text,
+      selectedWeek: null,
+      selectedItemId,
+    });
+    // A question the fixed reader cannot pin down gets a plain answer, not a format demand.
+    if (outcome.status === "answered")
+      return {
+        draft,
+        answer: direct ? explainQuestion(run, text) : outcome.answer,
+        ...(outcome.citations.length ? { citations: outcome.citations } : {}),
+        proposal: null,
+        pendingField: null,
+      };
+  }
+  return { draft, answer: explainQuestion(run, text), proposal: null, pendingField: null };
+}
+
 export function advance(
   run: WorkspaceRun,
   previous: Draft,
@@ -335,6 +425,13 @@ export function advance(
 ): Result {
   const draft = DraftSchema.parse(previous);
   const text = plainPhrasing(rawText);
+  // Questions are answered as questions, from the saved run, never parsed as a what-if.
+  if (!draft.pending && !draft.intents.length && isQuestion(text))
+    return answerQuestion(run, draft, text, conversationId, selectedItemId);
+  if (!draft.pending && !draft.intents.length) {
+    const plan = plannedChange(run, draft, rawText, floor);
+    if (plan) return plan;
+  }
   // The fixed grammar only models unconditional events on one exact date. Keep
   // conditions and relative timing visible instead of discarding their meaning.
   if (
@@ -344,8 +441,7 @@ export function advance(
   )
     return {
       draft,
-      answer:
-        'I can only read one plain event on one exact date in the forecast, like "Pay $250,000 for a roof repair on" a date. Conditions (if, unless, before, with) and ranges like "in 2099" are not supported yet. Nothing changed.',
+      answer: unsupportedReply(rawText),
       proposal: null,
       pendingField: draft.pending ? fieldWords[draft.pending.field] : null,
     };
@@ -400,7 +496,7 @@ export function advance(
   if (!parsed || parsed.some((i) => i.kind === "question" || i.kind === "unclear"))
     return {
       draft,
-      answer: `I could not safely read every part of that request. ${intro}`,
+      answer: unsupportedReply(rawText),
       proposal: null,
       pendingField: null,
     };
