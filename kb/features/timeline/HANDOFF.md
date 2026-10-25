@@ -1,5 +1,10 @@
 # Timeline handoff
 
+## 2026-10-25: publish partner merge checkpoint
+
+- User authorizes pushing the accepted Timeline work for partner merge on another computer. Publish TL5-checkpoint, with source0db7f2d and [partner pickup](PARTNER-PICKUP.md). No main/Field merge.
+- Stable preview remains3107/3240 with existing data. Chat-based rule/scenario clarification starts separately after this checkpoint; it will not change the published smoke preview.
+
 ## 2026-10-25: timeline scales and inline scenario editor
 
 - Done: integrated scales217b957 and contextual editorcb7f094 on TL5-checkpoint (196d154). Existing3107/3240 runtime restarted, data retained. Source-reviewed UI uses selected week for new cash dates, retains entered/queued events when navigating/hiding, and confirms exact queued events before saving.
