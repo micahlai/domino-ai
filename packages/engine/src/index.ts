@@ -28,6 +28,28 @@ export {
   quarterScenario,
 } from "./period-scenario";
 
+/** L1 supported SEC source normalization; engine-local, not part of the Engine contract. */
+export {
+  BRIDGE_ROLES,
+  type CompanySnapshotResult,
+  type DictionaryEntry,
+  type MappedSource,
+  type QuarterBridgeRoles,
+  type QuarterRole,
+  type ReadSecSource,
+  type Result,
+  SEC_CASH_DICTIONARY,
+  SOURCE_NORMALIZER,
+  type SecSource,
+  type SecSourceInput,
+  type SkippedSource,
+  type SnapshotArgs,
+  type UnmappedRecord,
+  companySnapshot,
+  mapSecRecords,
+  readSecSource,
+} from "./source-normalization";
+
 export const engine: Engine = {
   forecast,
   dominoes,
