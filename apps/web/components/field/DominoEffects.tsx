@@ -3,7 +3,7 @@
 import { useConvex } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CascadeView } from "../../convex/fieldCascade";
 import { formatExactCents, formatFullDate } from "../timeline/baseline/format";
 import { Badge } from "../ui/badge";
@@ -28,11 +28,14 @@ export function DominoEffects({
   runId,
   fieldCompanyId,
   hrefFor,
+  autoLoad = false,
 }: {
   companyId: string;
   runId: string;
   fieldCompanyId?: string;
   hrefFor?: (runId: string) => string;
+  /** Read the effects on mount: for runs the forecasting agent already saved them for. */
+  autoLoad?: boolean;
 }) {
   const convex = useConvex();
   const [state, setState] = useState<
@@ -58,6 +61,13 @@ export function DominoEffects({
       });
     }
   }
+  const loaded = useRef(false);
+  useEffect(() => {
+    // Saved effects are reused by their request ids, so reading them saves nothing new.
+    if (!autoLoad || loaded.current || !convex) return;
+    loaded.current = true;
+    void run();
+  });
   const kids = (id: string | null, nodes: Node[]) => nodes.filter((n) => n.parentId === id);
   const tree = (id: string | null, nodes: Node[]) => {
     const list = kids(id, nodes);

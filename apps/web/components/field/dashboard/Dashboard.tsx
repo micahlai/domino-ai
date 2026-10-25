@@ -828,6 +828,14 @@ function Risks({ feed, secondary = false }: { feed: RiskFeed; secondary?: boolea
                   <span className="text-muted-foreground">Lowest projected cash moves by</span>
                   <span className="font-medium tabular-nums">{formatCents(r.impact)}</span>
                 </div>
+                {r.href ? (
+                  <Link
+                    href={r.href}
+                    className="inline-block text-[13px] font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Open in forecast
+                  </Link>
+                ) : null}
               </div>
               {r.fix ? (
                 <div className="border-t bg-muted/40 px-4 py-3 text-[13px]">

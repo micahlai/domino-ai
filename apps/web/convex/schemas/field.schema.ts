@@ -73,6 +73,45 @@ const webhookVendor = v.union(
   v.literal("nessie"),
 );
 
+const lowPoint = v.object({ cents: v.number(), weekStart: v.string() });
+/**
+ * Saved Timeline runs the forecasting agent deployed for one analyst risk scenario
+ * (fieldForecastRuns.ts): the risk run, its domino effects and the fixes saved under it.
+ */
+export const savedScenarioForecast = v.object({
+  timelineCompanyId: v.string(),
+  rootRunId: v.string(),
+  scenarioRunId: v.string(),
+  low: lowPoint,
+  outOfCash: v.optional(v.object({ weekStart: v.string() })),
+  /** Domino effects saved as child runs of the risk run. */
+  effects: v.number(),
+  fixes: v.array(
+    v.object({
+      suggestionId: v.string(),
+      fixLabel: v.string(),
+      fixRunId: v.string(),
+      conversationId: v.string(),
+      low: lowPoint,
+    }),
+  ),
+  savedAt: v.string(),
+});
+/** One suggestion's saved comparison: the risk without the fix and the fix child run. */
+export const savedSuggestionForecast = v.object({
+  timelineCompanyId: v.string(),
+  scenarioRunId: v.string(),
+  fixRunId: v.string(),
+  conversationId: v.string(),
+  /** Timeline route that opens the fix run and its Ask Domino thread. */
+  route: v.string(),
+  scenarioLow: lowPoint,
+  fixLow: lowPoint,
+  outOfCash: v.optional(v.object({ weekStart: v.string() })),
+  effects: v.number(),
+  savedAt: v.string(),
+});
+
 export const fieldTables = {
   // Weekly company core (P0 v2): company, ingestion, model, constraints, approvals, log.
   companies: defineTable({
@@ -339,6 +378,8 @@ export const fieldTables = {
     work: v.optional(v.any()),
     fixes: v.optional(v.any()),
     error: v.optional(v.string()),
+    /** Saved Timeline runs for this risk, written after the run finished. */
+    forecast: v.optional(savedScenarioForecast),
   }).index("by_runId_and_index", ["runId", "index"]),
   analystLoops: defineTable({ companyId, generation: v.number(), ticksLeft: v.number() }).index(
     "by_companyId",
@@ -575,6 +616,8 @@ export const fieldTables = {
         undoneAt: v.optional(v.string()),
       }),
     ),
+    /** Saved forecast comparison (fieldForecastRuns.ts); cleared when the row is refreshed. */
+    forecast: v.optional(savedSuggestionForecast),
     createdAt: v.string(),
     updatedAt: v.string(),
   })

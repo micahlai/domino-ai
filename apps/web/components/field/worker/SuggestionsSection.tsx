@@ -4,17 +4,20 @@ import { ConvexError } from "convex/values";
 import { ArrowRight, Check, Lightbulb, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { fieldTraceHref } from "../../../lib/trace-links";
 import { cn } from "../../../lib/utils";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
+import { DominoEffects } from "../DominoEffects";
 import { fixesDomId, riskDomId, suggestionDomId } from "../notifications";
-import { day, money } from "./format";
+import { day, money, plural } from "./format";
 import { DecidedDetails, EmptyCard, WorkerSection } from "./parts";
 import {
   type EffectContext,
+  type SavedForecast,
   type Suggestion,
   type SuggestionDecision,
   cashEffect,
@@ -263,6 +266,8 @@ function SuggestionCard({
         />
       </dl>
 
+      {s.forecast ? <SavedForecastLine forecast={s.forecast} companyId={companyId} /> : null}
+
       {s.learnedNote ? (
         <p className="mt-3 flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
           <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
@@ -303,10 +308,20 @@ function SuggestionCard({
             className="h-11 sm:h-9 sm:flex-1"
           />
           <div className="grid shrink-0 grid-cols-3 gap-2 sm:flex">
-            <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
-              <ArrowRight aria-hidden="true" />
-              {busy === "simulate" ? "Opening..." : "Open in forecast"}
-            </Button>
+            {s.forecast ? (
+              // Already saved by the forecasting agent: open the fix run, nothing to compute.
+              <Button asChild>
+                <Link href={s.forecast.route}>
+                  <ArrowRight aria-hidden="true" />
+                  Open in forecast
+                </Link>
+              </Button>
+            ) : (
+              <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
+                <ArrowRight aria-hidden="true" />
+                {busy === "simulate" ? "Opening..." : "Open in forecast"}
+              </Button>
+            )}
             <Button variant="outline" disabled={busy !== null} onClick={() => decide("accepted")}>
               <Check aria-hidden="true" />
               {busy === "accepted" ? "Saving..." : "Approve"}
@@ -318,7 +333,7 @@ function SuggestionCard({
           </div>
         </div>
         <p className="text-xs leading-5 text-muted-foreground">{NEVER_MOVES_MONEY}</p>
-        {companyId && !hasSavedInputs ? (
+        {companyId && !hasSavedInputs && !s.forecast ? (
           <p className="text-xs leading-5 text-muted-foreground">
             This older fix cannot be opened in the forecast. You can still review, approve or
             dismiss it.
@@ -331,6 +346,59 @@ function SuggestionCard({
         </p>
       ) : null}
     </li>
+  );
+}
+
+/** "Without fix: lowest $18.1M Oct 9 (out of cash Oct 16) · With fix: $76.0M · 3 domino effects" */
+function SavedForecastLine({
+  forecast: f,
+  companyId,
+}: {
+  forecast: SavedForecast;
+  companyId?: string | null;
+}) {
+  const [showEffects, setShowEffects] = useState(false);
+  const lowDay = day(f.scenarioLow.weekStart);
+  const outDay = f.outOfCash ? day(f.outOfCash.weekStart) : null;
+  return (
+    <div className="mt-2 space-y-2">
+      <p className="flex flex-wrap items-baseline gap-x-1.5 text-[13px] leading-5 text-muted-foreground">
+        <span>
+          Without fix: lowest{" "}
+          <span className="font-medium tabular-nums text-foreground">
+            {money(f.scenarioLow.cents)}
+          </span>
+          {lowDay ? ` ${lowDay}` : ""}
+          {f.outOfCash ? ` (out of cash${outDay ? ` ${outDay}` : ""})` : ""}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          With fix:{" "}
+          <span className="font-medium tabular-nums text-foreground">{money(f.fixLow.cents)}</span>
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>{f.effects > 0 ? plural(f.effects, "domino effect") : "No domino effects"}</span>
+        {f.effects > 0 ? (
+          <button
+            type="button"
+            className={cn(CROSS_LINK, "ml-2")}
+            aria-expanded={showEffects}
+            onClick={() => setShowEffects((v) => !v)}
+          >
+            Domino effects
+          </button>
+        ) : null}
+      </p>
+      {showEffects ? (
+        <DominoEffects
+          autoLoad
+          companyId={f.timelineCompanyId}
+          runId={f.scenarioRunId}
+          {...(companyId ? { fieldCompanyId: companyId } : {})}
+          hrefFor={(id) => openedTimelineHref(f.timelineCompanyId, id)}
+        />
+      ) : null}
+    </div>
   );
 }
 
