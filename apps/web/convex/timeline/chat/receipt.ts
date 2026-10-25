@@ -3,6 +3,7 @@ import { z } from "zod";
 import { WorkerChatContextSchema } from "../../../lib/worker-chat-context";
 import { CitationSchema, QuestionProposalSchema } from "../questions/receipt";
 import { isCalendarDate, reject } from "../workspaceInput";
+import { ScenarioBriefSchema } from "./brief";
 
 export const CHAT_METHOD = "timeline_chat@1";
 export const Id = z.string().trim().min(1).max(240);
@@ -51,6 +52,8 @@ export const ChatReceiptSchema = z
     linkedRunId: Id.nullable(),
     pendingField: z.string().min(1).max(200).nullable(),
     workerContext: WorkerChatContextSchema.optional(),
+    /** The what-if's story from the conversation, kept with the proposal it explains. */
+    brief: ScenarioBriefSchema.optional(),
   })
   .strict()
   .superRefine((r, ctx) => {

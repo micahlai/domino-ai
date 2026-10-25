@@ -277,6 +277,15 @@ describe("timeline/predict", () => {
             },
             linkedRunId: runId,
             pendingField: null,
+            brief: {
+              event: "Replace servers that failed a security audit",
+              cause: "Failed audit",
+              involves: [{ name: "Auditor", kind: "regulator" }],
+              customersAffected: "no",
+              duration: "one_time",
+              visibility: "private",
+              notes: null,
+            },
           },
         },
       }),
@@ -290,6 +299,10 @@ describe("timeline/predict", () => {
     }[];
     expect(stories[0]?.relation).toBe("this scenario");
     expect(stories[0]?.askDomino?.conversation[0]?.text).toMatch(/failed an audit/);
+    expect(
+      (stories[0]?.askDomino as unknown as { brief: { customersAffected: string } }).brief
+        .customersAffected,
+    ).toBe("no");
     expect(agent.told?.spendNames).toEqual(["Northlight Marketing"]);
     expect(receipt.context).toEqual([
       { label: "Buy equipment", relation: "this scenario", sources: ["Ask Domino conversation"] },

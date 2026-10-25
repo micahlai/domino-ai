@@ -2,6 +2,7 @@ import type { Change } from "@domino/contracts";
 import type { WorkerChatContext } from "../../../lib/worker-chat-context";
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import type { ScenarioBrief } from "../chat/brief";
 import { ChatReceiptSchema } from "../chat/receipt";
 
 /**
@@ -20,6 +21,8 @@ export type ScenarioStory = {
   askDomino: {
     conversation: { role: "user" | "assistant"; text: string }[];
     savedLabel: string | null;
+    /** The story Ask Domino recorded while the person described the what-if. */
+    brief: ScenarioBrief | null;
   } | null;
   fieldSuggestion: {
     role: "risk" | "fix";
@@ -116,6 +119,7 @@ async function storyOf(ctx: Ctx, run: Run, relation: ScenarioStory["relation"]) 
             .slice(-MAX_TURNS)
             .map((t) => ({ role: t.role, text: clip(t.text, 600) })),
           savedLabel: saved.proposal?.label ?? null,
+          brief: saved.brief ?? null,
         }
       : null,
     fieldSuggestion: field,

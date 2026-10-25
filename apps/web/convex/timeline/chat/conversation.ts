@@ -3,6 +3,7 @@ import { type WorkspaceRun, recordsOf } from "../questions/context";
 import { IntentSchema } from "../questions/intent";
 import { dateTokens, moneyTokens, parseMoneyText } from "../questions/parse";
 import { type Citation, resolve } from "../questions/resolve";
+import { type ScenarioBrief, ScenarioBriefSchema } from "./brief";
 import { type Result, emptyDraft, evaluateIntents, plannedChange } from "./draft";
 import { type MacroEstimate, MacroEstimateSchema, detectExternalEvent } from "./externalEvent";
 import type { ChatReceipt } from "./receipt";
@@ -34,6 +35,8 @@ export const TurnPlanSchema = z
     planText: z.string().min(1).max(1000).nullable().optional(),
     /** Bounded AI estimate for an outside event in planText; the save re-checks and clamps it. */
     macro: MacroEstimateSchema.nullable().optional(),
+    /** The what-if's story as the model understood it; the save re-checks it. */
+    brief: ScenarioBriefSchema.nullable().optional(),
   })
   .strict();
 export type TurnPlan = z.infer<typeof TurnPlanSchema>;
@@ -237,6 +240,23 @@ export function unverifiedAmounts(reply: string, saved: unknown[], texts: string
     if (!read) return !texts.some((t) => t.includes(token));
     return !values.some((v) => Math.abs(v - read.cents) <= read.tolerance);
   });
+}
+
+/**
+ * Why a brief cannot be saved, or null. Every amount in it must be one the person typed: the
+ * brief retells their story and must not introduce a number they never gave.
+ */
+export function briefIssue(brief: ScenarioBrief, userTexts: string[]): string | null {
+  const text = [
+    brief.event,
+    brief.cause ?? "",
+    brief.notes ?? "",
+    ...brief.involves.map((i) => i.name),
+  ].join("\n");
+  const unknown = unverifiedAmounts(text, [], userTexts);
+  return unknown.length
+    ? `the brief mentions amounts the person did not give: ${unknown.join(", ")}`
+    : null;
 }
 
 /** Existing plan computations run only as an LLM-requested, checked tool. */

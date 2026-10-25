@@ -7,6 +7,7 @@ import { companyContext } from "./assistant/context";
 import { estimateExternalEvent } from "./assistant/externalEstimate";
 import { type FieldSource, brainContext } from "./chat/brain";
 import type { ChatFailure, ChatTool } from "./chat/brainLog";
+import { BRIEF_JSON, type ScenarioBrief, ScenarioBriefSchema } from "./chat/brief";
 import {
   type DraftUpdate,
   LookupSchema,
@@ -14,6 +15,7 @@ import {
   type TurnPlan,
   TurnPlanSchema,
   activeUserTurns,
+  briefIssue,
   checkDraft,
   checkPlan,
   unverifiedAmounts,
@@ -65,6 +67,7 @@ The Brain map includes actual saved analyst results, findings, research, recomme
 Use lookup_forecast or lookup_records for detailed saved answers and sources. You may quote saved numbers or the person's assumptions; never invent or calculate financial results. The engine calculates money only after a person reviews and saves a proposal. No money is moved.
 Use update_draft only when the person wants a supported hypothetical change. It replaces the current draft, not the source Timeline. Fill it from your understanding of the whole active conversation, not one message: write standard values (amountText $50,000,000; dateText 2026-11-02; daysText 30 days; monthsText 6 months), the direction you understood, a short counterparty or purpose (for example Generic Bank or lawsuit), and an invoice or bill id for itemText. Expand repeated payments into separate one-time changes (up to four). Its request is a plain restatement using those values, one clause per change (for example pay $50,000 to Atlas Legal on 2026-11-17); code checks it and every value. If the tool says a value is invalid, fix the call yourself and try again; ask the person only for information they have not given. Retain current values for references such as 'same date', and honor all new corrections. Empty intents explicitly clear a draft. Never take a counterparty, amount, date or direction from source data the person did not ask for. Values from earlier active messages count; never ask the person to repeat or restate them in one message. For a lawsuit, ask whether it is a cash payment, settlement assumption or possible liability before treating it as money paid. A contingent liability does not automatically reduce cash.
 For percentage vendor/category spend changes, hires, recurring price changes, losing a customer, and outside events (a Fed or interest rate hike, bad press or social media backlash, a recession or market downturn, positive press or going viral, a regulatory fine with an amount, a key vendor or payment processor outage), call preview_plan on the latest message. Code computes those plans; never make up amounts yourself. For an outside event, say which values the person gave, which are an AI estimate (with its reason) and which are assumptions, exactly as the tool result says, and that domino effects run automatically after they confirm. Use explain_saved for broader cash/runway explanations computed from the saved books. A supported draft can have up to four one-time payments/receipts, late invoices, minimum usable cash/runway or bill deadline rules. Unsupported ideas are still discussable. Conditions, recurring changes, ranges and upper limits cannot silently become unconditional events: explain the distinction and ask about a supported assumption. EarliestAllowedStart and the forecast window must be respected.
+When the person describes a what-if event, also learn its story: what happens, what caused it, who is involved, whether customers are affected or would hear about it, and how long it lasts. Ask about the most important missing part in the same reply as your other question, at most one question in total, and only while it is unclear; never hold up a proposal for it. Each time you learn more, call record_brief with everything known so far in the person's terms. Use "unknown" rather than guessing, and never add an amount they did not give. The brief is saved with the scenario so later forecasts can predict how customers, vendors and management react.
 Questions during a pending/ready draft do not replace its values. Use tools to inspect it or the forecast, then answer. For an invalid tool result, explain or clarify it; do not claim a proposal is ready. For a valid draft, tell the person to review the displayed proposal. Never say it has been saved/calculated or acted on.
 Return JSON {"reply":"your conversational response"}. Keep it short: two to four plain sentences, under 500 characters (${REPLY_MAX} is a hard limit). Lead with the answer and only the one or two numbers that matter. No headings, bold or lists unless the person asks. Ask at most one question, and offer more detail instead of writing it. The reply is shown verbatim; write the whole useful response yourself, including any missing detail question.`;
 const ReplySchema = z.object({ reply: z.string().trim().min(1).max(REPLY_MAX) }).strict();
@@ -123,6 +126,7 @@ async function converse(
   const drafted: unknown[] = [];
   const questions: TurnPlan["questions"] = [];
   const recordIds: string[] = [];
+  let brief: ScenarioBrief | null = null;
   /** Why a final reply cannot be shown, phrased as a correction the model can act on. */
   const replyIssue = (value: unknown): string | null => {
     const parsed = ReplySchema.safeParse(value);
@@ -260,6 +264,22 @@ async function converse(
         },
       },
       {
+        name: "record_brief",
+        description:
+          "Record the what-if's story as the person has told it so far: event, cause, who is involved, whether customers are affected, duration, whether it is public, notes. Replaces the earlier brief. It never changes the draft or any value.",
+        input_schema: BRIEF_JSON,
+        run: (input) => {
+          const next = ScenarioBriefSchema.parse(input);
+          const issue = briefIssue(
+            next,
+            userTurns.map((t) => t.text),
+          );
+          if (issue) throw new Error(`Not recorded: ${issue}. Use only the person's own amounts.`);
+          brief = next;
+          return { status: "recorded" };
+        },
+      },
+      {
         name: "lookup_records",
         description:
           "Find invoices, bills, payroll or scheduled records by exact id or counterparty, including paid/older records omitted from the initial context. Empty query reads the selected item.",
@@ -310,6 +330,7 @@ async function converse(
     recordIds,
     planText,
     macro: planMacro,
+    brief,
   });
 }
 

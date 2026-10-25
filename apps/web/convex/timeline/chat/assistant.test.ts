@@ -606,6 +606,42 @@ describe("conversational context and required LLM", () => {
     expect(r.linkedRunId).toBeNull();
   });
 
+  it("saves the what-if's story as a brief, and refuses amounts the person never gave", async () => {
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    const brief = {
+      event: "A former partner sues over a breached $40M contract",
+      cause: "Contract dispute",
+      involves: [{ name: "Former education partner", kind: "customer" }],
+      customersAffected: "unknown",
+      duration: "one_time",
+      visibility: "public",
+      notes: null,
+    };
+    scriptClaude([
+      toolUse("record_brief", brief),
+      final({ reply: "Is this a cash payment on a set date, or a possible liability?" }),
+    ]);
+    r = await t.action(assistantSend, turn(r, "what if a former partner sues us for $40M"));
+    expect(r.brief).toEqual(brief);
+    // A brief that invents an amount is refused by the tool and never saved.
+    const invented = scriptClaude([
+      toolUse("record_brief", { ...brief, notes: "Legal fees of $2M on top" }),
+      final({ reply: "Noted. What date should the payment land?" }),
+    ]);
+    r = await t.action(assistantSend, turn(r, "it went public last week"));
+    expect(r.brief).toEqual(brief);
+    const results = invented.bodies[1]?.messages as { content: unknown }[];
+    expect(JSON.stringify(results.at(-1)?.content)).toMatch(/did not give: \$2M/);
+    // Starting over clears the story with the draft.
+    r = await t.mutation(chatRefs.reset, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+    });
+    expect(r.brief).toBeUndefined();
+  });
+
   it("keeps a pending draft during a separate question and sends all transcript turns", async () => {
     const t = setup();
     let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });

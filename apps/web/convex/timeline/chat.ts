@@ -17,6 +17,7 @@ import { type ChatTool, chatFailureArg, chatToolsArg, logChatActivity } from "./
 import {
   TurnPlanSchema,
   activeUserTurns,
+  briefIssue,
   checkDraft,
   checkPlan,
   citationsFor,
@@ -408,9 +409,11 @@ export const reset = mutation({
     const { row, receipt } = await current(ctx, args);
     const segmentStart = receipt.turns.length;
     const now = new Date().toISOString();
+    // Starting over clears the story too; the next what-if gets its own brief.
+    const { brief: _cleared, ...kept } = receipt;
     const updated = append(
       {
-        ...receipt,
+        ...kept,
         status: "collecting",
         proposal: null,
         pendingField: null,
@@ -686,6 +689,12 @@ export const saveAssistantTurn = internalMutation({
       const nextDraft = checked?.draft ?? draft;
       const proposal = checked ? checked.proposal : receipt.proposal;
       const now = new Date().toISOString();
+      // A brief retells the person's story; it may only quote amounts they typed themselves.
+      const userTexts = activeUserTurns(receipt, segmentStart, args.text).map((t) => t.text);
+      const brief =
+        receipt.status !== "saved" && plan.brief && !briefIssue(plan.brief, userTexts)
+          ? plan.brief
+          : receipt.brief;
       let updated: ChatReceipt = {
         ...receipt,
         revision: receipt.revision + 1,
@@ -693,6 +702,7 @@ export const saveAssistantTurn = internalMutation({
         proposal,
         pendingField: proposal ? null : checked ? checked.pendingField : receipt.pendingField,
         updatedAt: now,
+        ...(brief ? { brief } : {}),
       };
       const answerRun = receipt.linkedRunId
         ? await source(ctx, receipt.companyId, receipt.linkedRunId)
