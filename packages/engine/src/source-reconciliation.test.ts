@@ -1015,6 +1015,130 @@ describe("eligibility ordering and private input snapshots", () => {
       expect(unwrap(cashIdentity(terms))).toMatchObject({ status: "ties" });
       expect(reads).toBe(1);
     });
+
+    describe("shared references reuse one copy per call", () => {
+      const counter = () => {
+        let reads = 0;
+        return {
+          read: <T>(first: T, later: T): T => {
+            reads += 1;
+            return reads === 1 ? first : later;
+          },
+          get reads() {
+            return reads;
+          },
+        };
+      };
+
+      it("SYNTHETIC: one record shared by two packages is one read, a duplicate of 100000", () => {
+        const c = counter();
+        const base = pkg.records[0] as SourcePackage["records"][0];
+        const record = {
+          ...base,
+          get rawValue() {
+            return c.read("1000", "1001");
+          },
+        };
+        const p2 = { ...pkg, id: "p2", records: [record] };
+        const rec = unwrap(
+          reconcileSources({ ...BASE, packages: [{ ...pkg, records: [record] }, p2] }),
+        );
+        const k = entry(rec, keyOf(TOTAL, Q3_END));
+        // "1000" dollars -> 100000 cents in both packages; never 100000 vs 100100.
+        expect(k?.candidates.map((x) => x.cents)).toEqual([100_000, 100_000]);
+        expect(k?.receipt?.classification).toBe("duplicate");
+        expect(c.reads).toBe(1);
+      });
+
+      it("SYNTHETIC: quarterFlow({ ignored: prior, ...ytd }, prior) reads prior once", () => {
+        const c = counter();
+        const prior = {
+          ...h1,
+          get cents() {
+            return c.read(235_300_000, 1);
+          },
+        };
+        // -786000 - 2353000 = -3139000 dollars = -313900000 cents, not -78600001.
+        expect(
+          unwrap(quarterFlow({ ignored: prior, ...ytd } as ReconciledValue, prior)).cents,
+        ).toBe(-313_900_000);
+        expect(c.reads).toBe(1);
+      });
+
+      it("SYNTHETIC: cashIdentity with a shared ending value still breaks by one cent", () => {
+        const c = counter();
+        const ending = {
+          ...value(TOTAL, Q3_END, 0),
+          get cents() {
+            return c.read(89_998, 89_999);
+          },
+        };
+        // 1,000.00 - 100.00 - 0.01 = 899.99 computed vs 899.98 reported: difference 1 cent.
+        const terms = { ignored: ending, ...t, ending: sel(ending) };
+        expect(unwrap(cashIdentity(terms))).toMatchObject({
+          status: "breaks",
+          computedEndingCents: "89999",
+          reportedEndingCents: "89998",
+          differenceCents: "1",
+        });
+        expect(c.reads).toBe(1);
+      });
+
+      it("SYNTHETIC: a reference shared across two arguments is read once", () => {
+        const c = counter();
+        const shared = {
+          get note() {
+            return c.read("first", "second");
+          },
+        };
+        expect(quarterOk({ ...ytd, meta: shared }, { ...h1, meta: shared })).toBe(true);
+        expect(c.reads).toBe(1);
+        const c2 = counter();
+        const sharedTerm = {
+          get detail() {
+            return c2.read("a", "b");
+          },
+        };
+        expect(
+          cashOk({
+            ...t,
+            fx: { ...t.fx, meta: sharedTerm },
+            ending: { ...t.ending, meta: sharedTerm },
+          }),
+        ).toBe(true);
+        expect(c2.reads).toBe(1);
+      });
+
+      it("a diamond A->B, A->C, B->D, C->D is accepted with D read once", () => {
+        const c = counter();
+        const d = {
+          get leaf() {
+            return c.read(1, 2);
+          },
+        };
+        const a = { b: { d }, c: { d } };
+        expect(quarterOk({ ...ytd, meta: a })).toBe(true);
+        expect(reconcileOk({ ...BASE, packages: [pkg], meta: a })).toBe(true);
+        expect(cashOk({ ...t, meta: a })).toBe(true);
+        // One read per entry-point call: three calls, three reads.
+        expect(c.reads).toBe(3);
+      });
+
+      it("cycles are still rejected, direct or indirect, object or array", () => {
+        const direct: Record<string, unknown> = {};
+        direct.self = direct;
+        const x: Record<string, unknown> = {};
+        const y: Record<string, unknown> = { x };
+        x.y = y;
+        const arr: unknown[] = [];
+        arr.push(arr);
+        for (const cyc of [direct, x, arr]) {
+          expect(quarterOk({ ...ytd, meta: cyc })).toBe(false);
+          expect(reconcileOk({ ...BASE, packages: [pkg], meta: cyc })).toBe(false);
+          expect(cashOk({ ...t, meta: cyc })).toBe(false);
+        }
+      });
+    });
   });
 });
 

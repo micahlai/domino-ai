@@ -67,16 +67,20 @@ class NotPlainData extends Error {}
  * arrays and objects whose prototype is Object.prototype or null. Anything else anywhere in
  * the tree (class instances, Date, BigInt, Map/Set, typed arrays, functions, symbols,
  * non-finite numbers, cycles, hidden or symbol keys, array holes) is rejected, including in
- * fields L2 otherwise ignores. Each property is read exactly once, here.
+ * fields L2 otherwise ignores. Each property is read exactly once per entry-point call:
+ * an object reached twice (shared, diamond, or across arguments) reuses its one finished
+ * copy from `done`, while `ancestors` (the active path only) still rejects cycles.
  */
-function plainCopy(v: unknown, path: string, ancestors: Set<object>): unknown {
+type CopyState = { ancestors: Set<object>; done: Map<object, unknown> };
+function plainCopy(v: unknown, path: string, st: CopyState): unknown {
   if (v === null || typeof v === "boolean" || typeof v === "string") return v;
   if (typeof v === "number") {
     if (!Number.isFinite(v)) throw new NotPlainData(`${path} is a non-finite number`);
     return v;
   }
   if (typeof v !== "object") throw new NotPlainData(`${path} is a ${typeof v}, not JSON data`);
-  if (ancestors.has(v)) throw new NotPlainData(`${path} is a cycle`);
+  if (st.ancestors.has(v)) throw new NotPlainData(`${path} is a cycle`);
+  if (st.done.has(v)) return st.done.get(v);
   const proto = Object.getPrototypeOf(v);
   const isArray = Array.isArray(v);
   if (isArray ? proto !== Array.prototype : proto !== Object.prototype && proto !== null)
@@ -86,14 +90,15 @@ function plainCopy(v: unknown, path: string, ancestors: Set<object>): unknown {
   // Hidden (non-enumerable) own properties are state JSON would drop; arrays add only length.
   if (Object.getOwnPropertyNames(v).length !== keys.length + (isArray ? 1 : 0))
     throw new NotPlainData(`${path} has non-enumerable properties`);
-  ancestors.add(v);
+  st.ancestors.add(v);
   try {
     if (isArray) {
       const items = v as unknown[];
       const n = items.length;
       if (keys.length !== n) throw new NotPlainData(`${path} has holes or extra keys`);
       const out: unknown[] = [];
-      for (let i = 0; i < n; i++) out.push(plainCopy(items[i], `${path}[${i}]`, ancestors));
+      for (let i = 0; i < n; i++) out.push(plainCopy(items[i], `${path}[${i}]`, st));
+      st.done.set(v, out);
       return out;
     }
     const out: Record<string, unknown> = {};
@@ -101,21 +106,24 @@ function plainCopy(v: unknown, path: string, ancestors: Set<object>): unknown {
       if (k === "__proto__") throw new NotPlainData(`${path} has a __proto__ key`);
       const x = (v as Record<string, unknown>)[k];
       // An undefined property is absent, as in JSON.
-      if (x !== undefined) out[k] = plainCopy(x, `${path}.${k}`, ancestors);
+      if (x !== undefined) out[k] = plainCopy(x, `${path}.${k}`, st);
     }
+    st.done.set(v, out);
     return out;
   } finally {
-    ancestors.delete(v);
+    st.ancestors.delete(v);
   }
 }
 
 /**
  * One private plain-JSON copy of caller input, taken before any validation; only it is read
- * afterwards. The declared type is not trusted: the copy is validated field by field later.
+ * afterwards. Every argument of an entry point goes through one call, so references shared
+ * between arguments are also read once. The declared type is not trusted: the copy is
+ * validated field by field later, and L2 never mutates it.
  */
 function snapshot<T>(input: T, name: string): Result<T> {
   try {
-    return ok(plainCopy(input, name, new Set()) as T);
+    return ok(plainCopy(input, name, { ancestors: new Set(), done: new Map() }) as T);
   } catch (e) {
     if (e instanceof NotPlainData) return err(`input is not plain JSON data: ${e.message}`);
     throw e;
