@@ -30,6 +30,7 @@ import {
 } from "./chat/receipt";
 import { checkPinned, checkSelection, source } from "./chat/source";
 import { IntentSchema } from "./questions/intent";
+import { branchFloor } from "./workspace";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
 
@@ -235,7 +236,15 @@ export const send = mutation({
         "CHAT_LIMIT",
         "This chat has reached 20 user turns or 42 messages. Start a new chat to continue.",
       );
-    const next = advance(run, draft, args.text, receipt.conversationId, receipt.selectedItemId);
+    const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    const next = advance(
+      run,
+      draft,
+      args.text,
+      receipt.conversationId,
+      receipt.selectedItemId,
+      floor,
+    );
     const unchangedReady =
       receipt.status === "ready" &&
       !next.draft.pending &&
@@ -344,8 +353,9 @@ export const assistantState = internalQuery({
     const args = parse(KeySchema, raw);
     const row = await rowOf(ctx, args.companyId, args.conversationId);
     if (!row) reject("CHAT_NOT_FOUND", "This chat was not found for this company.");
-    const { receipt, draft } = await read(ctx, row);
-    return { receipt, draft };
+    const { receipt, draft, run } = await read(ctx, row);
+    const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+    return { receipt, draft, floor };
   },
 });
 const AssistantTurnSchema = WriteSchema.extend({
@@ -396,7 +406,8 @@ export const saveAssistantTurn = internalMutation({
     let proposal = receipt.proposal;
     let pendingField = receipt.pendingField;
     if (args.intents !== null) {
-      const result = evaluateIntents(run, args.intents, receipt.conversationId);
+      const floor = await branchFloor(ctx, run.companyId, run.runId, run.baseline.seed.snapshot);
+      const result = evaluateIntents(run, args.intents, receipt.conversationId, floor);
       nextDraft = result.draft;
       proposal = result.proposal;
       pendingField = result.proposal ? null : result.pendingField;

@@ -25,17 +25,29 @@ import {
 import { ScenarioComposer } from "./ScenarioComposer";
 import { ScenarioNav } from "./ScenarioNav";
 import { ScenarioSidebar } from "./ScenarioSidebar";
+import { familyEntries } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
 import { eventFromItem, eventOptions } from "./drafts";
 import type { Outcome } from "./requests";
-import { type ScenarioComparisons, comparisonIds, readComparison } from "./scenarioComparisons";
+import {
+  type ScenarioComparisons,
+  assignColors,
+  branchStart,
+  colorFor,
+  comparisonIds,
+  firstDifference,
+  forkOf,
+  readComparison,
+} from "./scenarioComparisons";
 import { floorReceipt, runHeadline } from "./summary";
 
 export type WorkspaceActions = QuestionActions & {
   reviseRules: (constraints: Constraint[], note: string) => Promise<Outcome>;
   simulate: (label: string, changes: Change[]) => Promise<Outcome>;
   catalogHref: string;
+  /** Make another saved run the one new what-ifs build on, without leaving the page. */
+  buildOn?: (runId: string) => void;
 };
 
 export type WorkspaceViewProps = {
@@ -56,12 +68,33 @@ export type WorkspaceViewProps = {
   risksHref?: string;
   /** A short page-level notice under the header, e.g. newer books exist. */
   notice?: ReactNode;
+  /** The workspace root: its forecast is the base line every scenario forks from. */
+  baseRunId?: string | null;
 };
 
 const KIND = { baseline: "Imported books", rules: "Rules changed", scenario: "What-if" };
 const SUMMARY =
   "flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[15px] font-semibold tracking-[-0.01em] [&::-webkit-details-marker]:hidden";
 const CHEVRON = "size-4 text-muted-foreground transition-transform group-open:rotate-90";
+
+/** Saved min-cash breaches of one run, as chart notes. Text comes from its own receipts. */
+function breachesOf(r: WorkspaceRun) {
+  return r.receipts.flatMap((receipt) =>
+    receipt.status === "breached" && receipt.kind === "min_cash" && receipt.weekStart
+      ? [
+          receipt.shortfall !== null &&
+          receipt.unit === "cents" &&
+          Number.isSafeInteger(receipt.shortfall)
+            ? {
+                weekStart: receipt.weekStart,
+                text: `Below ${receipt.label} · short ${formatExactCents(receipt.shortfall)}`,
+                short: `Short ${formatExactCents(receipt.shortfall)}`,
+              }
+            : { weekStart: receipt.weekStart, text: `Below ${receipt.label}` },
+        ]
+      : [],
+  );
+}
 
 /** One saved scenario, interactive. Props only; every number comes from the saved record. */
 export function WorkspaceView({
@@ -78,6 +111,7 @@ export function WorkspaceView({
   initialAssistant,
   risksHref,
   notice,
+  baseRunId: baseRunIdProp,
 }: WorkspaceViewProps) {
   const b = run.baseline;
   const low = run.forecast.lowPoint;
@@ -98,49 +132,65 @@ export function WorkspaceView({
     const item = b.seed.scheduledItems.find((i) => i.id === selectedItemId);
     return item ? eventFromItem(item, options) : undefined;
   }, [b.seed, selectedItemId, options]);
-  const [localComparisonIds, setLocalComparisonIds] = useState<string[]>(
-    run.parentRunId ? [run.parentRunId] : [],
+  const [localColors, setLocalColors] = useState<Record<string, number>>(
+    run.kind === "baseline" ? {} : { [run.runId]: 0 },
   );
-  const selection = comparisons ?? {
-    ids: localComparisonIds,
-    reads: run.parentRunId && parent ? { [run.parentRunId]: parent } : {},
-    onChange: setLocalComparisonIds,
+  const baseRunId =
+    baseRunIdProp ??
+    (run.kind === "baseline"
+      ? run.runId
+      : graph.state === "ready"
+        ? (graph.value.find((e) => e.kind === "baseline" && e.parentRunId === null)?.runId ?? null)
+        : null);
+  const selection: ScenarioComparisons = comparisons ?? {
+    ids: Object.keys(localColors),
+    reads: {
+      [run.runId]: { state: "ready", value: run },
+      ...(run.parentRunId && parent ? { [run.parentRunId]: parent } : {}),
+    },
+    onChange: (ids) => setLocalColors((prev) => assignColors(prev, ids)),
+    colors: localColors,
   };
-  const selectedIds = comparisonIds(selection.ids, run.runId);
+  const selectedIds = comparisonIds(selection.ids, baseRunId ?? "");
+  const entries = familyEntries(run, graph);
+  const shownSet = new Set(selectedIds);
+  const base = run.baseline.forecast;
+  const forecastOf = (id: string) => {
+    if (id === baseRunId) return base;
+    const saved = selection.reads[id];
+    return saved?.state === "ready" ? saved.value.forecast : null;
+  };
   const curves = selectedIds.flatMap((id) => {
     const saved = selection.reads[id];
     const read = saved?.state === "ready" ? readComparison(saved.value, run, id) : saved;
-    return read?.state === "ready"
-      ? [
-          {
-            runId: id,
-            label: read.value.label || "Untitled scenario",
-            href: actions.hrefFor(id),
-            forecast: read.value.forecast,
-            parent: id === run.parentRunId,
-          },
-        ]
-      : [];
+    if (read?.state !== "ready") return [];
+    const anchorId = forkOf(id, entries, shownSet, baseRunId ?? "");
+    const anchor = forecastOf(anchorId) ?? base;
+    const diverges = firstDifference(read.value.forecast, anchor);
+    return [
+      {
+        runId: id,
+        label: read.value.label || "Untitled scenario",
+        href: actions.hrefFor(id),
+        forecast: read.value.forecast,
+        color: colorFor(selection, id),
+        // Drawn from the last week it still matches its anchor, so the branch leaves that line.
+        fromIndex: diverges < 0 ? null : Math.max(0, diverges - 1),
+        startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
+        breaches: breachesOf(read.value),
+      },
+    ];
   });
+  const buildsOnStart = branchStart(run.runId, entries);
   const limits = run.constraints.flatMap((c) =>
     c.kind === "min_cash" && Number.isSafeInteger(c.limit)
       ? [{ id: c.id, label: c.label, cents: c.limit }]
       : [],
   );
-  const breaches = run.receipts.flatMap((r) =>
-    r.status === "breached" && r.kind === "min_cash" && r.weekStart
-      ? [
-          r.shortfall !== null && r.unit === "cents" && Number.isSafeInteger(r.shortfall)
-            ? {
-                weekStart: r.weekStart,
-                text: `Below ${r.label} · short ${formatExactCents(r.shortfall)}`,
-                short: `Short ${formatExactCents(r.shortfall)}`,
-              }
-            : { weekStart: r.weekStart, text: `Below ${r.label}` },
-        ]
-      : [],
-  );
-  const firstWeek = run.forecast.weeks[0]?.weekStart ?? b.seed.asOf;
+  const breaches = breachesOf(run);
+  const forecastStart = run.forecast.weeks[0]?.weekStart ?? b.seed.asOf;
+  // New events may not start before the scenario they build on.
+  const firstWeek = buildsOnStart && buildsOnStart > forecastStart ? buildsOnStart : forecastStart;
   const lastWeek = run.forecast.weeks.at(-1)?.weekStart ?? firstWeek;
   const floor = floorReceipt(run);
   const chatNode = chat
@@ -175,6 +225,9 @@ export function WorkspaceView({
       <ScenarioNav
         run={run}
         graph={graph}
+        baseRunId={baseRunId}
+        comparisons={{ ...selection, ids: selectedIds }}
+        buildOn={actions.buildOn}
         hrefFor={actions.hrefFor}
         catalogHref={actions.catalogHref}
       />
@@ -297,12 +350,13 @@ export function WorkspaceView({
           </div>
           <WorkspaceChart
             history={b.history}
-            forecast={run.forecast}
+            forecast={base}
+            forecastLabel="Base forecast (no what-ifs)"
             comparisons={curves}
             items={b.seed.scheduledItems}
             limits={limits}
-            breachedWeeks={breaches.map((n) => n.weekStart)}
-            breachNotes={breaches}
+            breachedWeeks={run.runId === baseRunId ? breaches.map((n) => n.weekStart) : []}
+            breachNotes={run.runId === baseRunId ? breaches : []}
             selectedWeek={selectedWeek}
             onSelectWeek={(w) => {
               setSelectedWeek(w);
@@ -314,6 +368,10 @@ export function WorkspaceView({
         <ScenarioComposer
           selectedWeek={selectedWeek}
           firstWeek={firstWeek}
+          buildsOn={{
+            label: run.runId === baseRunId ? "the base forecast" : run.label || KIND[run.kind],
+            startsOn: buildsOnStart,
+          }}
           invoices={options.invoices}
           bills={options.bills}
           suggestion={suggestion}
@@ -336,6 +394,7 @@ export function WorkspaceView({
         <ScenarioSidebar
           run={run}
           graph={graph}
+          baseRunId={baseRunId}
           comparisons={{ ...selection, ids: selectedIds }}
           hrefFor={actions.hrefFor}
           catalogHref={actions.catalogHref}

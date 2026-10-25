@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import { scenarioStart } from "../../../convex/timeline/scenarioStart";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
 import { ReadNotice } from "./CatalogPanel";
 import { type CatalogEntry, GRAPH_LIMIT, type Read, type WorkspaceRun } from "./api";
-import { MAX_COMPARISONS, type ScenarioComparisons, scenarioDepth } from "./scenarioComparisons";
+import {
+  MAX_COMPARISONS,
+  type ScenarioComparisons,
+  colorFor,
+  scenarioDepth,
+} from "./scenarioComparisons";
 import { type Outcome, entryOutcome, receiptOutcome } from "./summary";
 
 const KIND = { baseline: "Imported books", rules: "Rules changed", scenario: "What-if" };
@@ -51,6 +57,7 @@ export function familyEntries(run: WorkspaceRun, graph: Read<CatalogEntry[]>): C
       lowPointCents: run.forecast.lowPoint.usable,
       lowPointWeek: run.forecast.lowPoint.weekStart,
       constraintVersion: run.constraintVersion,
+      startsOn: scenarioStart(run.ownChanges, run.baseline.seed.snapshot),
     });
   return entries;
 }
@@ -59,12 +66,15 @@ export function familyEntries(run: WorkspaceRun, graph: Read<CatalogEntry[]>): C
 export function ScenarioSidebar({
   run,
   graph,
+  baseRunId = null,
   comparisons,
   hrefFor,
   catalogHref,
 }: {
   run: WorkspaceRun;
   graph: Read<CatalogEntry[]>;
+  /** The base forecast is always drawn, so it has no Compare box. */
+  baseRunId?: string | null;
   comparisons: ScenarioComparisons;
   hrefFor: (id: string) => string;
   catalogHref: string;
@@ -88,7 +98,7 @@ export function ScenarioSidebar({
           <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Saved scenarios</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Everything built from these books. Tick up to {MAX_COMPARISONS} to draw them on the
-            chart as dashed lines.
+            chart, each in its own color, next to the base forecast.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -212,7 +222,7 @@ export function ScenarioSidebar({
                     </output>
                   ) : null}
                 </div>
-                {!current ? (
+                {entry.runId !== baseRunId ? (
                   <label
                     className={`flex min-h-11 shrink-0 items-center gap-2 text-xs sm:min-h-8 ${!selected && full ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer"}`}
                     title={!selected && full ? `Up to ${MAX_COMPARISONS} at a time` : undefined}
@@ -220,6 +230,9 @@ export function ScenarioSidebar({
                     <input
                       type="checkbox"
                       className="size-4 accent-primary"
+                      style={
+                        selected ? { accentColor: colorFor(comparisons, entry.runId) } : undefined
+                      }
                       aria-label={`Compare ${name}`}
                       checked={selected}
                       disabled={!selected && full}
@@ -231,7 +244,7 @@ export function ScenarioSidebar({
                         )
                       }
                     />
-                    <span>Compare</span>
+                    <span>Show</span>
                   </label>
                 ) : null}
               </li>

@@ -1,16 +1,77 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ScenarioNav } from "./ScenarioNav";
 import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import { fixtureGraph, fixtureRoot, fixtureRules, fixtureScenario } from "./fixtures";
-import { comparisonIds, readComparison, scenarioDepth } from "./scenarioComparisons";
+import {
+  SCENARIO_COLORS,
+  assignColors,
+  branchStart,
+  colorFor,
+  comparisonIds,
+  firstDifference,
+  forkOf,
+  readComparison,
+  scenarioDepth,
+} from "./scenarioComparisons";
 
 const clone = <T,>(value: T): T => structuredClone(value);
 
 describe("saved scenario comparisons", () => {
-  it("bounds reads to three distinct saved nodes, excluding the open scenario", () => {
-    expect(comparisonIds(["open", "a", "a", "b", "c", "d"], "open")).toEqual(["a", "b", "c"]);
-    expect(comparisonIds([], "open")).toEqual([]);
+  it("bounds reads to six distinct saved nodes; the always-drawn base is never selectable", () => {
+    expect(comparisonIds(["base", "a", "a", "b", "c", "d", "e", "f", "g"], "base")).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+    ]);
+    expect(comparisonIds([], "base")).toEqual([]);
+  });
+
+  it("keeps each shown scenario's color when others are hidden", () => {
+    const first = assignColors({}, ["a", "b", "c"]);
+    expect(first).toEqual({ a: 0, b: 1, c: 2 });
+    const hidden = assignColors(first, ["a", "c"]);
+    expect(hidden).toEqual({ a: 0, c: 2 });
+    expect(assignColors(hidden, ["a", "c", "d"])).toEqual({ a: 0, c: 2, d: 1 });
+    const colors = { ids: ["a", "c"], reads: {}, onChange: () => undefined, colors: hidden };
+    expect(colorFor(colors, "c")).toBe(SCENARIO_COLORS[2]);
+  });
+
+  it("forks a branch from its nearest shown ancestor, else the base", () => {
+    const root = fixtureGraph[0]!;
+    const entries = [
+      { ...root, runId: "base", parentRunId: null },
+      { ...root, runId: "s1", parentRunId: "base", kind: "scenario" as const },
+      { ...root, runId: "s2", parentRunId: "s1", kind: "scenario" as const },
+    ];
+    expect(forkOf("s2", entries, new Set(["s1", "s2"]), "base")).toBe("s1");
+    expect(forkOf("s2", entries, new Set(["s2"]), "base")).toBe("base");
+    expect(forkOf("s1", entries, new Set(["s1"]), "base")).toBe("base");
+  });
+
+  it("finds where two saved curves first differ", () => {
+    const a = fixtureRoot.forecast;
+    expect(firstDifference(a, a)).toBe(-1);
+    const b = clone(a);
+    b.weeks[4]!.usable += 100;
+    expect(firstDifference(b, a)).toBe(4);
+  });
+
+  it("lets a child start no earlier than the nearest ancestor that changes events", () => {
+    const root = fixtureGraph[0]!;
+    const entries = [
+      { ...root, runId: "base", parentRunId: null, startsOn: null },
+      { ...root, runId: "s1", parentRunId: "base", startsOn: "2026-11-17" },
+      { ...root, runId: "rules", parentRunId: "s1", startsOn: null },
+      { ...root, runId: "s2", parentRunId: "rules", startsOn: "2026-12-01" },
+    ];
+    expect(branchStart("base", entries)).toBeNull();
+    expect(branchStart("rules", entries)).toBe("2026-11-17");
+    expect(branchStart("s2", entries)).toBe("2026-12-01");
   });
 
   it("rejects another company, baseline, imported seed or forecast calendar", () => {
@@ -84,10 +145,11 @@ describe("saved scenario comparisons", () => {
     );
     expect(html).toContain('aria-label="Open Lender&#x27;s limit added"');
     expect(html).toContain('aria-label="Compare Lender&#x27;s limit added"');
+    expect(html).toContain(">Show</span>");
     expect(html).toContain("Checked against different rules");
     expect(html).toContain("Saved curve unavailable; it is not drawn.");
     expect(html).toContain(">Clear</button>");
-    expect(html).toContain("1 of 3 on chart");
+    expect(html).toContain("1 of 6 on chart");
     const longName = "scenario".repeat(40);
     const longHtml = renderToStaticMarkup(
       <ScenarioSidebar
@@ -116,17 +178,21 @@ describe("saved scenario comparisons", () => {
     expect(duplicateHtml).toContain("Saved 2026-10-24 15:01:00 UTC");
   });
 
-  it("draws at most three optional saved curves, with links and a compact legend", () => {
-    const comparisons = Array.from({ length: 4 }, (_, i) => ({
+  it("draws up to six colored branches from their fork weeks, without leaving the page", () => {
+    const comparisons = Array.from({ length: 7 }, (_, i) => ({
       runId: `saved${i}`,
       label: `Saved ${i}`,
       forecast: fixtureRules.forecast,
       href: `/open/saved${i}`,
+      color: SCENARIO_COLORS[i % SCENARIO_COLORS.length],
+      fromIndex: 3,
+      startsOn: "2026-11-23",
     }));
     const html = renderToStaticMarkup(
       <WorkspaceChart
         history={fixtureRoot.baseline.history}
-        forecast={fixtureScenario.forecast}
+        forecast={fixtureRoot.forecast}
+        forecastLabel="Base forecast (no what-ifs)"
         comparisons={comparisons}
         items={[]}
         limits={[]}
@@ -134,9 +200,65 @@ describe("saved scenario comparisons", () => {
         onSelectWeek={() => undefined}
       />,
     );
-    expect(html.match(/data-testid="comparison-line"/g)).toHaveLength(3);
-    expect(html).not.toContain("Saved 3");
-    expect(html).toContain('aria-label="Open saved scenario: Saved 0"');
+    expect(html.match(/data-testid="comparison-line"/g)).toHaveLength(6);
+    expect(html.match(/data-testid="fork-point"/g)).toHaveLength(6);
+    expect(html).not.toContain("Saved 6");
+    expect(html).toContain(`stroke="${SCENARIO_COLORS[0]}"`);
+    expect(html).toContain("Base forecast (no what-ifs)");
+    expect(html).toContain("from Nov 23, 2026");
+    // Choosing scenarios never navigates: lines and legend carry no links.
+    expect(html).not.toContain("Open saved scenario");
     expect(html).toContain('data-testid="forecast-line"');
+  });
+
+  it("omits a branch that never leaves the line it builds on", () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceChart
+        history={fixtureRoot.baseline.history}
+        forecast={fixtureRoot.forecast}
+        comparisons={[
+          {
+            runId: "same",
+            label: "Same",
+            forecast: fixtureRoot.forecast,
+            href: "/same",
+            color: SCENARIO_COLORS[0],
+            fromIndex: null,
+          },
+        ]}
+        items={[]}
+        limits={[]}
+        selectedWeek={null}
+        onSelectWeek={() => undefined}
+      />,
+    );
+    expect(html).not.toContain('data-testid="comparison-line"');
+    expect(html).toContain("same as the line it builds on");
+  });
+
+  it("shows the branch tree with colored checkboxes and a build-on action", () => {
+    const html = renderToStaticMarkup(
+      <ScenarioNav
+        run={fixtureRoot}
+        graph={{ state: "ready", value: fixtureGraph }}
+        baseRunId={fixtureRoot.runId}
+        comparisons={{
+          ids: [fixtureScenario.runId],
+          reads: {},
+          onChange: () => undefined,
+          colors: { [fixtureScenario.runId]: 1 },
+        }}
+        buildOn={() => undefined}
+        hrefFor={(id) => id}
+        catalogHref="/catalog"
+      />,
+    );
+    expect(html).toContain("Base forecast");
+    expect(html).toContain(`accent-color:${SCENARIO_COLORS[1]}`);
+    expect(html).toContain(`data-testid="scenario-build-${fixtureScenario.runId}"`);
+    const baseBox = html.match(
+      new RegExp(`<input[^>]*data-testid="scenario-show-${fixtureRoot.runId}"[^>]*>`),
+    )?.[0];
+    expect(baseBox).toContain('disabled=""');
   });
 });

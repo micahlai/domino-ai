@@ -25,7 +25,7 @@ const refs = {
   state: makeFunctionReference<
     "query",
     { companyId: string; conversationId: string },
-    { receipt: ChatReceipt; draft: Draft }
+    { receipt: ChatReceipt; draft: Draft; floor: string | null }
   >("timeline/chat:assistantState"),
   save: makeFunctionReference<
     "mutation",
@@ -61,6 +61,8 @@ Call update_draft whenever the person describes or corrects a change. Always sen
 - itemText: the exact invoice or bill id from the context. Pick it from the customer or vendor the person names.
 - daysText: like "14 days". monthsText: like "4.5 months".
 Use null for anything the person has not told you. Never invent amounts, dates or names.
+
+Every what-if branches off the scenario that is open, and its timeline line starts where its first change starts. When earliestAllowedStart is set, the open scenario starts then: every change must start on or after that date (an invoice or bill change starts on the record's due date). If the person has not said when a change starts, ask, and offer a few valid dates as choices.
 To clear the draft (the person wants to start over), call update_draft with an empty list.
 
 update_draft returns the result of Domino's checks:
@@ -104,8 +106,13 @@ function draftState(draft: Draft, receipt: ChatReceipt) {
   };
 }
 
-function checkDraft(run: WorkspaceRun, intents: Intent[], conversationId: string) {
-  const result = evaluateIntents(run, intents, conversationId);
+function checkDraft(
+  run: WorkspaceRun,
+  intents: Intent[],
+  conversationId: string,
+  floor: string | null,
+) {
+  const result = evaluateIntents(run, intents, conversationId, floor);
   return {
     status: result.proposal ? "ready" : result.pendingField ? "needs_value" : "cannot_use",
     message: result.answer,
@@ -119,6 +126,7 @@ async function askClaude(
   receipt: ChatReceipt,
   draft: Draft,
   text: string,
+  floor: string | null,
 ): Promise<{
   reply: string;
   choices: { label: string; value: string }[];
@@ -141,6 +149,8 @@ async function askClaude(
           currentDraft: draftState(draft, receipt),
           selectedWeek: receipt.selectedWeek,
           selectedItemId: receipt.selectedItemId,
+          // This what-if branches off the open scenario; nothing may start before it does.
+          earliestAllowedStart: floor,
           newMessage: text,
         }),
       },
@@ -155,7 +165,7 @@ async function askClaude(
           const parsed = DraftInput.parse(input);
           intents = parsed.intents;
           return parsed.intents.length
-            ? checkDraft(run, parsed.intents, receipt.conversationId)
+            ? checkDraft(run, parsed.intents, receipt.conversationId, floor)
             : { status: "cleared", message: "The draft is empty." };
         },
       },
@@ -186,7 +196,7 @@ export const send = action({
     const text = args.text.trim();
     if (!text || text.length > 1000)
       throw new ConvexError({ code: "INVALID_INPUT", message: "Use 1 to 1,000 characters." });
-    const { receipt, draft } = await ctx.runQuery(refs.state, {
+    const { receipt, draft, floor } = await ctx.runQuery(refs.state, {
       companyId: args.companyId,
       conversationId: args.conversationId,
     });
@@ -199,7 +209,7 @@ export const send = action({
       throw new ConvexError({ code: "RUN_NOT_FOUND", message: "The saved run could not be read." });
     let answer: Awaited<ReturnType<typeof askClaude>>;
     try {
-      answer = await askClaude(run, receipt, draft, text);
+      answer = await askClaude(run, receipt, draft, text, floor);
     } catch (error) {
       if (error instanceof AssistantUnavailable) return ctx.runMutation(refs.grammarSend, args);
       // Raw provider errors can carry request text; only a short message is surfaced.

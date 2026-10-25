@@ -5,7 +5,7 @@ import { useAction, useMutation, useQueries } from "convex/react";
 import { ConvexError } from "convex/values";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { OPEN_IN_TIMELINE_NOTE, OpenInTimeline } from "../../field/OpenInTimeline";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -46,6 +46,7 @@ import { NewerBooksNotice, fieldCompanyOf, useLatestImport } from "./books";
 import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
 import { comparisonIds, readComparison } from "./scenarioComparisons";
+import { ShownScenariosProvider, useShownScenarios } from "./shownScenarios";
 
 export const CATALOG_PAGE_SIZE = 20;
 
@@ -144,7 +145,18 @@ function RunLive({ companyId, runId }: { companyId: string; runId: string }) {
   const key = useMemo(() => ({ companyId, runId }), [companyId, runId]);
   const queries = useMemo(() => ({ run: { query: getRunRef, args: key } }), [key]);
   const read = readRun((useQueries(queries) as Record<string, unknown>).run, key);
+  // Switching the run new what-ifs build on keeps the page on screen until the next one loads.
+  const last = useRef<{ key: typeof key; read: Extract<typeof read, { state: "ready" }> } | null>(
+    null,
+  );
+  if (read.state === "ready") last.current = { key, read };
   if (read.state === "ready") return <RunReady key={runId} runKey={key} read={read} />;
+  if (read.state === "loading" && last.current?.key.companyId === companyId)
+    return (
+      <div aria-busy="true" className="transition-opacity duration-150 opacity-70">
+        <RunReady key={last.current.key.runId} runKey={last.current.key} read={last.current.read} />
+      </div>
+    );
   if (read.state === "loading")
     return (
       <div className="space-y-3" aria-busy="true">
@@ -189,35 +201,41 @@ function RunReady({
   );
   const raw = useQueries(queries) as Record<string, unknown>;
   const graph = readGraph(raw.graph, { companyId, baselineRunId: run.baselineRunId });
-  const [chosenComparisons, setChosenComparisons] = useState<string[] | null>(null);
-  const defaults = run.parentRunId
-    ? [run.parentRunId]
-    : graph.state === "ready"
-      ? graph.value
-          .filter((entry) => entry.parentRunId === run.runId)
-          .slice(0, 1)
-          .map((entry) => entry.runId)
-      : [];
-  const selectedComparisons = comparisonIds(chosenComparisons ?? defaults, run.runId);
-  const [firstComparison, secondComparison, thirdComparison] = selectedComparisons;
+  const shown = useShownScenarios();
+  const baseRunId =
+    run.kind === "baseline"
+      ? run.runId
+      : graph.state === "ready"
+        ? (graph.value.find((e) => e.kind === "baseline" && e.parentRunId === null)?.runId ?? null)
+        : null;
+  // Opening a saved what-if shows it; the bare timeline shows only the base forecast.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened run
+  useEffect(() => {
+    if (run.kind !== "baseline" && !shown.ids.includes(run.runId))
+      shown.set([...shown.ids, run.runId]);
+  }, [run.runId]);
+  const selectedComparisons = comparisonIds(shown.ids, baseRunId ?? "");
+  const comparisonKey = selectedComparisons.join("\n");
   // Convex stores subscription callbacks by query-bag identity and updates state during render
-  // when they change. Memoize on these bounded ID values, not the freshly parsed graph array.
+  // when they change. Memoize on the bounded ID list, not the freshly parsed graph array.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed by the joined id list
   const comparisonQueries = useMemo(
     () =>
       Object.fromEntries(
-        [firstComparison, secondComparison, thirdComparison]
-          .filter((id): id is string => id !== undefined)
-          .map((id, i) => [`comparison${i}`, { query: getRunRef, args: { companyId, runId: id } }]),
+        selectedComparisons
+          .filter((id) => id !== run.runId)
+          .map((id) => [`comparison:${id}`, { query: getRunRef, args: { companyId, runId: id } }]),
       ),
-    [companyId, firstComparison, secondComparison, thirdComparison],
+    [companyId, comparisonKey, run.runId],
   );
   const comparisonRaw = useQueries(comparisonQueries) as Record<string, unknown>;
   const comparisonReads: Record<string, Read<import("./api").WorkspaceRun>> = {};
-  let comparisonIndex = 0;
   for (const id of selectedComparisons) {
-    comparisonReads[id] = readComparison(comparisonRaw[`comparison${comparisonIndex++}`], run, id);
+    comparisonReads[id] =
+      id === run.runId
+        ? { state: "ready", value: run }
+        : readComparison(comparisonRaw[`comparison:${id}`], run, id);
   }
-
   const parent = run.parentRunId ? (comparisonReads[run.parentRunId] ?? null) : null;
 
   const simulate = useMutation(simulateRef);
@@ -227,11 +245,17 @@ function RunReady({
   const runs = useLedger();
   const asks = useLedger();
 
-  async function write(call: () => Promise<unknown>, navigate: boolean): Promise<Outcome> {
+  async function write(
+    call: () => Promise<unknown>,
+    navigate: boolean,
+    show = false,
+  ): Promise<Outcome> {
     try {
       const parsed = RunResultSchema.safeParse(await call());
       if (!parsed.success || parsed.data.companyId !== companyId)
         return { ok: false, message: UNUSABLE_ANSWER };
+      if (show && !shown.ids.includes(parsed.data.runId))
+        shown.set([...shown.ids, parsed.data.runId]);
       if (navigate) router.push(workspaceHref(companyId, { runId: parsed.data.runId }));
       return { ok: true, runId: parsed.data.runId };
     } catch (e) {
@@ -245,6 +269,7 @@ function RunReady({
     constraints: Constraint[] | null,
     constraintNote: string | null,
     navigate: boolean,
+    show = false,
   ) {
     const changesJson = JSON.stringify(changes);
     const constraintsJson = constraints ? JSON.stringify(constraints) : undefined;
@@ -270,6 +295,7 @@ function RunReady({
           ...(constraintNote !== null ? { constraintNote } : {}),
         }),
       navigate,
+      show,
     );
   }
 
@@ -288,7 +314,9 @@ function RunReady({
   const actions: WorkspaceActions = {
     catalogHref: allScenariosHref(companyId),
     hrefFor: (id) => workspaceHref(companyId, { runId: id }),
-    simulate: (label, changes) => runScenario(label, changes, null, null, true),
+    // A new what-if is drawn in its own color; the page stays on the run it was built on.
+    simulate: (label, changes) => runScenario(label, changes, null, null, false, true),
+    buildOn: (id) => router.replace(workspaceHref(companyId, { runId: id }), { scroll: false }),
     reviseRules: (constraints, note) => {
       const constraintsJson = JSON.stringify(constraints);
       const requestId = runs.idFor(JSON.stringify(["rules", run.runId, constraintsJson, note]));
@@ -342,7 +370,7 @@ function RunReady({
     confirmProposal: (q: QuestionReceipt) =>
       confirmQuestionProposal(q, runKey, runs, {
         revise: (args) => write(() => revise(args), false),
-        simulate: (args) => write(() => simulate(args), false),
+        simulate: (args) => write(() => simulate(args), false, true),
         relink,
       }),
     relink,
@@ -356,8 +384,10 @@ function RunReady({
       comparisons={{
         ids: selectedComparisons,
         reads: comparisonReads,
-        onChange: setChosenComparisons,
+        onChange: shown.set,
+        colors: shown.colors,
       }}
+      baseRunId={baseRunId}
       questions={readQuestions(raw.questions, runKey) as Read<QuestionReceipt[]>}
       resultRef={readResultRef(raw.resultRef)}
       actions={actions}
@@ -498,7 +528,9 @@ export function WorkspaceLive({
       }
     >
       {process.env.NEXT_PUBLIC_CONVEX_URL ? (
-        <Connected companyId={companyId} landing={landing} />
+        <ShownScenariosProvider>
+          <Connected companyId={companyId} landing={landing} />
+        </ShownScenariosProvider>
       ) : (
         <Notice title="Cannot open saved scenarios here">
           This page is not connected to the forecast service, so saved scenarios cannot be opened or

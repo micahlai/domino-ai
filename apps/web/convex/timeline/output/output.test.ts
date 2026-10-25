@@ -14,6 +14,7 @@ import { makeFunctionReference } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import schema from "../../schema";
 import { baselineRefs } from "../refs";
+import { scenarioStart } from "../scenarioStart";
 import type { CatalogEntry, WorkspaceRun } from "../workspace";
 import { workspaceRefs } from "../workspaceRefs";
 import { projectOutput } from "./project";
@@ -105,6 +106,7 @@ const entryFor = (run: WorkspaceRun): CatalogEntry => ({
   lowPointCents: run.forecast.lowPoint.usable,
   lowPointWeek: run.forecast.lowPoint.weekStart,
   constraintVersion: run.constraintVersion,
+  startsOn: scenarioStart(run.ownChanges, run.baseline.seed.snapshot),
 });
 
 describe("TL6 saved financial output", () => {

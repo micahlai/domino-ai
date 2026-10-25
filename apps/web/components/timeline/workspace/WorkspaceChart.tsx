@@ -12,12 +12,22 @@ export type ChartProps = {
   forecast: Forecast;
   /** Parent node's saved forecast, drawn faintly for comparison. */
   parent?: Forecast | null;
+  /** Name of the main forecast line in the legend and tooltip. */
+  forecastLabel?: string;
   comparisons?: {
     runId: string;
     label: string;
     href: string;
     forecast: Forecast;
     parent?: boolean;
+    /** Solid line in this color; without one the line is a gray dash. */
+    color?: string;
+    /** Forecast week the line starts from (its fork); null when it never leaves its anchor. */
+    fromIndex?: number | null;
+    /** First date the scenario's own changes act, shown in the legend. */
+    startsOn?: string | null;
+    /** This scenario's own saved breach notes, marked on its line. */
+    breaches?: { weekStart: string; text: string; short?: string }[];
   }[];
   items: ScheduledItem[];
   /** Saved minimum-cash limits, drawn as dashed lines. */
@@ -65,7 +75,8 @@ export function WorkspaceChart(p: ChartProps) {
   // Phones show the last two months of history so the 13 forecast weeks get most of the width.
   const history = compact ? p.history.slice(-8) : p.history;
   const weeks = p.forecast.weeks;
-  const comparisons = (p.comparisons ?? []).slice(0, 3);
+  const comparisons = (p.comparisons ?? []).slice(0, 6);
+  const mainLabel = p.forecastLabel ?? "This scenario";
   const slots = history.length + weeks.length;
   const values = [
     ...history.map((h) => h.usable),
@@ -91,6 +102,12 @@ export function WorkspaceChart(p: ChartProps) {
   const future = weeks.map((w, i) => at(off + i, w.usable));
   const parentLine = p.parent?.weeks.map((w, i) => at(off + i, w.usable)) ?? [];
   const lastPast = past[past.length - 1];
+  // A forked line starts at its fork week; an unforked (legacy) line joins the last recorded week.
+  const comparisonPoints = (entry: (typeof comparisons)[number]): Point[] => {
+    const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
+    if (entry.fromIndex === undefined) return lastPast ? [lastPast, ...points] : points;
+    return entry.fromIndex === null ? [] : points.slice(entry.fromIndex);
+  };
   const todayX = off > 0 ? (x(off - 1) + x(off)) / 2 : x(0);
   const itemsByWeek = new Map<string, number>();
   for (const it of p.items) itemsByWeek.set(it.dueWeek, (itemsByWeek.get(it.dueWeek) ?? 0) + 1);
@@ -98,10 +115,25 @@ export function WorkspaceChart(p: ChartProps) {
   const low = p.forecast.lowPoint;
   const lowIndex = weeks.findIndex((w) => w.weekStart === low.weekStart);
   const breachedWeeks = new Set(p.breachedWeeks ?? []);
-  const notes = (p.breachNotes ?? []).flatMap((n) => {
-    const i = weeks.findIndex((w) => w.weekStart === n.weekStart);
-    return i >= 0 ? [{ ...n, i, pt: future[i] as Point }] : [];
-  });
+  const notes = [
+    ...(p.breachNotes ?? []).flatMap((n) => {
+      const i = weeks.findIndex((w) => w.weekStart === n.weekStart);
+      return i >= 0 ? [{ ...n, i, pt: future[i] as Point }] : [];
+    }),
+    // A shown scenario's breaches sit on its own line, where it is drawn.
+    ...comparisons.flatMap((entry) =>
+      (entry.breaches ?? []).flatMap((n) => {
+        const i = weeks.findIndex((w) => w.weekStart === n.weekStart);
+        const drawn =
+          entry.fromIndex === undefined || (entry.fromIndex !== null && i >= entry.fromIndex);
+        const week = entry.forecast.weeks[i];
+        return i >= 0 && drawn && week
+          ? [{ ...n, i, pt: at(off + i, week.usable), dot: entry.color }]
+          : [];
+      }),
+    ),
+  ];
+  const anyBreach = breachedWeeks.size > 0 || notes.some((n) => "dot" in n);
 
   // Hover details for any drawn week (recorded or forecast); index is a slot on the x axis.
   const hovered =
@@ -241,18 +273,39 @@ export function WorkspaceChart(p: ChartProps) {
             />
           ) : null}
           {comparisons.map((entry, index) => {
-            const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
+            const points = comparisonPoints(entry);
+            if (points.length < 2) return null;
+            const fork =
+              entry.fromIndex === undefined || entry.fromIndex === null ? null : points[0];
             return (
-              <path
+              <g
                 key={entry.runId}
-                d={draw(lastPast ? [lastPast, ...points] : points) ?? ""}
-                fill="none"
-                className="stroke-muted-foreground opacity-80"
-                strokeWidth={1.5}
-                strokeDasharray={DASHES[index]}
-                data-testid={entry.parent ? "parent-line" : "comparison-line"}
                 pointerEvents="none"
-              />
+                data-testid={entry.parent ? "parent-line" : "comparison-line"}
+                data-run-id={entry.runId}
+              >
+                <path
+                  d={draw(points) ?? ""}
+                  fill="none"
+                  className={entry.color ? undefined : "stroke-muted-foreground opacity-80"}
+                  stroke={entry.color}
+                  strokeWidth={entry.color ? 2.25 : 1.5}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  strokeDasharray={entry.color ? undefined : DASHES[index % DASHES.length]}
+                />
+                {fork ? (
+                  <circle
+                    cx={fork.x}
+                    cy={fork.y}
+                    r={4}
+                    fill={entry.color}
+                    className="stroke-card"
+                    strokeWidth={2}
+                    data-testid="fork-point"
+                  />
+                ) : null}
+              </g>
             );
           })}
           <path
@@ -260,7 +313,7 @@ export function WorkspaceChart(p: ChartProps) {
             fill="none"
             className="stroke-primary"
             data-testid="forecast-line"
-            strokeWidth={2.5}
+            strokeWidth={comparisons.some((c) => c.color) ? 2 : 2.5}
           />
           {/* Scheduled items: quiet ticks on the date axis, counted in the hover details. */}
           <g pointerEvents="none">
@@ -319,7 +372,21 @@ export function WorkspaceChart(p: ChartProps) {
           {notes.map((n) => {
             const flip = n.pt.x > W * 0.62;
             return (
-              <g key={`${n.weekStart}-${n.text}`} pointerEvents="none" data-testid="breach-note">
+              <g
+                key={`${n.weekStart}-${n.text}-${n.pt.y}`}
+                pointerEvents="none"
+                data-testid="breach-note"
+              >
+                {"dot" in n ? (
+                  <circle
+                    cx={n.pt.x}
+                    cy={n.pt.y}
+                    r={4.5}
+                    className="fill-destructive stroke-card"
+                    strokeWidth={2}
+                    data-breached="true"
+                  />
+                ) : null}
                 <line
                   x1={n.pt.x}
                   x2={n.pt.x}
@@ -367,26 +434,6 @@ export function WorkspaceChart(p: ChartProps) {
               />
             );
           })}
-          {comparisons.map((entry) => {
-            const points = entry.forecast.weeks.map((week, i) => at(off + i, week.usable));
-            const path = draw(lastPast ? [lastPast, ...points] : points) ?? "";
-            return (
-              <a
-                key={entry.runId}
-                href={entry.href}
-                aria-label={`Open saved scenario: ${entry.label}`}
-              >
-                <title>{`${entry.label} · saved forecast`}</title>
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={10}
-                  pointerEvents="stroke"
-                />
-              </a>
-            );
-          })}
         </svg>
         {hovered && hover !== null ? (
           <div
@@ -404,7 +451,7 @@ export function WorkspaceChart(p: ChartProps) {
             </p>
             <p className="mt-1 flex justify-between gap-3">
               <span className="text-muted-foreground">
-                {hovered.kind === "Forecast" ? "This scenario" : "Usable cash"}
+                {hovered.kind === "Forecast" ? mainLabel : "Usable cash"}
               </span>
               <span className="tabular-nums">{formatExactCents(hovered.usable)}</span>
             </p>
@@ -413,7 +460,16 @@ export function WorkspaceChart(p: ChartProps) {
                   const v = entry.forecast.weeks[hover - off]?.usable;
                   return v === undefined ? null : (
                     <p key={entry.runId} className="flex justify-between gap-3">
-                      <span className="min-w-0 truncate text-muted-foreground">{entry.label}</span>
+                      <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                        {entry.color ? (
+                          <span
+                            aria-hidden="true"
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ background: entry.color }}
+                          />
+                        ) : null}
+                        <span className="truncate">{entry.label}</span>
+                      </span>
                       <span className="shrink-0 tabular-nums">{formatExactCents(v)}</span>
                     </p>
                   );
@@ -443,7 +499,7 @@ export function WorkspaceChart(p: ChartProps) {
           <svg width="18" height="4" aria-hidden="true" className="shrink-0">
             <line x1="0" y1="2" x2="18" y2="2" className="stroke-primary" strokeWidth={2.5} />
           </svg>
-          This scenario
+          {mainLabel}
         </span>
         {p.parent && !p.comparisons ? (
           <span className="inline-flex items-center gap-1.5">
@@ -452,18 +508,26 @@ export function WorkspaceChart(p: ChartProps) {
           </span>
         ) : null}
         {comparisons.map((entry, index) => (
-          <a
+          <span
             key={entry.runId}
-            href={entry.href}
-            className="inline-flex max-w-full items-center gap-1.5 underline-offset-4 hover:text-foreground hover:underline"
-            aria-label={`Open saved scenario: ${entry.label}`}
+            className="inline-flex max-w-full items-center gap-1.5"
+            data-testid="comparison-legend"
           >
-            <Swatch dash={DASHES[index] ?? DASHES[0]} />
+            <Swatch
+              dash={entry.color ? undefined : DASHES[index % DASHES.length]}
+              color={entry.color}
+            />
             <span className="max-w-48 truncate" title={entry.label}>
               {entry.label}
             </span>
+            {entry.startsOn ? (
+              <span className="shrink-0">· from {formatFullDate(entry.startsOn)}</span>
+            ) : null}
+            {entry.fromIndex === null ? (
+              <span className="shrink-0">· same as the line it builds on</span>
+            ) : null}
             {entry.parent ? " (started from)" : ""}
-          </a>
+          </span>
         ))}
         {p.limits.length ? (
           <span className="inline-flex items-center gap-1.5">
@@ -480,7 +544,7 @@ export function WorkspaceChart(p: ChartProps) {
             Cash minimum
           </span>
         ) : null}
-        {breachedWeeks.size ? (
+        {anyBreach ? (
           <span data-testid="breach-legend" className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
             Week below a cash minimum
@@ -516,7 +580,7 @@ export function WorkspaceChart(p: ChartProps) {
   );
 }
 
-function Swatch({ dash }: { dash: string }) {
+function Swatch({ dash, color }: { dash?: string; color?: string }) {
   return (
     <svg width="18" height="4" aria-hidden="true" className="shrink-0">
       <line
@@ -524,8 +588,9 @@ function Swatch({ dash }: { dash: string }) {
         y1="2"
         x2="18"
         y2="2"
-        className="stroke-muted-foreground"
-        strokeWidth={1.5}
+        className={color ? undefined : "stroke-muted-foreground"}
+        stroke={color}
+        strokeWidth={color ? 2.5 : 1.5}
         strokeDasharray={dash}
       />
     </svg>
