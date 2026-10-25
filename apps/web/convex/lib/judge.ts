@@ -5,7 +5,9 @@ import {
   type Snapshot,
   firstForecastWeek,
 } from "@domino/contracts";
+import type { ProfileId } from "@domino/sim";
 import { z } from "zod";
+import { TOOL_IDS, type ToolId } from "../connectors/types";
 import type { Overlay } from "../fieldFeed";
 import { judgeAddDays as addDays, scaleCents } from "./judgeOverlay";
 
@@ -236,6 +238,138 @@ export function plantScenario(
       };
     }
   }
+}
+
+// ---------- Simple 3-step flow: company, data sources, surprises ----------
+
+export type JudgeStart = {
+  id: "healthy" | "losing_customer" | "late_payers" | "cash_crunch";
+  /** The simulator profile the fresh company is built from. */
+  profile: ProfileId;
+  title: string;
+  /** One line: what is going on at this company. */
+  story: string;
+  /** What the agents should conclude once the books are read and the clock plays. */
+  outcome: string;
+};
+
+/** Step 1's four cards, in order, each mapped to one simulator profile. */
+export const JUDGE_STARTS: readonly JudgeStart[] = [
+  {
+    id: "healthy",
+    profile: "kestrel",
+    title: "Healthy",
+    story: "Customers pay on time and cash sits far above the lender's $3M minimum.",
+    outcome: "Expect: On track, far above the minimum. Add a surprise to test it.",
+  },
+  {
+    id: "losing_customer",
+    profile: "kestrel-churn",
+    title: "Losing a top customer",
+    story: "Its largest customer is leaving and settles its last invoice short.",
+    outcome: "Expect: On track with less room. Press Play: the notice arrives in week 1.",
+  },
+  {
+    id: "late_payers",
+    profile: "kestrel-late",
+    title: "Late-paying customers",
+    story: "Its ten biggest customers pay 30 to 60 days late.",
+    outcome: "Expect: On track for now. Press Play: the big payers slip 30 days in week 1.",
+  },
+  {
+    id: "cash_crunch",
+    profile: "kestrel-crunch",
+    title: "Cash crunch",
+    story: "Debt payments, early hires and a year-end bonus outrun cash.",
+    outcome: "Expect: At risk. Cash falls below the lender's $3M minimum.",
+  },
+];
+
+export const judgeStartOf = (profile: string | null): JudgeStart | undefined =>
+  JUDGE_STARTS.find((s) => s.profile === profile);
+
+/** Step 2's tiles: the six tools a judge company can read. The bank is required. */
+export const JUDGE_SOURCES = ["nessie", "stripe", "ramp", "qbo", "gusto", "hubspot"] as const;
+export type JudgeSource = (typeof JUDGE_SOURCES)[number];
+export const REQUIRED_SOURCE: JudgeSource = "nessie";
+/**
+ * Tools that only make sense with another one on. HubSpot deals point at Stripe invoices, and
+ * the ingest rejects a snapshot whose deals name invoices it never read.
+ */
+export const SOURCE_NEEDS: Partial<Record<JudgeSource, { needs: JudgeSource; why: string }>> = {
+  hubspot: { needs: "stripe", why: "HubSpot needs Stripe: its deals point at Stripe invoices" },
+};
+const isJudgeSource = (t: string): t is JudgeSource =>
+  (JUDGE_SOURCES as readonly string[]).includes(t);
+
+/**
+ * Which tools stay connected for a new judge company. Omitted = all six. The simulated bank
+ * (Plaid mock) is never offered; it stays off as on every company. Throws JudgeInputError.
+ */
+export function judgeSourcePlan(selected?: readonly string[]): {
+  on: JudgeSource[];
+  off: ToolId[];
+} {
+  const picked = selected === undefined ? [...JUDGE_SOURCES] : [...new Set(selected)];
+  for (const t of picked) if (!isJudgeSource(t)) refuse(`Unknown data source: ${t}`);
+  if (!picked.includes(REQUIRED_SOURCE))
+    refuse("Keep the bank connected: the forecast starts from its cash balance");
+  for (const t of picked) {
+    const rule = SOURCE_NEEDS[t as JudgeSource];
+    if (rule && !picked.includes(rule.needs)) refuse(rule.why);
+  }
+  const on = JUDGE_SOURCES.filter((t) => picked.includes(t));
+  return { on, off: TOOL_IDS.filter((t) => !(on as readonly ToolId[]).includes(t)) };
+}
+
+/** Step 3's optional surprises: three presets, each one fixed scenario. */
+export const SURPRISE_PRESETS = [
+  "late_big_customer",
+  "unexpected_bill",
+  "bank_stripe_mismatch",
+] as const;
+export type SurprisePreset = (typeof SURPRISE_PRESETS)[number];
+export const SURPRISE_LABEL: Record<SurprisePreset, { title: string; detail: string }> = {
+  late_big_customer: {
+    title: "Big customer pays late",
+    detail: "Your biggest customer pays 45 days late",
+  },
+  unexpected_bill: { title: "Unexpected bill", detail: "A $750,000 bill lands in week 3" },
+  bank_stripe_mismatch: {
+    title: "Bank and Stripe disagree",
+    detail: "A Stripe deposit arrives $18,400 short at the bank",
+  },
+};
+/** Tools a preset needs connected to be visible to the agents. */
+export const SURPRISE_NEEDS: Record<SurprisePreset, JudgeSource[]> = {
+  late_big_customer: ["stripe"],
+  unexpected_bill: ["qbo"],
+  bank_stripe_mismatch: ["stripe"],
+};
+
+/** A preset as the scenario it plants, checked by ScenarioSchema. Throws JudgeInputError. */
+export function surpriseScenario(preset: SurprisePreset, served: Snapshot): Scenario {
+  const scenario = (() => {
+    switch (preset) {
+      case "late_big_customer": {
+        const top =
+          rankCustomers(served, 1)[0] ?? refuse("This company has no customers to pay late");
+        return { kind: "late_payment", customerId: top.id, days: 45 } as const;
+      }
+      case "unexpected_bill":
+        return {
+          kind: "unplanned_expense",
+          amountCents: 75_000_000,
+          week: 3,
+          label: "Unexpected bill",
+        } as const;
+      case "bank_stripe_mismatch":
+        return { kind: "bank_stripe_mismatch", amountCents: -1_840_000 } as const;
+    }
+  })();
+  const parsed = ScenarioSchema.safeParse(scenario);
+  if (!parsed.success) refuse(zodMessage(parsed.error));
+  return parsed.data as Scenario;
 }
 
 // ---------- Guided checklist ----------

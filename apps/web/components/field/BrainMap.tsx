@@ -1211,7 +1211,8 @@ function useDemoSwarm(enabled: boolean): FieldOperation[] | undefined {
 /** The node a detail id belongs to: a chip id is "<agent id>|<group>". */
 const ownerOf = (id: string) => id.split("|")[0] ?? id;
 
-export function BrainMap() {
+/** `embedded`: no page header or feed buttons, for a host page that has its own (/judge). */
+export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
   const data = useFieldData();
   const company = useSelectedCompanyName();
   const demo = data.source === "demo";
@@ -1766,21 +1767,23 @@ export function BrainMap() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        eyebrow={
-          <span className="flex flex-wrap items-center gap-2">
-            {company}
-            <DataLabel />
-            {demo ? <span className="text-xs">Scripted demo agents</span> : null}
-          </span>
-        }
-        title={headline}
-        description={
-          latest
-            ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
-            : "Work appears here as soon as it is recorded."
-        }
-      />
+      {embedded ? null : (
+        <PageHeader
+          eyebrow={
+            <span className="flex flex-wrap items-center gap-2">
+              {company}
+              <DataLabel />
+              {demo ? <span className="text-xs">Scripted demo agents</span> : null}
+            </span>
+          }
+          title={headline}
+          description={
+            latest
+              ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
+              : "Work appears here as soon as it is recorded."
+          }
+        />
+      )}
       <div className="space-y-1 text-sm">
         <p className="flex flex-wrap gap-x-5 gap-y-1">
           <span>
@@ -1815,7 +1818,7 @@ export function BrainMap() {
           <span className="text-muted-foreground">all time</span>
         </p>
       </div>
-      <MapActions />
+      {embedded ? null : <MapActions />}
       {narrow ? (
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-medium">{showList ? "Agents" : "Agent map"}</p>
