@@ -207,6 +207,94 @@ describe("filing-backed operating demos", () => {
     }
   });
 
+  it("retains 2U primary statement totals and reconciles the reported component anchors", () => {
+    const p = operatingProvenance({ company: "2u", scenario: "baseline" });
+    const value = (id: string) => {
+      const anchor = p.reported.find((r) => r.id === id);
+      expect(anchor, id).toBeDefined();
+      return anchor!.cents;
+    };
+    expect(value("balance.closing.total-assets")).toBe(153_793_500_000);
+    expect(value("balance.closing.total-assets")).toBe(
+      value("balance.closing.total-liabilities") +
+        value("balance.closing.total-stockholders-equity"),
+    );
+    expect(value("balance.closing.total-current-assets")).toBe(23_397_100_000);
+    expect(value("balance.closing.total-current-liabilities")).toBe(31_463_400_000);
+    expect(value("balance.closing.accounts-payable-and-accrued-expenses")).toBe(12_831_600_000);
+    expect(value("balance.opening.accounts-payable-and-accrued-expenses")).toBe(11_002_000_000);
+    expect(value("income.q3.interest-expense")).toBe(-1_916_700_000);
+    expect(value("income.ytd.interest-expense")).toBe(-5_504_000_000);
+    expect(
+      value("income.ytd.loss-before-income-taxes") + value("income.ytd.income-tax-expense-benefit"),
+    ).toBe(value("income.ytd.net-loss"));
+    expect(value("q3.adjusted-ebitda")).toBe(2_862_900_000);
+    expect(value("ytd.adjusted-ebitda")).toBe(8_061_200_000);
+    for (const category of ["operating", "investing", "financing"] as const) {
+      const components = p.reported.filter(
+        (r) => r.id.startsWith(`cash-flow.${category}.`) && !r.id.includes(".net-cash-used-in-"),
+      );
+      expect(components.reduce((total, r) => total + r.cents, 0)).toBe(
+        p.reconciliation[`${category}CashFlowCents`],
+      );
+    }
+    expect(value("cash-flow.financing.proceeds-from-debt")).toBe(30_922_300_000);
+    expect(value("cash-flow.financing.payments-on-debt")).toBe(-37_391_400_000);
+    expect(p.reported.find((r) => r.id === "F24")!.note).toContain("next 12 to 24 months");
+    expect(p.reported.find((r) => r.id === "F24")!.note).toContain("not the realization date");
+  });
+
+  it("allocates reported 2U AP/accruals to existing expected payment capacity without adding cash events", () => {
+    const baseline = createOperatingDemo({ company: "2u", scenario: "baseline" }, 19);
+    const bridge = baseline.provenance.payablesBridge!;
+    expect(bridge.openingDate).toBe("2022-12-31");
+    expect(bridge.closingDate).toBe("2023-09-30");
+    expect(bridge.reportedOpeningPayablesAndAccrualsCents).toBe(11_002_000_000);
+    expect(bridge.reportedClosingPayablesAndAccrualsCents).toBe(12_831_600_000);
+    expect(bridge.balanceIncreaseCents).toBe(1_829_600_000);
+    expect(bridge.cashFlowAdjustmentCents).toBe(1_988_800_000);
+    expect(bridge.cashFlowAdjustmentLessBalanceIncreaseCents).toBe(159_200_000);
+    expect(bridge.allocations.reduce((total, a) => total + a.allocatedPayablesCents, 0)).toBe(
+      bridge.reportedClosingPayablesAndAccrualsCents,
+    );
+    expect(bridge.supplierAllocationCents + bridge.unincurredFutureBillCostsCents).toBe(
+      bridge.baselineFutureBillsCents,
+    );
+    expect(
+      bridge.payrollAndOtherAccrualAllocationCents + bridge.unincurredFuturePayrollCostsCents,
+    ).toBe(bridge.baselineFuturePayrollCents);
+    expect(bridge.unincurredFutureBillCostsCents).toBeGreaterThanOrEqual(0);
+    expect(bridge.unincurredFuturePayrollCostsCents).toBeGreaterThanOrEqual(0);
+    expect(new Set(bridge.allocations.map((a) => a.recordId)).size).toBe(bridge.allocations.length);
+    for (const scenario of OPERATING_SCENARIO_IDS) {
+      const current = createOperatingDemo({ company: "2u", scenario }, 19);
+      expect(current.provenance.payablesBridge).toEqual(bridge);
+      for (const allocation of bridge.allocations) {
+        const record =
+          allocation.recordKind === "bill"
+            ? current.world.snapshot.bills.find((b) => b.id === allocation.recordId)
+            : current.world.snapshot.payroll.find((r) => r.id === allocation.recordId);
+        expect(record).toBeDefined();
+        expect(record!.amount).toBe(allocation.expectedAmountCents);
+        expect("date" in record! ? record!.date : record!.due).toBe(allocation.expectedPaymentDate);
+        expect(allocation.expectedPaymentDate > current.world.today).toBe(true);
+        expect(allocation.allocatedPayablesCents).toBeGreaterThan(0);
+        expect(allocation.allocatedPayablesCents).toBeLessThanOrEqual(record!.amount);
+        expect(
+          current.world.snapshot.bankTxns.some((t) => t.id === `${allocation.recordId}/bank`),
+        ).toBe(false);
+      }
+      expect(current.world.snapshot.payroll).toEqual(baseline.world.snapshot.payroll);
+      expect(
+        current.world.snapshot.bills.filter((b) => !b.id.endsWith("/illustrative-emergency")),
+      ).toEqual(baseline.world.snapshot.bills);
+    }
+    for (const company of ["asana-inspired", "gitlab-inspired"] as const)
+      expect(
+        createOperatingDemo({ company, scenario: "baseline" }).provenance.payablesBridge,
+      ).toBeUndefined();
+  });
+
   it("rejects invalid seeds, non-operating worlds and unbounded advances without mutating inputs", () => {
     const selection = { company: "2u", scenario: "baseline" } as const;
     for (const seed of [Number.NaN, Number.POSITIVE_INFINITY, 1.5, Number.MAX_SAFE_INTEGER + 1])

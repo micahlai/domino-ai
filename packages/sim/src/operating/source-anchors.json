@@ -690,7 +690,7 @@
       "periodEnd": "2023-09-30",
       "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
       "basis": "reported",
-      "note": "Reported management expectation, not observed cash or revenue; not used to calibrate future outcomes."
+      "note": "Management expected annualized cost savings, not realized cash savings. Period end is the financial report anchor, not a realization date. Not used to calibrate future outcomes."
     },
     {
       "id": "F18",
@@ -734,13 +734,13 @@
     },
     {
       "id": "F24",
-      "label": "portfolio management cash expectation",
+      "label": "Expected portfolio management cash over next 12 to 24 months",
       "sourceValue": "145000",
       "sourceUnit": "USD thousands",
       "periodEnd": "2023-09-30",
       "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
       "basis": "reported",
-      "note": "Reported management expectation, not observed cash or revenue; not used to calibrate future outcomes."
+      "note": "Management expected about $145 million over the next 12 to 24 months. Period end is the financial report anchor, not the realization date. Receipt timing is unknown. Not observed cash and not used to calibrate future outcomes."
     },
     {
       "id": "F25",
@@ -1177,6 +1177,1186 @@
       "sourceUnit": "USD thousands",
       "periodEnd": "2022-12-31",
       "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.cash-and-cash-equivalents",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "41,141",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.cash-and-cash-equivalents",
+      "label": "Cash and cash equivalents",
+      "sourceValue": "167,518",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.restricted-cash",
+      "label": "Restricted cash",
+      "sourceValue": "12,710",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.restricted-cash",
+      "label": "Restricted cash",
+      "sourceValue": "15,060",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.accounts-receivable-net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "113,202",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.accounts-receivable-net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "62,826",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.other-receivables-net",
+      "label": "Other receivables, net",
+      "sourceValue": "29,196",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.other-receivables-net",
+      "label": "Other receivables, net",
+      "sourceValue": "33,813",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.prepaid-expenses-and-other-assets",
+      "label": "Prepaid expenses and other assets",
+      "sourceValue": "37,722",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.prepaid-expenses-and-other-assets",
+      "label": "Prepaid expenses and other assets",
+      "sourceValue": "43,090",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-current-assets",
+      "label": "Total current assets",
+      "sourceValue": "233,971",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-current-assets",
+      "label": "Total current assets",
+      "sourceValue": "322,307",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.other-receivables-net-non-current",
+      "label": "Other receivables, net, non-current",
+      "sourceValue": "18,388",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.other-receivables-net-non-current",
+      "label": "Other receivables, net, non-current",
+      "sourceValue": "14,788",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.property-and-equipment-net",
+      "label": "Property and equipment, net",
+      "sourceValue": "42,387",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.property-and-equipment-net",
+      "label": "Property and equipment, net",
+      "sourceValue": "45,855",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.right-of-use-assets",
+      "label": "Right-of-use assets",
+      "sourceValue": "65,292",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.right-of-use-assets",
+      "label": "Right-of-use assets",
+      "sourceValue": "72,361",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.goodwill",
+      "label": "Goodwill",
+      "sourceValue": "712,644",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.goodwill",
+      "label": "Goodwill",
+      "sourceValue": "734,620",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.intangible-assets-net",
+      "label": "Intangible assets, net",
+      "sourceValue": "386,272",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.intangible-assets-net",
+      "label": "Intangible assets, net",
+      "sourceValue": "549,755",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.other-assets-non-current",
+      "label": "Other assets, non-current",
+      "sourceValue": "78,981",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.other-assets-non-current",
+      "label": "Other assets, non-current",
+      "sourceValue": "71,173",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-assets",
+      "label": "Total assets",
+      "sourceValue": "1,537,935",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-assets",
+      "label": "Total assets",
+      "sourceValue": "1,810,859",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.accounts-payable-and-accrued-expenses",
+      "label": "Accounts payable and accrued expenses",
+      "sourceValue": "128,316",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.accounts-payable-and-accrued-expenses",
+      "label": "Accounts payable and accrued expenses",
+      "sourceValue": "110,020",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.deferred-revenue",
+      "label": "Deferred revenue",
+      "sourceValue": "116,276",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.deferred-revenue",
+      "label": "Deferred revenue",
+      "sourceValue": "90,161",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.lease-liability",
+      "label": "Lease liability",
+      "sourceValue": "15,106",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.lease-liability",
+      "label": "Lease liability",
+      "sourceValue": "13,909",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.accrued-restructuring-liability",
+      "label": "Accrued restructuring liability",
+      "sourceValue": "11,451",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.accrued-restructuring-liability",
+      "label": "Accrued restructuring liability",
+      "sourceValue": "6,692",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.other-current-liabilities",
+      "label": "Other current liabilities",
+      "sourceValue": "43,485",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.other-current-liabilities",
+      "label": "Other current liabilities",
+      "sourceValue": "58,210",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-current-liabilities",
+      "label": "Total current liabilities",
+      "sourceValue": "314,634",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-current-liabilities",
+      "label": "Total current liabilities",
+      "sourceValue": "278,992",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.long-term-debt",
+      "label": "Long-term debt",
+      "sourceValue": "878,124",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.long-term-debt",
+      "label": "Long-term debt",
+      "sourceValue": "928,564",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.deferred-tax-liabilities-net",
+      "label": "Deferred tax liabilities, net",
+      "sourceValue": "310",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.deferred-tax-liabilities-net",
+      "label": "Deferred tax liabilities, net",
+      "sourceValue": "282",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.lease-liability-non-current",
+      "label": "Lease liability, non-current",
+      "sourceValue": "86,381",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.lease-liability-non-current",
+      "label": "Lease liability, non-current",
+      "sourceValue": "99,709",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.other-liabilities-non-current",
+      "label": "Other liabilities, non-current",
+      "sourceValue": "2,007",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.other-liabilities-non-current",
+      "label": "Other liabilities, non-current",
+      "sourceValue": "1,796",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-liabilities",
+      "label": "Total liabilities",
+      "sourceValue": "1,281,456",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-liabilities",
+      "label": "Total liabilities",
+      "sourceValue": "1,309,343",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.preferred-stock-carrying-value",
+      "label": "Preferred stock carrying value",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.preferred-stock-carrying-value",
+      "label": "Preferred stock carrying value",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.common-stock-carrying-value",
+      "label": "Common stock carrying value",
+      "sourceValue": "82",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.common-stock-carrying-value",
+      "label": "Common stock carrying value",
+      "sourceValue": "78",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.additional-paid-in-capital",
+      "label": "Additional paid-in capital",
+      "sourceValue": "1,738,092",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.additional-paid-in-capital",
+      "label": "Additional paid-in capital",
+      "sourceValue": "1,700,855",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.accumulated-deficit",
+      "label": "Accumulated deficit",
+      "sourceValue": "(1,455,131)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.accumulated-deficit",
+      "label": "Accumulated deficit",
+      "sourceValue": "(1,179,972)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.accumulated-other-comprehensive-loss",
+      "label": "Accumulated other comprehensive loss",
+      "sourceValue": "(26,564)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.accumulated-other-comprehensive-loss",
+      "label": "Accumulated other comprehensive loss",
+      "sourceValue": "(19,445)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-stockholders-equity",
+      "label": "Total stockholders' equity",
+      "sourceValue": "256,479",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-stockholders-equity",
+      "label": "Total stockholders' equity",
+      "sourceValue": "501,516",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.closing.total-liabilities-and-stockholders-equity",
+      "label": "Total liabilities and stockholders' equity",
+      "sourceValue": "1,537,935",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "balance.opening.total-liabilities-and-stockholders-equity",
+      "label": "Total liabilities and stockholders' equity",
+      "sourceValue": "1,810,859",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "income.q3.revenue",
+      "label": "Revenue",
+      "sourceValue": "229,699",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.revenue",
+      "label": "Revenue",
+      "sourceValue": "690,292",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.curriculum-and-teaching",
+      "label": "Curriculum and teaching",
+      "sourceValue": "32,143",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.curriculum-and-teaching",
+      "label": "Curriculum and teaching",
+      "sourceValue": "99,085",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.servicing-and-support",
+      "label": "Servicing and support",
+      "sourceValue": "31,484",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.servicing-and-support",
+      "label": "Servicing and support",
+      "sourceValue": "101,178",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.technology-and-content-development",
+      "label": "Technology and content development",
+      "sourceValue": "45,877",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.technology-and-content-development",
+      "label": "Technology and content development",
+      "sourceValue": "135,611",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.marketing-and-sales",
+      "label": "Marketing and sales",
+      "sourceValue": "96,256",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.marketing-and-sales",
+      "label": "Marketing and sales",
+      "sourceValue": "292,313",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.general-and-administrative",
+      "label": "General and administrative",
+      "sourceValue": "36,801",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.general-and-administrative",
+      "label": "General and administrative",
+      "sourceValue": "108,708",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.restructuring-charges",
+      "label": "Restructuring charges",
+      "sourceValue": "14,085",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.restructuring-charges",
+      "label": "Restructuring charges",
+      "sourceValue": "22,582",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.impairment-charges",
+      "label": "Impairment charges",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.impairment-charges",
+      "label": "Impairment charges",
+      "sourceValue": "134,117",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.total-costs-and-expenses",
+      "label": "Total costs and expenses",
+      "sourceValue": "256,646",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.total-costs-and-expenses",
+      "label": "Total costs and expenses",
+      "sourceValue": "893,594",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.loss-from-operations",
+      "label": "Loss from operations",
+      "sourceValue": "(26,947)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.loss-from-operations",
+      "label": "Loss from operations",
+      "sourceValue": "(203,302)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.interest-income",
+      "label": "Interest income",
+      "sourceValue": "363",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.interest-income",
+      "label": "Interest income",
+      "sourceValue": "1,099",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.interest-expense",
+      "label": "Interest expense",
+      "sourceValue": "(19,167)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.interest-expense",
+      "label": "Interest expense",
+      "sourceValue": "(55,040)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.debt-modification-expense-and-loss-on-debt-extinguishment",
+      "label": "Debt modification expense and loss on debt extinguishment",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.debt-modification-expense-and-loss-on-debt-extinguishment",
+      "label": "Debt modification expense and loss on debt extinguishment",
+      "sourceValue": "(16,735)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.other-income-expense-net",
+      "label": "Other income (expense), net",
+      "sourceValue": "(1,585)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.other-income-expense-net",
+      "label": "Other income (expense), net",
+      "sourceValue": "(751)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.loss-before-income-taxes",
+      "label": "Loss before income taxes",
+      "sourceValue": "(47,336)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.loss-before-income-taxes",
+      "label": "Loss before income taxes",
+      "sourceValue": "(274,729)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.income-tax-expense-benefit",
+      "label": "Income tax (expense) benefit",
+      "sourceValue": "(107)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.income-tax-expense-benefit",
+      "label": "Income tax (expense) benefit",
+      "sourceValue": "(430)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.net-loss",
+      "label": "Net loss",
+      "sourceValue": "(47,443)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.net-loss",
+      "label": "Net loss",
+      "sourceValue": "(275,159)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.foreign-currency-translation-adjustments-net-of-tax-of-0-for-all-periods-presented",
+      "label": "Foreign currency translation adjustments, net of tax of $0 for all periods presented",
+      "sourceValue": "185",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.foreign-currency-translation-adjustments-net-of-tax-of-0-for-all-periods-presented",
+      "label": "Foreign currency translation adjustments, net of tax of $0 for all periods presented",
+      "sourceValue": "(7,119)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "income.q3.comprehensive-loss",
+      "label": "Comprehensive loss",
+      "sourceValue": "(47,258)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01"
+    },
+    {
+      "id": "income.ytd.comprehensive-loss",
+      "label": "Comprehensive loss",
+      "sourceValue": "(282,278)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.net-loss",
+      "label": "Net loss",
+      "sourceValue": "(275,159)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.non-cash-interest-expense",
+      "label": "Non-cash interest expense",
+      "sourceValue": "10,488",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.depreciation-and-amortization-expense",
+      "label": "Depreciation and amortization expense",
+      "sourceValue": "86,846",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.stock-based-compensation-expense",
+      "label": "Stock-based compensation expense",
+      "sourceValue": "35,986",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.non-cash-lease-expense",
+      "label": "Non-cash lease expense",
+      "sourceValue": "13,164",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.restructuring",
+      "label": "Restructuring",
+      "sourceValue": "838",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.impairment-charges",
+      "label": "Impairment charges",
+      "sourceValue": "134,117",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.provision-for-credit-losses",
+      "label": "Provision for credit losses",
+      "sourceValue": "6,558",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.loss-on-debt-extinguishment",
+      "label": "Loss on debt extinguishment",
+      "sourceValue": "12,123",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.other",
+      "label": "Other",
+      "sourceValue": "794",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.accounts-receivable-net",
+      "label": "Accounts receivable, net",
+      "sourceValue": "(54,612)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.other-receivables-net",
+      "label": "Other receivables, net",
+      "sourceValue": "(2,207)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.prepaid-expenses-and-other-assets",
+      "label": "Prepaid expenses and other assets",
+      "sourceValue": "(1,095)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.accounts-payable-and-accrued-expenses",
+      "label": "Accounts payable and accrued expenses",
+      "sourceValue": "19,888",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.deferred-revenue",
+      "label": "Deferred revenue",
+      "sourceValue": "26,348",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.other-liabilities-net",
+      "label": "Other liabilities, net",
+      "sourceValue": "(31,597)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.operating.net-cash-used-in-operating-activities",
+      "label": "Net cash used in operating activities",
+      "sourceValue": "(17,520)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.purchase-of-a-business-net-of-cash-acquired",
+      "label": "Purchase of a business, net of cash acquired",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.additions-of-amortizable-intangible-assets",
+      "label": "Additions of amortizable intangible assets",
+      "sourceValue": "(32,442)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.purchases-of-property-and-equipment",
+      "label": "Purchases of property and equipment",
+      "sourceValue": "(4,335)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.advances-made-to-university-clients",
+      "label": "Advances made to university clients",
+      "sourceValue": "0",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.advances-repaid-by-university-clients",
+      "label": "Advances repaid by university clients",
+      "sourceValue": "200",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.other",
+      "label": "Other",
+      "sourceValue": "1",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.investing.net-cash-used-in-investing-activities",
+      "label": "Net cash used in investing activities",
+      "sourceValue": "(36,576)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.proceeds-from-debt",
+      "label": "Proceeds from debt",
+      "sourceValue": "309,223",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.payments-on-debt",
+      "label": "Payments on debt",
+      "sourceValue": "(373,914)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.prepayment-premium-on-extinguishment-of-senior-secured-term-loan-facility",
+      "label": "Prepayment premium on extinguishment of senior secured term loan facility",
+      "sourceValue": "(5,666)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.payment-of-debt-issuance-costs",
+      "label": "Payment of debt issuance costs",
+      "sourceValue": "(4,411)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.tax-withholding-payments-associated-with-settlement-of-restricted-stock-units",
+      "label": "Tax withholding payments associated with settlement of restricted stock units",
+      "sourceValue": "(957)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.proceeds-from-exercise-of-stock-options",
+      "label": "Proceeds from exercise of stock options",
+      "sourceValue": "110",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.proceeds-from-employee-stock-purchase-plan-share-purchases",
+      "label": "Proceeds from employee stock purchase plan share purchases",
+      "sourceValue": "2,102",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.financing.net-cash-used-in-financing-activities",
+      "label": "Net cash used in financing activities",
+      "sourceValue": "(73,513)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.reconciliation.effect-of-exchange-rate-changes-on-cash",
+      "label": "Effect of exchange rate changes on cash",
+      "sourceValue": "(1,118)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.reconciliation.net-decrease-in-cash-cash-equivalents-and-restricted-cash",
+      "label": "Net decrease in cash, cash equivalents and restricted cash",
+      "sourceValue": "(128,727)",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01"
+    },
+    {
+      "id": "cash-flow.reconciliation.cash-cash-equivalents-and-restricted-cash-beginning-of-period",
+      "label": "Cash, cash equivalents and restricted cash, beginning of period",
+      "sourceValue": "182,578",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2022-12-31",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "cash-flow.reconciliation.cash-cash-equivalents-and-restricted-cash-end-of-period",
+      "label": "Cash, cash equivalents and restricted cash, end of period",
+      "sourceValue": "53,851",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html"
+    },
+    {
+      "id": "q3.adjusted-ebitda",
+      "label": "Adjusted EBITDA (non-GAAP)",
+      "sourceValue": "28,629",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-07-01",
+      "note": "Non-GAAP performance measure, not cash flow."
+    },
+    {
+      "id": "ytd.adjusted-ebitda",
+      "label": "Adjusted EBITDA (non-GAAP)",
+      "sourceValue": "80,612",
+      "sourceUnit": "USD thousands",
+      "periodEnd": "2023-09-30",
+      "sourceUrl": "https://www.prnewswire.com/news-releases/2u-reports-results-for-third-quarter-2023-301983979.html",
+      "periodStart": "2023-01-01",
+      "note": "Non-GAAP performance measure, not cash flow."
     }
   ]
 }

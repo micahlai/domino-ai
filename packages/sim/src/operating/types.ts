@@ -29,6 +29,30 @@ export interface ReportedAnchor {
   note?: string;
 }
 export type CashFlowCategory = "operating" | "investing" | "financing" | "fx";
+export interface OperatingPayablesBridge {
+  basis: "reconstructed";
+  openingDate: ISODate;
+  closingDate: ISODate;
+  reportedOpeningPayablesAndAccrualsCents: Cents;
+  reportedClosingPayablesAndAccrualsCents: Cents;
+  balanceIncreaseCents: Cents;
+  cashFlowAdjustmentCents: Cents;
+  cashFlowAdjustmentLessBalanceIncreaseCents: Cents;
+  supplierAllocationCents: Cents;
+  payrollAndOtherAccrualAllocationCents: Cents;
+  baselineFutureBillsCents: Cents;
+  baselineFuturePayrollCents: Cents;
+  unincurredFutureBillCostsCents: Cents;
+  unincurredFuturePayrollCostsCents: Cents;
+  allocations: {
+    recordKind: "bill" | "payroll";
+    recordId: string;
+    expectedPaymentDate: ISODate;
+    expectedAmountCents: Cents;
+    allocatedPayablesCents: Cents;
+  }[];
+  note: string;
+}
 export interface OperatingProvenance extends OperatingSelection {
   version: 1;
   label: string;
@@ -74,6 +98,8 @@ export interface OperatingProvenance extends OperatingSelection {
     modeledOperatingPaymentsCents: Cents;
     note: string;
   };
+  /** Only present when reported opening and closing AP/accrual anchors are available. */
+  payablesBridge?: OperatingPayablesBridge;
   /** A factual endpoint does not make its reconstructed allocation factual. */
   aggregateBasis: Record<string, string>;
   reconciliation: {
