@@ -92,6 +92,7 @@ import type * as timeline_analysis_refs from "../timeline/analysis/refs.js";
 import type * as timeline_analysis_table from "../timeline/analysis/table.js";
 import type * as timeline_assistant_claude from "../timeline/assistant/claude.js";
 import type * as timeline_assistant_context from "../timeline/assistant/context.js";
+import type * as timeline_assistant_grounding from "../timeline/assistant/grounding.js";
 import type * as timeline_assistant_questions from "../timeline/assistant/questions.js";
 import type * as timeline_baselines from "../timeline/baselines.js";
 import type * as timeline_chat from "../timeline/chat.js";
@@ -211,6 +212,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/analysis/table": typeof timeline_analysis_table;
   "timeline/assistant/claude": typeof timeline_assistant_claude;
   "timeline/assistant/context": typeof timeline_assistant_context;
+  "timeline/assistant/grounding": typeof timeline_assistant_grounding;
   "timeline/assistant/questions": typeof timeline_assistant_questions;
   "timeline/baselines": typeof timeline_baselines;
   "timeline/chat": typeof timeline_chat;
