@@ -3,17 +3,24 @@
 import type { ProfileId } from "@domino/sim";
 import { useMutation } from "convex/react";
 import { Check, ChevronsUpDown, Landmark } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { cn } from "../../lib/utils";
-import { FIELD_COMPANIES, selectCompany, useSelectedCompany, useSelectedProfile } from "./company";
+import {
+  FIELD_COMPANIES,
+  REPLAY_COMPANY,
+  selectCompany,
+  useIsReplayCompany,
+  useSelectedCompany,
+  useSelectedProfile,
+} from "./company";
 
 // Top bar company picker: the four simulated companies (each a live feed in the backend) and
-// the real 2U case study. Picking one switches the dashboard, worker, brain map and connect
-// pages to it. Without a backend the demo data follows the same choice. On the 2U case study
-// pages the button names 2U, and picking a simulated company opens its dashboard.
+// the real company 2U, replayed from its quarterly public filings. Picking one switches the
+// dashboard, worker, brain map and connect pages to it. Without a backend the demo data follows
+// the same choice. Picking 2U opens the dashboard in its quarterly rewind; the older 2U case
+// study pages (/case/2u) stay reachable by URL, and picking a company there opens the dashboard.
 
 type Rating = "ok" | "watch" | "at_risk";
 type Item = {
@@ -128,6 +135,7 @@ function Picker({
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const onCase = pathname === "/case" || pathname.startsWith("/case/");
+  const twoU = useIsReplayCompany() || onCase;
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -147,8 +155,14 @@ function Picker({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-  const selected = onCase ? undefined : items.find((i) => i.profile === current);
-  const name = onCase ? "2U" : (selected?.name ?? "Choose a company");
+  const selected = twoU ? undefined : items.find((i) => i.profile === current);
+  const name = twoU ? "2U, Inc." : (selected?.name ?? "Choose a company");
+  const pick = (choice: typeof REPLAY_COMPANY | ProfileId) => {
+    selectCompany(choice);
+    setOpen(false);
+    if (onCase) router.push("/");
+    else button.current?.focus();
+  };
   return (
     <div ref={root} className="relative">
       <button
@@ -165,7 +179,7 @@ function Picker({
           focusRing,
         )}
       >
-        {onCase ? (
+        {twoU ? (
           <span
             aria-hidden="true"
             className="flex size-6 items-center justify-center rounded border bg-card"
@@ -196,19 +210,14 @@ function Picker({
           </p>
           <ul className="px-1.5 pb-1.5">
             {items.map((item) => {
-              const on = !onCase && item.profile === current;
+              const on = !twoU && item.profile === current;
               return (
                 <li key={item.profile}>
                   <button
                     type="button"
                     role="menuitemradio"
                     aria-checked={on}
-                    onClick={() => {
-                      selectCompany(item.profile);
-                      setOpen(false);
-                      if (onCase) router.push("/");
-                      else button.current?.focus();
-                    }}
+                    onClick={() => pick(item.profile)}
                     className={cn(
                       "flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent",
                       focusRing,
@@ -239,16 +248,19 @@ function Picker({
               );
             })}
           </ul>
-          <div className="border-t px-1.5 py-1.5">
-            <Link
-              href="/case/2u"
+          <p className="border-t px-3 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Real company
+          </p>
+          <div className="px-1.5 pb-1.5">
+            <button
+              type="button"
               role="menuitemradio"
-              aria-checked={onCase}
-              onClick={() => setOpen(false)}
+              aria-checked={twoU}
+              onClick={() => pick(REPLAY_COMPANY)}
               className={cn(
-                "flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-accent",
+                "flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent",
                 focusRing,
-                onCase && "bg-secondary",
+                twoU && "bg-secondary",
               )}
             >
               <span
@@ -259,14 +271,17 @@ function Picker({
               </span>
               <span className="min-w-0">
                 <span className="flex items-center gap-2 text-[13px] font-medium">
-                  2U case study
-                  {onCase ? <Check className="size-3.5" aria-label="selected" /> : null}
+                  2U, Inc.
+                  {twoU ? <Check className="size-3.5" aria-label="selected" /> : null}
                 </span>
                 <span className="block text-xs leading-5 text-muted-foreground">
-                  Real company, quarterly public filings
+                  Quarterly public filings, rewound to Nov 10, 2023
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Replay: what happened next stays hidden until you reveal it
                 </span>
               </span>
-            </Link>
+            </button>
           </div>
         </div>
       ) : null}

@@ -15,20 +15,27 @@ import {
 // The selected company for every Field page and the dashboard: a profile id kept in
 // localStorage, shared across tabs, and overridable by ?company=<profile> in the URL (so a link
 // opens the same company). Each page resolves it to that company's backend id.
+// The selection can also be 2U (REPLAY_COMPANY): a real company replayed from its quarterly
+// public filings, with no live feed and no backend company record.
 
 export { FIELD_COMPANIES, type FieldCompanyProfile };
 const KEY = "domino.field.company";
 const EVENT = "domino:company";
+/** 2U, Inc.: the real company replayed from public filings (the audited historical case). */
+export const REPLAY_COMPANY = "2u";
+export type CompanySelection = ProfileId | typeof REPLAY_COMPANY;
 const isProfile = (v: string | null): v is ProfileId =>
   !!v && FIELD_COMPANIES.some((c) => c.id === v);
+const isSelection = (v: string | null): v is CompanySelection =>
+  v === REPLAY_COMPANY || isProfile(v);
 
-function read(): ProfileId {
+function read(): CompanySelection {
   if (typeof window === "undefined") return DEFAULT_FIELD_COMPANY;
   const fromUrl = new URLSearchParams(window.location.search).get("company");
-  if (isProfile(fromUrl)) return fromUrl;
+  if (isSelection(fromUrl)) return fromUrl;
   try {
     const stored = window.localStorage.getItem(KEY);
-    if (isProfile(stored)) return stored;
+    if (isSelection(stored)) return stored;
   } catch {
     // Storage blocked: the default company is still a valid choice.
   }
@@ -46,7 +53,7 @@ function subscribe(onChange: () => void) {
   };
 }
 
-export function selectCompany(profile: ProfileId) {
+export function selectCompany(profile: CompanySelection) {
   try {
     window.localStorage.setItem(KEY, profile);
   } catch {
@@ -60,9 +67,21 @@ export function selectCompany(profile: ProfileId) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-/** The selected profile id (the default company on the server and before hydration). */
-export const useSelectedProfile = (): ProfileId =>
+/** The selection, 2U included (the default company on the server and before hydration). */
+export const useCompanySelection = (): CompanySelection =>
   useSyncExternalStore(subscribe, read, () => DEFAULT_FIELD_COMPANY);
+
+/** True when 2U, the company replayed from public filings, is selected. */
+export const useIsReplayCompany = (): boolean => useCompanySelection() === REPLAY_COMPANY;
+
+/**
+ * The selected simulated profile id. With 2U selected this is the default simulated company;
+ * pages that only know simulated companies check useIsReplayCompany first.
+ */
+export const useSelectedProfile = (): ProfileId => {
+  const selection = useCompanySelection();
+  return selection === REPLAY_COMPANY ? DEFAULT_FIELD_COMPANY : selection;
+};
 
 /** The selected company's display name. Company records are named exactly after their profile. */
 export const useSelectedCompanyName = (): string => {
