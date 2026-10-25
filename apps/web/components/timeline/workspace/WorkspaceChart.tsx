@@ -5,6 +5,7 @@ import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 import { useId } from "react";
 import { formatExactCents, formatFullDate } from "../baseline/format";
+import { cashScale, dateTicks, formatAxisCash } from "./chartScales";
 
 export type ChartProps = {
   history: HistoryWeek[];
@@ -28,8 +29,8 @@ export type ChartProps = {
 };
 
 const W = 880;
-const H = 300;
-const PAD = { left: 16, right: 16, top: 24, bottom: 44 };
+const H = 350;
+const PAD = { left: 94, right: 24, top: 38, bottom: 82 };
 
 type Point = { x: number; y: number };
 
@@ -44,18 +45,25 @@ export function WorkspaceChart(p: ChartProps) {
   const values = [
     ...p.history.map((h) => h.usable),
     ...weeks.map((w) => w.usable),
-    ...(p.parent?.weeks.map((w) => w.usable) ?? []),
-    ...(p.comparisons?.flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)) ?? []),
+    ...(!p.comparisons ? (p.parent?.weeks.map((w) => w.usable) ?? []) : []),
+    ...(p.comparisons
+      ?.slice(0, 3)
+      .flatMap((entry) => entry.forecast.weeks.map((week) => week.usable)) ?? []),
     ...p.limits.map((l) => l.cents),
   ];
-  const y = scaleLinear()
-    .domain([Math.min(...values), Math.max(...values)])
-    .range([H - PAD.bottom, PAD.top]);
-  if (y.domain()[0] === y.domain()[1])
-    y.domain([(y.domain()[0] ?? 0) - 1, (y.domain()[1] ?? 0) + 1]);
+  const { scale: y, ticks: cashTicks } = cashScale(values, [H - PAD.bottom, PAD.top]);
+  const left = Math.max(
+    PAD.left,
+    ...cashTicks.map((value) => formatAxisCash(value).length * 6.5 + 20),
+  );
+  const dates = [
+    ...p.history.map((week) => week.weekStart),
+    ...weeks.map((week) => week.weekStart),
+  ];
+  const timeTicks = dateTicks(dates);
   const x = scaleLinear()
     .domain([0, Math.max(slots - 1, 1)])
-    .range([PAD.left, W - PAD.right]);
+    .range([left, W - PAD.right]);
   const draw = line<Point>()
     .x((d) => d.x)
     .y((d) => d.y);
@@ -85,6 +93,74 @@ export function WorkspaceChart(p: ChartProps) {
           <title
             id={titleId}
           >{`Usable cash: ${p.history.length} recorded weeks, then the saved 13-week forecast. Lowest forecast week ${formatFullDate(low.weekStart)} at ${formatExactCents(low.usable)}.`}</title>
+          <g data-testid="cash-axis" pointerEvents="none">
+            <text x={left} y={18} className="fill-muted-foreground text-[11px]">
+              Usable cash · USD
+            </text>
+            {cashTicks.map((cents) => (
+              <g key={cents} data-cents={cents}>
+                <line
+                  x1={left}
+                  x2={W - PAD.right}
+                  y1={y(cents)}
+                  y2={y(cents)}
+                  className="stroke-muted-foreground/15"
+                />
+                <line
+                  x1={left - 4}
+                  x2={left}
+                  y1={y(cents)}
+                  y2={y(cents)}
+                  className="stroke-muted-foreground/50"
+                />
+                <text
+                  x={left - 10}
+                  y={y(cents)}
+                  dy="0.35em"
+                  textAnchor="end"
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  <title>{formatExactCents(cents)}</title>
+                  {formatAxisCash(cents)}
+                </text>
+              </g>
+            ))}
+            <line
+              x1={left}
+              x2={left}
+              y1={PAD.top}
+              y2={H - PAD.bottom}
+              className="stroke-muted-foreground/40"
+            />
+          </g>
+          <g data-testid="date-axis" pointerEvents="none">
+            <line
+              x1={left}
+              x2={W - PAD.right}
+              y1={H - PAD.bottom}
+              y2={H - PAD.bottom}
+              className="stroke-muted-foreground/40"
+            />
+            {timeTicks.map(({ index, date }, i) => (
+              <g key={date} data-week={date}>
+                <line
+                  x1={x(index)}
+                  x2={x(index)}
+                  y1={H - PAD.bottom}
+                  y2={H - PAD.bottom + 5}
+                  className="stroke-muted-foreground/50"
+                />
+                <text
+                  x={x(index)}
+                  y={H - PAD.bottom + 50}
+                  textAnchor={i === 0 ? "start" : i === timeTicks.length - 1 ? "end" : "middle"}
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {formatFullDate(date)}
+                </text>
+              </g>
+            ))}
+          </g>
           {p.limits.map((l) => (
             <g key={l.id} data-testid={`limit-${l.id}`}>
               <line
@@ -113,14 +189,6 @@ export function WorkspaceChart(p: ChartProps) {
             className="stroke-muted-foreground"
             strokeDasharray="3 3"
           />
-          <text
-            x={todayX}
-            y={H - PAD.bottom + 32}
-            textAnchor="middle"
-            className="fill-muted-foreground text-[11px]"
-          >
-            Forecast starts {weeks[0] ? formatFullDate(weeks[0].weekStart) : ""}
-          </text>
           {past.length > 1 ? (
             <path d={draw(past) ?? ""} fill="none" className="stroke-clay" strokeWidth={2} />
           ) : null}
@@ -243,6 +311,7 @@ export function WorkspaceChart(p: ChartProps) {
         </svg>
       </div>
       <figcaption className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>Forecast starts {weeks[0] ? formatFullDate(weeks[0].weekStart) : ""}</span>
         <span>
           <span className="mr-1 inline-block h-0.5 w-4 bg-clay align-middle" />
           Recorded usable cash
