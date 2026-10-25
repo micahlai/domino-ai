@@ -133,4 +133,9 @@ export type FieldData = {
   canLoadMore: boolean;
   loadMore: () => void;
   actions: FieldActions;
+  /**
+   * A decision the server refused. The flag already left the queue optimistically and came
+   * back, so its card is new and shows this instead of its own (lost) error state.
+   */
+  decideError?: { findingId: string; message: string } | null;
 };

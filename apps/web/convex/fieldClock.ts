@@ -41,6 +41,7 @@ import {
 } from "./_generated/server";
 import type { Overlay } from "./fieldFeed";
 import { type IngestResult, requireFeed, requireWorld, runIngest, writeLog } from "./fieldJobs";
+import { deliverEvents } from "./fieldWebhooks";
 import {
   SESSION_MAX_DAYS,
   type Speed,
@@ -52,6 +53,7 @@ import {
   stepDays,
 } from "./lib/clock";
 import { daysBetween, nextBeat } from "./lib/storylines";
+import { type OutgoingEvent, vendorEvents } from "./lib/vendorWebhooks";
 
 export const CLOCK_AGENT = "sim.clock";
 /** A tick holding the lease longer than this is treated as dead. */
@@ -312,6 +314,7 @@ export const claimTick = internalMutation({
       day: step.day,
       entries: step.entries.total,
       fired: step.fired.map((f) => f.title),
+      events: vendorEvents(step.served.before, step.served.after, step.world.today),
     };
   },
 });
@@ -508,15 +511,24 @@ export const settleTick = internalMutation({
 export const tick = internalAction({
   args: { companyId: v.id("companies"), generation: v.number() },
   handler: async (ctx, { companyId, generation }) => {
-    const claim: { startedAt: number; day: number; entries: number; fired: string[] } | null =
-      await ctx.runMutation(internal.fieldClock.claimTick, { companyId, generation });
+    const claim: {
+      startedAt: number;
+      day: number;
+      entries: number;
+      fired: string[];
+      events: OutgoingEvent[];
+    } | null = await ctx.runMutation(internal.fieldClock.claimTick, { companyId, generation });
     if (!claim) return null;
     let ingest: IngestResult | null = null;
     try {
-      // Event driven: the agent reads the sources right after the day added entries. A day with
-      // nothing new (often a weekend) ingests nothing and so triggers no agent at all.
-      if (claim.entries > 0 || claim.fired.length > 0)
+      // Event driven: the vendors post their webhooks for the day's new records (signed, to the
+      // site URL; fieldWebhooks.ts), then the agent reads the sources at once. Events landing
+      // while this lease is held join this read instead of queueing another. A day with nothing
+      // new (often a weekend) ingests nothing and so triggers no agent at all.
+      if (claim.entries > 0 || claim.fired.length > 0) {
+        await deliverEvents(ctx, companyId, claim.events).catch(() => null);
         ingest = await runIngest(ctx, companyId, "clock", { analyst: false });
+      }
     } finally {
       await ctx.runMutation(internal.fieldClock.settleTick, {
         companyId,

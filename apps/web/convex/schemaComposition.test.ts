@@ -52,6 +52,9 @@ const LANES = {
     "investigationMessages",
     "investigationOperations",
     "timelineLinks",
+    "vendorWebhookSecrets",
+    "vendorWebhookEvents",
+    "webhookInbox",
   ],
 };
 
@@ -149,6 +152,12 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
     ["by_conversation", ["conversationId", "sequence"]],
   ],
   timelineLinks: [["by_companyId", ["companyId"]]],
+  vendorWebhookSecrets: [["by_companyId_and_vendor", ["companyId", "vendor"]]],
+  vendorWebhookEvents: [
+    ["by_companyId_and_eventId", ["companyId", "eventId"]],
+    ["by_companyId_and_status", ["companyId", "status"]],
+  ],
+  webhookInbox: [["by_companyId", ["companyId"]]],
 };
 
 describe("schema composition", () => {
@@ -157,7 +166,7 @@ describe("schema composition", () => {
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
     const all = [...LANES.timeline, ...LANES.field];
-    expect(new Set(all).size).toBe(41);
+    expect(new Set(all).size).toBe(44);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });
 

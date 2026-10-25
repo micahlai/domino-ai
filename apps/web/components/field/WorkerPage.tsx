@@ -452,7 +452,7 @@ function FindingCard({
   now,
   related,
 }: { finding: FieldFinding; now: number; related: FieldFinding[] }) {
-  const { actions } = useFieldData();
+  const { actions, decideError } = useFieldData();
   const reduced = useReducedMotion();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
@@ -473,6 +473,7 @@ function FindingCard({
       setBusy(null);
     }
   }
+  const shownError = error ?? (decideError?.findingId === finding.id ? decideError.message : null);
   const noteId = `note-${finding.id}`;
   const domId = flagDomId(finding.id);
   return (
@@ -604,7 +605,7 @@ function FindingCard({
           </div>
         </div>
       </div>
-      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+      {shownError ? <p className="mt-2 text-sm text-destructive">{shownError}</p> : null}
     </motion.li>
   );
 }
