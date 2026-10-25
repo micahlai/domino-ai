@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import type { z } from "zod";
 import { featureBoundaryFixtures as fx } from "./fixtures";
 import {
   BOUNDARY_INTEGER_MAX,
+  BOUNDARY_MAX_DEPTH,
   BOUNDARY_MAX_JSON_LENGTH,
   DomainIdSchema,
   FEATURE_BOUNDARY_HASH,
   ForecastReadyTimelineSeedV1Schema,
+  MAX_BENEFIT_LAG_DAYS,
+  MAX_CHAIN_DEPTH,
+  MAX_DERIVATION_VISITS,
   type OperationSummaryV1,
   OperationSummaryV1Schema,
   TIMELINE_METHODS,
@@ -27,7 +31,7 @@ import {
   parseTimelineRevealContextJson,
   parseTimelineRevealJson,
   parseTimelineSeedJson,
-  plainJsonSnapshot,
+  safeParseJsonText,
 } from "./index";
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -850,12 +854,12 @@ describe("audit: engine interval rules for quarterly_cash_bridge@0.1.0", () => {
 describe("audit: safe integers", () => {
   const UNSAFE = 2 ** 53;
 
-  it("rejects 2^53 in an assumption benefitLagDays", () => {
+  it("rejects 2^53 in an assumption benefitLagDays (caught first by the day-count bound)", () => {
     expect(
       mutated(S, seed, (s) => {
         s.snapshot.case.assumptions.find((a) => a.id === "A1")!.benefitLagDays = UNSAFE;
       }),
-    ).toEqual(["number must be a safe integer"]);
+    ).toEqual(["benefit lag must be at most 3660 days"]);
   });
 
   it("rejects 2^53 in a learned rule version, and accepts a safe one", () => {
@@ -1236,142 +1240,6 @@ describe("intentional stricter-than-engine v1 rules", () => {
 
 // ---------- Final audit: total for any JS value, JSON-text boundary, money bounds ----------
 
-describe("final audit: hostile JS values never throw", () => {
-  const op = {
-    schemaVersion: 1,
-    id: "field:operation/x",
-    ownerDomain: "field",
-    status: "succeeded",
-    title: "x",
-    dependencies: [],
-    evidenceRefs: [],
-    outputRefs: ["field:seed/x"],
-    createdAt: "2026-10-24T12:00:00Z",
-    startedAt: "2026-10-24T12:00:00Z",
-    finishedAt: "2026-10-24T12:00:00Z",
-    updatedAt: "2026-10-24T12:00:00Z",
-  };
-  const all: [string, Schema, unknown][] = [
-    ["TimelineSeedV1", S, seed],
-    ["ForecastReadyTimelineSeedV1", ForecastReadyTimelineSeedV1Schema, seed],
-    ["TimelineResultRefV1", TimelineResultRefV1Schema, result],
-    ["TimelineResultRefContextV1", TimelineResultRefContextV1Schema, { seed, result }],
-    ["OperationSummaryV1", OperationSummaryV1Schema, op],
-    ["TimelineRevealV1", TimelineRevealV1Schema, reveal],
-    ["TimelineRevealContextV1", TimelineRevealContextV1Schema, { seed, reveal }],
-  ];
-  const boom = () => {
-    throw new Error("hostile");
-  };
-  const getter = (key: string, base: object = {}) =>
-    Object.defineProperty(clone(base), key, { enumerable: true, get: boom });
-  const TRAPS = ["get", "ownKeys", "getPrototypeOf", "has", "getOwnPropertyDescriptor"] as const;
-  const hostile = (base: unknown): [string, unknown][] => {
-    const revoked = Proxy.revocable({}, {});
-    revoked.revoke();
-    const deep: Record<string, unknown> = {};
-    let cursor = deep;
-    for (let i = 0; i < 12_000; i++) cursor = cursor.next = {};
-    const cyclic = clone(base) as Record<string, unknown>;
-    cyclic.loop = cyclic;
-    return [
-      ["then getter", getter("then")],
-      ...Object.keys(base as object).map((k): [string, unknown] => [
-        `${k} getter`,
-        getter(k, base as object),
-      ]),
-      ...TRAPS.map((t): [string, unknown] => [
-        `${t} trap`,
-        new Proxy(clone(base) as object, { [t]: boom }),
-      ]),
-      ["revoked proxy", revoked.proxy],
-      ["cycle", cyclic],
-      ["deep nesting", deep],
-      ["huge string", "x".repeat(2_000_000)],
-      ["huge array", new Array(100_000).fill(null)],
-      ["bigint", 1n],
-      ["symbol", Symbol("x")],
-      ["function", () => 1],
-      ["Date", new Date(0)],
-      ["Map", new Map()],
-      ["undefined", undefined],
-    ];
-  };
-
-  it.each(all)("%s: every hostile value returns success:false", (_, schema, base) => {
-    for (const [label, v] of hostile(base)) {
-      const got = outcome(schema, v);
-      // A proxy whose throwing trap the snapshot never calls (get, has) holds valid data.
-      if (label === "get trap" || label === "has trap") expect(got, label).not.toBe("threw");
-      else expect(got, label).toBe("rejected");
-    }
-  });
-
-  it.each(all)("%s: delayed traps at every threshold never throw", (_, schema, base) => {
-    for (const trap of TRAPS)
-      for (const at of [1, 2, 3, 5, 10, 50, 300, 1000]) {
-        let n = 0;
-        const handler = {
-          [trap]: (...args: unknown[]) => {
-            if (++n === at) throw new Error("late trap");
-            return (Reflect[trap] as (...a: unknown[]) => unknown)(...args);
-          },
-        };
-        expect(
-          outcome(schema, new Proxy(clone(base) as object, handler)),
-          `${trap}/${at}`,
-        ).not.toBe("threw");
-      }
-  });
-
-  it("rejects a getter that answers twice then throws, without ever invoking it", () => {
-    for (const [schema, base, path] of [
-      [S, seed, ["snapshot", "case", "facts", 0]],
-      [ForecastReadyTimelineSeedV1Schema, seed, ["snapshot", "case", "facts", 0]],
-      [TimelineRevealV1Schema, reveal, ["disclosures", "facts", 0]],
-    ] as const) {
-      const v = clone(base) as unknown as Record<string, unknown>;
-      let node = v;
-      for (const k of path) node = node[k] as Record<string, unknown>;
-      let reads = 0;
-      Object.defineProperty(node, "extra", {
-        enumerable: true,
-        get() {
-          if (++reads >= 3) throw new Error("late extra getter");
-          return 1;
-        },
-      });
-      expect(outcome(schema, v)).toBe("rejected");
-      expect(reads).toBe(0);
-    }
-  });
-
-  it("rejects context records reached through top-level getters", () => {
-    expect(outcome(TimelineResultRefContextV1Schema, getter("seed", { result }))).toBe("rejected");
-    expect(outcome(TimelineRevealContextV1Schema, getter("seed", { reveal }))).toBe("rejected");
-  });
-
-  it("accepts shared non-cyclic references and copies them once", () => {
-    const v = clone(seed);
-    const shared = v.snapshot.case.facts[0]!.period;
-    v.snapshot.case.facts[1]!.period = shared;
-    expect(outcome(ForecastReadyTimelineSeedV1Schema, v)).toBe("accepted");
-    const snap = plainJsonSnapshot(v);
-    expect(snap.ok).toBe(true);
-    const c = snap.ok ? (snap.value as TimelineSeedV1) : undefined;
-    expect(c?.snapshot.case.facts[0]!.period).toBe(c?.snapshot.case.facts[1]!.period);
-    expect(c?.snapshot.case.facts[0]!.period).not.toBe(shared);
-  });
-
-  it("keeps parse, parseAsync and safeParseAsync total", async () => {
-    const h = getter("then");
-    expect(() => S.parse(h)).toThrow(z.ZodError);
-    await expect(S.parseAsync(h)).rejects.toBeInstanceOf(z.ZodError);
-    expect((await S.safeParseAsync(h)).success).toBe(false);
-    expect((await S.spa(seed)).success).toBe(true);
-  });
-});
-
 describe("final audit: JSON-text boundary", () => {
   const text = (v: unknown) => JSON.stringify(v);
 
@@ -1508,5 +1376,233 @@ describe("final audit: money magnitude bound", () => {
         r.disclosures.facts[0]!.cents = B + 1;
       }),
     ).toEqual([OVER]);
+  });
+});
+
+// ---------- Exception audit: JSON-text boundary is total; chains and day counts bounded ----------
+
+/** Derived-fact chain of `depth` links ending in F05 (selected operating YTD). */
+const chainSeed = (depth: number): TimelineSeedV1 =>
+  edited(seed, (s) => {
+    const facts = s.snapshot.case.facts;
+    const i = facts.findIndex((f) => f.id === "F05");
+    const base = facts[i]!;
+    if (base.kind !== "reported") throw new Error("fixture changed");
+    const chain: TimelineSeedV1["snapshot"]["case"]["facts"] = [{ ...base, id: "F05-R" }];
+    for (let k = 1; k <= depth; k++) {
+      const { sourceId, locator, reportedScale, ...rest } = base;
+      chain.push({
+        ...rest,
+        kind: "derived",
+        id: k === depth ? "F05" : `F05-D${k}`,
+        derivedFrom: [k === 1 ? "F05-R" : `F05-D${k - 1}`],
+        derivation: "carried forward unchanged",
+      });
+    }
+    facts.splice(i, 1, ...chain);
+  });
+
+describe("exception audit: derivation chains and engine work", () => {
+  it(`accepts a ${MAX_CHAIN_DEPTH}-link derived chain and rejects one more`, () => {
+    expect(MAX_CHAIN_DEPTH).toBe(16);
+    expect(check(ForecastReadyTimelineSeedV1Schema, chainSeed(MAX_CHAIN_DEPTH))).toEqual([]);
+    expect(check(S, chainSeed(MAX_CHAIN_DEPTH + 1))).toEqual([
+      "derivation chain is deeper than 16",
+    ]);
+  });
+
+  it("rejects the 8,000-link chain repro through JSON text", () => {
+    const r = parseForecastReadyTimelineSeedJson(JSON.stringify(chainSeed(8000)));
+    expect(r.success).toBe(false);
+    expect(r.success ? [] : r.error.issues.map((i) => i.message)).toContain(
+      "derivation chain is deeper than 16",
+    );
+  });
+
+  it("bounds total fact visits for shared (diamond) derivations", () => {
+    // Each level lists the previous level twice: visits double while depth stays 13.
+    const diamond = (levels: number) =>
+      edited(seed, (s) => {
+        const facts = s.snapshot.case.facts;
+        const i = facts.findIndex((f) => f.id === "F05");
+        const base = facts[i]!;
+        if (base.kind !== "reported") throw new Error("fixture changed");
+        const { sourceId, locator, reportedScale, ...rest } = base;
+        const out: TimelineSeedV1["snapshot"]["case"]["facts"] = [{ ...base, id: "F05-R" }];
+        for (let k = 1; k <= levels; k++) {
+          const prev = k === 1 ? "F05-R" : `F05-D${k - 1}`;
+          out.push({
+            ...rest,
+            kind: "derived",
+            id: k === levels ? "F05" : `F05-D${k}`,
+            derivedFrom: [prev, prev],
+            derivation: "carried forward unchanged",
+          });
+        }
+        facts.splice(i, 1, ...out);
+      });
+    // 12 levels: F05 alone is 2^13 - 1 = 8,191 visits, under the 10,000 bound.
+    expect(check(S, diamond(12))).toEqual([]);
+    expect(check(S, diamond(13))).toEqual([
+      `derivation walks exceed ${MAX_DERIVATION_VISITS} fact visits`,
+    ]);
+  });
+
+  it("caps assumption dependency chains at the same depth", () => {
+    const deps = (n: number) =>
+      edited(seed, (s) => {
+        const as = s.snapshot.case.assumptions;
+        const base = as.find((a) => a.id === "A1-DOWNSIDE")!;
+        for (let k = 1; k <= n; k++)
+          as.push({
+            ...clone(base),
+            id: `DEP-${k}`,
+            dependsOn: [k === 1 ? "A1-DOWNSIDE" : `DEP-${k - 1}`],
+          });
+      });
+    // A1-DOWNSIDE already depends on A1 (depth 1), so n links reach depth n + 1.
+    expect(check(S, deps(MAX_CHAIN_DEPTH - 1))).toEqual([]);
+    expect(check(S, deps(MAX_CHAIN_DEPTH))).toEqual([
+      "assumption dependency chain is deeper than 16",
+    ]);
+  });
+});
+
+describe("exception audit: day counts", () => {
+  const lag = (days: number, from?: string) => (s: TimelineSeedV1) => {
+    const a = s.snapshot.case.assumptions.find((x) => x.id === "A1")!;
+    a.benefitLagDays = days;
+    if (from) a.effectiveFrom = from;
+  };
+
+  it("accepts 0 and 3660 days and rejects 3661 and the 2^49 repro", () => {
+    expect(MAX_BENEFIT_LAG_DAYS).toBe(3660);
+    expect(mutated(S, seed, lag(0))).toEqual([]);
+    expect(mutated(S, seed, lag(3660))).toEqual([]);
+    expect(mutated(S, seed, lag(3661))).toEqual(["benefit lag must be at most 3660 days"]);
+    expect(mutated(S, seed, lag(2 ** 49))).toEqual(["benefit lag must be at most 3660 days"]);
+    expect(mutated(S, seed, lag(100_000_000))).toEqual(["benefit lag must be at most 3660 days"]);
+  });
+
+  it("rejects a benefit start past 9999-12-31", () => {
+    expect(mutated(S, seed, lag(1, "9999-12-30"))).toEqual([]);
+    expect(mutated(S, seed, lag(2, "9999-12-30"))).toEqual([
+      "benefit would start after 9999-12-31, beyond engine dates",
+    ]);
+  });
+});
+
+describe("exception audit: JSON-text boundary fuzz", () => {
+  const text = (v: unknown) => JSON.stringify(v);
+  const entries: [string, (t: unknown) => { success: boolean }][] = [
+    ["generic", (t) => safeParseJsonText(S, t)],
+    ["seed", parseTimelineSeedJson],
+    ["forecast-ready seed", parseForecastReadyTimelineSeedJson],
+    ["result ref", parseTimelineResultRefJson],
+    ["operation", parseOperationSummaryJson],
+    ["reveal", parseTimelineRevealJson],
+    ["result context (seed)", (t) => parseTimelineResultRefContextJson(t, text(result))],
+    ["result context (result)", (t) => parseTimelineResultRefContextJson(text(seed), t)],
+    ["reveal context (seed)", (t) => parseTimelineRevealContextJson(t, text(reveal))],
+    ["reveal context (reveal)", (t) => parseTimelineRevealContextJson(text(seed), t)],
+  ];
+  const nest = (n: number) => `${'{"a":'.repeat(n)}1${"}".repeat(n)}`;
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  const hostile: unknown[] = [
+    revoked.proxy,
+    new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw revoked.proxy;
+        },
+      },
+    ),
+    // biome-ignore lint/suspicious/noThenProperty: a hostile thenable is the case under test
+    Object.defineProperty({}, "then", {
+      get: () => {
+        throw revoked.proxy;
+      },
+    }),
+    Symbol("x"),
+    1n,
+    () => "{}",
+  ];
+  const texts: unknown[] = [
+    "",
+    " ",
+    "{",
+    "}",
+    "[1,]",
+    "nul",
+    "NaN",
+    "1e999",
+    "-0",
+    '"\\ud800"',
+    "\u0000",
+    "null",
+    "true",
+    "[]",
+    "{}",
+    `{"__proto__":{"polluted":true}}`,
+    nest(BOUNDARY_MAX_DEPTH + 1),
+    `${"[".repeat(500_000)}${"]".repeat(500_000)}`,
+    `"${"x".repeat(2_000_000)}"`,
+    `"${"x".repeat(BOUNDARY_MAX_JSON_LENGTH)}"`,
+    text(fx.mismatchedSeed),
+    ...hostile,
+    undefined,
+    null,
+    0,
+  ];
+
+  it.each(entries)("%s: never throws and rejects invalid input", (_, parse) => {
+    for (const t of texts) {
+      let ok: boolean | "threw";
+      try {
+        ok = parse(t).success;
+      } catch {
+        ok = "threw";
+      }
+      expect(ok).toBe(false);
+    }
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("enforces the depth limit exactly on the parsed tree", () => {
+    // Nesting at the limit passes the depth gate and fails only on shape.
+    const atLimit = safeParseJsonText(S, nest(BOUNDARY_MAX_DEPTH - 1));
+    const over = safeParseJsonText(S, nest(BOUNDARY_MAX_DEPTH + 1));
+    const msg = (r: { success: boolean; error?: z.ZodError }) =>
+      r.success ? [] : r.error!.issues.map((i) => i.message);
+    expect(msg(atLimit)).not.toContain("JSON nests too deeply");
+    expect(msg(over)).toEqual(["JSON nests too deeply"]);
+  });
+
+  it("replaces every fixture leaf with bad JSON values and never throws", () => {
+    const BAD = [null, 0.5, -1, 2 ** 53, "", "2023-02-30", true, [], {}, [null]];
+    const leaves = (v: unknown, p: (string | number)[] = []): (string | number)[][] =>
+      Array.isArray(v)
+        ? [p, ...v.flatMap((x, i) => leaves(x, [...p, i]))]
+        : v && typeof v === "object"
+          ? [p, ...Object.entries(v).flatMap(([k, x]) => leaves(x, [...p, k]))]
+          : [p];
+    let runs = 0;
+    for (const [base, parse] of [
+      [seed, parseForecastReadyTimelineSeedJson],
+      [result, parseTimelineResultRefJson],
+      [reveal, parseTimelineRevealJson],
+    ] as const)
+      for (const path of leaves(base))
+        for (const bad of BAD) {
+          const v = clone(base) as unknown as Record<string | number, unknown>;
+          let node = v;
+          for (const k of path.slice(0, -1)) node = node[k] as Record<string | number, unknown>;
+          if (path.length) node[path.at(-1)!] = bad;
+          runs++;
+          expect(() => parse(text(path.length ? v : bad))).not.toThrow();
+        }
+    expect(runs).toBeGreaterThan(1000);
   });
 });
