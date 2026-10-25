@@ -466,6 +466,9 @@ export type StoredHistoricalScenario = z.infer<typeof StoredHistoricalScenarioSc
 /**
  * A1 and its dependency closure from a version-pinned package, cutoff-eligible basis only.
  * Closure is checked here; cutoff eligibility and package hashes are persistence checks.
+ * Assumption IDs are unique, and `assumptions` must be topologically sorted: each
+ * assumption may depend only on assumptions listed before it (the HistoricalCase
+ * convention). Producers sort dependencies first; out-of-order lists are rejected.
  */
 export const ScenarioResponseExtensionSchema = z
   .object({
@@ -482,6 +485,13 @@ export const ScenarioResponseExtensionSchema = z
     const sources = new Set(x.sources.map((s) => s.id));
     const facts = new Set(x.facts.map((f) => f.id));
     const assumptions = new Set(x.assumptions.map((a) => a.id));
+    flagRepeats(
+      ctx,
+      x.assumptions,
+      (a) => a.id,
+      (i) => ["assumptions", i, "id"],
+      "duplicate assumption id",
+    );
     if (!assumptions.has(x.selectedAssumptionId))
       issue(["selectedAssumptionId"], "selected assumption is not in the extension");
     for (const [i, f] of x.facts.entries()) {

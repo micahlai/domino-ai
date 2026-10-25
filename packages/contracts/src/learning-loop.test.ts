@@ -550,10 +550,10 @@ describe("evaluator seals", () => {
   const planned = Array.from({ length: 16 }, (_, i) => ({
     pairId: `p${i}`,
     cik: i < 8 ? CIK : "0000000002",
-    targetQuarter: `${2031 + Math.floor((i % 8) / 4)}Q${(i % 4) + 1}`,
-    targetDate: `${2031 + Math.floor((i % 8) / 4)}-${["03-31", "06-30", "09-30", "12-31"][i % 4]}`,
+    targetQuarter: `${2024 + Math.floor((i % 8) / 4)}Q${(i % 4) + 1}`,
+    targetDate: `${2024 + Math.floor((i % 8) / 4)}-${["03-31", "06-30", "09-30", "12-31"][i % 4]}`,
     originAccession: ACC_Q,
-    originAcceptedAt: `${2031 + Math.floor((i % 8) / 4)}-${["02", "05", "08", "11"][i % 4]}-09T16:45:46-05:00`,
+    originAcceptedAt: `${2024 + Math.floor((i % 8) / 4)}-${["02", "05", "08", "11"][i % 4]}-09T16:45:46-05:00`,
     originSliceHash: h("5"),
     labelHash: h("6"),
   }));
@@ -627,6 +627,57 @@ describe("evaluator seals", () => {
         r.rows[0]!.cik = "0000000002";
       }),
     ).toContain("report row company differs from the planned pair");
+  });
+  it("rejects repeated quarters and quarters outside the planned v1 set", () => {
+    // Audit round 2, finding 1: unique pair IDs cannot hide one repeated quarter.
+    const repeated = (r: EvaluationReport) => {
+      const pairs = r.manifest.pairs.map((p) => ({
+        ...p,
+        targetQuarter: "2024Q1",
+        targetDate: "2024-03-31",
+        originAcceptedAt: "2024-02-09T16:45:46-05:00",
+      }));
+      return { ...r, manifest: { ...r.manifest, pairs } };
+    };
+    const msgs = messages(EvaluationReportSchema.safeParse(repeated(clone(report))));
+    expect(msgs).toContain("duplicate company quarter");
+    expect(msgs).toContain("pass does not match the frozen acceptance rule");
+    expect(
+      messages(EvaluationManifestSchema.safeParse(repeated(clone(report)).manifest)),
+    ).toContain("duplicate company quarter");
+    // Eight unique quarters, but not the planned 2024Q1-2025Q4 set.
+    const shifted = clone(report) as EvaluationReport;
+    const moved = shifted.manifest.pairs.map((p) =>
+      p.targetQuarter === "2025Q4"
+        ? {
+            ...p,
+            targetQuarter: "2026Q1",
+            targetDate: "2026-03-31",
+            originAcceptedAt: "2026-02-09T16:45:46-05:00",
+          }
+        : p,
+    );
+    expect(
+      messages(
+        EvaluationReportSchema.safeParse({
+          ...shifted,
+          manifest: { ...shifted.manifest, pairs: moved },
+        }),
+      ),
+    ).toContain("pass does not match the frozen acceptance rule");
+  });
+  it("binds the manifest protocol to the seal protocol", () => {
+    // Audit round 2, finding 3.
+    for (const edit of [{ id: "other-protocol" }, { version: "1.0.1" }, { contentHash: h("9") }]) {
+      const r = clone(report) as EvaluationReport;
+      const out = {
+        ...r,
+        manifest: { ...r.manifest, protocol: { ...r.manifest.protocol, ...edit } },
+      };
+      expect(messages(EvaluationReportSchema.safeParse(out))).toContain(
+        "manifest protocol differs from the sealed protocol",
+      );
+    }
   });
   it("uses one shared observation per pair", () => {
     // Audit P2 (finding 2): sides cannot carry different observed values.

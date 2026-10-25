@@ -607,15 +607,22 @@ export const EvaluationManifestSchema = z
     sourceHashes: z.array(Sha256Schema).min(1),
   })
   .strict()
-  .superRefine((m, ctx) =>
+  .superRefine((m, ctx) => {
     flagRepeats(
       ctx,
       m.pairs,
       (p) => p.pairId,
       (i) => ["pairs", i, "pairId"],
       "duplicate pair id",
-    ),
-  );
+    );
+    flagRepeats(
+      ctx,
+      m.pairs,
+      (p) => `${p.cik}|${p.targetQuarter}`,
+      (i) => ["pairs", i, "targetQuarter"],
+      "duplicate company quarter",
+    );
+  });
 export type EvaluationManifest = z.infer<typeof EvaluationManifestSchema>;
 
 const MethodPinSchema = z
@@ -649,7 +656,13 @@ export const EvaluationSealSchema = z
 export type EvaluationSeal = z.infer<typeof EvaluationSealSchema>;
 
 /** Protocol v1 cohort: two companies, eight target quarters each, nine strict wins. */
-export const EVALUATION_V1_COHORT = { companies: 2, pairsPerCompany: 8, minWins: 9 } as const;
+export const EVALUATION_V1_COHORT = {
+  companies: 2,
+  pairsPerCompany: 8,
+  minWins: 9,
+  /** Exact planned target quarters for every company. */
+  quarters: ["2024Q1", "2024Q2", "2024Q3", "2024Q4", "2025Q1", "2025Q2", "2025Q3", "2025Q4"],
+} as const;
 
 /** signed = prediction - row.observedCents (opposite of compareRun.errorCents); exact strings. */
 const PairOutcomeSchema = z.discriminatedUnion("status", [
@@ -698,6 +711,10 @@ export const EvaluationReportSchema = z
       (i) => ["rows", i, "pairId"],
       "duplicate pair id",
     );
+    const sp = r.seal.protocol;
+    const mp = r.manifest.protocol;
+    if (sp.id !== mp.id || sp.version !== mp.version || sp.contentHash !== mp.contentHash)
+      issue(["manifest", "protocol"], "manifest protocol differs from the sealed protocol");
     const planned = new Map(r.manifest.pairs.map((p) => [p.pairId, p]));
     const reported = new Set(r.rows.map((row) => row.pairId));
     for (const [i, row] of r.rows.entries()) {
@@ -709,12 +726,16 @@ export const EvaluationReportSchema = z
     for (const [i, p] of r.manifest.pairs.entries())
       if (!reported.has(p.pairId))
         issue(["manifest", "pairs", i], "planned pair has no report row");
-    const plannedPerCompany = new Map<string, number>();
+    // Full cohort: exactly the planned quarter set, once each, for exactly two companies.
+    const quartersByCompany = new Map<string, string[]>();
     for (const p of r.manifest.pairs)
-      plannedPerCompany.set(p.cik, (plannedPerCompany.get(p.cik) ?? 0) + 1);
+      quartersByCompany.set(p.cik, [...(quartersByCompany.get(p.cik) ?? []), p.targetQuarter]);
+    const want = [...EVALUATION_V1_COHORT.quarters].sort().join();
     const fullCohort =
-      plannedPerCompany.size === EVALUATION_V1_COHORT.companies &&
-      [...plannedPerCompany.values()].every((n) => n === EVALUATION_V1_COHORT.pairsPerCompany);
+      quartersByCompany.size === EVALUATION_V1_COHORT.companies &&
+      [...quartersByCompany.values()].every(
+        (q) => q.length === EVALUATION_V1_COHORT.pairsPerCompany && [...q].sort().join() === want,
+      );
     const sums = { baseline: 0n, candidate: 0n };
     const perCompany = new Map<string, { baseline: bigint; candidate: bigint }>();
     let complete = true;

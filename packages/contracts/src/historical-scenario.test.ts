@@ -845,6 +845,23 @@ describe("stored scenario envelope", () => {
     ).toContain("an assumption may depend only on assumptions listed before it");
   });
 
+  it("rejects duplicate assumption ids before checking dependencies", () => {
+    // Audit round 2, finding 2.
+    const base = at(fx.historicalCase.assumptions, 0);
+    const A = (dependsOn: string[] = []) => ({ ...clone(base), id: "A", dependsOn });
+    const B = (dependsOn: string[] = []) => ({ ...clone(base), id: "B", dependsOn });
+    for (const list of [
+      [A(), A(["A"])],
+      [A(), B(["A"]), A(["B"])],
+    ])
+      expect(
+        badSnap((s) => {
+          s.responseExtension!.assumptions = list;
+          s.responseExtension!.selectedAssumptionId = "A";
+        }),
+      ).toContain("duplicate assumption id");
+  });
+
   it("accepts a pinned snapshot and rejects broken closure or untagged empty knowledge", () => {
     expect(badSnap(() => {})).toEqual([]);
     expect(
