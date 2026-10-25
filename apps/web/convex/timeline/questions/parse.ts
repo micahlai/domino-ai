@@ -3,9 +3,17 @@
 // exactly in BigInt; nothing here adds, nets or forecasts money.
 
 const MONEY =
-  /\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(k|thousand|m|mm|million|b|bn|billion))?\b/i;
+  /^\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(billion|million|thousand|bn|mm|k|m|b))?$/i;
 const MONEY_WORD =
-  /\b(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(k|thousand|m|mm|million)?\s*(?:dollars|usd)\b/i;
+  /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(billion|million|thousand|bn|mm|k|m|b)?\s*(?:dollars|usd)$/i;
+// Read the entire numeric token, including malformed grouping/signs, before validation.
+const MONEY_TOKEN =
+  /(?:[-+]\s*)?\$\s*[-+]?\s*\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?|[-+]?\d[\d.,]*(?:\s+\d[\d.,]*)*(?:\s*(?:billion|million|thousand|bn|mm|k|m|b)\b)?\s+(?:dollars|usd)\b/gi;
+export const moneyTokens = (text: string): string[] =>
+  [...text.matchAll(MONEY_TOKEN)].map((m) =>
+    // A single sentence delimiter is not part of the number. Internal/broken grouping stays intact.
+    m[0].replace(/[.,]$/, ""),
+  );
 const SCALE: Record<string, bigint> = {
   "": 1n,
   k: 1_000n,
@@ -20,7 +28,7 @@ const SCALE: Record<string, bigint> = {
 
 /** First money phrase in the text, exactly as written, or null. */
 export function findMoneyText(text: string): string | null {
-  return (MONEY.exec(text) ?? MONEY_WORD.exec(text))?.[0] ?? null;
+  return moneyTokens(text)[0] ?? null;
 }
 
 /**
@@ -28,7 +36,7 @@ export function findMoneyText(text: string): string | null {
  * safe integer. "$1.2M" -> 120_000_000; "$10.005" -> null.
  */
 export function parseMoneyText(text: string): number | null {
-  const m = MONEY.exec(text) ?? MONEY_WORD.exec(text);
+  const m = MONEY.exec(text.trim()) ?? MONEY_WORD.exec(text.trim());
   if (!m || m.index !== 0 || m[0].length !== text.trim().length) return null;
   const whole = (m[1] ?? "").replaceAll(",", "");
   const frac = m[2] ?? "";
@@ -126,29 +134,36 @@ const COUNT_WORDS: Record<string, number> = {
   nine: 9,
   ten: 10,
 };
-const DAYS = /\b(\d{1,3}|an?|one|two|three|four|five|six|seven|eight|nine|ten)\s+(days?|weeks?)\b/i;
-const MONTHS_COUNT = /\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten)\s+months?\b/i;
-
-export const findDaysText = (text: string) => DAYS.exec(text)?.[0] ?? null;
-export const findMonthsText = (text: string) => MONTHS_COUNT.exec(text)?.[0] ?? null;
-
+const COUNT_TOKEN =
+  /(?<![\w.])[-+]?\d+(?:[.,]\d+)*\s+(?:days?|weeks?|months?)\b|\b(?:an?|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:days?|weeks?|months?)\b/gi;
+export const countTokens = (text: string): string[] =>
+  [...text.matchAll(COUNT_TOKEN)].map((m) => m[0]);
+export const findDaysText = (text: string) =>
+  countTokens(text).find((s) => /(?:days?|weeks?)$/i.test(s)) ?? null;
+export const findMonthsText = (text: string) =>
+  countTokens(text).find((s) => /months?$/i.test(s)) ?? null;
 const count = (word: string) =>
-  /^\d+$/.test(word) ? Number(word) : COUNT_WORDS[word.toLowerCase()];
+  /^\d+(?:\.\d+)?$/.test(word) ? Number(word) : COUNT_WORDS[word.toLowerCase()];
 
-/** Whole days for "14 days" or "2 weeks", or null. */
+/** Whole days only: a fractional count is not rounded or matched by its suffix. */
 export function parseDaysText(text: string): number | null {
-  const m = DAYS.exec(text.trim());
-  if (!m || m[0] !== text.trim()) return null;
+  const m = /^(\d+|an?|one|two|three|four|five|six|seven|eight|nine|ten)\s+(days?|weeks?)$/i.exec(
+    text.trim(),
+  );
+  if (!m) return null;
   const n = count(m[1] ?? "");
-  if (n === undefined) return null;
+  if (n === undefined || !Number.isSafeInteger(n)) return null;
   return (m[2] ?? "").toLowerCase().startsWith("week") ? n * 7 : n;
 }
 
-/** Whole months for "6 months", or null. */
+/** Fractional months are supported by the shared rule evaluator. */
 export function parseMonthsText(text: string): number | null {
-  const m = MONTHS_COUNT.exec(text.trim());
-  if (!m || m[0] !== text.trim()) return null;
-  return count(m[1] ?? "") ?? null;
+  const m = /^(\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s+months?$/i.exec(
+    text.trim(),
+  );
+  if (!m) return null;
+  const n = count(m[1] ?? "");
+  return n !== undefined && Number.isFinite(n) ? n : null;
 }
 
 /** "$1,234.50" from integer cents, display only. */

@@ -38,6 +38,7 @@ describe("question provider adapter", () => {
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.anthropic.com/v1/messages");
     expect(init.headers).toMatchObject({ "x-api-key": "k", "anthropic-version": "2026-10-21" });
+    expect(init.redirect).toBe("error");
     const body = JSON.parse(String(init.body));
     expect(body.model).toBe("claude-opus-5-5");
     expect(body.output_config.format.type).toBe("json_schema");
@@ -111,5 +112,56 @@ describe("question provider adapter", () => {
         ),
       );
     expect(await run(slow, 5)).toEqual({ ok: false, code: "PROVIDER_TIMEOUT" });
+  });
+
+  it("caps received UTF8 bytes before retaining the complete body", async () => {
+    let cancelled = false;
+    let pulls = 0;
+    const bytes = new TextEncoder().encode("界".repeat(11_000));
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(bytes);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    expect(await run(async () => new Response(stream))).toEqual({
+      ok: false,
+      code: "PROVIDER_MALFORMED",
+    });
+    expect(cancelled).toBe(true);
+    expect(pulls).toBeLessThanOrEqual(3);
+  });
+
+  it.each([
+    ["Pay -$80 to Atlas on Nov 18", "-$80", "$80"],
+    ["Pay $80,00 to Atlas on Nov 18", "$80,00", "$80"],
+    ["Pay $80, 000 to Atlas on Nov 18", "$80, 000", "$80"],
+    ["Pay $80 000 to Atlas on Nov 18", "$80 000", "$80"],
+    ["Pay $80, 00 to Atlas on Nov 18", "$80, 00", "$80"],
+    ["Acme pays 1.5 days late", "1.5 days", "5 days"],
+  ])("rejects a provider's partial copy from %s", async (prompt, _complete, partial) => {
+    const intent = partial.includes("days")
+      ? { kind: "late_invoice", itemText: "Acme", daysText: partial }
+      : {
+          kind: "cash_change",
+          direction: "out",
+          amountText: partial,
+          dateText: "Nov 18",
+          counterpartyText: "Atlas",
+        };
+    expect(
+      await readWithProvider(
+        { ...ctx, prompt },
+        {
+          apiKey: "k",
+          model: "model",
+          timeoutMs: 1_000,
+          fetch: async () => ok({ intents: [intent] }),
+        },
+      ),
+    ).toEqual({ ok: false, code: "PROVIDER_MALFORMED" });
   });
 });

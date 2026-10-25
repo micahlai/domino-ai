@@ -9,27 +9,29 @@ import { MONTH_WORD, findDateText, findDaysText, findMoneyText, findMonthsText }
  * does not know is never guessed at. One clause per request part, split on "and", ";",
  * "." or a comma that is not part of a date.
  */
-export const GRAMMAR_VERSION = "timeline_question_grammar@1";
+export const GRAMMAR_VERSION = "timeline_question_grammar@2";
 
-const SCENARIO = /\b(what if|suppose|imagine|let'?s say|simulate|scenario|assume)\b/i;
+export const SCENARIO =
+  /\b(what if|suppose|imagine|let'?s say|simulate|scenario|assume|(?:could|can|would) you (?:model|project|consider)|model (?:an?|this|the))\b/i;
 const QUESTION_START =
   /^\s*(what|when|which|why|how|is|are|does|do|will|show|tell|where|explain)\b/i;
-const DAILY = /\b(daily|every day|each day|any day|intraday|at all times|at any time)\b/i;
-const HEADCOUNT = /\b(head ?count|hiring budget|hire|hires|hiring|new roles?|staffing budget)\b/i;
-const CASH_WORD = /\b(cash|balance|buffer|bank)\b/i;
-const FLOOR_WORD =
+export const DAILY = /\b(daily|every day|each day|any day|intraday|at all times|at any time)\b/i;
+export const HEADCOUNT =
+  /\b(head ?count|hiring budget|hire|hires|hiring|new roles?|staffing budget)\b/i;
+export const CASH_WORD = /\b(cash|balance|buffer|bank)\b/i;
+export const FLOOR_WORD =
   /\b(keep|stay|stays|maintain|hold|never|don'?t let|do not let|at least|above|over|minimum|min|floor|below|under|drop)\b/i;
 const LATE = /\b(late|delay(?:ed|s)?|slips?|slipped|overdue|later)\b/i;
 const PAY_ON_TIME =
   /\b(on time|by (?:its|the) due date|by due date|within \d+ days|no later than \d+ days|no more than \d+ days late)\b/i;
-const OUT =
-  /\b(pay|pays|paying|spend|spending|expense|buy|purchase|cost|fee|wire|send|refund to)\b/i;
-const IN = /\b(receive|collect|raise|get|inflow|deposit|grant|investment|loan of)\b/i;
+export const OUT =
+  /\b(pay|pays|paying|payment|spend|spending|expense|buy|purchase|cost|fee|wire|send|refund to)\b/i;
+export const IN = /\b(receive|collect|raise|get|inflow|deposit|grant|investment|loan of)\b/i;
 const PAYROLL_CHANGE = /\b(payroll|salar(?:y|ies))\b/i;
 const VAGUE_RULE = /\b(healthy|safe|comfortable|enough|reasonable|good)\b/i;
 
 /** Split on clause words without breaking "Nov 18, 2026" or "$80,000". */
-function clauses(prompt: string): string[] {
+export function clauses(prompt: string): string[] {
   return prompt
     .replace(/,(?!\s*\d)/g, " ; ")
     .split(/\s*(?:;|\.(?!\d)|\?|!|\band then\b|\band also\b|\band\b|\bplus\b)\s*/i)
@@ -92,11 +94,16 @@ function questionIntent(
     return { kind: "question", topic: "low_point", weekText: null, itemText: null };
   if (/\b(rules?|limits?|breach(?:es|ed)?|lender)\b/i.test(prompt))
     return { kind: "question", topic: "rules", weekText: null, itemText: null };
-  if (/\b(why|domino(?:es)?|chain|knock-?on)\b/i.test(prompt))
+  if (/\b(domino(?:es)?|chain|knock-?on)\b/i.test(prompt))
     return { kind: "question", topic: "dominoes", weekText: null, itemText: null };
-  const aboutItem = /\b(when|due|status|paid|owed?|amount|about|details?)\b/i.test(prompt);
+  if (/\bweek\b/i.test(prompt) && (weekText || selected.week))
+    return { kind: "question", topic: "week", weekText, itemText: null };
+  const aboutItem = /\b(when|why|due|status|paid|owed?|amount|about|details?)\b/i.test(prompt);
   if (itemText && aboutItem) return { kind: "question", topic: "item", weekText: null, itemText };
-  if (weekText || (selected.week && /\b(week|this|then|that)\b/i.test(prompt)))
+  if (
+    (weekText && QUESTION_START.test(prompt)) ||
+    (selected.week && /\b(week|this|then|that)\b/i.test(prompt))
+  )
     return { kind: "question", topic: "week", weekText, itemText: null };
   if (selected.item && /\b(this|it|that|item)\b/i.test(prompt))
     return { kind: "question", topic: "item", weekText: null, itemText: null };
@@ -116,6 +123,14 @@ export function readWithGrammar(
   const isScenario =
     SCENARIO.test(prompt) || (!QUESTION_START.test(prompt) && !prompt.trim().endsWith("?"));
   if (!isScenario) {
+    // A date in an unfamiliar modeling/payment request is not a factual week question.
+    if (
+      /\b(model|project|simulate|payment|expense|deposit|investment|add an? event)\b/i.test(
+        prompt,
+      ) &&
+      !/\b(what happened|what happens|when|due|status|details|about)\b/i.test(prompt)
+    )
+      return null;
     const q = questionIntent(prompt, records, selected);
     return q ? [q] : null;
   }

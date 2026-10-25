@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  findDaysText,
   findMoneyText,
+  findMonthsText,
   formatCents,
   mondayOf,
+  moneyTokens,
   parseDateText,
   parseDaysText,
   parseMoneyText,
+  parseMonthsText,
 } from "./parse";
 
 describe("question parsers", () => {
@@ -27,6 +31,36 @@ describe("question parsers", () => {
 
   it("finds the money phrase as written", () => {
     expect(findMoneyText("pay $80,000 to Atlas")).toBe("$80,000");
+  });
+
+  it("reads whole money tokens, preserving malformed grouping and signs", () => {
+    for (const text of [
+      "$80,00",
+      "-$80",
+      "$-80",
+      "+$80",
+      "$80.005",
+      "$80, 000",
+      "$80 000",
+      "$80, 00",
+    ]) {
+      const token = findMoneyText(`Pay ${text} to Atlas.`);
+      expect(token).toBe(text);
+      expect(parseMoneyText(token ?? "")).toBeNull();
+    }
+    expect(moneyTokens("Keep usable cash above $2600000.")).toEqual(["$2600000"]);
+    expect(parseMoneyText(findMoneyText("Keep usable cash above $2600000.") ?? "")).toBe(
+      260_000_000,
+    );
+  });
+
+  it("never matches a fractional count by its suffix", () => {
+    expect(findDaysText("Acme pays 1.5 days late")).toBe("1.5 days");
+    expect(parseDaysText(findDaysText("Acme pays 1.5 days late") ?? "")).toBeNull();
+    expect(findMonthsText("Keep at least 4.5 months of runway")).toBe("4.5 months");
+    expect(parseMonthsText("4.5 months")).toBe(4.5);
+    expect(parseMonthsText("4,5 months")).toBeNull();
+    expect(parseDaysText("-5 days")).toBeNull();
   });
 
   it("reads dates relative to the forecast start and rejects invalid ones", () => {

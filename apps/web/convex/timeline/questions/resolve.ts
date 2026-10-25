@@ -5,9 +5,13 @@ import {
   ConstraintSchema,
   canonicalJson,
 } from "@domino/contracts";
+import { type CashSchedule, cashSchedule, forecastFromSchedule } from "@domino/engine/src/forecast";
+import { bucketOf } from "@domino/engine/src/schedule";
+import type { CashItem } from "@domino/engine/src/schedule";
 import { z } from "zod";
 import { type RecordRef, type WorkspaceRun, matchRecords, recordsOf } from "./context";
 import type { Intent } from "./intent";
+import { meaningIssue } from "./meaning";
 import {
   addDays,
   formatCents,
@@ -53,7 +57,7 @@ const weekRef = (w: string): Citation => ({
 });
 const recordRef = (r: RecordRef): Citation => ({
   ref: `record:${r.kind}/${r.id}`,
-  label: `${r.name} ${r.kind} ${r.id}`,
+  label: `${r.name} ${r.kind} ${r.id}`.slice(0, 200),
 });
 
 function horizon(run: WorkspaceRun) {
@@ -92,6 +96,44 @@ function answerLowPoint(run: WorkspaceRun): Outcome {
   return { status: "answered", answer, citations: [weekRef(low.weekStart)] };
 }
 
+function verifiedSchedule(run: WorkspaceRun): CashSchedule | null {
+  try {
+    const schedule = cashSchedule(run.baseline.seed.snapshot, run.baseline.model, run.changes);
+    return canonicalJson(forecastFromSchedule(run.baseline.seed.snapshot, schedule)) ===
+      canonicalJson(run.forecast)
+      ? schedule
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Evidence is reconstructed by the same pure schedule used for the saved forecast. */
+function movementName(run: WorkspaceRun, item: CashItem): string {
+  const record = recordsOf(run).find((r) => r.kind === item.kind && r.id === item.id);
+  if (record) return `${record.name} ${record.kind} ${record.id}`.slice(0, 140);
+  if (item.kind === "deal") {
+    const deal = run.baseline.seed.snapshot.deals.find((d) => d.id === item.id);
+    const customer = run.baseline.seed.snapshot.customers.find((c) => c.id === deal?.customerId);
+    return `${customer?.name ?? "Signed deal"} ${item.id}`.slice(0, 140);
+  }
+  return `${item.kind === "recurring" ? "Recurring spend" : "Scenario event"} ${item.id}`.slice(
+    0,
+    140,
+  );
+}
+function movementCitation(run: WorkspaceRun, item: CashItem): Citation {
+  return {
+    ref:
+      item.kind === "change"
+        ? `run:${run.runId}`
+        : item.kind === "recurring"
+          ? `model:${run.baseline.runId}`
+          : `record:${item.kind}/${item.id}`,
+    label: `${movementName(run, item).slice(0, 155)} (${item.date})`,
+  };
+}
+
 function answerWeek(run: WorkspaceRun, intent: { weekText: string | null }, ask: Ask): Outcome {
   const { first } = horizon(run);
   const date = intent.weekText ? parseDateText(intent.weekText, first) : ask.selectedWeek;
@@ -99,26 +141,45 @@ function answerWeek(run: WorkspaceRun, intent: { weekText: string | null }, ask:
   const week = mondayOf(date);
   const f = run.forecast.weeks.find((w) => w.weekStart === week);
   if (f) {
-    const items = run.baseline.seed.scheduledItems.filter((s) => s.dueWeek === week);
+    const schedule = verifiedSchedule(run);
+    if (!schedule)
+      return clarify(
+        "I could not verify the effective cash movements against this saved forecast. The saved totals remain available in the timeline.",
+      );
+    const items = schedule.items.filter((item) => {
+      const index = bucketOf(item.date, schedule.weeks);
+      return index !== null && schedule.weeks[index] === week;
+    });
     const parts = [
       `Week of ${formatDate(week)}: opens at ${formatCents(f.opening)}, ${formatCents(f.inflow)} in, ${formatCents(f.outflow)} out, closes at ${formatCents(f.closing)} (${formatCents(f.usable)} usable).`,
     ];
-    if (items.length)
+    if (items.length) {
       parts.push(
-        `Scheduled: ${items.map((s) => `${s.counterparty} ${formatCents(s.cents)} (${s.status})`).join("; ")}.`,
+        `Effective cash movements in this run: ${items
+          .slice(0, 6)
+          .map(
+            (item) =>
+              `${movementName(run, item)}: ${formatCents(Math.abs(item.amount))} ${item.amount < 0 ? "out" : "in"} on ${formatDate(item.date)}`,
+          )
+          .join("; ")}.`,
       );
+      if (items.length > 6)
+        parts.push(`Showing 6 of ${items.length} movements; saved totals include all movements.`);
+    } else parts.push("No cash movements are projected in this week.");
     const dominoes = run.dominoes.filter((d) => d.weekStart === week);
     if (dominoes.length)
-      parts.push(`Problems this week: ${dominoes.map((d) => d.label).join("; ")}.`);
+      parts.push(
+        `Problems this week: ${dominoes
+          .slice(0, 2)
+          .map((d) => d.label.slice(0, 100))
+          .join("; ")}.`,
+      );
     return {
       status: "answered",
       answer: parts.join(" "),
       citations: [
         weekRef(week),
-        ...items.map((s) => ({
-          ref: `scheduled:${s.id}`,
-          label: `${s.counterparty} (${s.sourceRef})`,
-        })),
+        ...items.slice(0, 6).map((item) => movementCitation(run, item)),
       ].slice(0, MAX_CITATIONS),
     };
   }
@@ -147,14 +208,28 @@ function answerItem(run: WorkspaceRun, intent: { itemText: string | null }, ask:
         : `I could not find "${text}" in this run's records.`,
     );
   const r = hits[0] as RecordRef;
-  const what = r.kind === "payroll" ? "Payroll run" : `${r.name} ${r.kind}`;
+  const what = r.kind === "payroll" ? "Payroll run" : `${r.name.slice(0, 150)} ${r.kind}`;
   const when = r.kind === "payroll" ? "runs on" : "is due";
   let answer = `${what} ${r.id} for ${formatCents(r.amount)} ${when} ${formatDate(r.due)}`;
   answer += r.paid ? `, paid ${formatDate(r.paid)}.` : ", not paid yet.";
-  const item = run.baseline.seed.scheduledItems.find((s) => s.sourceRef === r.id);
-  if (item)
-    answer += ` It is scheduled in the week of ${formatDate(item.dueWeek)} as ${item.status}.`;
-  for (const c of run.changes) {
+  const schedule = verifiedSchedule(run);
+  if (!schedule)
+    return clarify(
+      "I could not verify this record’s effective cash movement against the saved forecast.",
+    );
+  const effective = schedule.items.filter((item) => item.kind === r.kind && item.id === r.id);
+  if (!r.paid) {
+    if (effective.length)
+      answer += ` Effective projection in this run: ${effective
+        .slice(0, 4)
+        .map(
+          (item) =>
+            `${formatCents(Math.abs(item.amount))} ${item.amount < 0 ? "out" : "in"} on ${formatDate(item.date)}`,
+        )
+        .join("; ")}.`;
+    else answer += " This run projects no remaining cash movement for this record.";
+  }
+  for (const c of run.changes.slice(0, 4)) {
     if (c.kind === "delay_invoice" && c.invoiceId === r.id)
       answer += ` This run moves it ${c.days} days later.`;
     if (c.kind === "lose_invoice" && c.invoiceId === r.id)
@@ -163,7 +238,6 @@ function answerItem(run: WorkspaceRun, intent: { itemText: string | null }, ask:
       answer += ` This run pays it ${c.days} days later.`;
   }
   const citations = [recordRef(r)];
-  if (item) citations.push({ ref: `scheduled:${item.id}`, label: `${item.counterparty} schedule` });
   return { status: "answered", answer, citations };
 }
 
@@ -174,23 +248,24 @@ function answerRules(run: WorkspaceRun): Outcome {
       answer: "This run has no rules to check. Add one, for example a lender's minimum cash.",
       citations: [],
     };
-  const lines = run.receipts.map((r) => {
+  const lines = run.receipts.slice(0, 6).map((r) => {
     if (r.status === "breached") {
       const short =
         r.unit === "cents" && r.shortfall !== null ? `, short by ${formatCents(r.shortfall)}` : "";
       const at = r.date ? ` on ${formatDate(r.date)}` : "";
-      return `${r.label}: broken${at}${short}`;
+      return `${r.label.slice(0, 150)}: broken${at}${short}`;
     }
-    if (r.status === "clear") return `${r.label}: met`;
-    if (r.status === "beyond_horizon") return `${r.label}: falls after the 13-week forecast`;
-    return `${r.label}: cannot be checked with this data`;
+    if (r.status === "clear") return `${r.label.slice(0, 150)}: met`;
+    if (r.status === "beyond_horizon")
+      return `${r.label.slice(0, 150)}: falls after the 13-week forecast`;
+    return `${r.label.slice(0, 150)}: cannot be checked with this data`;
   });
   return {
     status: "answered",
-    answer: `${lines.join(". ")}.`,
+    answer: `${lines.join(". ")}.${run.receipts.length > 6 ? ` Showing 6 of ${run.receipts.length} rules; see the rules panel for all checks.` : ""}`,
     citations: run.receipts
       .slice(0, MAX_CITATIONS)
-      .map((r) => ({ ref: `rule:${r.constraintId}`, label: r.label })),
+      .map((r) => ({ ref: `rule:${r.constraintId}`, label: r.label.slice(0, 200) })),
   };
 }
 
@@ -200,8 +275,10 @@ function answerDominoes(run: WorkspaceRun): Outcome {
   const shown = [...run.dominoes].sort((a, b) => a.order - b.order).slice(0, 6);
   return {
     status: "answered",
-    answer: shown.map((d) => `${d.order}. ${formatDate(d.weekStart)}: ${d.label}`).join(" "),
-    citations: shown.map((d) => ({ ref: `domino:${d.order}`, label: d.label })),
+    answer: shown
+      .map((d) => `${d.order}. ${formatDate(d.weekStart)}: ${d.label.slice(0, 220)}`)
+      .join(" "),
+    citations: shown.map((d) => ({ ref: `domino:${d.order}`, label: d.label.slice(0, 200) })),
   };
 }
 
@@ -424,6 +501,8 @@ const dedupe = (c: Citation[]) => {
 
 /** One outcome for the intents, using only this run. */
 export function resolve(run: WorkspaceRun, intents: Intent[], ask: Ask): Outcome {
+  const issue = meaningIssue(ask.prompt, intents);
+  if (issue) return clarify(issue);
   const unsupported = intents.find((i) => i.kind === "unsupported");
   if (unsupported?.kind === "unsupported") return clarify(UNSUPPORTED[unsupported.reason] ?? "");
   if (intents.some((i) => i.kind === "unclear"))

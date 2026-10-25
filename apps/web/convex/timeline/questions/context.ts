@@ -167,7 +167,7 @@ export function recordsOf(run: WorkspaceRun): RecordRef[] {
       name: "Payroll",
       amount: p.amount,
       due: p.date,
-      paid: p.date < snapshot.asOf ? p.date : null,
+      paid: p.date <= snapshot.asOf ? p.date : null,
       scheduledId: scheduled.get(p.id) ?? null,
     });
   return out;

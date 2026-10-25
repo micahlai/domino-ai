@@ -70,11 +70,11 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export const questionIdFor = (requestId: string) => `timeline:question/${requestId}`;
-const requestIdOf = (questionId: string) =>
-  questionId.startsWith("timeline:question/")
-    ? questionId.slice("timeline:question/".length)
-    : null;
+/** Domain identities and index keys include both company and request; public request stays unchanged. */
+export const questionIdFor = async (companyId: string, requestId: string) =>
+  `timeline:question/${await sha256Hex(canonicalJson([companyId, requestId]))}`;
+const requestKeyFor = async (companyId: string, requestId: string) =>
+  `question:${(await questionIdFor(companyId, requestId)).slice("timeline:question/".length)}`;
 
 const TITLES: Record<Method, string> = {
   grammar: "Answer a question from the saved run (read with fixed patterns)",
@@ -152,13 +152,20 @@ const OutcomeSchema = z.discriminatedUnion("status", [
 type SavedOutcome = Outcome | { status: "failed"; errorCode: string };
 
 type Db = GenericDatabaseReader<QuestionsDataModel>;
-async function rowFor(db: Db, companyId: string, requestId: string) {
+async function rowAtKey(db: Db, companyId: string, requestKey: string) {
   return db
     .query("timelineQuestions")
     .withIndex("by_company_and_requestId", (q) =>
-      q.eq("companyId", companyId).eq("requestId", requestId),
+      q.eq("companyId", companyId).eq("requestId", requestKey),
     )
     .unique();
+}
+async function rowFor(db: Db, companyId: string, requestId: string) {
+  // Existing local receipts remain readable after upgrading the question method.
+  return (
+    (await rowAtKey(db, companyId, await requestKeyFor(companyId, requestId))) ??
+    rowAtKey(db, companyId, requestId)
+  );
 }
 
 function readRow(row: { data: unknown }): { data: RowData; receipt: QuestionReceipt } {
@@ -234,7 +241,7 @@ export const claim = questionInternalMutation({
     }
     const parentConstraints = z.array(z.unknown()).parse(JSON.parse(args.parentConstraintsJson));
     const opHash = (await sha256Hex(canonicalJson([args.companyId, args.requestId]))).slice(0, 40);
-    const id = questionIdFor(args.requestId);
+    const id = await questionIdFor(args.companyId, args.requestId);
     const receipt = exactReceipt({
       id,
       companyId: args.companyId,
@@ -278,7 +285,7 @@ export const claim = questionInternalMutation({
     await ctx.db.insert("timelineQuestions", {
       companyId: args.companyId,
       runId: args.runId,
-      requestId: args.requestId,
+      requestId: await requestKeyFor(args.companyId, args.requestId),
       inputHash: args.inputHash,
       status: "running",
       data,
@@ -509,8 +516,16 @@ const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
 export const link = questionMutation({
   args: { companyId: v.string(), questionId: v.string(), resultRunId: v.string() },
   handler: async (ctx, args): Promise<{ linkedRunId: string }> => {
-    const requestId = requestIdOf(args.questionId);
-    const row = requestId ? await rowFor(ctx.db, args.companyId, requestId) : null;
+    const suffix = args.questionId.startsWith("timeline:question/")
+      ? args.questionId.slice("timeline:question/".length)
+      : null;
+    const row =
+      suffix === null
+        ? null
+        : /^[a-f0-9]{64}$/.test(suffix)
+          ? ((await rowAtKey(ctx.db, args.companyId, `question:${suffix}`)) ??
+            (await rowAtKey(ctx.db, args.companyId, suffix)))
+          : await rowAtKey(ctx.db, args.companyId, suffix);
     if (!row) reject("NOT_FOUND", "No saved question with this id in this company");
     const { data, receipt } = readRow(row);
     if (receipt.id !== args.questionId) reject("NOT_FOUND", "No saved question with this id");

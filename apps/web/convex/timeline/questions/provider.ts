@@ -1,6 +1,7 @@
 import { canonicalJson } from "@domino/contracts";
 import { z } from "zod";
 import { INTENTS_JSON_SCHEMA, type Intent, IntentsSchema, wordsOf } from "./intent";
+import { countTokens, moneyTokens } from "./parse";
 
 /**
  * Optional one-shot intent reader (method "provider"). One Messages API request with a
@@ -55,12 +56,62 @@ const ReplySchema = z.object({
   content: z.array(z.object({ type: z.string(), text: z.string().optional() }).passthrough()),
 });
 
-/** Each copied phrase must appear in the prompt, so the reader cannot invent values. */
+/** Complete numeric phrases only: "$80" cannot be copied out of "-$80" or "$80,00". */
 function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[]): boolean {
-  const p = prompt.toLowerCase();
-  return intents.every((i) =>
-    wordsOf(i).every((w) => p.includes(w.toLowerCase()) || selected.includes(w)),
-  );
+  const complete = (word: string) => {
+    let start = prompt.indexOf(word);
+    while (start !== -1) {
+      const before = prompt[start - 1] ?? "";
+      const after = prompt[start + word.length] ?? "";
+      if (!/[\w]/.test(before) && !/[\w]/.test(after)) return true;
+      start = prompt.indexOf(word, start + 1);
+    }
+    return false;
+  };
+  const amounts = moneyTokens(prompt);
+  const counts = countTokens(prompt);
+  return intents.every((i) => {
+    if (!wordsOf(i).every((w) => complete(w) || selected.includes(w))) return false;
+    if (
+      (i.kind === "cash_change" || i.kind === "min_cash_rule") &&
+      i.amountText !== null &&
+      !amounts.includes(i.amountText)
+    )
+      return false;
+    if (
+      (i.kind === "late_invoice" || i.kind === "pay_by_date_rule") &&
+      i.daysText !== null &&
+      !counts.includes(i.daysText)
+    )
+      return false;
+    if (i.kind === "runway_rule" && i.monthsText !== null && !counts.includes(i.monthsText))
+      return false;
+    return true;
+  });
+}
+
+/** Count received UTF8 bytes before decoding or retaining a response body. */
+async function boundedText(response: Response): Promise<string | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let bytes = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      bytes += part.value.byteLength;
+      if (bytes > MAX_REPLY_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      text += decoder.decode(part.value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function readWithProvider(
@@ -87,10 +138,11 @@ export async function readWithProvider(
   };
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), config.timeoutMs);
-  let text: string;
+  let text: string | null;
   try {
     const res = await config.fetch(ENDPOINT, {
       method: "POST",
+      redirect: "error",
       headers: {
         "content-type": "application/json",
         "x-api-key": config.apiKey,
@@ -100,13 +152,13 @@ export async function readWithProvider(
       signal: abort.signal,
     });
     if (!res.ok) return { ok: false, code: "PROVIDER_ERROR" };
-    text = await res.text();
+    text = await boundedText(res);
   } catch {
     return { ok: false, code: abort.signal.aborted ? "PROVIDER_TIMEOUT" : "PROVIDER_ERROR" };
   } finally {
     clearTimeout(timer);
   }
-  if (text.length > MAX_REPLY_BYTES) return { ok: false, code: "PROVIDER_MALFORMED" };
+  if (text === null) return { ok: false, code: "PROVIDER_MALFORMED" };
   let raw: unknown;
   try {
     raw = JSON.parse(text);
