@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-10-24 Codex team reset and manual launches
+- Fetched origin; no new remote main or S2 implementation to merge. Preview remains the accepted integration branch, main unchanged.
+- S3 finished38297d4 but independent audit reproduced rejection of real saved2U baseline with AS-RESTRICTED.50focusedtests pass; hold feature integration.
+- Published friend S2 and local S3 repair prompts; user launches Claude manually. Codex audits/designs/integrates, monitor must not dispatch implementation.
+- team-checkpoint.md is the concise agreement. S4 needs reviewed persistence design including response evidence extension and protocol post-hoc taint.
+
 ## 2026-10-24 Codex early product checkpoint
 - G8/S1/U1 independently accepted, combined1,185tests/typechecks/lint/build and actualdesktop/mobile/keyboardbrowser. Stable3102 updated; early visual shown. Main unchanged.
 - S3 Claude7799/68959 verified in domino-S3; friendS2 catalog prompt/branch published, no local duplicate. S4 waits explicit design plus accepteddependencies; U2 follows.

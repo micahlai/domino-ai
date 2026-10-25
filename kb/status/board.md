@@ -1,8 +1,6 @@
 # Status board
 
-Current unified product: G8/S1/U1 accepted,1,185combinedtests/build/browser. Local S3 engine doing; friend S2 catalog reserved/pushed. S4 design and U2 wiring gated. Real CREAO/coordinator unverified. Read active-run for actual processes.
-
-Latest product authority: `../spec/product-workspace-2026-10-24.md`. G8 candidate898ca52 in provenance repair; S1 contracts ready locally, S2 catalog reserved friend, U1 early visual after G8, S3/S4/U2 gated. Completed G6/G7/G8a preserved.
+Current authority: `../coordination/historical/team-checkpoint.md` and active-run. G6/G7/G8a/G8/S1/U1 accepted; 1,185 combined tests/build/browser at the last feature checkpoint. S3 38297d4 is blocked by independent saved-baseline compatibility audit, awaiting a human-launched repair. Friend S2 remains reserved with no implementation pushed. Codex audits and integrates preview only; user launches implementation manually. S4 design and U2 wiring are gated. CREAO/coordinator is not verified. Older task rows below are historical, not current worker status.
 
 ## Current scope: agent canvas centerpiece, supervised Claude implementation
 
@@ -13,7 +11,7 @@ Authoritative scope: `../context/historical-case-study-2026-10-24.md`. Assessed 
 | G6 grouped company map | done | a5d7723 acceptedc6e0a89;1,077tests/build/desktop-mobilebrowser; stable3102 |
 | G7 frozen knowledge projection | done | Friend42421c6 independently approved with actual payload probe, integrated7ee475b;1,128combinedtests pass |
 | G8a product entry cleanup | done | 320c42c acceptedb261057;1,080tests/build/mobilebrowser; stable3102 |
-| G8 knowledge wiring | doing | Claude8943 in domino-G8, raw saved packet into details; no backend/projector edits |
+| G8 knowledge wiring | done | 6364068 acceptedffb7971; frozen provenance inspector verified |
 | Historical assessment | done | 2U cash-only subset accepted; debt claims excluded pending evidence |
 | G1 agent canvas visual | done | 285d7de accepted with requested four skills, merged previewdcfb1ab;820tests/build/browser pass,3102/investigate visual only |
 | G2a specialist boundary | done | Repair9d7d6e6 accepted2db9a8b and integrated77127d3; combined919tests pass; no live provider claim |

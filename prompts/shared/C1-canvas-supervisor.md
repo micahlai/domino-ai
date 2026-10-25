@@ -1,28 +1,25 @@
-# Current checkpoint, supersedes stale worker text below
+# Domino audit supervisor
 
-G8/S1/U1 are accepted and the early actual product visual has been shown. Stable3102 serves unified Workspace/Company/Simulations. ONLY local Claude S3 engine is active; inspect active-run PID/log before acting. Friend exclusively S2 catalog, no local duplicate. S4 requires acceptedS1/S2/S3 plus explicit audited persistence design; U2 afterS4. Dedicated CREAO evidence app exists, do not duplicate it, but isolation/instructions/visibility are not fully verified and livegate staysOFF. Read active-run for exact states and preserve main.
+Read AGENTS.md, HANDOFF.md, kb/coordination/historical/team-checkpoint.md, active-run.md, kb/spec/product-workspace-2026-10-24.md and kb/spec/creao-canvas-cycle.md. Inspect actual branches, owned processes and commits before acting. Current records supersede historical task rows.
 
-# Updated product priority
+## Launch policy
 
-Read kb/spec/product-workspace-2026-10-24.md first, then active-run and actual workers. User expanded to one Workspace/Company/Simulations product and a distinct financial impact chain. G6/G7/G8a accepted; G8 provenance repair in current active-run. S1 local contracts, S2 friend catalog exclusively; no local duplicate or schema collision. U1 sole UI early visual after G8, S3 after S1, S4 after S1/S2/S3 plus reviewed persistence design, U2 after early visual and S4. Show early actual navigation/canvas/detail layout before full wiring. Keep historical replay separate from hypothetical event/response and preserve honest costs/uncertainty. All previous safety/provider/preview/monitor constraints below remain. Update records before ending each run.
+The user now wants to send prompts to Claude personally. Do not auto-launch or resume implementation workers. Prepare bounded prompts, audit submitted checkpoints, design dependent work and integrate accepted changes. Do not interrupt unrelated sessions. Friend exclusively owns S2 catalog and one schema index; never duplicate locally. S3 repair is human-launched in domino-S3. At most three implementation processes including friend/children, one UI writer. Claude uses orchestrator/ponytail; UI also taste/ui-ux-pro-max.
 
-# C1: active canvas supervisor
+## Current gates
 
-Read AGENTS.md, HANDOFF.md, kb/coordination/historical/active-run.md, kb/spec/company-map-2026-10-24.md and kb/spec/creao-canvas-cycle.md. This prompt supersedes earlier C0 deadlines and agent-page deferral. Current processes/commits come from active-run and actual inspection, not old handoff entries.
+G6/G7/G8a/G8/S1/U1 accepted; early visual shown and stable3102 serves unified workspace. S3 commit38297d4 is held for saved2U baseline compatibility repair. Friend S2 has no implementation at last fetch. Audit both independently before accepting. S4 requires accepted dependencies and an explicit reviewed persistence schema/API/hash design; baseline response-evidence extension and authoritative protocol post-hoc taint must be handled. U2 follows accepted S4. No duplicate finished tasks or extra themes.
 
-## Current work
+## Acceptance and preservation
 
-- G6 grouped Sources/Toolbox map and G8a product entry cleanup are accepted. Stable3102 serves b261057. No duplicate G6/G8a work.
-- Friend G7 frozen knowledge projector42421c6 is independently audited, including actual saved payload, and integrated7ee475b. Combined1,128tests/typecheck/lint pass. Do not overwrite friend work.
-- G8-knowledge-inspector in domino-G8 is the sole local UI writer, implementing Company knowledge details. Inspect recorded PID/log before acting. It must pass raw getRun inputSnapshot with roles to G7, never the existing UI parser that strips roles, getCase after reveal, or a different run. Audit before integration.
-- CREAO setup can advance independently through native computer use of the user's signed-in Chrome Jayden (Main) session. Do not ask for IAB login. Recent native-control timeout is not evidence of sign-out. Preserve unrelated tabs.
+Codex independently reviews and publishes checked work only on preview/historical-overnight, never main. Serialize full checks/build/browser. Preserve local databases, uncommitted work, unrelated processes and secrets. No destructive Git reset, deletion, rebase or force push. Reuse engine/components/saved runs and operations, no parallel simulation database.
 
-## Execution and acceptance
+Complete one visible conversation -> actual source/specialist/tool/output graph -> forecast -> separate observed reveal -> hypothetical event and costed response -> read-only reopen journey. Distinct Domino and inspectable company knowledge; grouped sources/tools. Financial impact edges need explicit basis, not execution dependencies as causation. Preserve real quarterly frequency, costs/lag/uncertainty/post-hoc labels. No fake execution, traffic, hidden agents or learned knowledge. Quiet history, reduced motion and technical metadata inside details. Fixed workflow is not autonomous coordination.
 
-Claude implements using orchestrator and ponytail full; UI also reads taste and ui-ux-pro-max. Orchestrator guidance does not require nested workers. Keep one UI writer and at most three implementation processes including children, bounded fresh phases and no duplicate workers. Codex writes coordination, independently reviews and integrates checked commits only to preview/historical-overnight. Never main. Serialize fullcheck/build/browser; use focused checks in workers. Preserve unrelated work, local databases and secrets. No destructive resets/deletions/history rewriting.
+## CREAO
 
-Visible goal: conversation-driven investigation, actual recorded source/specialist/tool/output graph, inspectable saved company evidence, forecast chart, observed reveal and one costed alternative. Distinct Domino coordinator and company knowledge, grouped tools/sources, meaningful shapes/icons, calm arrivals and dependency pulses. Motion is coarse recorded operation activity, never measured transfer or hidden provider telemetry. History/reconnect stays quiet. No invented facts/learnings, fake agents or unperformed tool use. Keep metadata inside details, readable finance chart, no theme/dev/demo clutter in main navigation while preserving direct routes. Fixed scheduling is not an autonomous CREAO coordinator; full cycle remains incomplete until actual execution gates pass.
+Existing signed-in native Chrome Jayden Main ProPlus session only, no IAB sign-in request. Dedicated evidence app d949f966-355f-469e-b227-4e72066be8bc exists; do not duplicate it. Full instructions, visibility and account/team memory isolation remain unverified. Gate OFF, no new key generated. Old app-scoped capi apps/runs route only, never account/developer key or separate USD wallet. Verify remote identities/instructions/cutoff-memory isolation before bounded live acceptance. No purchases, fallback, retry storm or billable Apify without spending cap.
 
-Use only old app-scoped capi CREAO route agent.creao.ai/api/v1/apps/.../runs. Account/developer credentials and separate USD wallet stay unused. Verify dedicated remote agent identities/instructions/cutoff-memory isolation before enabling exact appId/profileVersion bindings. Follow creao-live-acceptance.md for bounded calls, durable IDs and uncertainty handling. No purchase/top-up/new fallback/retry storm or billable Apify without spending limit. Never expose tokens or private unrelated memory.
+## Reporting
 
-Maintain HANDOFF/active-run, board and handoffs. Publish checked preview/worker branches. User explicitly wants a short report after EVERY scheduled audit: accomplished, verified, running/blocked and next; do not put coding progress in product graph. Monitor stays useful while pending work can advance. Pause on user stop, verified complete visible journey, or repeated external blockers with no independent work left. Old11:15deadline is superseded. App/computer availability required.
+Keep HANDOFF/active-run/board/handoffs current. Report accomplishments, verified checks, running/blocked work and next after EVERY scheduled audit, even unchanged. Never show coding progress in product canvas. Continue audits while useful; pause on user stop, verified visible completion or repeated external blockers with no independent work. Previous overnight deadline is superseded.

@@ -6,3 +6,9 @@
 - **Acceptance:** actual local concurrent idempotent/conflicting requests, unknown/failure paths, hash tampering rejection, no future disclosure leak, reload read-only, catalog states/lineage, parent checks/build. Stop for Codex audit before UI uses it.
 ## Result
 - Pending design.
+
+## Design findings from S3 audit
+- Existing baseline persistence adds AS-RESTRICTED; S3 must accept that validated saved manifest before S4 dispatch. Do not strip it from existing runs.
+- Baseline frozen snapshots omit A1. Define and hash a deliberate cutoff-safe response evidence extension instead of pretending it was a baseline input or silently using later case data.
+- The authoritative protocol marks A1 post-hoc even though the case assumption selectedAfterReveal is false. Freeze that protocol taint separately from whether the user has revealed outcomes. Saved response and overall status must retain it.
+- Human launches implementation after Codex audits the exact design and prerequisites. No S4 worker has been dispatched.
