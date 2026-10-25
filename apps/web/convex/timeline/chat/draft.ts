@@ -13,6 +13,7 @@ import {
   parseMonthsText,
 } from "../questions/parse";
 import type { QuestionProposal } from "../questions/receipt";
+import type { Citation } from "../questions/resolve";
 import { resolve } from "../questions/resolve";
 import { startsBefore } from "../scenarioStart";
 import { checkChanges, checkConstraints, checkMoneyBound, reject } from "../workspaceInput";
@@ -40,11 +41,13 @@ export const emptyDraft = (): Draft => ({ intents: [], pending: null });
 export type Result = {
   draft: Draft;
   answer: string;
+  /** Sources for a factual answer about the saved run. */
+  citations?: Citation[];
   proposal: QuestionProposal | null;
   pendingField: string | null;
 };
 const intro =
-  "Describe a one-time payment or receipt, a late invoice, or a rule for minimum usable cash, runway, or a bill deadline. I will ask for missing details. Nothing runs until you review and save.";
+  "Ask about the forecast, a week, a bill or the rules, or describe a what-if: a one-time payment or receipt, a late invoice, or a rule for minimum usable cash, runway, or a bill deadline. I will ask for missing details. Nothing runs until you review and save.";
 export const GREETING = intro;
 const fieldWords: Record<Field, string> = {
   amountText: "amount",
@@ -348,6 +351,22 @@ export function advance(
     };
   const records = recordsOf(run);
   const parsed = readWithGrammar(text, records, { week: false, item: selectedItemId !== null });
+  // A plain question is answered from the saved run with its sources; the draft is unchanged.
+  if (parsed?.length && parsed.every((i) => i.kind === "question")) {
+    const outcome = resolve(run, parsed, {
+      questionId: conversationId,
+      prompt: text,
+      selectedWeek: null,
+      selectedItemId,
+    });
+    return {
+      draft,
+      answer: outcome.answer,
+      ...(outcome.citations.length ? { citations: outcome.citations } : {}),
+      proposal: null,
+      pendingField: null,
+    };
+  }
   if (!parsed || parsed.some((i) => i.kind === "question" || i.kind === "unclear"))
     return {
       draft,

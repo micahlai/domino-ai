@@ -30,6 +30,8 @@ import {
 } from "./chat/receipt";
 import { checkPinned, checkSelection, source } from "./chat/source";
 import { IntentSchema } from "./questions/intent";
+import { CitationSchema } from "./questions/receipt";
+import type { Citation } from "./questions/resolve";
 import { branchFloor } from "./workspace";
 import { checkRequestId, checkRowSize, reject, sha256Hex } from "./workspaceInput";
 import { workspaceRefs } from "./workspaceRefs";
@@ -122,6 +124,7 @@ function append(
   text: string,
   now: string,
   choices?: ChatChoice[],
+  citations?: Citation[],
 ): ChatReceipt {
   if (receipt.turns.length >= 42)
     reject("CHAT_LIMIT", "This chat has reached 42 messages. Start a new chat to continue.");
@@ -135,6 +138,7 @@ function append(
         text,
         createdAt: now,
         ...(choices?.length ? { choices } : {}),
+        ...(citations?.length ? { citations: citations.slice(0, 12) } : {}),
       },
     ],
   };
@@ -259,7 +263,14 @@ export const send = mutation({
       pendingField: proposal ? null : next.pendingField,
       updatedAt: now,
     };
-    updated = append(append(updated, "user", args.text, now), "assistant", next.answer, now);
+    updated = append(
+      append(updated, "user", args.text, now),
+      "assistant",
+      next.answer,
+      now,
+      undefined,
+      next.citations,
+    );
     checkRowSize({ receipt: updated, draft: next.draft });
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: next.draft } });
     return accept(ctx, args, prior.hash, updated);
@@ -366,6 +377,7 @@ const AssistantTurnSchema = WriteSchema.extend({
     .refine((s) => s.trim().length > 0),
   reply: z.string().min(1).max(2000),
   choices: z.array(ChatChoiceSchema).max(MAX_CHOICES),
+  citations: z.array(CitationSchema).max(12),
   intents: z.array(IntentSchema).max(4).nullable(),
 }).strict();
 /**
@@ -379,13 +391,15 @@ export const saveAssistantTurn = internalMutation({
     text: v.string(),
     reply: v.string(),
     choicesJson: v.string(),
+    citationsJson: v.string(),
     intentsJson: v.union(v.string(), v.null()),
   },
   handler: async (ctx, raw): Promise<ChatReceipt> => {
-    const { choicesJson, intentsJson, ...rest } = raw;
+    const { choicesJson, citationsJson, intentsJson, ...rest } = raw;
     const args = parse(AssistantTurnSchema, {
       ...rest,
       choices: JSON.parse(choicesJson),
+      citations: JSON.parse(citationsJson),
       intents: intentsJson === null ? null : JSON.parse(intentsJson),
     });
     const prior = await request(ctx, "assistant", {
@@ -427,6 +441,7 @@ export const saveAssistantTurn = internalMutation({
       args.reply,
       now,
       args.choices,
+      args.citations,
     );
     checkRowSize({ receipt: updated, draft: nextDraft });
     await ctx.db.patch(row._id, { data: { receipt: exactReceipt(updated), draft: nextDraft } });

@@ -52,6 +52,15 @@ const Receipt = z
               .min(1)
               .max(12)
               .optional(),
+            citations: z
+              .array(
+                z
+                  .object({ ref: z.string().min(1).max(200), label: z.string().min(1).max(200) })
+                  .strict(),
+              )
+              .min(1)
+              .max(12)
+              .optional(),
           })
           .strict(),
       )

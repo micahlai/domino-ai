@@ -2,7 +2,7 @@
 import type { Constraint } from "@domino/contracts";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
@@ -167,6 +167,13 @@ export function ChatView({
   const [reviewedFor, setReviewedFor] = useState<string | null>(null);
   const enter = useEnter();
   const queryReceipt = selected?.state === "ready" ? selected.value : null;
+  // "Start new chat" leaves the conversation address: forget the old one's last reply.
+  const named = selected !== null;
+  const wasNamed = useRef(named);
+  useEffect(() => {
+    if (wasNamed.current && !named) setLatest(null);
+    wasNamed.current = named;
+  }, [named]);
   const opening = actions.beginNavigates === true && latest !== null && queryReceipt === null;
   const pending = writing || opening;
   const receipt = displayedReceipt(latest, queryReceipt, actions.beginNavigates === true);
@@ -174,13 +181,15 @@ export function ChatView({
   const reviewed = token !== null && reviewedFor === token;
   const turns = receipt?.turns.filter((turn) => turn.role === "user").length ?? 0;
   const lastTurn = receipt?.turns.at(-1);
-  async function write(command: ChatCommand) {
+  async function write(command: ChatCommand): Promise<ChatOutcome | undefined> {
     if (busy.current || !writeGuard.allows(command)) return;
     busy.current = true;
     setPending(true);
     setError(undefined);
+    let outcome: ChatOutcome | undefined;
     try {
       const result = await actions.write(command);
+      outcome = result;
       if (result.ok) {
         writeGuard.resolve();
         setLatest((current) => newerReceipt(current, result.receipt));
@@ -200,18 +209,40 @@ export function ChatView({
       busy.current = false;
       setPending(false);
     }
+    return outcome;
+  }
+  /** Send a message; in the sidebar the first message also starts the conversation. */
+  async function sendText(value: string) {
+    if (!value || turns >= 20) return;
+    if (receipt) {
+      await write({ kind: "send", receipt, text: value });
+      return;
+    }
+    const begun = await write({
+      kind: "begin",
+      ...(selectedWeek ? { selectedWeek } : {}),
+      ...(selectedItemId ? { selectedItemId } : {}),
+    });
+    if (begun?.ok) await write({ kind: "send", receipt: begun.receipt, text: value });
   }
   const firstWeek = run.forecast.weeks[0]?.weekStart ?? run.baseline.seed.asOf;
 
   const intro = (
     <p className="text-sm text-muted-foreground">
       {sidebar
-        ? "Say it in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing, one question at a time."
+        ? "Ask about the forecast, a week, a bill or the rules, or describe a what-if in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing."
         : "Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill deadline rule. I’ll ask for missing details one at a time. This chat uses supported wording; other requests may need Start over."}
     </p>
   );
   const start =
-    !receipt && !selected ? (
+    !receipt && !selected && sidebar ? (
+      selectedWeek ? (
+        <p className="text-xs text-muted-foreground">
+          Asking about the week of <WhenDate iso={selectedWeek} />
+          {selectedItemId ? ` · item ${selectedItemId}` : ""}.
+        </p>
+      ) : null
+    ) : !receipt && !selected ? (
       <div className="space-y-3">
         <p className="text-sm">
           Nothing is calculated until you review and save. The timeline stays as it is until you
@@ -294,6 +325,20 @@ export function ChatView({
               {turn.role === "user" ? "You" : "Domino"}
             </p>
             <p className="whitespace-pre-wrap">{turn.text}</p>
+            {turn.citations ? (
+              <details className="mt-2 text-xs" data-testid="chat-citations">
+                <summary className="cursor-pointer text-muted-foreground">
+                  Where this comes from ({turn.citations.length})
+                </summary>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  {turn.citations.map((c) => (
+                    <li key={c.ref}>
+                      {c.label} <span className="font-mono text-muted-foreground">{c.ref}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
           </motion.li>
         ))}
       </AnimatePresence>
@@ -305,59 +350,61 @@ export function ChatView({
         key={lastTurn.id}
         choices={lastTurn.choices}
         disabled={pending || blocked || turns >= 20}
-        onPick={(value) => void write({ kind: "send", receipt, text: value })}
+        onPick={(value) => void sendText(value)}
       />
     ) : null;
-  const composer =
-    receipt && receipt.status !== "saved" ? (
-      <form
-        className="space-y-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (text.trim() && turns < 20 && !pending && !blocked)
-            void write({ kind: "send", receipt, text: text.trim() });
-        }}
-      >
-        <label htmlFor="chat-reply" className="block text-sm font-medium">
-          {receipt.pendingField
-            ? `Your reply · ${receipt.pendingField}`
-            : receipt.status === "ready"
-              ? "Correct your draft"
+  // The sidebar always offers the composer: the first message starts the conversation.
+  const canCompose = receipt ? receipt.status !== "saved" : sidebar && !selected;
+  const composer = canCompose ? (
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (text.trim() && !pending && !blocked) void sendText(text.trim());
+      }}
+    >
+      <label htmlFor="chat-reply" className="block text-sm font-medium">
+        {receipt?.pendingField
+          ? `Your reply · ${receipt.pendingField}`
+          : receipt?.status === "ready"
+            ? "Correct your draft or ask a question"
+            : sidebar
+              ? "Ask or describe a what-if"
               : "Describe your change"}
-        </label>
-        <textarea
-          id="chat-reply"
-          rows={sidebar ? 2 : 3}
-          maxLength={1000}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={submitOnEnter}
-          disabled={pending || blocked || turns >= 20}
-          className={`${inputClass} ${sidebar ? "min-h-16" : "min-h-24"} w-full resize-y`}
-          placeholder={
-            receipt.pendingField
-              ? "Type your answer…"
-              : receipt.status === "ready"
-                ? "For example: change amount to $80,000"
-                : `For example: What if we pay $50,000 to Atlas Legal on ${firstWeek}?`
-          }
-          aria-describedby="chat-hint"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p id="chat-hint" className="text-xs text-muted-foreground">
-            Short answers are welcome. Enter sends, Shift+Enter adds a line. {text.length}/1,000
-          </p>
-          <Button type="submit" disabled={pending || blocked || !text.trim() || turns >= 20}>
-            Send reply
-          </Button>
-        </div>
-        {turns >= 20 ? (
-          <output className="block text-sm">
-            This conversation has reached its 20-message limit. Start a new chat to continue.
-          </output>
-        ) : null}
-      </form>
-    ) : null;
+      </label>
+      <textarea
+        id="chat-reply"
+        rows={sidebar ? 2 : 3}
+        maxLength={1000}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={submitOnEnter}
+        disabled={pending || blocked || turns >= 20}
+        className={`${inputClass} ${sidebar ? "min-h-16" : "min-h-24"} w-full resize-y`}
+        placeholder={
+          receipt?.pendingField
+            ? "Type your answer…"
+            : receipt?.status === "ready"
+              ? "For example: change amount to $80,000"
+              : `For example: Why is cash lowest in mid-November? or What if we pay $50,000 to Atlas Legal on ${firstWeek}?`
+        }
+        aria-describedby="chat-hint"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p id="chat-hint" className="text-xs text-muted-foreground">
+          Short answers are welcome. Enter sends, Shift+Enter adds a line. {text.length}/1,000
+        </p>
+        <Button type="submit" disabled={pending || blocked || !text.trim() || turns >= 20}>
+          {receipt ? "Send reply" : "Send"}
+        </Button>
+      </div>
+      {turns >= 20 ? (
+        <output className="block text-sm">
+          This conversation has reached its 20-message limit. Start a new chat to continue.
+        </output>
+      ) : null}
+    </form>
+  ) : null;
   const review =
     receipt?.status === "ready" ? (
       <motion.div {...enter} className="space-y-4 rounded-lg border p-4">
@@ -534,7 +581,7 @@ export function ChatView({
           followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
           composer={composer}
         >
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Describe a what-if</h3>
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask Domino</h3>
           {intro}
           {notice}
           {start}

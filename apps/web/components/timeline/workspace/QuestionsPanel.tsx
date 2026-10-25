@@ -279,6 +279,8 @@ export type QuestionsPanelProps = {
   disabled?: string;
   /** Inside the assistant panel: no card border of its own. */
   bare?: boolean;
+  /** Earlier questions only: new questions go to the chat, saved suggestions stay confirmable. */
+  historyOnly?: boolean;
 };
 
 /** One-shot questions about the saved scenario. Suggestions run only after confirmation. */
@@ -414,10 +416,19 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
         <ChatScrollFrame
           label="Questions and answers"
           followKey={`${all.length}:${all.at(-1)?.status ?? ""}:${pending}`}
-          composer={form}
+          composer={p.historyOnly ? undefined : form}
         >
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask about this forecast</h3>
-          {intro}
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">
+            {p.historyOnly ? "Earlier questions" : "Ask about this forecast"}
+          </h3>
+          {p.historyOnly ? (
+            <p className="text-sm text-muted-foreground">
+              One-off questions asked before the chat could answer them. Ask new questions in the
+              chat.
+            </p>
+          ) : (
+            intro
+          )}
           {list}
           {pending ? <TypingDots label="Reading the saved forecast…" /> : null}
           {status}

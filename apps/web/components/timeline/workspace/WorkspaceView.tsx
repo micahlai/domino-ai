@@ -118,7 +118,8 @@ export function WorkspaceView({
   const b = run.baseline;
   const low = run.forecast.lowPoint;
   const [assistantTab, setAssistantTab] = useState<AssistantTab>(
-    chat && initialAssistant === "chat" ? "chat" : "ask",
+    // One chat answers questions and drafts what-ifs; one-off questions are history behind it.
+    chat ? "chat" : "ask",
   );
   const [assistantOpen, setAssistantOpen] = useState(initialAssistant === "chat");
   const [focusKey, setFocusKey] = useState(0);
@@ -283,7 +284,10 @@ export function WorkspaceView({
             }
             actions={
               <>
-                <Button onClick={() => openAssistant("ask")} data-testid="action-ask">
+                <Button
+                  onClick={() => openAssistant(chat ? "chat" : "ask")}
+                  data-testid="action-ask"
+                >
                   <MessageCircle aria-hidden="true" />
                   Ask a question
                 </Button>
@@ -471,6 +475,7 @@ export function WorkspaceView({
         <Assistant
           tab={assistantTab}
           onTab={setAssistantTab}
+          askCount={questions.state === "ready" ? questions.value.length : 0}
           open={assistantOpen}
           onOpenChange={setAssistantOpen}
           focusKey={focusKey}
@@ -478,6 +483,7 @@ export function WorkspaceView({
           ask={
             <QuestionsPanel
               bare
+              historyOnly={Boolean(chat)}
               questions={questions}
               selectedWeek={selectedWeek}
               selectedItemId={selectedItemId}

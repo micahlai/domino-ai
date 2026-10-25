@@ -73,7 +73,9 @@ function Ready({
   }
   return (
     <ChatView
-      key={conversationId ?? `new:${selectedWeek ?? ""}:${selectedItemId ?? ""}`}
+      // Stable across a new conversation's first message, which starts it and changes the URL;
+      // the shown conversation still follows the URL through `selected`.
+      key={run.runId}
       run={run}
       selected={conversationId ? readChat(raw.selected, { ...key, conversationId }, run) : null}
       history={readChats(raw.history, key, run)}

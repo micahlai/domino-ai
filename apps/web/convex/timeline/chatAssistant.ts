@@ -7,7 +7,8 @@ import { companyContext } from "./assistant/context";
 import { type Draft, evaluateIntents } from "./chat/draft";
 import { type ChatReceipt, MAX_CHOICES } from "./chat/receipt";
 import { type WorkspaceRun, projectRun, workspaceGet } from "./questions/context";
-import { INTENTS_JSON_SCHEMA, type Intent, IntentSchema } from "./questions/intent";
+import { INTENTS_JSON_SCHEMA, type Intent, IntentSchema, IntentsSchema } from "./questions/intent";
+import { type Citation, resolve } from "./questions/resolve";
 
 // Claude-backed Timeline chat. Claude converses with the company's saved run as context and
 // fills draft slots with normalized values ("$50,000", "2026-11-02", exact invoice ids).
@@ -33,6 +34,7 @@ const refs = {
       text: string;
       reply: string;
       choicesJson: string;
+      citationsJson: string;
       intentsJson: string | null;
     },
     ChatReceipt
@@ -43,6 +45,10 @@ const refs = {
 };
 
 const SYSTEM = `You are Domino, an FP&A analyst helping a finance lead explore "what if" changes to a saved 13-week cash forecast.
+
+You answer questions and draft what-ifs in one conversation.
+
+Answering questions: for the low point, a week, a bill, invoice or payroll item, the rules or the dominoes, call answer_question first. It returns Domino's own answer and the saved records it comes from; base your reply on it and keep its facts. Broader questions (why, compare, what should we watch) you answer from the context directly. Answering never changes the draft.
 
 You can talk freely about the company using the context provided: its forecast, cash low point, open invoices and bills, rules (lender's limits, runway, bill deadlines), dominoes (the chain of problems a risk causes), and scenario changes already in this run. Quote numbers only from that context. Never add, subtract, net or project money yourself; the engine calculates every result after the person saves.
 
@@ -131,8 +137,10 @@ async function askClaude(
   reply: string;
   choices: { label: string; value: string }[];
   intents: Intent[] | null;
+  citations: Citation[];
 }> {
   let intents: Intent[] | null = null;
+  let citations: Citation[] = [];
   const transcript = receipt.turns.map((t) => ({
     role: t.role,
     text: t.text,
@@ -157,6 +165,25 @@ async function askClaude(
     ],
     tools: [
       {
+        name: "answer_question",
+        description:
+          "Answer a factual question about the saved run. Send question intents only (topic low_point, week, item, rules or dominoes; weekText as the Monday YYYY-MM-DD, itemText as an exact record id). Returns Domino's answer and its sources. Does not change the draft.",
+        input_schema: INTENTS_JSON_SCHEMA as never,
+        run: (input) => {
+          const asked = IntentsSchema.parse(input).intents;
+          if (!asked.every((i) => i.kind === "question"))
+            throw new Error("Only question intents here. Use update_draft for changes.");
+          const outcome = resolve(run, asked, {
+            questionId: receipt.conversationId,
+            prompt: "question about the saved run",
+            selectedWeek: receipt.selectedWeek,
+            selectedItemId: receipt.selectedItemId,
+          });
+          citations = outcome.citations.slice(0, 12);
+          return { answer: outcome.answer, sources: outcome.citations };
+        },
+      },
+      {
         name: "update_draft",
         description:
           "Replace the whole draft with these changes (normalized values, null for unknown) and run Domino's checks. Returns ready, needs_value or cannot_use.",
@@ -179,6 +206,7 @@ async function askClaude(
       value: c.value.slice(0, 200),
     })),
     intents,
+    citations,
   };
 }
 
@@ -223,6 +251,7 @@ export const send = action({
       text: args.text,
       reply: answer.reply,
       choicesJson: JSON.stringify(answer.choices),
+      citationsJson: JSON.stringify(answer.citations),
       intentsJson: answer.intents === null ? null : JSON.stringify(answer.intents),
     });
   },

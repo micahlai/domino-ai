@@ -215,6 +215,43 @@ describe("Claude Timeline chat", () => {
   });
 });
 
+describe("one chat for questions and what-ifs", () => {
+  it("answers a plain question with its sources and leaves the draft alone, without a key", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    const t = setup();
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    r = await t.mutation(chatRefs.send, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+      text: "When is the low point?",
+    });
+    expect(r.status).toBe("collecting");
+    expect(r.proposal).toBeNull();
+    expect(r.turns.at(-1)?.citations?.length).toBeGreaterThan(0);
+  });
+
+  it("saves the sources behind Claude's answer on its reply", async () => {
+    const t = setup();
+    scriptClaude([
+      toolUse("answer_question", {
+        intents: [{ kind: "question", topic: "low_point", weekText: null, itemText: null }],
+      }),
+      final({ reply: "Cash is lowest in the week of Nov 16.", choices: [] }),
+    ]);
+    let r = await t.mutation(chatRefs.begin, { ...(await source(t)), requestId: rid() });
+    r = await t.action(assistantSend, {
+      ...key(r),
+      requestId: rid(),
+      expectedRevision: r.revision,
+      text: "when do we bottom out",
+    });
+    expect(r.turns.at(-1)?.text).toBe("Cash is lowest in the week of Nov 16.");
+    expect(r.turns.at(-1)?.citations?.length).toBeGreaterThan(0);
+    expect(r.proposal).toBeNull();
+  });
+});
+
 describe("Claude Ask a question", () => {
   it("keeps the resolver's proposal and citations and uses Claude's answer text", async () => {
     const t = setup();
