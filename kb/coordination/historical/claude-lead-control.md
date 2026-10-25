@@ -2,6 +2,8 @@
 
 Latest user direction supersedes manual launch of every worker: Jayden launches ONE Claude lead. That lead owns ROADMAP.md, dependency selection, worktree/file ownership, worker dispatch and recovery. It may use bounded Claude or Codex workers when supported by the actual host. Do not invent tool availability. Existing task scopes/acceptance remain binding; older `human launches this worker` lines describe the prior routing, not an instruction to start competing coordinators.
 
+Continuous steering: Codex records user follow-ups in user-inbox.md and links them from ROADMAP. Read new entries before dispatch/integration and between worker results; acknowledge and classify them in the roadmap. Keep independent work running unless the user explicitly stops or replaces it. The inbox is durable routing, not an instant-delivery guarantee or permission to resume the paused monitor. No feature implementation in the user-facing Codex chat.
+
 Codex chats provide independent audit/integration support on request. This Codex checkpoint may finish the specifically requested S3 5ecae8a audit and roadmap transfer; it will not launch implementation, resume the monitor, send work to another chat or run a second queue. Record audit ownership before reviewing. The original chat is preparing the Claude lead startup prompt; do not overwrite it.
 
 - At most three active implementation processes, including friend and all children. Count a lead that is also implementing. One UI writer. Workers do not launch children unless the lead explicitly assigns/counts them.

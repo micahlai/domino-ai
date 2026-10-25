@@ -1,5 +1,7 @@
 # Domino roadmap and request inbox
 
+Live chat steering: [user inbox](kb/coordination/historical/user-inbox.md). Claude lead checks new entries before dispatch/integration and between worker results, then records acknowledgment/disposition here. Feature code stays with implementation workers; new messages do not automatically cancel active work.
+
 One user-launched Claude lead owns this queue and dispatch. Codex provides independent audit/integration support on request. [Control rules](kb/coordination/historical/claude-lead-control.md) supersede older per-worker manual-launch routing. Main untouched, monitor PAUSED, at most three implementation processes including friend/children, one UI writer.
 
 Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [evaluation recipe](kb/spec/forecast-evaluation-protocol-v1.md), [S4 persistence](kb/spec/scenario-persistence-v1.md). Cards contain exact scope; this file records status. All four L gates and real CREAO coordination remain required.
@@ -60,4 +62,5 @@ Lead triages each request into a card, owner, dependency and acceptance before d
 | RQ3 Claude repair is done | Codex audit/integration complete | S3 commit 5ecae8a | Integrated at 16a3a56; combined 1,208-test/typecheck/lint check passes. No repair redispatch |
 | RQ4 CREAO setup says done | Lead-assigned verifier | User-reported empty memory/data access and input/key steps | Verify remote `prompt` and backend config; no isolation/provider-success claim yet |
 | RQ5 SEC contact User-Agent for E0 | Closed | E0 network work | data.sec.gov accepted a no-contact UA (6 GETs, all 200); no user email needed |
+| RQ6 continuous chat steering / U1 | Claude lead; Codex records incoming requests | Read [U1](kb/coordination/historical/user-inbox.md) at next task boundary | QUEUED, acknowledgment pending. User can send follow-ups here; preserve current repairs and triage changes without a competing dispatcher |
 | New request | Claude lead | Add task ID and check ownership | Record exact request here, then move to Ready/In progress/Review/Blocked with evidence |
