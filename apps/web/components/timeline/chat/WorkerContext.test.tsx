@@ -38,7 +38,7 @@ it("rejects mismatched or oversized context instead of attaching another suggest
   expect(
     WorkerChatContextSchema.safeParse({
       ...fixtureWorkerContext,
-      scenario: { ...fixtureWorkerContext.scenario, basis: "a".repeat(60_001) },
+      scenario: { ...fixtureWorkerContext.scenario, basis: "a".repeat(400_001) },
     }).success,
   ).toBe(false);
 });

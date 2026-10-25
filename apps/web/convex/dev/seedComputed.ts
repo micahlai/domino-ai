@@ -105,12 +105,14 @@ export function demoProposals(companyId: string, risks: RiskEvent[]): FixCandida
   const offer = early?.changes[0];
   if (!early || !hire || offer?.kind !== "discount_early_pay")
     reject("MISSING_INPUT", "Demo proposal instructions are missing");
-  const late = risks.filter(
-    (risk) =>
-      risk.changes.length === 1 &&
-      risk.changes[0]?.kind === "delay_invoice" &&
-      risk.changes[0].invoiceId === offer.invoiceId,
-  );
+  // A late-payment risk delays its own invoice once; its delay_customer carries the slip to the
+  // customer's later receipts, so only invoice-targeted changes decide the match.
+  const late = risks.filter((risk) => {
+    const own = risk.changes.filter((c) => "invoiceId" in c);
+    return (
+      own.length === 1 && own[0]?.kind === "delay_invoice" && own[0].invoiceId === offer.invoiceId
+    );
+  });
   if (late.length !== 1 || !late[0])
     reject("MISSING_INPUT", `No single late-payment risk was found for ${offer.invoiceId}`);
   const note = (ref: string) => ({

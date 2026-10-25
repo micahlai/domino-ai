@@ -16,6 +16,7 @@ import {
   simulator,
 } from "@domino/sim";
 import { fieldCompany } from "./lib/fieldCompanies";
+import { plantScenario, rankCustomers } from "./lib/judge";
 import { type JudgeOverlay, applyJudgeOverlay } from "./lib/judgeOverlay";
 import { type StoryState, applyStory } from "./lib/storylines";
 
@@ -57,8 +58,19 @@ export const ANOMALIES = [
   "unusual_timing",
   "conflict",
   "missing_expected",
+  // Persistent business events: each keeps changing every later record, so the forecast bends.
+  "customer_cancels",
+  "vendor_price_rise",
+  "new_hires",
 ] as const;
 export type Anomaly = (typeof ANOMALIES)[number];
+
+/** Planted vendor price rise and new-hire payroll growth, in basis points. */
+const PRICE_RISE_BPS = 1_500;
+const NEW_HIRES_PERCENT = 10;
+/** Bills that are not repriceable supply: taxes, insurance, debt, rent and card statements. */
+const NOT_PRICED =
+  /\b(tax|insurance|premium|interest|loan|principal|fee|fees|rent|lease|statement|card|capex)\b/i;
 
 export const emptyOverlay = (): Overlay => ({
   bills: [],
@@ -195,6 +207,41 @@ export function plant(
         byDate(s.payroll).find((p) => p.date > s.asOf) ?? fail("no upcoming payroll run to drop");
       next.hiddenPayroll.push(run.id);
       return { overlay: next, refs: [run.id], summary: `Payroll stopped reporting run ${run.id}` };
+    }
+    case "customer_cancels": {
+      const gone = new Set((overlay.churn ?? []).map((c) => c.customerId));
+      const top =
+        rankCustomers(s).find((c) => !gone.has(c.id)) ?? fail("no billing customer left to cancel");
+      return plantScenario(s, next, { kind: "customer_leaves", customerId: top.id }, tag);
+    }
+    case "vendor_price_rise": {
+      const raised = new Set((overlay.vendorPrices ?? []).map((r) => r.vendor));
+      const totals = new Map<string, number>();
+      for (const b of s.bills)
+        if (!b.paid && b.due > s.asOf && !NOT_PRICED.test(b.vendor) && !raised.has(b.vendor))
+          totals.set(b.vendor, (totals.get(b.vendor) ?? 0) + b.amount);
+      const vendor =
+        [...totals].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0] ??
+        fail("no upcoming vendor bills to reprice");
+      next.vendorPrices = [
+        ...(next.vendorPrices ?? []),
+        { vendor, from: s.asOf, bps: PRICE_RISE_BPS },
+      ];
+      const later = s.bills.filter((b) => b.vendor === vendor && b.due > s.asOf);
+      return {
+        overlay: next,
+        refs: later.map((b) => b.id),
+        summary: `${vendor} raises prices ${PRICE_RISE_BPS / 100}% from ${s.asOf}: ${later.length} upcoming bill${later.length === 1 ? "" : "s"} and every later one cost more`,
+      };
+    }
+    case "new_hires": {
+      const planted = plantScenario(
+        s,
+        next,
+        { kind: "payroll_raise", percent: NEW_HIRES_PERCENT },
+        tag,
+      );
+      return { ...planted, summary: `New hires join: ${planted.summary}` };
     }
   }
 }

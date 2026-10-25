@@ -17,6 +17,8 @@ export interface JudgeOverlay {
   churn?: { customerId: string; from: string }[];
   /** Payroll grows by `bps` (basis points) on every run dated after `from`. */
   payrollRaise?: { from: string; bps: number }[];
+  /** Vendor raises prices: every bill from `vendor` due after `from` grows by `bps`. */
+  vendorPrices?: { vendor: string; from: string; bps: number }[];
   /** Bank vs Stripe: the bank now reports this existing deposit at a different amount. */
   bankAmounts?: { id: string; amount: number }[];
   /** CSV upload: invoices a judge added. Bills and bank rows use the feed's own overlay lists. */
@@ -93,6 +95,13 @@ export function applyJudgeOverlay<S extends Snapshot>(s: S, o: JudgeOverlay): S 
     for (const r of raises) if (run.date > r.from) amount = scaleCents(amount, r.bps);
     return amount === run.amount ? run : { ...run, amount };
   });
+  const prices = o.vendorPrices ?? [];
+  const bills = s.bills.map((b) => {
+    let amount = b.amount;
+    for (const r of prices)
+      if (b.vendor === r.vendor && b.due > r.from) amount = scaleCents(amount, r.bps);
+    return amount === b.amount ? b : { ...b, amount };
+  });
   const bankTxns = s.bankTxns.map((t) =>
     bank.has(t.id) ? { ...t, amount: bank.get(t.id) as number } : t,
   );
@@ -101,6 +110,7 @@ export function applyJudgeOverlay<S extends Snapshot>(s: S, o: JudgeOverlay): S 
     invoices,
     deals,
     payroll,
+    bills,
     bankTxns,
     ...(billingPlans && { billingPlans }),
     ...(pendingPayouts && { pendingPayouts }),

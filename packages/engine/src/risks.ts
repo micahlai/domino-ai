@@ -20,10 +20,12 @@ import {
   customerName,
   day,
   earlyCollection,
+  firstReceipt,
   overdueUncollected,
   payoutLate,
   payrollGrowth,
   pipelineClose,
+  receiptDate,
   riskKind,
   scheduledPayments,
   short,
@@ -43,6 +45,11 @@ const RENEWAL_CHANCE = 0.25;
 const UNSIGNED_RENEWAL_CHANCE = 0.5;
 /** Demo assumption, not an estimated incidence rate: the spec gives no chance rule for spikes. */
 const SPIKE_CHANCE = 0.3;
+/**
+ * Assumption: after a spike, weekly card spend stays this share of the spike's weekly excess
+ * above the old level, since a spike usually reflects a new spend level.
+ */
+const SPIKE_RUN_RATE_PCT = 50;
 
 /**
  * Build-spec §6.3 from real snapshot records and the learned model (never an answer key).
@@ -58,18 +65,18 @@ export function scanRisks(
   const outcomes = (changes: Change[]) => {
     const schedule = cashSchedule(snapshot, model, changes);
     const f = forecastFromSchedule(snapshot, schedule);
-    return { forecast: f, rules: ruleOutcomes(snapshot, f, constraints, schedule) };
+    return { schedule, forecast: f, rules: ruleOutcomes(snapshot, f, constraints, schedule) };
   };
   const base = outcomes([]);
   const candidates = [
-    ...latePayments(snapshot, model),
-    ...nonRenewals(snapshot),
+    ...latePayments(snapshot, model, base.schedule),
+    ...nonRenewals(snapshot, base.schedule),
     ...spendSpike(snapshot),
     ...vendorPriceRises(snapshot),
     ...payrollGrowth(snapshot),
     ...scheduledPayments(snapshot),
-    ...concentration(snapshot, model),
-    ...overdueUncollected(snapshot),
+    ...concentration(snapshot, model, base.schedule),
+    ...overdueUncollected(snapshot, base.schedule),
     ...payoutLate(snapshot),
     ...earlyCollection(snapshot, model),
     ...pipelineClose(snapshot, model),
@@ -84,8 +91,11 @@ export function scanRisks(
   // The customer a risk is about, so one large customer cannot fill the list on its own.
   const customerOf = new Map(snapshot.invoices.map((i) => [i.id, i.customerId]));
   const subject = (r: RiskEvent) => {
-    const c = r.changes.find((x) => "invoiceId" in x);
-    return c && "invoiceId" in c ? (customerOf.get(c.invoiceId) ?? r.id) : r.id;
+    for (const c of r.changes) {
+      if ("invoiceId" in c) return customerOf.get(c.invoiceId) ?? r.id;
+      if ("customerId" in c) return c.customerId;
+    }
+    return r.id;
   };
   return pickDiverse(scored, subject);
 }
@@ -172,9 +182,11 @@ const daysLate = (i: Invoice) => daysBetween(i.due, i.paid ?? i.due);
 /**
  * Chance = paid invoices more than 14 days late / all observable paid invoices (paid by asOf).
  * The p90 is total lateness while the forecast already adds the rounded mean, so the extra
- * delay is max(0, round(p90) - round(mean)).
+ * delay is max(0, round(p90) - round(mean)). A customer that starts paying late keeps doing it,
+ * so the slip also reaches every later receipt from that customer (delay_customer); the invoice
+ * itself keeps its own delay_invoice so single-invoice tools still find it.
  */
-function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
+function latePayments(snapshot: Snapshot, model: CompanyModel, base: CashSchedule): Candidate[] {
   return snapshot.invoices
     .filter((i) => isOpenInvoice(i))
     .flatMap((inv) => {
@@ -207,11 +219,22 @@ function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
           note: `Due ${i.due}, paid ${i.paid}: ${daysLate(i)} days late`,
         })),
       ];
-      const changes: Change[] = [{ kind: "delay_invoice", invoiceId: inv.id, days }];
+      // Later receipts only: the invoice's own slip is its delay_invoice, applied after.
+      const after = addDays(receiptDate(base, inv.id) ?? inv.due, 1);
+      const changes: Change[] = [
+        {
+          kind: "delay_customer",
+          customerId: inv.customerId,
+          days,
+          fromDate: after,
+          basis: `Learned p90 lateness ${delay.p90} days minus the ${Math.round(delay.mean)} already forecast`,
+        },
+        { kind: "delay_invoice", invoiceId: inv.id, days },
+      ];
       return [
         {
           id: `risk_late_${inv.id}`,
-          label: `${name} pays its ${short(inv.amount)} invoice due ${day(inv.due, snapshot.asOf)} ${days} days later than usual`,
+          label: `${name} starts paying ${days} days later than usual with its ${short(inv.amount)} invoice due ${day(inv.due, snapshot.asOf)}, and keeps paying late after`,
           probability,
           changes,
           evidence,
@@ -224,9 +247,10 @@ function latePayments(snapshot: Snapshot, model: CompanyModel): Candidate[] {
 
 /**
  * Only deals explicitly marked renewal with a linked open invoice. Missing kind or link is not
- * evidence; expansions and new business are never treated as renewals.
+ * evidence; expansions and new business are never treated as renewals. A customer that does not
+ * renew leaves: from the renewal invoice's expected payment on, all its billing stops (churn).
  */
-function nonRenewals(snapshot: Snapshot): Candidate[] {
+function nonRenewals(snapshot: Snapshot, base: CashSchedule): Candidate[] {
   return snapshot.deals.flatMap((deal) => {
     if (deal.kind !== "renewal" || typeof deal.invoiceId !== "string" || deal.stage === "lost")
       return [];
@@ -237,15 +261,29 @@ function nonRenewals(snapshot: Snapshot): Candidate[] {
     const why = unsigned
       ? `Assumption: documented ${UNSIGNED_RENEWAL_CHANCE} chance because the renewal is marked won but not signed`
       : `Assumption: documented ${RENEWAL_CHANCE} base chance for a renewal; not an observed churn signal`;
+    const expected = receiptDate(base, inv.id) ?? inv.due;
+    // Churn acts on cash dates from here on; an overdue renewal still expected before it is
+    // lost on its own so it is not left in the forecast.
+    const leaves = expected > snapshot.asOf ? expected : addDays(snapshot.asOf, 1);
+    const changes: Change[] = [
+      ...(expected < leaves ? [{ kind: "lose_invoice" as const, invoiceId: inv.id }] : []),
+      { kind: "churn", customerId: deal.customerId, fromDate: leaves },
+    ];
+    const name = customerName(snapshot, deal.customerId);
+    const later = firstReceipt(base, deal.customerId, inv.id);
     return [
       {
         id: `risk_nonrenewal_${deal.id}`,
-        label: `${customerName(snapshot, deal.customerId)} does not renew (${short(inv.amount)} due ${day(inv.due, snapshot.asOf)} lost)`,
+        label: `${name} does not renew and leaves on ${day(leaves, snapshot.asOf)}: its ${short(inv.amount)} renewal and all later billing stop`,
         probability,
-        changes: [{ kind: "lose_invoice", invoiceId: inv.id }],
+        changes,
         evidence: [
           { source: "crm", ref: deal.id, note: `Renewal deal, stage ${deal.stage}. ${why}` },
-          { source: "stripe", ref: inv.id, note: `Linked open invoice due ${inv.due}` },
+          {
+            source: "stripe",
+            ref: inv.id,
+            note: `Linked open invoice due ${inv.due}. Every ${name} payment expected from ${leaves} on stops${later !== undefined && later < leaves ? "; earlier payments still arrive" : ""}.`,
+          },
         ],
       },
     ];
@@ -293,14 +331,26 @@ function spendSpike(snapshot: Snapshot): Candidate[] {
   const spike = spikeExtra(snapshot);
   const weekZero = weekStarts(snapshot.asOf, 1)[0];
   if (!spike || !weekZero) return [];
+  // The spike repeats once now, then spend settles at a new, smaller elevated weekly level.
+  const weekly = Math.floor((spike.extra * SPIKE_RUN_RATE_PCT) / 100 / 4);
+  const changes: Change[] = [
+    { kind: "remove_cash", date: weekZero, amount: spike.extra, label: "Card spend spike" },
+  ];
+  if (weekly > 0)
+    changes.push({
+      kind: "recurring_cash",
+      label: "Card spend new level",
+      direction: "out",
+      amount: weekly,
+      fromDate: addDays(weekZero, 7),
+      everyDays: 7,
+    });
   return [
     {
       id: "risk_spend_spike",
-      label: `Card spend keeps running ${short(spike.extra)} above the prior four weeks`,
+      label: `Card spend spikes ${short(spike.extra)} again${weekly > 0 ? `, then stays about ${short(weekly)} a week above its old level (assumption)` : ""}`,
       probability: SPIKE_CHANCE,
-      changes: [
-        { kind: "remove_cash", date: weekZero, amount: spike.extra, label: "Card spend spike" },
-      ],
+      changes,
       evidence: [
         ...spike.records.map((t) => ({
           source: "ramp" as const,
@@ -310,7 +360,7 @@ function spendSpike(snapshot: Snapshot): Candidate[] {
         {
           source: "learned",
           ref: "assumption:spend-spike-chance",
-          note: `Assumption: ${SPIKE_CHANCE} is a demo chance, not an estimated rate; the extra is the latest four complete weeks to ${spike.end} minus the four before`,
+          note: `Assumption: ${SPIKE_CHANCE} is a demo chance, not an estimated rate; the extra is the latest four complete weeks to ${spike.end} minus the four before. Assumption: afterwards weekly spend stays ${SPIKE_RUN_RATE_PCT}% of the spike's weekly excess above the old level`,
         },
       ],
     },

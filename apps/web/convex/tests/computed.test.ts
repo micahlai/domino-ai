@@ -219,7 +219,9 @@ describe("computed demo seed", () => {
   it("matches demo proposals to the scanned invoice risk by identity, not label", () => {
     const risks = independentRisks();
     const acme = risks.find((r) => r.id === ACME_LATE);
+    // The slip also reaches Acme's later receipts; the invoice keeps its own delay.
     expect(acme?.changes).toEqual([
+      expect.objectContaining({ kind: "delay_customer", days: 24 }),
       { kind: "delay_invoice", invoiceId: "inv_acme_2027", days: 24 },
     ]);
   });

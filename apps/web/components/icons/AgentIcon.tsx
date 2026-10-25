@@ -28,22 +28,20 @@ export const AGENT_TINT: Record<AgentKind, string> = {
   person: "hsl(var(--foreground))",
 };
 
-/** Domino's own mark: the same two tiles as public/domino-logo.svg. */
+/** Domino's own mark: the white K from public/domino-logo.svg, drawn on the tile below. */
 function DominoMark({ size }: { size: number }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden="true">
-      <rect
-        x={4}
-        y={3}
-        width={15}
-        height={32}
-        rx={4}
-        fill="#68B99E"
-        transform="rotate(-12 12 20)"
-      />
-      <rect x={23} y={8} width={13} height={28} rx={4} fill="#BA8768" />
-      <circle cx={11} cy={12} r={2} fill="#202B27" />
-      <circle cx={29} cy={27} r={2} fill="#202B27" />
+      <g fill="#FFFFFF" transform="translate(20 20) scale(0.0688) translate(-1008.5 -554.5)">
+        <rect x={834} y={420} width={102} height={258} />
+        <rect
+          x={-128.5}
+          y={-45.5}
+          width={257}
+          height={91}
+          transform="translate(1059.75 566.25) rotate(45)"
+        />
+      </g>
     </svg>
   );
 }
@@ -82,12 +80,12 @@ export function AgentIcon({ kind, size = 28, className, title }: AgentIconProps)
         aria-label={title}
         aria-hidden={title ? undefined : true}
         className={cn(
-          "inline-grid shrink-0 place-items-center bg-[#F1F6F3] ring-1 ring-inset ring-black/[0.08]",
+          "inline-grid shrink-0 place-items-center bg-[#0B0B0B] ring-1 ring-inset ring-white/[0.08]",
           className,
         )}
         style={{ width: size, height: size, borderRadius: Math.round(size * 0.26) }}
       >
-        <DominoMark size={Math.round(size * 0.78)} />
+        <DominoMark size={size} />
       </span>
     );
   const Icon = { system: Cpu, simulator: Rss, person: UserRound }[kind];
