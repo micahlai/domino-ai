@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { day, money } from "../worker/format";
-import { traceStory } from "./story";
+import { traceProvenanceLine, traceStory } from "./story";
 
 const getTrace = makeFunctionReference<
   "query",
@@ -118,6 +118,7 @@ function Notice({ title, text }: { title: string; text: string }) {
 
 function TraceContent({ trace }: { trace: FieldTrace }) {
   const story = traceStory(trace);
+  const provenance = traceProvenanceLine(trace);
   const candidate = trace.selection.fixKind
     ? trace.candidates.find(
         (c) =>
@@ -145,6 +146,11 @@ function TraceContent({ trace }: { trace: FieldTrace }) {
           {trace.inputs?.company.name ?? "Company name unavailable"} · Snapshot{" "}
           {trace.run.snapshotVersion} · As of {day(trace.run.asOf) ?? trace.run.asOf}
         </p>
+        {provenance ? (
+          <p className="text-sm leading-6 text-muted-foreground" data-testid="recorded-provenance">
+            {provenance}
+          </p>
+        ) : null}
       </header>
       {trace.evidence === "legacy" || trace.limitations.length > 0 ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
