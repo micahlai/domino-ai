@@ -176,7 +176,7 @@ export const FieldTraceOperationSchema = z.object({
 });
 export const FieldTraceProviderSchema = z.object({
   id: text,
-  provider: z.enum(["claude", "creao", "apify"]),
+  provider: z.enum(["claude", "creao", "apify", "crs"]),
   kind: text,
   scope: text.nullable(),
   status: z.enum(["reserved", "ok", "failed"]),

@@ -230,6 +230,42 @@ async function providerReceipts(ctx: Reader, run: Doc<"analystRuns">) {
       outputTokens: null,
     });
   }
+  // CRS identity and fraud checks the audit ran on payment changes in the books this run read.
+  for (const status of ["open", "approved", "rejected"] as const) {
+    const flags = await ctx.db
+      .query("findings")
+      .withIndex("by_companyId_and_status", (q) =>
+        q.eq("companyId", run.companyId).eq("status", status),
+      )
+      .order("desc")
+      .take(100);
+    for (const f of flags) {
+      if (!f.crs || f.version > run.snapshotVersion) continue;
+      if (receipts.filter((r) => r.provider === "crs").length >= 8) {
+        truncated = true;
+        break;
+      }
+      receipts.push({
+        id: f._id,
+        provider: "crs",
+        kind: "identity",
+        scope: `v${f.version}`,
+        status: f.crs.verdict === "verified" || f.crs.verdict === "signals" ? "ok" : "failed",
+        at: f.crs.checkedAt,
+        attribution: f.crs.cached
+          ? "cached"
+          : f.version === run.snapshotVersion
+            ? "same_snapshot"
+            : "unknown",
+        originRunId: null,
+        model: null,
+        remoteRunId: f.crs.identity?.requestId ?? f.crs.fraud?.requestId ?? null,
+        detail: `${f.crs.headline}. Sandbox persona ${f.crs.personaId} ${f.crs.personaName} stands in for the vendor's account owner`,
+        inputTokens: null,
+        outputTokens: null,
+      });
+    }
+  }
   // Search reports already record cache use. Old reports lack the original caller, so say unknown.
   const research = z
     .array(

@@ -260,5 +260,6 @@ export function toFinding(f: LiveFinding): FieldFinding {
     ...(f.note && { note: f.note }),
     ...(f.explanation?.text && { explanation: f.explanation.text }),
     ...(f.explanation?.suggestedCheck && { suggestedCheck: f.explanation.suggestedCheck }),
+    ...(f.crs && { crs: f.crs }),
   };
 }

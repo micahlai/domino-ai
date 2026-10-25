@@ -622,8 +622,8 @@ export function collapsedInstances(graph: BrainGraph, now: number, graceMs: numb
 }
 
 /** Outside providers whose tools the map shows in its toolbox. Domino's own tools stay chips. */
-export type ToolProvider = "apify" | "claude" | "creao";
-export const TOOL_PROVIDERS: readonly ToolProvider[] = ["apify", "claude", "creao"];
+export type ToolProvider = "apify" | "claude" | "creao" | "crs";
+export const TOOL_PROVIDERS: readonly ToolProvider[] = ["apify", "claude", "creao", "crs"];
 export const toolboxId = (provider: ToolProvider) => `toolbox:${provider}`;
 
 /** The toolbox provider of a tool node (or of an Apify node recorded as a source). */
@@ -634,6 +634,7 @@ export function toolProvider(n: BrainNode): ToolProvider | undefined {
   if (n.tool.category === "apify" || raw.startsWith("apify")) return "apify";
   if (raw.startsWith("claude.")) return "claude";
   if (raw.startsWith("creao.")) return "creao";
+  if (raw.startsWith("crs.")) return "crs";
   return undefined;
 }
 

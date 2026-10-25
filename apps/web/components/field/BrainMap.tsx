@@ -809,6 +809,11 @@ const PROVIDER: Record<ToolProvider, { name: string; note: string; icon: ReactNo
   },
   claude: { name: "Claude", note: "Model calls", icon: <AgentIcon kind="claude" size={26} /> },
   creao: { name: "CREAO", note: "Model calls", icon: <AgentIcon kind="creao" size={26} /> },
+  crs: {
+    name: "CRS",
+    note: "Identity and fraud checks (sandbox)",
+    icon: <ToolLogo vendor="crs" size={26} />,
+  },
 };
 
 /** One outside provider in the toolbox, with the tools of it agents used. */

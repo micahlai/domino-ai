@@ -352,6 +352,7 @@ const publicFinding = (f: Doc<"findings">) => ({
   decidedAt: f.decidedAt,
   note: f.note,
   explanation: f.explanation,
+  ...(f.crs && { crs: f.crs }),
 });
 
 export const findings = query({
