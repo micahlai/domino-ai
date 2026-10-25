@@ -215,6 +215,33 @@ export function checkChanges(changes: Change[], snapshot: Snapshot, horizon: Hor
           );
         break;
       }
+      case "delay_customer": {
+        if (!snapshot.customers.some((c) => c.id === change.customerId))
+          bad(`customer ${change.customerId} is not in the seed`);
+        if (change.days === 0 || Math.abs(change.days) > MAX_DELAY_DAYS)
+          bad(
+            `delay for customer ${change.customerId} must be 1-${MAX_DELAY_DAYS} days either way`,
+          );
+        if (blankOrLong(change.basis)) bad(`delay for customer ${change.customerId} needs a basis`);
+        futureDate(`Later payments from customer ${change.customerId}`, change.fromDate);
+        break;
+      }
+      case "recurring_cash": {
+        label("recurring_cash", change.label);
+        if (!isCents(change.amount) || change.amount <= 0)
+          bad(`"${change.label}" amount must be positive integer cents`);
+        futureDate(`"${change.label}" start`, change.fromDate);
+        break;
+      }
+      case "scale_recurring": {
+        if (blankOrLong(change.label)) bad("scale_recurring needs a short label");
+        if (change.percent === 0 || !between(change.percent, -100, 1000))
+          bad(`"${change.label}" must change by -100% to +1000%, not 0`);
+        if (change.flows === "spend" && change.names.length === 0)
+          bad(`"${change.label}" must name the vendors it scales`);
+        futureDate(`"${change.label}" start`, change.fromDate);
+        break;
+      }
     }
   }
 }
@@ -307,8 +334,21 @@ export function checkEffects(
         break;
       }
       case "shift_hire":
-        if (after.items.length === before.items.length) unchanged(`Hire ${change.label}`);
+      case "recurring_cash":
+        if (after.items.length === before.items.length) unchanged(`"${change.label}"`);
         break;
+      case "delay_customer":
+      case "scale_recurring": {
+        const key = (i: Item) => `${i.kind}:${i.id}:${i.date}:${i.amount}`;
+        const was = new Set(before.items.map(key));
+        if (after.items.every((a) => was.has(key(a))))
+          unchanged(
+            change.kind === "delay_customer"
+              ? `Later payments from customer ${change.customerId}`
+              : `"${change.label}"`,
+          );
+        break;
+      }
       default:
         break;
     }
@@ -351,7 +391,11 @@ export function checkMoneyBound(
   for (const c of changes) {
     if (c.kind === "add_cash" || c.kind === "remove_cash") total += abs(c.amount);
     if (c.kind === "shift_hire") total += abs(c.monthlyCost) * HIRE_MONTHS;
+    if (c.kind === "recurring_cash")
+      total += abs(c.amount) * BigInt(Math.floor(HORIZON_DAYS / c.everyDays) + 1);
   }
+  // A scale change can grow each matching flow up to 11 times (+1000%).
+  for (const c of changes) if (c.kind === "scale_recurring") total *= 11n;
   if (2n * total > BigInt(Number.MAX_SAFE_INTEGER))
     reject(
       "UNSAFE_MONEY",

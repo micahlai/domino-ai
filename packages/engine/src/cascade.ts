@@ -760,7 +760,10 @@ export function startOf(changes: Change[], snapshot: Snapshot): ISODate | null {
           ? c.fromDate
           : c.kind === "discount_early_pay"
             ? c.payOn
-            : c.kind === "shift_hire"
+            : c.kind === "shift_hire" ||
+                c.kind === "delay_customer" ||
+                c.kind === "recurring_cash" ||
+                c.kind === "scale_recurring"
               ? c.fromDate
               : c.kind === "delay_bill"
                 ? snapshot.bills.find((b) => b.id === c.billId)?.due

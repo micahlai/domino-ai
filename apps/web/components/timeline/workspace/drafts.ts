@@ -264,5 +264,11 @@ export function changeText(
       return `${inv(c.invoiceId)} is paid on ${day(c.payOn)} for a ${c.percent}% discount`;
     case "shift_hire":
       return `${c.label}: hire moves from ${day(c.fromDate)} to ${day(c.toDate)}`;
+    case "delay_customer":
+      return `Later payments from ${snapshot ? customerName(snapshot, c.customerId) : `Customer ${c.customerId}`} slip ${c.days} days from ${day(c.fromDate)} (${c.basis})`;
+    case "recurring_cash":
+      return `${money(c.amount)} ${c.direction === "in" ? "comes in" : "goes out"} every ${c.everyDays} days from ${day(c.fromDate)}: ${c.label}`;
+    case "scale_recurring":
+      return `${c.label}: recurring ${c.flows === "billing" ? "billing" : "bills"} ${c.percent < 0 ? "down" : "up"} ${Math.abs(c.percent)}% from ${day(c.fromDate)}`;
   }
 }

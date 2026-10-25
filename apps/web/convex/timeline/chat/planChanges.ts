@@ -2,20 +2,19 @@ import type { Change } from "@domino/contracts";
 import { cashSchedule } from "@domino/engine/src/forecast";
 import type { CashItem } from "@domino/engine/src/schedule";
 import type { WorkspaceRun } from "../questions/context";
-import { addDays, mondayOf } from "../questions/parse";
+import { addDays } from "../questions/parse";
 import type { QuestionProposal } from "../questions/receipt";
 import { compactMoney, shortDate } from "../recordNames";
 
 /**
  * Plan-level what-ifs the one-event grammar cannot express: a percentage cut or increase in
  * spend with a vendor or category, new hires on payroll, and a price change on recurring
- * billing. Each is turned into existing change kinds (add_cash/remove_cash), dated on the
- * scheduled payments it touches, at most one per week; the engine computes the forecast.
- * Amounts are integer cents, rounded per payment. Returns null when the text is not one of these.
+ * billing, and losing a customer. Each becomes one persistent change (scale_recurring,
+ * recurring_cash, churn) that keeps acting on every later matching payment, so the line bends
+ * instead of shifting once; the engine computes the forecast. Returns null otherwise.
  */
 export type PlanReply = { answer: string; proposal: QuestionProposal | null };
 
-const MAX_WEEKS = 16;
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const NUMBER_WORDS: Record<string, number> = {
   one: 1,
@@ -56,29 +55,6 @@ function futureItems(run: WorkspaceRun, floor: string | null): CashItem[] {
   return cashSchedule(run.baseline.seed.snapshot, run.baseline.model, run.changes).items.filter(
     (i) => i.date >= from && i.date <= end,
   );
-}
-
-/** One change per week, dated on that week's first touched payment. */
-function weekly(
-  touched: { date: string; cents: number }[],
-  kind: "add_cash" | "remove_cash",
-  label: string,
-): Change[] {
-  const byWeek = new Map<string, { date: string; cents: number }>();
-  for (const t of [...touched].sort((a, b) => a.date.localeCompare(b.date))) {
-    const week = mondayOf(t.date);
-    const prev = byWeek.get(week);
-    byWeek.set(week, { date: prev?.date ?? t.date, cents: (prev?.cents ?? 0) + t.cents });
-  }
-  return [...byWeek.values()]
-    .filter((w) => w.cents > 0)
-    .slice(0, MAX_WEEKS)
-    .map((w) => ({
-      kind,
-      date: w.date,
-      amount: w.cents,
-      label: `${label}, week of ${shortDate(mondayOf(w.date))}`,
-    }));
 }
 
 function itemVendor(run: WorkspaceRun, item: CashItem): string {
@@ -140,20 +116,28 @@ function spendChange(run: WorkspaceRun, text: string, floor: string | null): Pla
   }
   const name = target.charAt(0).toUpperCase() + target.slice(1);
   const label = `${name} spend ${cut ? "cut" : "up"} ${pctText(bp)}`;
-  const changes = weekly(
-    matches.map((i) => ({ date: i.date, cents: share(i.amount, bp) })),
-    cut ? "add_cash" : "remove_cash",
-    label,
-  );
-  const total = changes.reduce((s, c) => s + ("amount" in c ? c.amount : 0), 0);
-  const vendors = [...new Set(matches.map((i) => itemVendor(run, i)))].slice(0, 3).join(", ");
-  if (!changes.length)
+  const vendorNames = [...new Set(matches.map((i) => itemVendor(run, i)))];
+  const { from } = horizon(run, floor);
+  // One persistent change: every matching bill or recurring cost from `from` on is scaled.
+  const changes: Change[] = [
+    {
+      kind: "scale_recurring",
+      label,
+      flows: "spend",
+      names: vendorNames,
+      percent: ((cut ? -1 : 1) * bp) / 100,
+      fromDate: from,
+    },
+  ];
+  const total = matches.reduce((s, i) => s + share(i.amount, bp), 0);
+  const vendors = vendorNames.slice(0, 3).join(", ");
+  if (total === 0)
     return {
       answer: `A ${pctText(bp)} change to ${target} rounds to nothing in these weeks.`,
       proposal: null,
     };
   return {
-    answer: `Ready to model a ${pctText(bp)} ${cut ? "cut" : "increase"} to ${target} spend (${vendors}): ${cut ? "saves" : "adds"} ${compactMoney(total)} across ${matches.length} scheduled ${matches.length === 1 ? "payment" : "payments"} in these 13 weeks. Check the details below, then confirm.`,
+    answer: `Ready to model a ${pctText(bp)} ${cut ? "cut" : "increase"} to ${target} spend (${vendors}) from ${shortDate(from)} on: it applies to every later bill, about ${cut ? "saves" : "adds"} ${compactMoney(total)} across ${matches.length} scheduled ${matches.length === 1 ? "payment" : "payments"} in these 13 weeks. Check the details below, then confirm.`,
     proposal: {
       label: `${label} (${vendors})`.slice(0, 200),
       changes,
@@ -217,23 +201,30 @@ function hires(run: WorkspaceRun, text: string, floor: string | null): PlanReply
   const gap = gaps.length ? (gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)] ?? 14) : 14;
   const perRun = Math.round((count * salary * gap) / 365);
   const { end } = horizon(run, floor);
-  const dates = runs.length
-    ? runs.map((r) => r.date)
-    : Array.from({ length: 20 }, (_, k) => addDays(from, k * gap)).filter((d) => d <= end);
+  const first = runs[0]?.date ?? from;
+  const dates = Array.from({ length: 60 }, (_, k) => addDays(first, k * gap)).filter(
+    (d) => d <= end,
+  );
   if (!dates.length)
     return {
       answer: `${shortDate(start)} is after these 13 weeks, so the hires would not change this forecast.`,
       proposal: null,
     };
   const label = `${count} new ${role} at ${compactMoney(salary)} a year`;
-  const changes = weekly(
-    dates.map((d) => ({ date: d, cents: perRun })),
-    "remove_cash",
-    label,
-  );
-  const total = changes.reduce((s, c) => s + ("amount" in c ? c.amount : 0), 0);
+  // Payroll every pay period from the first run on or after the start, to the horizon end.
+  const changes: Change[] = [
+    {
+      kind: "recurring_cash",
+      label,
+      direction: "out",
+      amount: perRun,
+      fromDate: dates[0] ?? from,
+      everyDays: gap,
+    },
+  ];
+  const total = perRun * dates.length;
   return {
-    answer: `Ready to model ${count} ${role} at ${compactMoney(salary)} a year from ${shortDate(start)}: about ${compactMoney(perRun)} more per payroll run (every ${gap} days), ${compactMoney(total)} over these 13 weeks. Payroll taxes and benefits are not included. Check the details below, then confirm.`,
+    answer: `Ready to model ${count} ${role} at ${compactMoney(salary)} a year from ${shortDate(start)}: about ${compactMoney(perRun)} more on every payroll run (every ${gap} days) from then on, ${compactMoney(total)} over these 13 weeks. Payroll taxes and benefits are not included. Check the details below, then confirm.`,
     proposal: { label: label.slice(0, 200), changes, constraints: null, constraintNote: null },
   };
 }
@@ -258,15 +249,65 @@ function prices(run: WorkspaceRun, text: string, floor: string | null): PlanRepl
       proposal: null,
     };
   const label = `Prices ${up ? "up" : "down"} ${pctText(bp)} on recurring bills`;
-  const changes = weekly(
-    bills.map((i) => ({ date: i.date, cents: share(i.amount, bp) })),
-    up ? "add_cash" : "remove_cash",
-    label,
-  );
-  const total = changes.reduce((s, c) => s + ("amount" in c ? c.amount : 0), 0);
+  const { from } = horizon(run, floor);
+  const changes: Change[] = [
+    {
+      kind: "scale_recurring",
+      label,
+      flows: "billing",
+      names: [],
+      percent: ((up ? 1 : -1) * bp) / 100,
+      fromDate: from,
+    },
+  ];
+  const total = bills.reduce((s, i) => s + share(i.amount, bp), 0);
   return {
-    answer: `Ready to model prices ${up ? "up" : "down"} ${pctText(bp)} from each customer's next recurring bill: ${up ? "+" : "-"}${compactMoney(total)} across ${bills.length} ${bills.length === 1 ? "bill" : "bills"} in these 13 weeks, assuming no customer leaves over it. Check the details below, then confirm.`,
+    answer: `Ready to model prices ${up ? "up" : "down"} ${pctText(bp)} from each customer's next recurring bill: about ${up ? "+" : "-"}${compactMoney(total)} across ${bills.length} ${bills.length === 1 ? "bill" : "bills"} in these 13 weeks, and every later bill, assuming no customer leaves over it. Check the details below, then confirm.`,
     proposal: { label, changes, constraints: null, constraintNote: null },
+  };
+}
+
+/** "We lose Northwind", "Northwind churns/leaves/cancels": all its later billing stops. */
+function lostCustomer(run: WorkspaceRun, text: string, floor: string | null): PlanReply | null {
+  if (
+    !/\b(lose|losing|lost|churns?|churned|leaves?|leaving|cancels?|cancell?ing|drops? us)\b/i.test(
+      text,
+    )
+  )
+    return null;
+  const snapshot = run.baseline.seed.snapshot;
+  const lower = text.toLowerCase();
+  const named = snapshot.customers.filter((c) => {
+    const n = c.name.toLowerCase();
+    return lower.includes(n) || lower.includes(n.split(/\s+/)[0] ?? n);
+  });
+  const items = futureItems(run, floor).filter((i) => i.amount > 0 && i.customerId);
+  const byCustomer = new Map<string, number>();
+  for (const i of items)
+    byCustomer.set(i.customerId ?? "", (byCustomer.get(i.customerId ?? "") ?? 0) + i.amount);
+  const biggest = /\b(biggest|largest|top|main)\s+customer\b/i.test(text)
+    ? [...byCustomer.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0]
+    : undefined;
+  const customer = named.length === 1 ? named[0] : snapshot.customers.find((c) => c.id === biggest);
+  if (!customer) return null;
+  const { from } = horizon(run, floor);
+  const start = looseDate(text, snapshot.asOf);
+  const fromDate = start && start > from ? start : from;
+  const lost = items.filter((i) => i.customerId === customer.id && i.date >= fromDate);
+  const total = lost.reduce((s, i) => s + i.amount, 0);
+  if (!lost.length)
+    return {
+      answer: `${customer.name} has no expected receipts in these 13 weeks after ${shortDate(fromDate)}, so losing them would not change this forecast.`,
+      proposal: null,
+    };
+  return {
+    answer: `Ready to model losing ${customer.name} from ${shortDate(fromDate)}: every later invoice and recurring bill from them stops, ${compactMoney(total)} across ${lost.length} expected ${lost.length === 1 ? "receipt" : "receipts"} in these 13 weeks. Check the details below, then confirm.`,
+    proposal: {
+      label: `${customer.name} leaves`.slice(0, 200),
+      changes: [{ kind: "churn", customerId: customer.id, fromDate }],
+      constraints: null,
+      constraintNote: null,
+    },
   };
 }
 
@@ -275,5 +316,60 @@ export function planRequest(
   text: string,
   floor: string | null,
 ): PlanReply | null {
-  return prices(run, text, floor) ?? hires(run, text, floor) ?? spendChange(run, text, floor);
+  return (
+    prices(run, text, floor) ??
+    hires(run, text, floor) ??
+    spendChange(run, text, floor) ??
+    lostCustomer(run, text, floor)
+  );
+}
+
+/**
+ * Contagion: a customer who pays one invoice late tends to pay the next ones late too. For each
+ * late invoice whose customer has later receipts in the horizon, add one delay_customer change
+ * (placed first, starting the day after that invoice was expected, so it never moves the late
+ * invoice itself). The slip is learned when the customer has enough history (their slowest 1 in
+ * 10 payments versus their usual), otherwise assumed at half the late invoice's slip. Labelled.
+ */
+export function withContagion(run: WorkspaceRun, proposal: QuestionProposal): QuestionProposal {
+  const snapshot = run.baseline.seed.snapshot;
+  const { end } = horizon(run, null);
+  const items = cashSchedule(snapshot, run.baseline.model, run.changes).items;
+  const extra: Change[] = [];
+  for (const c of proposal.changes) {
+    if (c.kind !== "delay_invoice" || c.days < 7) continue;
+    const target = items.find((i) => i.kind === "invoice" && i.id === c.invoiceId);
+    const customerId = target?.customerId;
+    if (
+      !target ||
+      !customerId ||
+      extra.some((e) => "customerId" in e && e.customerId === customerId)
+    )
+      continue;
+    const fromDate = addDays(target.date, 1);
+    const later = items.some(
+      (i) =>
+        i.customerId === customerId &&
+        i.amount > 0 &&
+        (i.kind === "invoice" || i.kind === "deal" || i.kind === "plan") &&
+        i.date >= fromDate &&
+        i.date <= end,
+    );
+    if (!later || fromDate <= snapshot.asOf || fromDate > end) continue;
+    const name = snapshot.customers.find((x) => x.id === customerId)?.name ?? customerId;
+    const learned = run.baseline.model.customerDelayDays[customerId];
+    const spread = learned && learned.samples >= 3 ? Math.round(learned.p90 - learned.mean) : 0;
+    const days = spread >= 1 ? Math.min(spread, c.days) : Math.max(1, Math.round(c.days / 2));
+    extra.push({
+      kind: "delay_customer",
+      customerId,
+      days,
+      fromDate,
+      basis:
+        spread >= 1
+          ? `Learned: ${name}'s slowest 1 in 10 payments run ${spread} days later than usual`
+          : `Assumption: ${name}'s later payments slip half as long (${days} days)`,
+    });
+  }
+  return extra.length ? { ...proposal, changes: [...extra, ...proposal.changes] } : proposal;
 }

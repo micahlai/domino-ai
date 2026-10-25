@@ -37,6 +37,39 @@ export const ChangeSchema = z.discriminatedUnion("kind", [
     fromDate: ISODateSchema,
     toDate: ISODateSchema,
   }),
+  // Persistent effects (additive). Each keeps acting on every later matching cash date in the
+  // horizon, so a scenario changes the shape of the line, not only one week.
+  /** Every receipt from this customer dated on or after fromDate slips `days` (contagion). */
+  z.object({
+    kind: z.literal("delay_customer"),
+    customerId: IdSchema,
+    days: z.number().int(),
+    fromDate: ISODateSchema,
+    /** Where `days` comes from, for example "Assumption: half of the 30-day slip". */
+    basis: z.string(),
+  }),
+  /** A new cash flow repeating every `everyDays` from fromDate to the end of the horizon. */
+  z.object({
+    kind: z.literal("recurring_cash"),
+    label: z.string(),
+    direction: z.enum(["in", "out"]),
+    amount: CentsSchema,
+    fromDate: ISODateSchema,
+    everyDays: z.number().int().min(1).max(366),
+  }),
+  /**
+   * Scales recurring flows dated on or after fromDate by `percent` (-20 = 20% smaller).
+   * spend: bills whose vendor, or recurring spend whose label, equals a name (any case).
+   * billing: projected recurring plan bills of the listed customer ids ([] = every customer).
+   */
+  z.object({
+    kind: z.literal("scale_recurring"),
+    label: z.string(),
+    flows: z.enum(["spend", "billing"]),
+    names: z.array(z.string().min(1)),
+    percent: z.number().min(-100).max(1000),
+    fromDate: ISODateSchema,
+  }),
 ]);
 export type Change = z.infer<typeof ChangeSchema>;
 export type ChangeKind = Change["kind"];
