@@ -341,7 +341,10 @@ export const execute = internalAction({
         const saved = await ctx.runMutation(workspaceRefs.simulate, {
           companyId: receipt.companyId,
           parentRunId: run.runId,
-          requestId: `tl.predict.${receipt.predictionId.slice(-40)}`,
+          // Keyed by content: predicting again with the same outcome reuses the saved line.
+          requestId: `tl.predict.${(
+            await sha256Hex(canonicalJson([run.runId, prediction.changes]))
+          ).slice(0, 40)}`,
           label: `Predicted: ${run.label}`.slice(0, MAX_LABEL),
           changesJson: JSON.stringify(prediction.changes),
           reviewed: true,
@@ -365,7 +368,7 @@ Each effect is one engine change on one saved record:
 - churn: a customer stops paying from fromDate (recordId = customer id).
 - delay_invoice: an open invoice is paid days later (recordId = invoice id, days 1-120).
 - lose_invoice: an open invoice is never paid (recordId = invoice id).
-You never give amounts: the engine computes all money from the records. Effects may not start before the scenario's event (earliestStart). Code adds interest on the cash gap itself; do not try to model interest.
+You never give amounts: the engine computes all money from the records. Effects may not start before the scenario's event (earliestStart). After you answer, code adds the interest the cash gap to the parent line gains or loses each week, so a lower line falls further behind over time; never describe the line as parallel. Do not model interest yourself.
 
 Be conservative. Propose an effect only when the evidence links it to this event; mark it "likely" or "possible". Zero effects is a valid answer when nothing plausibly follows. At most ${MAX_EFFECTS} effects. Before answering, call preview_effects with your list and drop or fix anything it rejects.
 
