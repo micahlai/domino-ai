@@ -45,6 +45,9 @@ import type { CanvasStatus } from "../investigate/types";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
+import { type PanelFocusState, panelFocus } from "./BrainMapFocus";
+import { toolOfVendor, useSourceDetail } from "./BrainMapSourceData";
+import { SourceHover, SourcePanel } from "./BrainMapSourcePanel";
 import { useSelectedCompanyName } from "./company";
 import { useFieldData } from "./data";
 import {
@@ -646,6 +649,13 @@ function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; ab
       </div>
     );
   }
+  const tool = node.kind === "source" ? toolOfVendor(node.vendor) : undefined;
+  if (tool)
+    return (
+      <div role="tooltip" className={cn(TOOLTIP, place)}>
+        <SourceHoverCard node={node} now={now} />
+      </div>
+    );
   const working = isWorking(node);
   const time = elapsed(node, now);
   const lastMessage = node.messages.at(-1);
@@ -691,6 +701,18 @@ function HoverCard({ node, chip, above }: { node: BrainNode; chip?: ToolChip; ab
       ) : null}
       <p className="mt-1 text-xs text-muted-foreground">Press for details</p>
     </div>
+  );
+}
+
+function SourceHoverCard({ node, now }: { node: BrainNode; now: number }) {
+  const state = useSourceDetail(toolOfVendor(node.vendor), node.lastAt);
+  return (
+    <SourceHover
+      detail={state.state === "ready" ? state.detail : undefined}
+      vendor={node.vendor ?? "generic"}
+      title={node.title}
+      now={now}
+    />
   );
 }
 
@@ -1173,26 +1195,16 @@ export function BrainMap() {
   // On phones the Sheet (a dialog) traps and restores focus itself.
   const panel = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const returnTo = useRef<HTMLElement | null>(null);
-  const openId = useRef<string | null>(null);
+  const focusState = useRef<PanelFocusState<HTMLElement>>({ returnTo: null, openId: null });
   useEffect(() => {
     if (narrow) return;
-    if (selected) {
-      const active = document.activeElement;
-      if (active instanceof HTMLElement && !panel.current?.contains(active))
-        returnTo.current = active;
-      openId.current = selected;
-      heading.current?.focus({ preventScroll: true });
-      return;
-    }
-    const was = openId.current;
-    openId.current = null;
-    if (!was) return;
-    const back = returnTo.current?.isConnected
-      ? returnTo.current
-      : document.querySelector<HTMLElement>(`[data-open-id="${CSS.escape(was)}"]`);
-    back?.focus({ preventScroll: true });
-    returnTo.current = null;
+    const active = document.activeElement;
+    focusState.current = panelFocus(focusState.current, selected, {
+      active: active instanceof HTMLElement ? active : null,
+      inPanel: (el) => Boolean(panel.current?.contains(el)),
+      focusHeading: () => heading.current?.focus({ preventScroll: true }),
+      opener: (id) => document.querySelector<HTMLElement>(`[data-open-id="${CSS.escape(id)}"]`),
+    });
   }, [selected, narrow]);
 
   const agents = graph.nodes.filter(isAgent);
@@ -1258,18 +1270,30 @@ export function BrainMap() {
   const messageLines = layout.routes.some((r) => r.kind === "message");
   const showList = narrow && !mobileMap;
 
-  const detail = detailNode ? (
-    <DetailPanel
-      node={detailNode}
-      chip={detailChip}
-      chips={layout.chips.get(detailNode.id) ?? []}
-      graph={graph}
-      onClose={() => setSelected(null)}
-      onSelect={setSelected}
-      headingRef={heading}
-      inSheet={narrow}
-    />
-  ) : null;
+  const detailTool =
+    detailNode?.kind === "source" && !detailChip ? toolOfVendor(detailNode.vendor) : undefined;
+  const detail =
+    detailNode && detailTool ? (
+      <SourceDetailPanel
+        node={detailNode}
+        graph={graph}
+        onClose={() => setSelected(null)}
+        onSelect={setSelected}
+        headingRef={heading}
+        inSheet={narrow}
+      />
+    ) : detailNode ? (
+      <DetailPanel
+        node={detailNode}
+        chip={detailChip}
+        chips={layout.chips.get(detailNode.id) ?? []}
+        graph={graph}
+        onClose={() => setSelected(null)}
+        onSelect={setSelected}
+        headingRef={heading}
+        inSheet={narrow}
+      />
+    ) : null;
 
   return (
     <div className="space-y-5">
@@ -2099,5 +2123,55 @@ function DetailPanel({
         </Section>
       ) : null}
     </PanelShell>
+  );
+}
+
+/** A connector's source card: brand header, what it read and the records it provides. */
+function SourceDetailPanel({
+  node,
+  graph,
+  onClose,
+  onSelect,
+  headingRef,
+  inSheet,
+}: {
+  node: BrainNode;
+  graph: BrainGraph;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+} & PanelPlace) {
+  const now = useNow(1000);
+  const state = useSourceDetail(toolOfVendor(node.vendor), node.lastAt);
+  const { to } = neighbors(graph, node.id);
+  return (
+    <SourcePanel
+      detail={state.state === "ready" ? state.detail : undefined}
+      note={state.state === "missing" ? state.reason : undefined}
+      demo={state.state === "ready" && state.demo}
+      vendor={node.vendor ?? "generic"}
+      title={node.title}
+      subtitle={node.subtitle}
+      now={now}
+      onClose={onClose}
+      headingRef={headingRef}
+      inSheet={inSheet}
+    >
+      <Section title="Reads in the loaded events">
+        <ActivityList operations={[...node.operations].reverse().slice(0, 8)} now={now} showAgent />
+      </Section>
+      <Section title="Read by">
+        {to.length ? (
+          <ul className="flex flex-wrap gap-1.5">
+            {to.map((n) => (
+              <li key={n.id}>
+                <NodeChip node={n} onSelect={onSelect} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">No agent has read it in the loaded events.</p>
+        )}
+      </Section>
+    </SourcePanel>
   );
 }
