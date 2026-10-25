@@ -1,6 +1,6 @@
 # Domino roadmap and request inbox
 
-**RESUMED October 24.** Lead: Claude Code PID 78153 (old 64305 gone). L0 06e1c98 passed final audit and goes to Codex integration. E0 1eb1052 failed its third audit: stopped, awaiting Jayden. L1 stays blocked on E0. See [pause state](kb/coordination/historical/pause-state.md).
+**RESUMED October 24.** Claude lead PID 78153 owns dispatch. L0 is integrated d4e24d9. Jayden approved existing E0 follow-up 5f1d772; Codex accepted/integrated E0 at 05f10db and combined checks pass. L1 is READY for lead assignment. Monitor remains PAUSED; no competing dispatcher.
 
 Live chat steering: [user inbox](kb/coordination/historical/user-inbox.md). Claude lead checks new entries before dispatch/integration and between worker results, then records acknowledgment/disposition here. Feature code stays with implementation workers; new messages do not automatically cancel active work.
 
@@ -15,6 +15,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | C0 queue takeover | Claude lead | Codex checkpoint finished (clean tree at 16a3a56) | Lead owns ROADMAP.md/HANDOFF.md and dispatch from 2026-10-24; Codex CLI 0.159.2 logged in for audits |
 | G6/G7/G8a/G8/S1/U1 | Prior workers; Codex audit | Prior gates | Accepted grouped map, frozen knowledge, scenario contracts, early product UI; feature checkpoint 0f87ed2, prior 1,185 tests/build/browser |
 | D0 required-loop design | Codex; independent design auditor | Latest user scope | Reuse inventory, supported SEC JSON boundary, exact S4 and evaluation recipe reviewed; 1fce04a. Data/candidate seals and improvement are not done |
+| E0 custody/development package | Claude implementation; Codex audit/integration | Jayden-approved existing config fix after third rejection | Integrated 05f10db; [integration](kb/reviews/E0-integration-05f10db.md). Combined 1,251-test/typecheck/lint check passes (mixed cache), synthetic self-check fresh. Protected data unopened; L4 proof remains unmet |
 | L0 contracts | Claude worker; Codex audit/integration | Accepted S3 | Integrated d4e24d9. [Final audit](kb/reviews/L0-06e1c98-codex-final.md) ACCEPT; [integration](kb/reviews/L0-integration-d4e24d9.md) 1,251 uncached tests, 5 typechecks, lint 265 files (Turbo keychain fallback to direct runs). Lead reran contracts 338 pass |
 | S3 quarterly scenario engine | Claude implementation; Codex audit/integration | Accepted S1 | Integrated at 16a3a56. [Independent audit](kb/reviews/S3-repair-5ecae8a-audit.md): 54 focused tests and 14 probes. Combined uncached preview check passed 1,208 tests, typechecks and lint. S4 persistence and U2 UI remain separate gates |
 
@@ -23,10 +24,11 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
+| L1 normalization | Lead-assigned engine worker | Accepted L0 + E0 development package | [Card](kb/tasks/L1-source-normalization.md): source package -> validated snapshot/roles, exact provenance, no company-specific patch. Lead checks actual slots/worktree before launch |
 
 ## In progress
 
-Paused checkpoint: L0/E0 implementation workers have finished their final repair commits; existing read-only audits may finish. Friend S2 remains reserved with remote activity unknown. Claude lead is suspended, no new dispatch and no UI writer active.
+L0/E0 are accepted and integrated. No implementation worker launched by this Codex integration turn. Friend S2 remains reserved; lead verifies actual slot count before L1 assignment. No UI writer launched.
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
@@ -35,14 +37,12 @@ Paused checkpoint: L0/E0 implementation workers have finished their final repair
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| E0 data custody | Codex integration onto preview | Jayden approved one config fix round | Fix 5f1d772 (biome.json ignores data/evaluation). [Round 4 audit ACCEPT](kb/reviews/E0-5f1d772-codex-reaudit.md): 1,208 tests, selfcheck ok. Done after integrated check |
 
 ## Blocked
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | C2 credential/input setup | Jayden: set env + browser check | Verified Oct 24 by read-only worker, lead spot-checked | Adapter sends `inputs.prompt` (packages/agents/src/creao.ts:299), app-scoped route only. Backend 3214 (anonymous-agent) has NO env vars set: needs CREAO_HISTORICAL_EVIDENCE_ANALYST_APP_ID/_API_KEY and DOMINO_CREAO_VERIFIED_PROFILES via `npx convex env set` (user enters values). Remote `prompt` field and isolation unverified |
-| L1 normalization | Lead-assigned engine worker | Accepted L0 + E0 development package | [Card](kb/tasks/L1-source-normalization.md): unseen supported mapping package -> snapshot/engine, exact provenance, no company-specific patch |
 | L2 reconciliation | Lead-assigned engine worker | Accepted L1 | [Card](kb/tasks/L2-source-reconciliation.md): true conflicts block affected roles; duplicates/timing/definitions and totals handled honestly |
 | L3 scoped feedback | Lead-assigned engine worker | Accepted L2 | [Card](kb/tasks/L3-scoped-rules.md): later eligible behavior changes, unrelated-company isolation, rejection/reversal/rollback |
 | L5 knowledge runtime | Lead-assigned backend worker | Accepted L0-L3; S2 schema release; exact schema audit | [Card](kb/tasks/L5-knowledge-runtime.md): same database, durable versioned knowledge, concurrent idempotence and old-row compatibility |

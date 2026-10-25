@@ -34,3 +34,5 @@ This is a durable file inbox, not an instant-message transport or a new backgrou
 - Codex in this chat owns the bounded follow-up audit and preview integration/check. Do not duplicate it. Six synthetic exclusion probes, E0 self-check and actual E0 lint pass; report: ../../reviews/E0-5f1d772-approved-followup.md. Protected payloads remain unopened.
 - Claude lead 78153 remains the sole dispatcher. L0 is already integrated d4e24d9. After accepted E0 integration/combined check, L1 can be assigned under its card and actual slot check. Friend retains S2.
 - Native Codex Goal tool still reports PAUSED; available tool API cannot resume it, and computer use blocks Codex's UI. Current bounded user-authorized work proceeds, but no automatic Goal continuation is claimed until the user uses the app's /goal resume control. Monitor remains separately PAUSED.
+
+- U4 completion: E0 integrated 05f10db and combined check passes 1,251 tests/typechecks/lint (mixed cache); synthetic self-check fresh. L1 is READY for the sole Claude lead. No implementation worker launched here. Do not repeat E0 integration or the completed audit. See ../../reviews/E0-integration-05f10db.md.

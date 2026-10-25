@@ -6,4 +6,4 @@
 - **Done when:** independent source-row expected values, decimal lexeme/scale/overflow, tag ambiguity, missing units/dates, consolidated scope, cutoff/amendment and role completeness tests pass. No invented zeros or company switches.
 - **Notes:** ../spec/learning-loop-design-2026-10-24.md. Pure parser/normalizer, no network/AI/clock. Focused tests/typecheck/lint; Codex owns full suite and unseen-company acceptance after code freeze.
 ## Result
-- Blocked on dependencies; no launch.
+- Prerequisites accepted: L0 d4e24d9 and E0 05f10db. READY for Claude lead assignment after slot/worktree check. No launch by this Codex chat.

@@ -11,8 +11,9 @@ Authority: ../../ROADMAP.md, Claude-lead control and ../spec/learning-loop-desig
 | Lead reuse/design/evaluation recipe | done | Independent design recheck clear; data/candidate seals still pending |
 | S2 catalog | reserved | Friend only; origin1154972, no implementation submitted |
 | S3 scenario engine | done | 5ecae8a independently approved; 54 focused tests, 14 probes; integrated at 16a3a56 with combined uncached 1,208-test/typecheck/lint pass. Persistence/UI gates remain separate |
-| L0 contracts / E0 custody | todo | Manual prompts prepared; actual slot check first |
-| L1 normalization / L2 reconciliation / L3 rules | blocked | Ordered contracts/development-data dependencies; no sealed test reads |
+| L0 contracts / E0 custody | done | L0 d4e24d9 and user-approved E0 05f10db integrated; combined 1,251-test/typecheck/lint pass (mixed cache); protected data unopened |
+| L1 normalization | ready | Claude lead assigns after slot/worktree check; L0/E0 prerequisites pass. No protected reads |
+| L2 reconciliation / L3 rules | blocked | Ordered L1/L2 dependencies; no sealed test reads |
 | L5 durable knowledge / E1 evaluator | blocked | Frozen pure interfaces; L5 owns backend before S4 |
 | S4 / U2 | blocked | Reviewed exact design; accepted dependencies; joint activation/legacy compatibility |
 | L4 measured improvement | unmet |16 planned pairs, data/candidate seals pending, no positive result |
