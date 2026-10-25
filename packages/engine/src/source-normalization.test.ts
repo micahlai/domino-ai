@@ -7,6 +7,7 @@ import {
   type QuarterRole,
   type ReadSecSource,
   type SecSource,
+  type SecSourceInput,
   companySnapshot,
   readSecSource,
 } from "./source-normalization";
@@ -194,7 +195,7 @@ const BASE_FILINGS: FilingRow[] = [
 ];
 const CUTOFF = "2024-05-15T00:00:00Z";
 
-function synthetic(
+function syntheticInput(
   rows: Row[] = BASE_ROWS,
   filings: FilingRow[] = BASE_FILINGS,
   edit: { fiscalYearEnd?: string | null; factsCik?: string; usGaap?: Record<string, unknown> } = {},
@@ -239,15 +240,17 @@ function synthetic(
     },
   };
   const lexemes = (o: unknown) => JSON.stringify(o).replace(/"@@(.*?)@@"/g, "$1");
-  return readSecSource({
+  return {
     id: "synthetic-pkg",
     provenance: "synthetic_fixture",
     originalUrl: "https://example.test/SYNTHETIC/companyfacts.json",
     retrievedAt: "2024-07-01T00:00:00Z",
     companyFacts: bytes(lexemes(facts)),
     submissions: bytes(lexemes(subs)),
-  });
+  } satisfies SecSourceInput;
 }
+const synthetic = (...args: Parameters<typeof syntheticInput>) =>
+  readSecSource(syntheticInput(...args));
 const replace = (tag: string, row: Partial<Row>): Row[] =>
   BASE_ROWS.map((r) => (r.tag === tag ? { ...r, ...row } : r));
 const without = (tag: string): Row[] => BASE_ROWS.filter((r) => r.tag !== tag);
@@ -443,6 +446,11 @@ describe("SYNTHETIC: tag ambiguity and components", () => {
     expect(cents(reverse, "restricted_cash")).toBe(20_000);
   });
 
+  it("blocks two validated rows of one component even when they agree", async () => {
+    const r = await snapOf([[...BASE_ROWS, { tag: "RestrictedCashCurrent", val: "150" }]]);
+    expect(role(r, "restricted_cash")).toMatchObject({ reason: "unresolved_conflict" });
+  });
+
   it("does not sum components across filings", async () => {
     const r = await snapOf([
       [
@@ -502,6 +510,81 @@ describe("SYNTHETIC: fiscal calendar tamper", () => {
     const { source } = await read();
     const r = await snap({ package: source.package } as unknown as SecSource, CUTOFF);
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("SYNTHETIC: caller-owned inputs changed across an await", () => {
+  const BRIDGE: QuarterRole[] = ["usable_cash", "total_cash", "operating_ytd", "investing_ytd"];
+  /** Rewrites the FYE-0630 submissions bytes in place to say 1231 (same length). */
+  const forgeInPlace = (b: Uint8Array): void => {
+    const at = new TextDecoder().decode(b).indexOf('"fiscalYearEnd":"0630"');
+    expect(at).toBeGreaterThan(0);
+    b.set(bytes('"fiscalYearEnd":"1231"'), at);
+  };
+  const fyeOf = (b: Uint8Array) =>
+    /"fiscalYearEnd":"(\d{4})"/.exec(new TextDecoder().decode(b))?.[1];
+
+  it("companySnapshot: in-place submissions mutation after the call starts", async () => {
+    const { source } = await read(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+    const pending = snap(source, CUTOFF, BRIDGE);
+    forgeInPlace(source.submissions);
+    const r = await pending;
+    expect(r.ok ? "" : r.errors.join()).toMatch(/fiscal year ends 0630/);
+  });
+
+  it("companySnapshot: submissions property replaced after the call starts", async () => {
+    const { source } = await read(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+    const other = await read(); // same company, submissions say 1231
+    const pending = snap(source, CUTOFF, BRIDGE);
+    source.submissions = other.source.submissions;
+    const r = await pending;
+    expect(r.ok ? "" : r.errors.join()).toMatch(/fiscal year ends 0630/);
+  });
+
+  it("readSecSource: in-place and replaced input bytes after the call starts", async () => {
+    const clean = await read(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+    for (const tamper of ["in-place", "replace"] as const) {
+      const input = syntheticInput(BASE_ROWS, BASE_FILINGS, { fiscalYearEnd: "0630" });
+      const pending = readSecSource(input);
+      if (tamper === "in-place") forgeInPlace(input.submissions);
+      else input.submissions = syntheticInput().submissions;
+      input.companyFacts = bytes("{}");
+      const { source } = unwrap(await pending);
+      expect(source.package.submissionsContentHash).toBe(
+        clean.source.package.submissionsContentHash,
+      );
+      expect(source.package.rawContentHash).toBe(clean.source.package.rawContentHash);
+      expect(fyeOf(source.submissions)).toBe("0630");
+      const r = await snap(source, CUTOFF, BRIDGE);
+      expect(r.ok ? "" : r.errors.join()).toMatch(/fiscal year ends 0630/);
+    }
+  });
+
+  it("companySnapshot: package and arguments changed after the call starts", async () => {
+    const { source } = await read();
+    const args = {
+      id: "snap1",
+      cik: CIK,
+      sourceSignature: "sec_companyfacts_v1",
+      cutoff: CUTOFF,
+      roles: [...BRIDGE],
+    };
+    const pending = companySnapshot(source, args);
+    args.cutoff = "2030-01-01T00:00:00Z";
+    args.roles.length = 0;
+    args.id = "other";
+    const cash = source.package.records.find(
+      (x) => x.tag === "CashAndCashEquivalentsAtCarryingValue",
+    );
+    if (cash) cash.rawValue = "1";
+    source.package.accessions[0]!.acceptedAt = "2024-06-30T00:00:00.000Z";
+    const r = unwrap(await pending);
+    expect(r.snapshot.cutoff).toBe(CUTOFF);
+    expect(r.snapshot.id).toBe("snap1");
+    expect(r.snapshot.roles.map((b) => b.role)).toEqual(BRIDGE);
+    // Source row CashAndCashEquivalentsAtCarryingValue val 1000.50 -> 100050 cents
+    expect(cents(r, "usable_cash")).toBe(100_050);
+    expect(r.snapshot.completeness).toBe("complete");
   });
 });
 

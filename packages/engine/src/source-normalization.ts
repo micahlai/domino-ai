@@ -147,6 +147,13 @@ function parseJson(bytes: Uint8Array, name: string): Result<unknown> {
   }
 }
 
+/**
+ * A private copy taken synchronously at entry. Caller-owned bytes are never read again, so
+ * changing them (in place or by replacing the property) across an await changes nothing.
+ */
+const ownBytes = (v: unknown): Uint8Array | undefined =>
+  v instanceof Uint8Array ? Uint8Array.from(v) : undefined;
+
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -197,14 +204,13 @@ function fiscalYearEndOf(sub: Json): string | undefined {
 
 /** Fiscal year end from submissions bytes that must match the package's submissions hash. */
 async function evidencedFiscalYearEnd(
-  source: SecSource,
+  submissions: Uint8Array | undefined,
   pkg: SourcePackage,
 ): Promise<Result<string>> {
-  if (!(source.submissions instanceof Uint8Array))
-    return err("submissions bytes are required as fiscal calendar evidence");
-  if ((await sha256(source.submissions)) !== pkg.submissionsContentHash)
+  if (!submissions) return err("submissions bytes are required as fiscal calendar evidence");
+  if ((await sha256(submissions)) !== pkg.submissionsContentHash)
     return err("submissions bytes do not match the package submissions hash");
-  const sub = parseJson(source.submissions, "submissions");
+  const sub = parseJson(submissions, "submissions");
   if (!sub.ok) return sub;
   if (!isObject(sub.value) || text(sub.value, "cik") !== pkg.company.cik)
     return err("submissions do not belong to the package company");
@@ -300,10 +306,15 @@ function rowPeriod(row: Json): Period | undefined {
  * only, every unit as written, the exact value lexeme and an RFC 6901 pointer per record.
  */
 export async function readSecSource(input: SecSourceInput): Promise<Result<ReadSecSource>> {
-  if (!TimestampSchema.safeParse(input.retrievedAt).success)
+  // Copy-once: every caller-owned field is read here, before any await, and never again.
+  const companyFacts = ownBytes(input.companyFacts);
+  const submissions = ownBytes(input.submissions);
+  const { id, provenance, originalUrl, retrievedAt } = input;
+  if (!companyFacts || !submissions) return err("companyfacts and submissions must be bytes");
+  if (!TimestampSchema.safeParse(retrievedAt).success)
     return err("retrievedAt is not a timestamp with an explicit offset");
-  const facts = parseJson(input.companyFacts, "companyfacts");
-  const subs = parseJson(input.submissions, "submissions");
+  const facts = parseJson(companyFacts, "companyfacts");
+  const subs = parseJson(submissions, "submissions");
   if (!facts.ok || !subs.ok)
     return err(...(facts.ok ? [] : facts.errors), ...(subs.ok ? [] : subs.errors));
   if (!isObject(facts.value) || !isObject(subs.value))
@@ -326,7 +337,7 @@ export async function readSecSource(input: SecSourceInput): Promise<Result<ReadS
   if (!name?.trim()) return err("company name is missing");
 
   const skipped: SkippedSource[] = [];
-  const accessions = readFilings(sub, input.retrievedAt, skipped);
+  const accessions = readFilings(sub, retrievedAt, skipped);
   const byAccession = new Map(accessions.map((a) => [a.accession, a]));
   const records: SourceRecord[] = [];
   const taxonomy = isObject(cf.facts) ? cf.facts[TAXONOMY] : undefined;
@@ -369,20 +380,20 @@ export async function readSecSource(input: SecSourceInput): Promise<Result<ReadS
 
   const pkg = SourcePackageSchema.safeParse({
     schemaVersion: 1,
-    id: input.id,
+    id,
     format: "sec_companyfacts_v1",
-    provenance: input.provenance,
+    provenance,
     company: { cik, name },
-    originalUrl: input.originalUrl,
-    retrievedAt: input.retrievedAt,
-    rawContentHash: await sha256(input.companyFacts),
-    submissionsContentHash: await sha256(input.submissions),
+    originalUrl,
+    retrievedAt,
+    rawContentHash: await sha256(companyFacts),
+    submissionsContentHash: await sha256(submissions),
     accessions,
     records,
   });
   if (!pkg.success)
     return err(...pkg.error.issues.map((i) => `package ${i.path.join(".")}: ${i.message}`));
-  return ok({ source: { package: pkg.data, submissions: input.submissions }, skipped });
+  return ok({ source: { package: pkg.data, submissions }, skipped });
 }
 
 // ---------- Record mapping ----------
@@ -605,6 +616,13 @@ function restricted(
     ),
   );
   const ambiguous = atOrigin.find((c) => c.receipt.status === "needs_input");
+  const repeated = COMPONENTS.filter((_, i) => (valid[i]?.length ?? 0) > 1);
+  if (repeated.length > 0)
+    return blocked(
+      role,
+      "unresolved_conflict",
+      `${repeated.join(", ")} has more than one validated row in ${accession}; reconciliation must select one`,
+    );
   const missing = COMPONENTS.filter((_, i) => valid[i]?.length !== 1);
   if (missing.length > 0)
     return ambiguous
@@ -654,23 +672,28 @@ export async function companySnapshot(
   source: SecSource,
   args: SnapshotArgs,
 ): Promise<Result<CompanySnapshotResult>> {
+  // Copy-once: the submissions bytes, the package (zod returns a fresh deep copy) and every
+  // argument are read here, before any await, and never again.
+  const submissions = ownBytes(source.submissions);
   const parsed = SourcePackageSchema.safeParse(source.package);
+  const { id, cik, sourceSignature, cutoff: cutoffAt } = args;
+  const requested: QuarterRole[] = Array.isArray(args.roles) ? [...args.roles] : [];
   if (!parsed.success)
     return err(...parsed.error.issues.map((i) => `package ${i.path.join(".")}: ${i.message}`));
   const pkg = parsed.data;
-  if (args.cik !== pkg.company.cik)
-    return err(`requested company ${args.cik} but the package is ${pkg.company.cik}`);
-  if (!TimestampSchema.safeParse(args.cutoff).success)
+  if (cik !== pkg.company.cik)
+    return err(`requested company ${cik} but the package is ${pkg.company.cik}`);
+  if (!TimestampSchema.safeParse(cutoffAt).success)
     return err("cutoff is not a timestamp with an explicit offset");
-  if (args.roles.length === 0) return err("at least one role is required");
-  const fiscalYearEnd = await evidencedFiscalYearEnd(source, pkg);
+  if (requested.length === 0) return err("at least one role is required");
+  const fiscalYearEnd = await evidencedFiscalYearEnd(submissions, pkg);
   if (!fiscalYearEnd.ok) return fiscalYearEnd;
   if (fiscalYearEnd.value !== "1231")
     return err(
       `fiscal year ends ${fiscalYearEnd.value}; only 1231 fiscal years have evidenced calendar quarters`,
     );
 
-  const cutoff = ms(args.cutoff);
+  const cutoff = ms(cutoffAt);
   const eligibleFilings = pkg.accessions.filter((a) => ms(a.acceptedAt) <= cutoff);
   const origin = eligibleFilings
     .map((a) => (a.reportPeriod.kind === "instant" ? a.reportPeriod.date : a.reportPeriod.end))
@@ -745,7 +768,7 @@ export async function companySnapshot(
     ...(a.amends ? { amends: `source/${a.amends}` } : {}),
   }));
   const historicalCase: HistoricalCase = {
-    id: `${args.id}/case`,
+    id: `${id}/case`,
     companyName: pkg.company.name,
     provenance: pkg.provenance,
     currency: "USD",
@@ -753,17 +776,17 @@ export async function companySnapshot(
     facts,
     assumptions: [],
   };
-  const roles: Binding[] = args.roles.map((role) => {
+  const roles: Binding[] = requested.map((role) => {
     const b = resolved.get(role);
     if (!b) return blocked(role, "missing_input", "unknown role");
     return "fact" in b ? { role, status: "validated", factId: b.fact.id } : b;
   });
   const body = {
     schemaVersion: 1 as const,
-    id: args.id,
+    id,
     cik: pkg.company.cik,
-    sourceSignature: args.sourceSignature,
-    cutoff: args.cutoff,
+    sourceSignature,
+    cutoff: cutoffAt,
     sourcePackageIds: [pkg.id],
     mappingReceiptIds: cands.filter((c) => c.eligible).map((c) => c.receipt.id),
     reconciliations: [],
@@ -790,7 +813,7 @@ export async function companySnapshot(
     u && t && o && i
       ? {
           case: snapshot.data.case,
-          knowledgeCutoff: args.cutoff,
+          knowledgeCutoff: cutoffAt,
           originBalanceDate: origin,
           usableCashFactId: u,
           totalCashFactId: t,
