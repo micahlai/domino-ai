@@ -49,6 +49,27 @@ export {
   mapSecRecords,
   readSecSource,
 } from "./source-normalization";
+/** L2 source evidence reconciliation; engine-local, not part of the Engine contract. */
+export {
+  CASH_TERMS,
+  type Candidate,
+  type CashIdentity,
+  type CashTerm,
+  type ConflictResolution,
+  type ExcludedCandidate,
+  type KeyDifference,
+  type KeyOutcome,
+  type KeyReconciliation,
+  type ReconcileArgs,
+  type ReconciledValue,
+  type Reconciliation,
+  SOURCE_RECONCILER,
+  cashIdentity,
+  keyDifference,
+  quarterFlow,
+  reconcileSources,
+  valueFor,
+} from "./source-reconciliation";
 
 export const engine: Engine = {
   forecast,
