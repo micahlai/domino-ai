@@ -232,9 +232,14 @@ async function fieldCompanyOf(
   ctx: Pick<QueryCtx, "db">,
   args: { companyId: string; baselineRunId: string; fieldCompanyId?: Id<"companies"> },
 ): Promise<Id<"companies"> | null> {
-  const link = (await ctx.db.query("timelineLinks").take(500)).find(
-    (l) => l.timelineCompanyId === args.companyId && l.baselineRunId === args.baselineRunId,
+  const links = (await ctx.db.query("timelineLinks").take(500)).filter(
+    (l) => l.timelineCompanyId === args.companyId,
   );
+  // Prefer the link for this exact baseline; any newer baseline of the same Timeline company
+  // still belongs to the same Field company (scenarios outlive the baseline they were built on).
+  const link =
+    links.find((l) => l.baselineRunId === args.baselineRunId) ??
+    links.sort((a, b) => b._creationTime - a._creationTime)[0];
   const id =
     args.fieldCompanyId ?? link?.companyId ?? ctx.db.normalizeId("companies", args.companyId);
   return id && (await ctx.db.get("companies", id)) ? id : null;
