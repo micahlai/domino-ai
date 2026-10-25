@@ -1,5 +1,6 @@
 import { BOUNDARY_INTEGER_MAX, canonicalJson } from "@domino/contracts";
 import { z } from "zod";
+import { groundingIssue } from "../assistant/grounding";
 import { type WorkspaceRun, matchRecords, recordsOf } from "../questions/context";
 import { IN, OUT, SCENARIO, clauses, readWithGrammar } from "../questions/grammar";
 import { type Intent, IntentSchema } from "../questions/intent";
@@ -212,7 +213,11 @@ export function evaluateIntents(
   run: WorkspaceRun,
   intents: Intent[],
   conversationId: string,
+  originalText: string,
+  selectedItemId: string | null = null,
 ): Result {
+  const issue = groundingIssue(originalText, intents, selectedItemId ? [selectedItemId] : []);
+  if (issue) return { draft: emptyDraft(), answer: issue, proposal: null, pendingField: null };
   return finish(run, DraftSchema.parse({ intents, pending: null }), conversationId);
 }
 function finish(run: WorkspaceRun, draft: Draft, conversationId: string): Result {

@@ -57,7 +57,7 @@ const ReplySchema = z.object({
 });
 
 /** Complete numeric phrases only: "$80" cannot be copied out of "-$80" or "$80,00". */
-function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[]): boolean {
+export function copiedFromPrompt(intents: Intent[], prompt: string, selected: string[]): boolean {
   const complete = (word: string) => {
     let start = prompt.indexOf(word);
     while (start !== -1) {

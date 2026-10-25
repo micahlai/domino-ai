@@ -17,4 +17,12 @@ export const timelineChatRequestsTable = defineTable({
   requestId: v.string(),
   requestHash: v.string(),
   data: v.any(),
+  // Absent on old immutable receipts. Claims reserve the existing request key atomically.
+  assistant: v.optional(
+    v.object({
+      status: v.union(v.literal("running"), v.literal("failed"), v.literal("accepted")),
+      attempt: v.number(),
+      leaseUntil: v.number(),
+    }),
+  ),
 }).index("by_company_and_requestId", ["companyId", "requestId"]);

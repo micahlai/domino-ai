@@ -48,8 +48,8 @@ import {
 //   on <date>"; "receive $X from <Name> on <date>"; "keep usable cash above $X"; "keep N months
 //   of runway"; "pay <vendor> on time / within N days". No paid call.
 // - With ANTHROPIC_API_KEY set, Claude reads every question first with the company's saved
-//   run as context (assistant/questions.ts). It writes the answer text; status, citations
-//   and proposals still come only from the fixed resolver. Without a key the fixed grammar
+//   run as context (assistant/questions.ts). It extracts original user spans; answer text,
+//   status, citations and proposals come only from the fixed resolver. Without a key the fixed grammar
 //   answers, and a question it cannot read is saved as failed.
 // Neither method computes money or writes the answer: answers and citations come from the
 // run's saved forecast, receipts, dominoes and seed records; proposals change nothing until

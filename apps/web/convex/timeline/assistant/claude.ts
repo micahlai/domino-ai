@@ -6,6 +6,8 @@ import Anthropic from "@anthropic-ai/sdk";
  */
 export const DEFAULT_ASSISTANT_MODEL = "claude-opus-5-5";
 export const ASSISTANT_TIMEOUT_MS = 60_000;
+/** Whole loop, including SDK retries. Keep below the durable 150-second question lease. */
+export const ASSISTANT_TOTAL_TIMEOUT_MS = 110_000;
 const MAX_TOKENS = 16_000;
 
 export type ClaudeTool = {
@@ -43,57 +45,76 @@ export async function runStructured(opts: {
   if (!config) throw new AssistantUnavailable("ANTHROPIC_API_KEY is not set");
   const tools = opts.tools ?? [];
   const messages = [...opts.messages];
-  for (let step = 0; step < (opts.maxSteps ?? 5); step++) {
-    const response = await config.client.beta.messages.create({
-      model: config.model,
-      max_tokens: MAX_TOKENS,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low", format: { type: "json_schema", schema: opts.schema } },
-      system: opts.system,
-      ...(tools.length
-        ? {
-            tools: tools.map(({ name, description, input_schema }) => ({
-              name,
-              description,
-              input_schema,
-            })),
+  const abort = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      abort.abort();
+      reject(new Error("PROVIDER_TIMEOUT"));
+    }, ASSISTANT_TOTAL_TIMEOUT_MS);
+  });
+  try {
+    for (let step = 0; step < (opts.maxSteps ?? 5); step++) {
+      if (abort.signal.aborted) throw new Error("PROVIDER_TIMEOUT");
+      const response = await Promise.race([
+        config.client.beta.messages.create(
+          {
+            model: config.model,
+            max_tokens: MAX_TOKENS,
+            betas: ["server-side-fallback-2026-07-01"],
+            fallbacks: "default",
+            output_config: { effort: "low", format: { type: "json_schema", schema: opts.schema } },
+            system: opts.system,
+            ...(tools.length
+              ? {
+                  tools: tools.map(({ name, description, input_schema }) => ({
+                    name,
+                    description,
+                    input_schema,
+                  })),
+                }
+              : {}),
+            messages,
+          },
+          { signal: abort.signal },
+        ),
+        deadline,
+      ]);
+      if (response.stop_reason === "refusal") throw new Error("PROVIDER_REFUSED");
+      if (response.stop_reason === "max_tokens") throw new Error("PROVIDER_TRUNCATED");
+      // Append the full content (thinking blocks included) so the next turn stays valid.
+      messages.push({ role: "assistant", content: response.content });
+      if (response.stop_reason === "tool_use") {
+        const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
+        for (const block of response.content) {
+          if (block.type !== "tool_use") continue;
+          const tool = tools.find((t) => t.name === block.name);
+          let content: string;
+          let isError = false;
+          try {
+            if (!tool) throw new Error(`Unknown tool ${block.name}`);
+            content = JSON.stringify(tool.run(block.input));
+          } catch (error) {
+            isError = true;
+            content = error instanceof Error ? error.message : "Tool failed";
           }
-        : {}),
-      messages,
-    });
-    if (response.stop_reason === "refusal") throw new Error("PROVIDER_REFUSED");
-    if (response.stop_reason === "max_tokens") throw new Error("PROVIDER_TRUNCATED");
-    // Append the full content (thinking blocks included) so the next turn stays valid.
-    messages.push({ role: "assistant", content: response.content });
-    if (response.stop_reason === "tool_use") {
-      const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue;
-        const tool = tools.find((t) => t.name === block.name);
-        let content: string;
-        let isError = false;
-        try {
-          if (!tool) throw new Error(`Unknown tool ${block.name}`);
-          content = JSON.stringify(tool.run(block.input));
-        } catch (error) {
-          isError = true;
-          content = error instanceof Error ? error.message : "Tool failed";
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content,
+            ...(isError ? { is_error: true } : {}),
+          });
         }
-        results.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content,
-          ...(isError ? { is_error: true } : {}),
-        });
+        messages.push({ role: "user", content: results });
+        continue;
       }
-      messages.push({ role: "user", content: results });
-      continue;
+      if (response.stop_reason !== "end_turn") throw new Error("PROVIDER_MALFORMED");
+      const text = response.content.find((b) => b.type === "text");
+      if (!text || text.type !== "text") throw new Error("PROVIDER_MALFORMED");
+      return JSON.parse(text.text);
     }
-    if (response.stop_reason !== "end_turn") throw new Error("PROVIDER_MALFORMED");
-    const text = response.content.find((b) => b.type === "text");
-    if (!text || text.type !== "text") throw new Error("PROVIDER_MALFORMED");
-    return JSON.parse(text.text);
+    throw new Error("PROVIDER_MALFORMED");
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
-  throw new Error("PROVIDER_MALFORMED");
 }
