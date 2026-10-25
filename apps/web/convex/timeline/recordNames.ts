@@ -58,7 +58,8 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * additional days late" becomes "Northwind invoice ($1.2M, due Oct 18) is paid 14 days late".
  */
 export function friendlyLabel(label: string, snapshot: Snapshot | null | undefined): string {
-  if (!snapshot || !label) return label;
+  if (!label) return label;
+  if (!snapshot) return plainLabel(label);
   let out = label;
   const swap = (id: string, name: string, word: string) => {
     if (!id || !out.includes(id)) return;
@@ -71,6 +72,25 @@ export function friendlyLabel(label: string, snapshot: Snapshot | null | undefin
     swap(b.id, billName(snapshot, b.id), "bill");
   for (const c of [...snapshot.customers].sort((x, y) => y.id.length - x.id.length))
     swap(c.id, c.name, "customer");
-  out = out.replace(/ additional days late/g, " days late");
+  return plainLabel(out);
+}
+
+/**
+ * Plain wording without the source records: "Synthetic education partner 19" becomes
+ * "Education partner 19", and a raw "…/invoice/2026-10-18" id becomes "invoice due Oct 18".
+ */
+export function plainLabel(label: string): string {
+  const out = label
+    .replace(
+      /\b(?:invoice )?[\w-]+(?:\/[\w.-]+)+\/invoice\/(\d{4}-\d{2}-\d{2})\b/gi,
+      (_m, d: string) => `invoice due ${shortDate(d)}`,
+    )
+    .replace(/\bsynthetic ([a-z])/gi, (_m, c: string) => c.toUpperCase())
+    .replace(/ additional days late/g, " days late");
   return out.charAt(0).toUpperCase() + out.slice(1);
+}
+
+/** "Oct 25" from a saved ISO timestamp, read in UTC. */
+export function savedOn(iso: string): string {
+  return shortDate(iso.slice(0, 10));
 }

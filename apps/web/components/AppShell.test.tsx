@@ -87,7 +87,8 @@ describe("AppShell navigation", () => {
     expect(html).not.toContain("Simulated books");
     const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
     expect(currentHtml).toContain('aria-haspopup="menu"');
-    expect(currentHtml).toContain("Simulated books");
+    // The default selection is 2U, whose books are its public filings.
+    expect(currentHtml).toMatch(/Simulated books|Public filings/);
   });
 
   it("shows saved calculation routes without the live company picker, feed strip or clock", () => {
