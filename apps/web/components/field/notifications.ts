@@ -29,7 +29,7 @@ export function eventToast(e: FieldNotificationEvent, companyId: string): Toast 
     case "suggestion":
       return {
         key: e.key,
-        title: "New suggestion",
+        title: "New recommended fix",
         line: oneLine(fixSentence({ kind: e.fixKind, label: e.label })),
         href: `/field#${suggestionDomId(e.suggestionId)}`,
       };
@@ -53,8 +53,8 @@ export function eventToast(e: FieldNotificationEvent, companyId: string): Toast 
     case "run":
       return {
         key: e.key,
-        title: e.runKind === "rules" ? "New rules saved" : "New simulation saved",
-        line: oneLine(e.label || "A what-if was saved."),
+        title: e.runKind === "rules" ? "New rules saved" : "New scenario saved",
+        line: oneLine(e.label || "A scenario was saved."),
         href: timelineCalculationHref(e.worldId, e.runId),
       };
   }

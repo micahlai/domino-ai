@@ -72,18 +72,16 @@ function breachWords(r: ReturnType<typeof firstBreach>): string | null {
   return `${r.label} is not met by its allowed date${r.date ? ` (${formatDate(r.date)})` : ""}.`;
 }
 
-/** Links to the saved run; "Try fixes" opens Timeline's risk analysis for it. */
+/** Link to the saved run. Fixes are modeled from the Worker's recommended fixes, so the
+ * dashboard no longer links straight to the risk-analysis page (still reachable by URL). */
 export function TimelineLinks({ link }: { link: TimelineLink }) {
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild className="h-11 shrink-0 sm:h-[var(--control-h)]">
-        <Link href={timelineAnalysisHref(link)}>
-          Try fixes on the timeline
+        <Link href={link.route}>
+          Open in forecast
           <ArrowRight aria-hidden="true" />
         </Link>
-      </Button>
-      <Button asChild variant="outline" className="h-11 shrink-0 sm:h-[var(--control-h)]">
-        <Link href={link.route}>Open the timeline</Link>
       </Button>
     </div>
   );
@@ -95,7 +93,7 @@ export function TimelineActions({ timeline }: { timeline?: TimelineRead }) {
   if (link?.current) return <TimelineLinks link={link} />;
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <OpenInTimeline label={link ? "Open the latest books in Timeline" : "Open in Timeline"} />
+      <OpenInTimeline label={link ? "Open latest books in forecast" : "Open in forecast"} />
       {link ? (
         <Button asChild variant="outline" className="h-11 shrink-0 sm:h-[var(--control-h)]">
           <Link href={link.route}>Previous run</Link>
@@ -224,7 +222,7 @@ export function TimelineRisks({
             ? `Timeline's analysis did not start: ${link.analysisError}`
             : "No saved analysis for this run yet."}{" "}
           <Link href={href} className="text-primary underline-offset-2 hover:underline">
-            Open the analysis
+            Review the analysis
           </Link>
         </EmptyRow>
       </div>
@@ -318,7 +316,7 @@ export function TimelineRisks({
       card={false}
       actions={
         <Button asChild variant="outline" size="sm">
-          <Link href={href}>All risks on the timeline</Link>
+          <Link href={href}>All risks in the forecast</Link>
         </Button>
       }
     >

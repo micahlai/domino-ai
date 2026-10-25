@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { CrsCheck } from "../field/CrsCheck";
 import { describeFinding } from "../field/finding-text";
 import { FINDING_LABEL, SEVERITY_LABEL } from "../field/parts";
 import { Badge } from "../ui/badge";
@@ -33,8 +34,8 @@ export function FlagsPanel({ companyId }: { companyId: Id<"companies"> }) {
         <p className="p-[var(--card-pad)] text-sm text-muted-foreground">Loading flags</p>
       ) : flags.length === 0 ? (
         <p className="p-[var(--card-pad)] text-sm text-muted-foreground">
-          No open flags. Try "Bank and Stripe disagree": the audit agent should flag it within a few
-          seconds.
+          No open flags. Add the "Bank and Stripe disagree" event; the audit agent flags it within a
+          few seconds.
         </p>
       ) : (
         <ul className="divide-y">
@@ -52,7 +53,9 @@ function FlagRow({ companyId, flag }: { companyId: Id<"companies">; flag: Flag }
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const text = describeFinding(flag);
+  const text = describeFinding(
+    flag.crs ? { ...flag, summary: flag.summary.split(". ")[0] ?? flag.summary } : flag,
+  );
   const noteId = `note-${flag.findingId}`;
   async function go(decision: "approved" | "rejected") {
     setBusy(true);
@@ -76,7 +79,11 @@ function FlagRow({ companyId, flag }: { companyId: Id<"companies">; flag: Flag }
           {SEVERITY_LABEL[flag.severity]}
         </Badge>
         <span className="text-sm font-medium">{FINDING_LABEL[flag.kind]}</span>
-        <span className="text-xs text-muted-foreground">Found by the rules engine (no AI)</span>
+        <span className="text-xs text-muted-foreground">
+          {flag.crs
+            ? "Found by the rules engine; checked with the CRS sandbox"
+            : "Found by the rules engine (no AI)"}
+        </span>
       </div>
       <p className="text-sm leading-6">{text.headline}</p>
       {text.facts.length > 0 ? (
@@ -89,6 +96,7 @@ function FlagRow({ companyId, flag }: { companyId: Id<"companies">; flag: Flag }
           ))}
         </dl>
       ) : null}
+      {flag.crs ? <CrsCheck crs={flag.crs} /> : null}
       {flag.explanation ? (
         <p className="text-sm leading-6 text-muted-foreground">
           <span className="font-medium text-primary-ink">Claude ({flag.explanation.model}):</span>{" "}

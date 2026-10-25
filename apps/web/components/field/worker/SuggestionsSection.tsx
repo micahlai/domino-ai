@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { ArrowRight, Lightbulb, X } from "lucide-react";
+import { ArrowRight, Check, Lightbulb, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { fieldTraceHref } from "../../../lib/trace-links";
@@ -38,7 +38,7 @@ export type DecideSuggestion = (
 ) => Promise<void>;
 export type SimulateSuggestion = (suggestion: Suggestion) => Promise<void>;
 
-export const NEVER_MOVES_MONEY = "Simulated only. Nothing is paid or moved.";
+export const NEVER_MOVES_MONEY = "Approving adds the fix to the plan. Domino never moves money.";
 
 export function SuggestionsSection({
   state,
@@ -62,9 +62,9 @@ export function SuggestionsSection({
     <WorkerSection
       id="suggestions"
       step={1}
-      title="Suggestions"
+      title="Recommended fixes"
       count={state.kind === "ready" ? open.length : null}
-      description="Fixes tested on your forecast. Try one or dismiss it."
+      description="Each fix is already scored by the forecast engine. Open one in the forecast, approve it or dismiss it."
     >
       {state.kind === "loading" ? (
         <div className="space-y-3" aria-busy="true">
@@ -73,10 +73,10 @@ export function SuggestionsSection({
         </div>
       ) : state.kind === "off" ? (
         <EmptyCard icon={<Lightbulb />}>
-          <p className="font-medium text-foreground">Suggestions are not switched on yet.</p>
+          <p className="font-medium text-foreground">Recommended fixes are not switched on yet.</p>
           <p>
-            Once suggestions are available, fixes tested for each risk appear here, with what they
-            do to your lowest cash.
+            Once they are available, fixes scored for each risk appear here, with what they do to
+            your lowest cash.
           </p>
         </EmptyCard>
       ) : state.kind === "error" ? (
@@ -84,12 +84,12 @@ export function SuggestionsSection({
           role="alert"
           className="rounded-lg border border-destructive/25 bg-destructive/[0.04] px-4 py-3 text-sm text-destructive"
         >
-          Suggestions did not load: {state.message}
+          Recommended fixes did not load: {state.message}
         </p>
       ) : open.length === 0 ? (
         <EmptyCard icon={<Lightbulb />}>
-          <p className="font-medium text-foreground">No suggestions waiting.</p>
-          <p>When a risk would take cash below the lender's minimum, tested fixes appear here.</p>
+          <p className="font-medium text-foreground">No fixes waiting.</p>
+          <p>When a risk would take cash below the lender's minimum, scored fixes appear here.</p>
         </EmptyCard>
       ) : (
         <ul className="divide-y overflow-hidden rounded-lg border bg-card shadow-xs">
@@ -118,7 +118,7 @@ export function SuggestionsSection({
             >
               <div>
                 <Badge variant={s.status === "accepted" ? "success" : "secondary"}>
-                  {s.status === "accepted" ? "Accepted" : "Declined"}
+                  {s.status === "accepted" ? "Approved" : "Dismissed"}
                 </Badge>
               </div>
               <div className="min-w-0">
@@ -168,7 +168,7 @@ function SuggestionCard({
   hasRisk?: boolean;
 }) {
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState<"simulate" | "declined" | null>(null);
+  const [busy, setBusy] = useState<"simulate" | "accepted" | "declined" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const effect = cashEffect(s, context);
   const scenario = scenarioTitle(s, context);
@@ -180,11 +180,11 @@ function SuggestionCard({
     Number.isSafeInteger(s.snapshotVersion) &&
     typeof s.fix !== "string" &&
     !!s.fix.kind;
-  async function dismiss() {
-    setBusy("declined");
+  async function decide(decision: "accepted" | "declined") {
+    setBusy(decision);
     setError(null);
     try {
-      await onDecide(s, "declined", note);
+      await onDecide(s, decision, note);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the decision.");
     } finally {
@@ -203,7 +203,7 @@ function SuggestionCard({
       setError(
         typeof data?.message === "string"
           ? data.message
-          : "Could not try this fix. Nothing was changed.",
+          : "Could not open this fix in the forecast. Nothing was changed.",
       );
       setBusy(null);
     }
@@ -234,19 +234,11 @@ function SuggestionCard({
         >
           See the risk
         </a>
-        <button
-          type="button"
-          className={cn(CROSS_LINK, "disabled:cursor-not-allowed disabled:opacity-50")}
-          disabled={busy !== null || !onSimulate || !hasSavedInputs}
-          onClick={simulate}
-        >
-          Try this fix
-        </button>
       </p>
 
       <dl className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-md border bg-border text-[13px]">
         <EffectCell
-          label={scenario ? "Lowest cash if it happens" : "Lowest cash now"}
+          label="Lowest cash without fix"
           cents={effect.before?.cents ?? null}
           week={effect.before?.week ?? null}
           tone={
@@ -256,7 +248,7 @@ function SuggestionCard({
           }
         />
         <EffectCell
-          label="With this fix"
+          label="Lowest cash with fix"
           cents={effect.after.cents}
           week={effect.after.week}
           tone={effect.stays ? "good" : "bad"}
@@ -271,6 +263,12 @@ function SuggestionCard({
         />
       </dl>
 
+      {s.learnedNote ? (
+        <p className="mt-3 flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+          <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
+          {s.learnedNote}
+        </p>
+      ) : null}
       {s.recommendation ? (
         <p className="mt-3 text-[13px] leading-5 text-muted-foreground">
           <span className="font-medium text-foreground">Why: </span>
@@ -293,7 +291,7 @@ function SuggestionCard({
 
       <div className="mt-3 space-y-1.5">
         <label htmlFor={`${id}-note`} className="block text-[13px] font-medium">
-          Note <span className="font-normal text-muted-foreground">(optional)</span>
+          Reason <span className="font-normal text-muted-foreground">(optional)</span>
         </label>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
@@ -301,15 +299,19 @@ function SuggestionCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder="Why you dismissed this"
+            placeholder="Why you approved or dismissed this"
             className="h-11 sm:h-9 sm:flex-1"
           />
-          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+          <div className="grid shrink-0 grid-cols-3 gap-2 sm:flex">
             <Button disabled={busy !== null || !onSimulate || !hasSavedInputs} onClick={simulate}>
               <ArrowRight aria-hidden="true" />
-              {busy === "simulate" ? "Trying..." : "Try this fix"}
+              {busy === "simulate" ? "Opening..." : "Open in forecast"}
             </Button>
-            <Button variant="outline" disabled={busy !== null} onClick={dismiss}>
+            <Button variant="outline" disabled={busy !== null} onClick={() => decide("accepted")}>
+              <Check aria-hidden="true" />
+              {busy === "accepted" ? "Saving..." : "Approve"}
+            </Button>
+            <Button variant="outline" disabled={busy !== null} onClick={() => decide("declined")}>
               <X aria-hidden="true" />
               {busy === "declined" ? "Saving..." : "Dismiss"}
             </Button>
@@ -318,7 +320,8 @@ function SuggestionCard({
         <p className="text-xs leading-5 text-muted-foreground">{NEVER_MOVES_MONEY}</p>
         {companyId && !hasSavedInputs ? (
           <p className="text-xs leading-5 text-muted-foreground">
-            This older suggestion cannot be tried. You can still see how or dismiss it.
+            This older fix cannot be opened in the forecast. You can still review, approve or
+            dismiss it.
           </p>
         ) : null}
       </div>

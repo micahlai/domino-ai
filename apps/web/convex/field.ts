@@ -354,6 +354,7 @@ const publicFinding = (f: Doc<"findings">) => ({
   note: f.note,
   explanation: f.explanation,
   ...(f.learned && { learned: f.learned }),
+  ...(f.crs && { crs: f.crs }),
 });
 
 export const findings = query({

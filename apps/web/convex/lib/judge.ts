@@ -327,6 +327,7 @@ export const SURPRISE_PRESETS = [
   "late_big_customer",
   "unexpected_bill",
   "bank_stripe_mismatch",
+  "vendor_bank_change",
 ] as const;
 export type SurprisePreset = (typeof SURPRISE_PRESETS)[number];
 export const SURPRISE_LABEL: Record<SurprisePreset, { title: string; detail: string }> = {
@@ -339,12 +340,17 @@ export const SURPRISE_LABEL: Record<SurprisePreset, { title: string; detail: str
     title: "Bank and Stripe disagree",
     detail: "A Stripe deposit arrives $18,400 short at the bank",
   },
+  vendor_bank_change: {
+    title: "Vendor changes bank details",
+    detail: "A big vendor's new bill asks to be paid to a new bank account (CRS identity check)",
+  },
 };
 /** Tools a preset needs connected to be visible to the agents. */
 export const SURPRISE_NEEDS: Record<SurprisePreset, JudgeSource[]> = {
   late_big_customer: ["stripe"],
   unexpected_bill: ["qbo"],
   bank_stripe_mismatch: ["stripe"],
+  vendor_bank_change: ["qbo"],
 };
 
 /** A preset as the scenario it plants, checked by ScenarioSchema. Throws JudgeInputError. */
@@ -365,11 +371,56 @@ export function surpriseScenario(preset: SurprisePreset, served: Snapshot): Scen
         } as const;
       case "bank_stripe_mismatch":
         return { kind: "bank_stripe_mismatch", amountCents: -1_840_000 } as const;
+      case "vendor_bank_change":
+        return refuse("Vendor bank changes are planted with plantVendorBankChange");
     }
   })();
   const parsed = ScenarioSchema.safeParse(scenario);
   if (!parsed.success) refuse(zodMessage(parsed.error));
   return parsed.data as Scenario;
+}
+
+const last4 = (text: string) => {
+  let h = 7;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 10_000;
+  return String(h).padStart(4, "0");
+};
+
+/**
+ * "Vendor changes bank details": the vendor with the most unpaid bills sends a new bill asking to
+ * be paid to a different bank account. Plants the bill plus a payee change on the overlay; the
+ * audit's identity and fraud agent checks the new account's owner with CRS. Throws
+ * JudgeInputError.
+ */
+export function plantVendorBankChange(served: Snapshot, current: Overlay, tag: string): Planted {
+  const o = plain(current);
+  const totals = new Map<string, { total: number; largest: number }>();
+  for (const b of served.bills) {
+    if (b.paid !== undefined) continue;
+    const t = totals.get(b.vendor) ?? { total: 0, largest: 0 };
+    totals.set(b.vendor, { total: t.total + b.amount, largest: Math.max(t.largest, b.amount) });
+  }
+  const top = [...totals].sort((a, b) => b[1].total - a[1].total)[0];
+  const vendor = top?.[0] ?? "Northwind Supply Co.";
+  const amount = Math.min(JUDGE_LIMITS.maxCents, Math.max(top?.[1].largest ?? 0, 4_850_000));
+  const id = `judge_payee_${tag}`;
+  const due = addDays(firstForecastWeek(served.asOf), 9);
+  const bill: Bill = { id, vendor, amount, due, critical: false };
+  o.bills = [...o.bills, bill];
+  const change = {
+    billId: id,
+    vendor,
+    amount,
+    fromAccount: last4(vendor),
+    toAccount: last4(`${vendor}:${tag}:new`),
+    at: served.asOf,
+  };
+  o.payeeChanges = [...(o.payeeChanges ?? []), change];
+  return {
+    overlay: o,
+    refs: [id],
+    summary: `New bill ${id} from ${vendor} (${money(amount)}, due ${due}) asks to be paid to a new bank account: ending ${change.fromAccount} -> ${change.toAccount}`,
+  };
 }
 
 // ---------- Guided checklist ----------

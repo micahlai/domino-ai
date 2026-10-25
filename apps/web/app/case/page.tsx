@@ -10,7 +10,7 @@ const steps = [
   "Inspect the company data, with the source and publication date for each fact.",
   "View the forecast saved from what was public at the cutoff date.",
   "Reveal what 2U reported next and compare it with that forecast.",
-  "Try a different decision and see its cost and assumptions.",
+  "Model a different decision, with its cost and assumptions.",
 ];
 
 export default function CaseStudyIntroPage() {

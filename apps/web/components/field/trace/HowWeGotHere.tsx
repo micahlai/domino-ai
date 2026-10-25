@@ -13,11 +13,13 @@ import { cn } from "../../../lib/utils";
 import { AgentIcon } from "../../icons/AgentIcon";
 import { ToolIcon } from "../../icons/ToolIcon";
 import { ToolLogo } from "../../icons/ToolLogo";
+import { VENDORS, vendorFor } from "../../icons/vendors";
 import type {
   AgentMap,
   Explain,
   ExplainResult,
   Fact,
+  Logo,
   MapIcon,
   MapNode,
   Money,
@@ -210,6 +212,96 @@ function Stepper({ explain }: { explain: Explain }) {
       />
       <ResultCard result={explain.result} />
     </ol>
+  );
+}
+
+// ---------- Sources -> Checks -> Forecast ----------
+
+const brand = (vendor: string) => {
+  const id = vendorFor(vendor);
+  return id === "generic" ? "hsl(var(--muted-foreground))" : VENDORS[id].color;
+};
+
+/** Three-step strip with counts, read from the same saved explain model. */
+function ProofStrip({ explain }: { explain: Explain }) {
+  const logos = explain.data.logos ?? [];
+  const checked = logos.filter((l) => l.ok !== undefined);
+  const passed = checked.filter((l) => l.ok).length;
+  const r = explain.result;
+  const items = [
+    {
+      icon: <Database />,
+      label: "Sources",
+      value: logos.length ? plural(logos.length, "tool") : "Saved books",
+    },
+    {
+      icon: <ShieldCheck />,
+      label: "Checks",
+      value: checked.length ? `${passed} of ${checked.length} tie out` : "Cash rules checked",
+    },
+    {
+      icon: <Calculator />,
+      label: "Forecast",
+      value: r.low ? `${r.badge} · low ${r.low.short}` : r.badge,
+    },
+  ];
+  return (
+    <ol aria-label="Sources, checks and forecast" className="flex flex-wrap items-center gap-2">
+      {items.map((it, i) => (
+        <li key={it.label} className="flex items-center gap-2">
+          {i > 0 ? (
+            <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground" />
+          ) : null}
+          <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm shadow-xs [&_svg]:size-4 [&_svg]:text-muted-foreground">
+            {it.icon}
+            <span className="font-medium">{it.label}</span>
+            <span className="tabular-nums text-muted-foreground">{it.value}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
+
+/** One row per tool: brand logo and color, then what it supplied and whether it tied out. */
+function SourceRows({ logos }: { logos: Logo[] }) {
+  if (!logos.length) return null;
+  return (
+    <section aria-labelledby="hwgh-sources" className="rounded-lg border bg-card p-5 shadow-xs">
+      <h2 id="hwgh-sources" className="text-[15px] font-semibold">
+        Where the numbers come from
+      </h2>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {logos.map((l) => (
+          <li
+            key={`${l.vendor}-${l.label}`}
+            style={{ borderLeftColor: brand(l.vendor) }}
+            className="flex items-center gap-3 rounded-md border border-l-4 bg-background px-3 py-2"
+          >
+            <ToolLogo vendor={l.vendor} size={28} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{l.label}</span>
+              {l.line ? (
+                <span className="block text-xs text-muted-foreground">{l.line}</span>
+              ) : null}
+            </span>
+            {l.ok === undefined ? null : l.ok ? (
+              <ShieldCheck
+                aria-label="Ties out"
+                className="size-4 shrink-0 text-[hsl(var(--safe))]"
+              />
+            ) : (
+              <ShieldAlert
+                aria-label="Does not tie out"
+                className="size-4 shrink-0 text-destructive"
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -505,6 +597,8 @@ export function HowWeGotHere({
           </ul>
         </div>
       ) : null}
+      <ProofStrip explain={explain} />
+      <SourceRows logos={explain.data.logos ?? []} />
       <section aria-label="How we got here">
         <Stepper explain={explain} />
         {explain.result.quote ? (
@@ -524,9 +618,9 @@ export function HowWeGotHere({
             aria-hidden="true"
             className="size-4 text-muted-foreground transition-transform group-open:rotate-90"
           />
-          Details
+          Technical details
           <span className="text-xs font-normal text-muted-foreground">
-            Full sources, exact amounts, steps and IDs
+            Exact amounts, run steps and IDs
           </span>
         </summary>
         <div className="mt-4 space-y-5">

@@ -31,7 +31,7 @@ describe("notifications", () => {
 
   it("builds a short title, one line and an exact link", () => {
     expect(eventToast(suggestion, "c1")).toMatchObject({
-      title: "New suggestion",
+      title: "New recommended fix",
       line: "Draw $1.2M on the credit line",
       href: "/field#suggestion-s1_credit_line_draw",
     });
@@ -48,7 +48,7 @@ describe("notifications", () => {
       },
       "c1",
     );
-    expect(run.title).toBe("New simulation saved");
+    expect(run.title).toBe("New scenario saved");
     expect(run.href).toBe("/c/operating%2F2u%2Fbaseline/timeline/calculation?runId=r1");
     expect(
       eventToast(

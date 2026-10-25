@@ -22,7 +22,7 @@ const current = (html: string) =>
   [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
 
 describe("AppShell navigation", () => {
-  it("lists the six product pages, then the judge sandbox, in order and hides dev routes", () => {
+  it("lists the five product pages, then the judge sandbox, in order and hides dev routes", () => {
     const html = render("/");
     const order = [
       "/",
@@ -30,12 +30,11 @@ describe("AppShell navigation", () => {
       "/field/map",
       "/field/connect",
       "/c/operating%2F2u%2Fbaseline/timeline",
-      "/simulations",
       "/judge",
     ].map((h) => html.indexOf(`href="${h}"`));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(7);
+    expect(html.match(/<li class="flex shrink-0">/g)).toHaveLength(6);
     expect(html).toContain("Main navigation");
     expect(html).toContain('aria-haspopup="menu"');
     expect(html).toContain("Company and scenario");
@@ -49,6 +48,7 @@ describe("AppShell navigation", () => {
     expect(html).not.toContain("<select");
     for (const gone of [
       "/playground",
+      'href="/simulations"',
       'href="/connect"',
       "/investigate",
       "/historical",
@@ -64,8 +64,8 @@ describe("AppShell navigation", () => {
     expect(current(render("/field"))).toEqual(["Worker"]);
     expect(current(render("/field/map"))).toEqual(["Brain map"]);
     expect(current(render("/field/connect"))).toEqual(["Connected tools"]);
-    expect(current(render("/simulations"))).toEqual(["Simulations"]);
-    expect(current(render("/c/kestrel/simulations"))).toEqual(["Simulations"]);
+    expect(current(render("/simulations"))).toEqual([]);
+    expect(current(render("/c/kestrel/simulations"))).toEqual(["Timeline"]);
     expect(current(render("/judge"))).toEqual(["Try it"]);
     expect(current(render("/case"))).toEqual([]);
   });

@@ -87,8 +87,22 @@ export function traceSources(trace: FieldTrace): Logo[] {
   for (const s of trace.inputs?.sources ?? []) {
     const vendor = vendorFor(s.kind);
     const key = vendor === "generic" ? `generic:${s.kind}` : vendor;
-    if (!seen.has(key))
-      seen.set(key, { vendor, label: vendor === "generic" ? s.kind : VENDORS[vendor].name });
+    if (seen.has(key)) continue;
+    const ok = s.tieOut === "ok";
+    const pulled = s.lastPull ? `pulled ${fullDay(s.lastPull)}` : null;
+    const line = [
+      vendor === "generic" ? null : VENDORS[vendor].category,
+      ok ? "ties out" : `check: ${s.tieOut}`,
+      pulled,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    seen.set(key, {
+      vendor,
+      label: vendor === "generic" ? s.kind : VENDORS[vendor].name,
+      line,
+      ok,
+    });
   }
   return [...seen.values()];
 }
@@ -302,7 +316,11 @@ export function traceExplain(trace: FieldTrace): Explain {
             label: "Providers",
             value: trace.providers.length
               ? trace.providers
-                  .map((p) => `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`)
+                  .map((p) =>
+                    p.provider === "crs"
+                      ? `CRS identity and fraud check (${p.attribution}, ${p.status}): ${p.detail ?? "no detail"}`
+                      : `${p.provider} ${p.kind}: ${p.attribution}, ${p.status}`,
+                  )
                   .join("; ")
               : "None recorded",
           },

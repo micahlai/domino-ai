@@ -13,6 +13,7 @@ import {
   judgeStartOf,
   parseCsv,
   parseDollars,
+  plantVendorBankChange,
   rankCustomers,
   surpriseScenario,
   validateCsvRows,
@@ -193,6 +194,7 @@ describe("simple judge flow", () => {
       "late_big_customer",
       "unexpected_bill",
       "bank_stripe_mismatch",
+      "vendor_bank_change",
     ]);
     const top = rankCustomers(served, 1)[0];
     expect(surpriseScenario("late_big_customer", served)).toEqual({
@@ -210,8 +212,12 @@ describe("simple judge flow", () => {
       kind: "bank_stripe_mismatch",
       amountCents: -1_840_000,
     });
-    for (const p of SURPRISE_PRESETS)
+    for (const p of SURPRISE_PRESETS.filter((x) => x !== "vendor_bank_change"))
       expect(ScenarioSchema.safeParse(surpriseScenario(p, served)).success).toBe(true);
+    const planted = plantVendorBankChange(served, emptyOverlay(), "1_1");
+    expect(planted.overlay.payeeChanges).toHaveLength(1);
+    expect(planted.overlay.bills.at(-1)?.id).toBe("judge_payee_1_1");
+    expect(() => servedSnapshot(newWorld(1, "kestrel"), planted.overlay)).not.toThrow();
     expect(() => surpriseScenario("late_big_customer", { ...served, customers: [] })).toThrow(
       "This company has no customers to pay late",
     );

@@ -10,6 +10,7 @@ export type VendorId =
   | "plaid"
   | "capitalone"
   | "apify"
+  | "crs"
   | "bank"
   | "generic";
 
@@ -31,6 +32,7 @@ export const VENDORS: Record<VendorId, Vendor> = {
   plaid: { id: "plaid", name: "Plaid", category: "Bank", color: "#111111" },
   capitalone: { id: "capitalone", name: "Capital One", category: "Bank", color: "#004879" },
   apify: { id: "apify", name: "Apify", category: "Web data", color: "#246DFF" },
+  crs: { id: "crs", name: "CRS", category: "Identity and fraud", color: "#1F3A8A" },
   bank: { id: "bank", name: "Bank", category: "Bank", color: "#475569" },
   generic: { id: "generic", name: "Data source", category: "Data", color: "#64748B" },
 };
@@ -53,6 +55,7 @@ const ALIASES: Record<string, VendorId> = {
   "capital-one": "capitalone",
   bank: "capitalone",
   apify: "apify",
+  crs: "crs",
 };
 
 /** Any id or name the app uses for a source ("cards", "Ramp", "nessie") -> its vendor. */

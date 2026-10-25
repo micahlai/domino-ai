@@ -8,6 +8,7 @@ import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Skeleton } from "../../ui/skeleton";
+import { CrsCheck } from "../CrsCheck";
 import { mapNodeHref, recordSourceNode } from "../cross-links";
 import { useFieldData } from "../data";
 import { LARGE_CENTS, describeFinding, findingExplanation, relatedFlags } from "../finding-text";
@@ -116,7 +117,12 @@ function FindingCard({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const view = describeFinding(finding);
+  // CRS flags carry the check in its own block; describe only the payment change itself.
+  const view = describeFinding(
+    finding.crs
+      ? { ...finding, summary: finding.summary.split(". ")[0] ?? finding.summary }
+      : finding,
+  );
   const { explanation, suggestedCheck } = findingExplanation(finding);
   const primary = view.facts.find((f) => PRIMARY_FACT.has(f.label));
   const rest = view.facts.filter((f) => f !== primary);
@@ -198,6 +204,7 @@ function FindingCard({
           {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
         </p>
       ) : null}
+      {finding.crs ? <CrsCheck crs={finding.crs} /> : null}
       {explanation ? (
         <p className="mt-2 text-[13px] leading-5 text-muted-foreground">
           <span className="font-medium text-foreground">Why it matters: </span>

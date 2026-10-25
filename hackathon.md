@@ -3,16 +3,16 @@
 - **Project:** Domino
 - **Event:** Cal Hacks 13.0
 - **What it does:** An AI cash-flow analyst for B2B software companies that reads connected finance tools, audits them, builds a 13-week direct cash flow statement and suggests costed fixes a person accepts or declines.
-- **Live app:** not deployed
+- **Live app:** https://domino-ruddy.vercel.app
 - **Repo:** https://github.com/micahlai/domino-ai
-- **Frontend:** not deployed
-- **Convex deployment:** not deployed
+- **Frontend:** https://domino-ruddy.vercel.app (Vercel project `domino`)
+- **Convex deployment:** knowing-bee-636 (https://knowing-bee-636.convex.cloud)
 - **Components:** none
 - **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, scheduled functions, realtime useQuery, paginated queries
 - **Auth:** none
 - **AI models:** claude-opus-5-5 (default; other Claude calls read ANTHROPIC_MODEL), plus CREAO agent apps
 - **Started:** 2026-10-24T06:57:18Z
-- **Last updated:** 2026-10-25T12:15:23Z
+- **Last updated:** 2026-10-25T12:52:38Z
 
 ## How we use Convex
 
@@ -49,3 +49,4 @@
 - 2026-10-25 `7aa3314` Agents start idle until Start agents (`fieldAgents.ts`)
 - 2026-10-25 `881a2af` 2U backtest from Nov 2023 (`backtest.ts`)
 - 2026-10-25 `28acaf6` Timeline scenario branches, Ask Domino (`convex/timeline/`)
+- 2026-10-25 `0f2874f` Public deploy: Vercel + prod Convex with demo data imported (`.vercelignore`)

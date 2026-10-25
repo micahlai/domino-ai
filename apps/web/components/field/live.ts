@@ -269,5 +269,6 @@ export function toFinding(f: LiveFinding): FieldFinding {
         ...(f.learned.undoneAt && { undoneAt: f.learned.undoneAt }),
       },
     }),
+    ...(f.crs && { crs: f.crs }),
   };
 }

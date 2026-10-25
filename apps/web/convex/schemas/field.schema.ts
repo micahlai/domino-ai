@@ -24,6 +24,47 @@ const sourceKind = v.union(
   v.literal("document"),
   v.literal("learned"),
 );
+/** CRS identity and fraud check on a vendor's account owner (fieldCrs.ts, connectors/crs.ts). */
+export const crsResult = v.object({
+  verdict: v.union(
+    v.literal("verified"),
+    v.literal("signals"),
+    v.literal("unavailable"),
+    v.literal("not_configured"),
+    v.literal("capped"),
+  ),
+  personaId: v.string(),
+  personaName: v.string(),
+  personaProfile: v.string(),
+  identity: v.union(
+    v.null(),
+    v.object({
+      result: v.union(v.literal("PASS"), v.literal("FAIL"), v.literal("REVIEW")),
+      messages: v.array(v.object({ code: v.string(), text: v.string() })),
+      requestId: v.union(v.string(), v.null()),
+    }),
+  ),
+  fraud: v.union(
+    v.null(),
+    v.object({
+      score: v.union(v.number(), v.null()),
+      emailStatus: v.union(v.string(), v.null()),
+      emailFirstSeen: v.union(v.string(), v.null()),
+      domainRisk: v.union(v.number(), v.null()),
+      phoneMatch: v.union(v.string(), v.null()),
+      addressMatch: v.union(v.string(), v.null()),
+      requestId: v.union(v.string(), v.null()),
+    }),
+  ),
+  headline: v.string(),
+  signals: v.array(v.string()),
+  calls: v.number(),
+  detail: v.union(v.string(), v.null()),
+  /** Reused an earlier sandbox result for this persona (no new CRS call). */
+  cached: v.boolean(),
+  checkedAt: v.string(),
+});
+
 const decision = v.union(v.literal("approved"), v.literal("rejected"));
 const webhookVendor = v.union(
   v.literal("stripe"),
@@ -405,9 +446,23 @@ export const fieldTables = {
         undoneAt: v.optional(v.string()),
       }),
     ),
+    crs: v.optional(crsResult),
   })
     .index("by_companyId_and_findingId", ["companyId", "findingId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
+  // CRS sandbox checks (fieldCrs.ts): one row per check. Doubles as the per-persona cache and the
+  // per-company hourly cap. kind "login_failed" stops further logins (the sandbox locks accounts).
+  crsChecks: defineTable({
+    kind: v.union(v.literal("check"), v.literal("login_failed")),
+    companyId: v.optional(companyId),
+    personaId: v.string(),
+    at: v.string(),
+    calls: v.number(),
+    result: v.optional(crsResult),
+  })
+    .index("by_kind_and_personaId", ["kind", "personaId"])
+    .index("by_kind_and_at", ["kind", "at"])
+    .index("by_companyId_and_at", ["companyId", "at"]),
   // Toolbox (fieldTools.ts): outside tools an agent added for this company, once each. Seeded
   // with the Apify Google Search Results Scraper; others are found by searching the Apify Store
   // (free listing) when an agent needs a capability the toolbox lacks. Runs stay capped
