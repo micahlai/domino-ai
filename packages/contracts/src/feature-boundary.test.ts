@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { featureBoundaryFixtures as fx } from "./fixtures";
 import {
+  BOUNDARY_INTEGER_MAX,
+  BOUNDARY_MAX_JSON_LENGTH,
   DomainIdSchema,
   FEATURE_BOUNDARY_HASH,
   ForecastReadyTimelineSeedV1Schema,
@@ -17,6 +20,14 @@ import {
   TimelineSeedV1Schema,
   canonicalJson,
   contentHashPreimage,
+  parseForecastReadyTimelineSeedJson,
+  parseOperationSummaryJson,
+  parseTimelineResultRefContextJson,
+  parseTimelineResultRefJson,
+  parseTimelineRevealContextJson,
+  parseTimelineRevealJson,
+  parseTimelineSeedJson,
+  plainJsonSnapshot,
 } from "./index";
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -1220,5 +1231,282 @@ describe("intentional stricter-than-engine v1 rules", () => {
     expect(
       mutated(OperationSummaryV1Schema, op, (o) => o.outputRefs.push("field:seed/s64")),
     ).toHaveLength(1);
+  });
+});
+
+// ---------- Final audit: total for any JS value, JSON-text boundary, money bounds ----------
+
+describe("final audit: hostile JS values never throw", () => {
+  const op = {
+    schemaVersion: 1,
+    id: "field:operation/x",
+    ownerDomain: "field",
+    status: "succeeded",
+    title: "x",
+    dependencies: [],
+    evidenceRefs: [],
+    outputRefs: ["field:seed/x"],
+    createdAt: "2026-10-24T12:00:00Z",
+    startedAt: "2026-10-24T12:00:00Z",
+    finishedAt: "2026-10-24T12:00:00Z",
+    updatedAt: "2026-10-24T12:00:00Z",
+  };
+  const all: [string, Schema, unknown][] = [
+    ["TimelineSeedV1", S, seed],
+    ["ForecastReadyTimelineSeedV1", ForecastReadyTimelineSeedV1Schema, seed],
+    ["TimelineResultRefV1", TimelineResultRefV1Schema, result],
+    ["TimelineResultRefContextV1", TimelineResultRefContextV1Schema, { seed, result }],
+    ["OperationSummaryV1", OperationSummaryV1Schema, op],
+    ["TimelineRevealV1", TimelineRevealV1Schema, reveal],
+    ["TimelineRevealContextV1", TimelineRevealContextV1Schema, { seed, reveal }],
+  ];
+  const boom = () => {
+    throw new Error("hostile");
+  };
+  const getter = (key: string, base: object = {}) =>
+    Object.defineProperty(clone(base), key, { enumerable: true, get: boom });
+  const TRAPS = ["get", "ownKeys", "getPrototypeOf", "has", "getOwnPropertyDescriptor"] as const;
+  const hostile = (base: unknown): [string, unknown][] => {
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
+    const deep: Record<string, unknown> = {};
+    let cursor = deep;
+    for (let i = 0; i < 12_000; i++) cursor = cursor.next = {};
+    const cyclic = clone(base) as Record<string, unknown>;
+    cyclic.loop = cyclic;
+    return [
+      ["then getter", getter("then")],
+      ...Object.keys(base as object).map((k): [string, unknown] => [
+        `${k} getter`,
+        getter(k, base as object),
+      ]),
+      ...TRAPS.map((t): [string, unknown] => [
+        `${t} trap`,
+        new Proxy(clone(base) as object, { [t]: boom }),
+      ]),
+      ["revoked proxy", revoked.proxy],
+      ["cycle", cyclic],
+      ["deep nesting", deep],
+      ["huge string", "x".repeat(2_000_000)],
+      ["huge array", new Array(100_000).fill(null)],
+      ["bigint", 1n],
+      ["symbol", Symbol("x")],
+      ["function", () => 1],
+      ["Date", new Date(0)],
+      ["Map", new Map()],
+      ["undefined", undefined],
+    ];
+  };
+
+  it.each(all)("%s: every hostile value returns success:false", (_, schema, base) => {
+    for (const [label, v] of hostile(base)) {
+      const got = outcome(schema, v);
+      // A proxy whose throwing trap the snapshot never calls (get, has) holds valid data.
+      if (label === "get trap" || label === "has trap") expect(got, label).not.toBe("threw");
+      else expect(got, label).toBe("rejected");
+    }
+  });
+
+  it.each(all)("%s: delayed traps at every threshold never throw", (_, schema, base) => {
+    for (const trap of TRAPS)
+      for (const at of [1, 2, 3, 5, 10, 50, 300, 1000]) {
+        let n = 0;
+        const handler = {
+          [trap]: (...args: unknown[]) => {
+            if (++n === at) throw new Error("late trap");
+            return (Reflect[trap] as (...a: unknown[]) => unknown)(...args);
+          },
+        };
+        expect(
+          outcome(schema, new Proxy(clone(base) as object, handler)),
+          `${trap}/${at}`,
+        ).not.toBe("threw");
+      }
+  });
+
+  it("rejects a getter that answers twice then throws, without ever invoking it", () => {
+    for (const [schema, base, path] of [
+      [S, seed, ["snapshot", "case", "facts", 0]],
+      [ForecastReadyTimelineSeedV1Schema, seed, ["snapshot", "case", "facts", 0]],
+      [TimelineRevealV1Schema, reveal, ["disclosures", "facts", 0]],
+    ] as const) {
+      const v = clone(base) as unknown as Record<string, unknown>;
+      let node = v;
+      for (const k of path) node = node[k] as Record<string, unknown>;
+      let reads = 0;
+      Object.defineProperty(node, "extra", {
+        enumerable: true,
+        get() {
+          if (++reads >= 3) throw new Error("late extra getter");
+          return 1;
+        },
+      });
+      expect(outcome(schema, v)).toBe("rejected");
+      expect(reads).toBe(0);
+    }
+  });
+
+  it("rejects context records reached through top-level getters", () => {
+    expect(outcome(TimelineResultRefContextV1Schema, getter("seed", { result }))).toBe("rejected");
+    expect(outcome(TimelineRevealContextV1Schema, getter("seed", { reveal }))).toBe("rejected");
+  });
+
+  it("accepts shared non-cyclic references and copies them once", () => {
+    const v = clone(seed);
+    const shared = v.snapshot.case.facts[0]!.period;
+    v.snapshot.case.facts[1]!.period = shared;
+    expect(outcome(ForecastReadyTimelineSeedV1Schema, v)).toBe("accepted");
+    const snap = plainJsonSnapshot(v);
+    expect(snap.ok).toBe(true);
+    const c = snap.ok ? (snap.value as TimelineSeedV1) : undefined;
+    expect(c?.snapshot.case.facts[0]!.period).toBe(c?.snapshot.case.facts[1]!.period);
+    expect(c?.snapshot.case.facts[0]!.period).not.toBe(shared);
+  });
+
+  it("keeps parse, parseAsync and safeParseAsync total", async () => {
+    const h = getter("then");
+    expect(() => S.parse(h)).toThrow(z.ZodError);
+    await expect(S.parseAsync(h)).rejects.toBeInstanceOf(z.ZodError);
+    expect((await S.safeParseAsync(h)).success).toBe(false);
+    expect((await S.spa(seed)).success).toBe(true);
+  });
+});
+
+describe("final audit: JSON-text boundary", () => {
+  const text = (v: unknown) => JSON.stringify(v);
+
+  it("accepts every valid fixture through its JSON-text entry point", () => {
+    expect(parseTimelineSeedJson(text(seed)).success).toBe(true);
+    expect(parseTimelineSeedJson(text(blocked)).success).toBe(true);
+    expect(parseForecastReadyTimelineSeedJson(text(seed)).success).toBe(true);
+    expect(parseTimelineResultRefJson(text(result)).success).toBe(true);
+    expect(parseTimelineRevealJson(text(reveal)).success).toBe(true);
+    expect(parseTimelineResultRefContextJson(text(seed), text(result)).success).toBe(true);
+    expect(parseTimelineRevealContextJson(text(seed), text(reveal)).success).toBe(true);
+    expect(
+      parseOperationSummaryJson(
+        text({
+          schemaVersion: 1,
+          id: "timeline:operation/save",
+          ownerDomain: "timeline",
+          status: "queued",
+          title: "Save",
+          dependencies: [],
+          evidenceRefs: [],
+          outputRefs: [],
+          createdAt: "2026-10-24T12:00:00Z",
+          updatedAt: "2026-10-24T12:00:00Z",
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("rejects invalid fixtures through JSON text", () => {
+    expect(parseForecastReadyTimelineSeedJson(text(blocked)).success).toBe(false);
+    expect(parseTimelineSeedJson(text(fx.mismatchedSeed)).success).toBe(false);
+  });
+
+  const entries: [string, (t: unknown) => { success: boolean }][] = [
+    ["seed", parseTimelineSeedJson],
+    ["forecast-ready seed", parseForecastReadyTimelineSeedJson],
+    ["result ref", parseTimelineResultRefJson],
+    ["operation", parseOperationSummaryJson],
+    ["reveal", parseTimelineRevealJson],
+    ["result context", (t) => parseTimelineResultRefContextJson(t, text(result))],
+    ["reveal context", (t) => parseTimelineRevealContextJson(text(seed), t)],
+  ];
+  const BAD_TEXT: unknown[] = [
+    "",
+    "{",
+    "nul",
+    "[1,]",
+    "\u0000",
+    "NaN",
+    "1e999",
+    '"x"',
+    "null",
+    "[]",
+    "{}",
+    `{"__proto__":{"polluted":true}}`,
+    `${"[".repeat(200_000)}${"]".repeat(200_000)}`,
+    `"${"x".repeat(BOUNDARY_MAX_JSON_LENGTH)}"`,
+    undefined,
+    null,
+    42,
+    {},
+    new Proxy(
+      {},
+      {
+        get: () => {
+          throw new Error("x");
+        },
+      },
+    ),
+  ];
+
+  it.each(entries)("%s: any value or invalid text returns success:false", (_, parse) => {
+    for (const t of BAD_TEXT) {
+      let r: { success: boolean } | "threw";
+      try {
+        r = parse(t);
+      } catch {
+        r = "threw";
+      }
+      expect(r === "threw" ? r : r.success).toBe(false);
+    }
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("rejects a __proto__ key as an unknown field without changing any prototype", () => {
+    const t = text(seed).replace('{"schemaVersion"', '{"__proto__":{"x":1},"schemaVersion"');
+    expect(t).toContain("__proto__");
+    expect(parseTimelineSeedJson(t).success).toBe(false);
+  });
+});
+
+describe("final audit: money magnitude bound", () => {
+  const range = (id: string, low: number, high: number) => (s: TimelineSeedV1) => {
+    const a = s.snapshot.case.assumptions.find((x) => x.id === id)!;
+    a.value.low = low;
+    a.value.high = high;
+  };
+  const OVER = "number exceeds the boundary magnitude 2^49, so engine sums could overflow";
+  const MAX = Number.MAX_SAFE_INTEGER;
+
+  it("states the bound", () => {
+    expect(BOUNDARY_INTEGER_MAX).toBe(2 ** 49);
+  });
+
+  it("rejects the overflow repros: financing or FX at MAX_SAFE_INTEGER", () => {
+    expect(mutated(ForecastReadyTimelineSeedV1Schema, seed, range("AS-FIN0", MAX, MAX))).toEqual([
+      OVER,
+      OVER,
+    ]);
+    expect(mutated(ForecastReadyTimelineSeedV1Schema, seed, range("AS-FX0", MAX, MAX))).toEqual([
+      OVER,
+      OVER,
+    ]);
+  });
+
+  it("accepts exactly +-2^49 and rejects one beyond, for ranges, facts and costs", () => {
+    const B = BOUNDARY_INTEGER_MAX;
+    expect(mutated(S, seed, range("AS-FIN0", -B, B))).toEqual([]);
+    expect(mutated(S, seed, range("AS-FIN0", -B - 1, 0))).toEqual([OVER]);
+    expect(mutated(S, seed, range("AS-FX0", 0, B + 1))).toEqual([OVER]);
+    const cents = (id: string, v: number) => (s: TimelineSeedV1) => {
+      s.snapshot.case.facts.find((f) => f.id === id)!.cents = v;
+    };
+    expect(mutated(S, seed, cents("F05", -B))).toEqual([]);
+    expect(mutated(S, seed, cents("F05", -B - 1))).toEqual([OVER]);
+    expect(
+      mutated(S, seed, (s) => {
+        s.snapshot.case.assumptions.find((a) => a.id === "A1")!.oneTimeCost!.high = B + 1;
+      }),
+    ).toEqual([OVER]);
+    expect(
+      mutated(TimelineRevealV1Schema, reveal, (r) => {
+        r.disclosures.facts[0]!.cents = B + 1;
+      }),
+    ).toEqual([OVER]);
   });
 });

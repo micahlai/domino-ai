@@ -136,14 +136,29 @@ function driftPaths(raw: unknown, parsed: unknown, path: Path = []): Path[] {
 }
 
 /**
+ * Largest integer magnitude in any boundary record: 2^49 (562,949,953,421,312 cents, about
+ * USD 5.6 trillion). Applies to every number, so every money field (fact cents, assumption
+ * ranges, one-time costs) is covered; non-money integers (versions, lag days) never need more.
+ * Why 2^49 (B): engine quarterly_cash_bridge@0.1.0 at worst adds total (B), (OCF + ICF) / n
+ * (2B), financing (B) and FX (B) scaled by at most one quarter, a decision's benefit (B) and
+ * cost (B), then subtracts restricted cash (2B): at most 9B < 2^53, so it cannot overflow.
+ */
+export const BOUNDARY_INTEGER_MAX = 2 ** 49;
+
+/**
  * Every number in a boundary record is an integer (cents, days, versions). Reused legacy
  * shapes check .int() only, which admits 2^53 and beyond, where integers stop being exact.
  */
-function unsafeNumberPaths(value: unknown, path: Path = []): Path[] {
-  if (typeof value === "number") return Number.isSafeInteger(value) ? [] : [path];
-  if (Array.isArray(value)) return value.flatMap((v, i) => unsafeNumberPaths(v, [...path, i]));
+function numberIssues(value: unknown, path: Path = []): [Path, string][] {
+  if (typeof value === "number") {
+    if (!Number.isSafeInteger(value)) return [[path, "number must be a safe integer"]];
+    return Math.abs(value) > BOUNDARY_INTEGER_MAX
+      ? [[path, "number exceeds the boundary magnitude 2^49, so engine sums could overflow"]]
+      : [];
+  }
+  if (Array.isArray(value)) return value.flatMap((v, i) => numberIssues(v, [...path, i]));
   if (!isPlain(value)) return [];
-  return Object.keys(value).flatMap((k) => unsafeNumberPaths(value[k], [...path, k]));
+  return Object.keys(value).flatMap((k) => numberIssues(value[k], [...path, k]));
 }
 
 /**
@@ -163,8 +178,9 @@ const total =
 
 /**
  * Parse, then require the input to be exactly its parse (so the hashed bytes are the
- * contract) and every number to be a safe integer. Every failure is FATAL: the parse
- * aborts, so composed schemas (forecast-ready, contexts) never refine a failed record.
+ * contract) and every number to be a bounded safe integer. Every failure is FATAL: the
+ * parse aborts, so composed schemas (forecast-ready, contexts) never refine a failed record.
+ * Public entry points hand this a guarded plain snapshot (see guarded), never caller objects.
  */
 function exact<T extends z.ZodTypeAny>(schema: T) {
   return z.unknown().transform((raw, ctx): z.output<T> => {
@@ -172,34 +188,183 @@ function exact<T extends z.ZodTypeAny>(schema: T) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path, message, fatal: true });
       return z.NEVER;
     };
-    let r: z.SafeParseReturnType<unknown, z.output<T>>;
     try {
-      r = schema.safeParse(raw);
+      const r: z.SafeParseReturnType<unknown, z.output<T>> = schema.safeParse(raw);
+      if (!r.success) {
+        for (const i of r.error.issues) ctx.addIssue({ ...i, fatal: true });
+        return z.NEVER;
+      }
+      if (canonicalJson(raw) !== canonicalJson(r.data)) {
+        const paths = driftPaths(raw, r.data);
+        for (const path of paths.length ? paths : [[]])
+          fail(path, "field is not part of the contract (unknown field or omitted default)");
+        return z.NEVER;
+      }
+      const numbers = numberIssues(r.data);
+      for (const [path, message] of numbers) fail(path, message);
+      if (numbers.length) return z.NEVER;
+      return r.data;
     } catch {
-      return fail([], "malformed input could not be validated");
+      return fail([], "not plain JSON data, or malformed input that could not be validated");
     }
-    if (!r.success) {
-      for (const i of r.error.issues) ctx.addIssue({ ...i, fatal: true });
-      return z.NEVER;
-    }
-    let same: boolean;
-    try {
-      same = canonicalJson(raw) === canonicalJson(r.data);
-    } catch {
-      return fail([], "not plain JSON data (cycle, NaN, Infinity or a non-JSON value)");
-    }
-    if (!same) {
-      // raw is acyclic plain JSON here: canonicalJson succeeded on it.
-      const paths = driftPaths(raw, r.data);
-      for (const path of paths.length ? paths : [[]])
-        fail(path, "field is not part of the contract (unknown field or omitted default)");
-      return z.NEVER;
-    }
-    const unsafe = unsafeNumberPaths(r.data);
-    for (const path of unsafe) fail(path, "number must be a safe integer");
-    if (unsafe.length) return z.NEVER;
-    return r.data;
   });
+}
+
+// ---------- Total public entry points ----------
+
+/** Nesting deeper than this is rejected (boundary records nest about 8 levels). */
+export const BOUNDARY_MAX_DEPTH = 64;
+/** JSON text longer than this many UTF-16 code units is rejected before parsing. */
+export const BOUNDARY_MAX_JSON_LENGTH = 16 * 1024 * 1024;
+
+type Snapshot = { ok: true; value: unknown } | { ok: false; message: string };
+class NotPlain extends Error {}
+
+/**
+ * A plain-JSON copy of any JS value, taken in one guarded pass. Accessor properties are
+ * rejected, never invoked; each data property is read once through its descriptor, so a
+ * getter or proxy trap cannot answer differently on a second read. Proxies with throwing or
+ * revoked traps, non-plain prototypes, symbols, bigints, functions, non-finite numbers,
+ * holes, cycles and excessive depth all fail. Shared (non-cyclic) references are copied
+ * once and reused by identity. Undefined object values are dropped, as in JSON.
+ */
+export function plainJsonSnapshot(input: unknown): Snapshot {
+  const done = new Map<object, unknown>();
+  const active = new Set<object>();
+  const copy = (v: unknown, depth: number): unknown => {
+    if (v === null || typeof v === "string" || typeof v === "boolean") return v;
+    if (typeof v === "number") {
+      if (!Number.isFinite(v)) throw new NotPlain("non-finite number");
+      return v;
+    }
+    if (typeof v !== "object") throw new NotPlain(`unsupported ${typeof v}`);
+    if (depth > BOUNDARY_MAX_DEPTH) throw new NotPlain("nested too deeply");
+    if (done.has(v)) return done.get(v);
+    if (active.has(v)) throw new NotPlain("cyclic value");
+    active.add(v);
+    const isArray = Array.isArray(v);
+    const proto = Object.getPrototypeOf(v);
+    const own = (key: string) => {
+      const d = Object.getOwnPropertyDescriptor(v, key);
+      if (!d) return undefined;
+      if (!("value" in d)) throw new NotPlain("accessor properties are not plain data");
+      return d;
+    };
+    let out: unknown;
+    if (isArray) {
+      if (proto !== Array.prototype) throw new NotPlain("only plain arrays are supported");
+      const length = own("length")?.value;
+      if (!Number.isSafeInteger(length)) throw new NotPlain("invalid array length");
+      const items: unknown[] = [];
+      for (let i = 0; i < length; i++) {
+        const d = own(String(i));
+        if (!d || d.value === undefined) throw new NotPlain("array hole or undefined item");
+        items.push(copy(d.value, depth + 1));
+      }
+      out = items;
+    } else {
+      if (proto !== Object.prototype && proto !== null)
+        throw new NotPlain("only plain objects are supported");
+      const record: Record<string, unknown> = {};
+      for (const key of Object.keys(v)) {
+        const d = own(key);
+        if (!d || d.value === undefined) continue;
+        // defineProperty, so a "__proto__" key stays data instead of changing the prototype.
+        Object.defineProperty(record, key, {
+          value: copy(d.value, depth + 1),
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+      out = record;
+    }
+    active.delete(v);
+    done.set(v, out);
+    return out;
+  };
+  try {
+    return { ok: true, value: copy(input, 0) };
+  } catch (e) {
+    return {
+      ok: false,
+      message: `not plain JSON data: ${e instanceof NotPlain ? e.message : "input could not be read"}`,
+    };
+  }
+}
+
+const failure = <I, O>(message: string): z.SafeParseReturnType<I, O> => ({
+  success: false,
+  error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: [], message }]),
+});
+
+/**
+ * Make safeParse (and parse, safeParseAsync, parseAsync, spa, which delegate to it) total
+ * for any JS value: validate a guarded plain snapshot, never the caller's object. Zod itself
+ * inspects its input (for example a "then" getter) before any schema code runs, so the guard
+ * must wrap the public method. Composing these schemas inside another Zod schema bypasses
+ * the guard; use the exported schemas or the JSON-text entry points at the boundary.
+ */
+function guarded<T extends z.ZodTypeAny>(schema: T): T {
+  const inner = schema.safeParse.bind(schema);
+  const run = (
+    data: unknown,
+    params?: Partial<z.ParseParams>,
+  ): z.SafeParseReturnType<z.input<T>, z.output<T>> => {
+    const snap = plainJsonSnapshot(data);
+    if (!snap.ok) return failure(snap.message);
+    try {
+      return inner(snap.value, params);
+    } catch {
+      return failure("malformed input could not be validated");
+    }
+  };
+  const runAsync = async (data: unknown, params?: Partial<z.ParseParams>) => run(data, params);
+  return Object.assign(schema, { safeParse: run, safeParseAsync: runAsync, spa: runAsync });
+}
+
+/**
+ * The cross-lane boundary: validate JSON text, as exchanged between features. Never throws,
+ * for any value: non-strings, oversized text and invalid JSON return success:false.
+ */
+export function safeParseJsonText<T extends z.ZodTypeAny>(
+  schema: T,
+  text: unknown,
+): z.SafeParseReturnType<unknown, z.output<T>> {
+  try {
+    if (typeof text !== "string") return failure("expected JSON text");
+    if (text.length > BOUNDARY_MAX_JSON_LENGTH) return failure("JSON text is too large");
+    let value: unknown;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      return failure("invalid JSON text");
+    }
+    return schema.safeParse(value);
+  } catch {
+    return failure("malformed input could not be validated");
+  }
+}
+
+/** Parse two JSON texts and validate them as one {[a]: ..., [b]: ...} context. */
+function contextFromJson<T extends z.ZodTypeAny>(schema: T, a: string, b: string) {
+  return (textA: unknown, textB: unknown): z.SafeParseReturnType<unknown, z.output<T>> => {
+    try {
+      if (typeof textA !== "string" || typeof textB !== "string")
+        return failure("expected JSON text");
+      if (textA.length + textB.length > BOUNDARY_MAX_JSON_LENGTH)
+        return failure("JSON text is too large");
+      let pair: unknown;
+      try {
+        pair = { [a]: JSON.parse(textA), [b]: JSON.parse(textB) };
+      } catch {
+        return failure("invalid JSON text");
+      }
+      return schema.safeParse(pair);
+    } catch {
+      return failure("malformed input could not be validated");
+    }
+  };
 }
 
 // ---------- Domain identity ----------
@@ -524,17 +689,19 @@ const SeedObjectSchema = z
  * Self-contained immutable snapshot export from Field to Timeline. A valid seed may be
  * blocked; use ForecastReadyTimelineSeedV1Schema to accept only forecastable seeds.
  */
-export const TimelineSeedV1Schema = exact(SeedObjectSchema);
+export const TimelineSeedV1Schema = guarded(exact(SeedObjectSchema));
 export type TimelineSeedV1 = z.infer<typeof SeedObjectSchema>;
 
-export const ForecastReadyTimelineSeedV1Schema = TimelineSeedV1Schema.superRefine(
-  total((seed, ctx) => {
-    if (seed.readiness.status !== "forecast_ready")
-      issuer(ctx)(
-        ["readiness", "status"],
-        "a seed with a blocked required role is not forecast-ready",
-      );
-  }),
+export const ForecastReadyTimelineSeedV1Schema = guarded(
+  TimelineSeedV1Schema.superRefine(
+    total((seed, ctx) => {
+      if (seed.readiness.status !== "forecast_ready")
+        issuer(ctx)(
+          ["readiness", "status"],
+          "a seed with a blocked required role is not forecast-ready",
+        );
+    }),
+  ),
 );
 
 // ---------- TimelineResultRefV1 ----------
@@ -585,38 +752,40 @@ const ResultRefObjectSchema = z
   );
 
 /** Read-only pointer from Timeline back to Field. Field links to it; it never rewrites results. */
-export const TimelineResultRefV1Schema = exact(ResultRefObjectSchema);
+export const TimelineResultRefV1Schema = guarded(exact(ResultRefObjectSchema));
 export type TimelineResultRefV1 = z.infer<typeof ResultRefObjectSchema>;
 
 /** A result ref checked against the seed it claims to come from. */
-export const TimelineResultRefContextV1Schema = z
-  .object({ seed: TimelineSeedV1Schema, result: TimelineResultRefV1Schema })
-  .strict()
-  .superRefine(
-    total(({ seed, result }, ctx) => {
-      const issue = issuer(ctx);
-      if (result.seed.id !== seed.id || result.seed.contentHash !== seed.contentHash)
-        issue(["result", "seed"], "result names another seed or seed content");
-      if (
-        result.snapshot.id !== seed.snapshotRef.id ||
-        result.snapshot.contentHash !== seed.snapshotRef.contentHash
-      )
-        issue(["result", "snapshot"], "result names another snapshot or snapshot content");
-      if (result.company.cik !== seed.company.cik || result.company.name !== seed.company.name)
-        issue(["result", "company"], "result is for another company");
-      if (
-        result.method.id !== seed.pins.method.id ||
-        result.method.version !== seed.pins.method.version
-      )
-        issue(["result", "method"], "result method differs from the seed pin");
-      if (result.target.date !== seed.quarterBridge.targetDate)
-        issue(["result", "target", "date"], "result target differs from the seed target");
-      if (seed.readiness.status !== "forecast_ready")
-        issue(["seed", "readiness"], "a result needs a forecast-ready seed");
-      if (ms(result.createdAt) < ms(seed.exportedAt))
-        issue(["result", "createdAt"], "result created before its seed was exported");
-    }),
-  );
+export const TimelineResultRefContextV1Schema = guarded(
+  z
+    .object({ seed: TimelineSeedV1Schema, result: TimelineResultRefV1Schema })
+    .strict()
+    .superRefine(
+      total(({ seed, result }, ctx) => {
+        const issue = issuer(ctx);
+        if (result.seed.id !== seed.id || result.seed.contentHash !== seed.contentHash)
+          issue(["result", "seed"], "result names another seed or seed content");
+        if (
+          result.snapshot.id !== seed.snapshotRef.id ||
+          result.snapshot.contentHash !== seed.snapshotRef.contentHash
+        )
+          issue(["result", "snapshot"], "result names another snapshot or snapshot content");
+        if (result.company.cik !== seed.company.cik || result.company.name !== seed.company.name)
+          issue(["result", "company"], "result is for another company");
+        if (
+          result.method.id !== seed.pins.method.id ||
+          result.method.version !== seed.pins.method.version
+        )
+          issue(["result", "method"], "result method differs from the seed pin");
+        if (result.target.date !== seed.quarterBridge.targetDate)
+          issue(["result", "target", "date"], "result target differs from the seed target");
+        if (seed.readiness.status !== "forecast_ready")
+          issue(["seed", "readiness"], "a result needs a forecast-ready seed");
+        if (ms(result.createdAt) < ms(seed.exportedAt))
+          issue(["result", "createdAt"], "result created before its seed was exported");
+      }),
+    ),
+);
 
 // ---------- OperationSummaryV1 ----------
 
@@ -730,7 +899,7 @@ const OperationObjectSchema = z
  * finance calculation and scenario receipts. No raw provider packets, credentials or hidden
  * reasoning: the record is strict and carries refs, never payloads.
  */
-export const OperationSummaryV1Schema = exact(OperationObjectSchema);
+export const OperationSummaryV1Schema = guarded(exact(OperationObjectSchema));
 export type OperationSummaryV1 = z.infer<typeof OperationObjectSchema>;
 
 // ---------- TimelineRevealV1 (post-reveal, never part of a seed) ----------
@@ -775,33 +944,60 @@ const RevealObjectSchema = z
   );
 
 /** Permitted later actuals, kept apart from the seed and every earlier forecast. */
-export const TimelineRevealV1Schema = exact(RevealObjectSchema);
+export const TimelineRevealV1Schema = guarded(exact(RevealObjectSchema));
 export type TimelineRevealV1 = z.infer<typeof RevealObjectSchema>;
 
 /** A reveal checked against the seed it scores: same company, case and cutoff, no shared ids. */
-export const TimelineRevealContextV1Schema = z
-  .object({ seed: TimelineSeedV1Schema, reveal: TimelineRevealV1Schema })
-  .strict()
-  .superRefine(
-    total(({ seed, reveal }, ctx) => {
-      const issue = issuer(ctx);
-      const c = seed.snapshot.case;
-      const d = reveal.disclosures;
-      if (reveal.seed.id !== seed.id || reveal.seed.contentHash !== seed.contentHash)
-        issue(["reveal", "seed"], "reveal names another seed or seed content");
-      if (reveal.company.cik !== seed.company.cik || reveal.company.name !== seed.company.name)
-        issue(["reveal", "company"], "reveal is for another company");
-      if (reveal.knowledgeCutoff !== seed.snapshot.cutoff)
-        issue(["reveal", "knowledgeCutoff"], "reveal cutoff differs from the seed cutoff");
-      if (d.id !== c.id || d.currency !== c.currency || d.provenance !== c.provenance)
-        issue(["reveal", "disclosures"], "disclosures belong to another case");
-      const sourceIds = new Set(c.sources.map((s) => s.id));
-      const factIds = new Set(c.facts.map((f) => f.id));
-      for (const [i, s] of d.sources.entries())
-        if (sourceIds.has(s.id))
-          issue(["reveal", "disclosures", "sources", i, "id"], "source id already in the seed");
-      for (const [i, f] of d.facts.entries())
-        if (factIds.has(f.id))
-          issue(["reveal", "disclosures", "facts", i, "id"], "fact id already in the seed");
-    }),
-  );
+export const TimelineRevealContextV1Schema = guarded(
+  z
+    .object({ seed: TimelineSeedV1Schema, reveal: TimelineRevealV1Schema })
+    .strict()
+    .superRefine(
+      total(({ seed, reveal }, ctx) => {
+        const issue = issuer(ctx);
+        const c = seed.snapshot.case;
+        const d = reveal.disclosures;
+        if (reveal.seed.id !== seed.id || reveal.seed.contentHash !== seed.contentHash)
+          issue(["reveal", "seed"], "reveal names another seed or seed content");
+        if (reveal.company.cik !== seed.company.cik || reveal.company.name !== seed.company.name)
+          issue(["reveal", "company"], "reveal is for another company");
+        if (reveal.knowledgeCutoff !== seed.snapshot.cutoff)
+          issue(["reveal", "knowledgeCutoff"], "reveal cutoff differs from the seed cutoff");
+        if (d.id !== c.id || d.currency !== c.currency || d.provenance !== c.provenance)
+          issue(["reveal", "disclosures"], "disclosures belong to another case");
+        const sourceIds = new Set(c.sources.map((s) => s.id));
+        const factIds = new Set(c.facts.map((f) => f.id));
+        for (const [i, s] of d.sources.entries())
+          if (sourceIds.has(s.id))
+            issue(["reveal", "disclosures", "sources", i, "id"], "source id already in the seed");
+        for (const [i, f] of d.facts.entries())
+          if (factIds.has(f.id))
+            issue(["reveal", "disclosures", "facts", i, "id"], "fact id already in the seed");
+      }),
+    ),
+);
+
+// ---------- JSON-text boundary (what crosses between lanes) ----------
+
+export const parseTimelineSeedJson = (text: unknown) =>
+  safeParseJsonText(TimelineSeedV1Schema, text);
+export const parseForecastReadyTimelineSeedJson = (text: unknown) =>
+  safeParseJsonText(ForecastReadyTimelineSeedV1Schema, text);
+export const parseTimelineResultRefJson = (text: unknown) =>
+  safeParseJsonText(TimelineResultRefV1Schema, text);
+export const parseOperationSummaryJson = (text: unknown) =>
+  safeParseJsonText(OperationSummaryV1Schema, text);
+export const parseTimelineRevealJson = (text: unknown) =>
+  safeParseJsonText(TimelineRevealV1Schema, text);
+/** (seed JSON text, result JSON text) */
+export const parseTimelineResultRefContextJson = contextFromJson(
+  TimelineResultRefContextV1Schema,
+  "seed",
+  "result",
+);
+/** (seed JSON text, reveal JSON text) */
+export const parseTimelineRevealContextJson = contextFromJson(
+  TimelineRevealContextV1Schema,
+  "seed",
+  "reveal",
+);
