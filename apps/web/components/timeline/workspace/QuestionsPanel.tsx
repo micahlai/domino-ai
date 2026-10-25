@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "../../ui/badge";
@@ -8,6 +9,7 @@ import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { inputClass } from "./RuleEditor";
 import { Panel, WhenDate } from "./RunPanels";
 import type { QuestionReceipt, Read } from "./api";
+import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "./chatFrame";
 import { changeText } from "./drafts";
 import { type Outcome, isConfirmed } from "./requests";
 
@@ -198,8 +200,14 @@ function Receipt({
   onReask: (q: QuestionReceipt) => void;
   onEdit: (prompt: string) => void;
 }) {
+  const enter = useEnter();
   return (
-    <li className="space-y-2 border-t pt-3" data-testid={`question-${q.id}`} data-status={q.status}>
+    <motion.li
+      {...enter}
+      className="space-y-2 border-t pt-3"
+      data-testid={`question-${q.id}`}
+      data-status={q.status}
+    >
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Badge variant="outline">{STATUS_TEXT[q.status]}</Badge>
         <span>{formatSavedAt(q.savedAt)}</span>
@@ -256,7 +264,7 @@ function Receipt({
         </details>
       ) : null}
       {q.status === "proposal" ? <ProposalCard q={q} actions={actions} /> : null}
-    </li>
+    </motion.li>
   );
 }
 
@@ -293,47 +301,65 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
   const saved = p.questions.state === "ready" ? p.questions.value : [];
   const all = mergeReceipts(saved, latest);
 
-  return (
-    <Panel title="Ask about this forecast" testId="questions" bare={p.bare}>
-      <p className="text-sm text-muted-foreground">
-        For example: &ldquo;Why did cash drop this week?&rdquo; or &ldquo;What if Acme pays 30 days
-        late?&rdquo; Answers come from the saved forecast. A what-if runs only after you confirm it.
-      </p>
-      {p.selectedWeek || p.selectedItemId ? (
-        <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="question-context">
-          <span className="text-muted-foreground">Asking about</span>
-          {p.selectedWeek ? (
-            <Badge variant="outline">
-              week of <WhenDate iso={p.selectedWeek} />
-            </Badge>
-          ) : null}
-          {p.selectedItemId ? <Badge variant="outline">{p.selectedItemId}</Badge> : null}
-          <Button size="sm" variant="ghost" onClick={p.onClearContext}>
-            Clear
-          </Button>
-        </div>
-      ) : null}
+  const ask = () =>
+    send({ prompt, selectedWeek: p.selectedWeek, selectedItemId: p.selectedItemId }, false);
+  const intro = (
+    <p className="text-sm text-muted-foreground">
+      For example: &ldquo;Why did cash drop this week?&rdquo; or &ldquo;What if Acme pays 30 days
+      late?&rdquo; Answers come from the saved forecast. A what-if runs only after you confirm it.
+    </p>
+  );
+  const context =
+    p.selectedWeek || p.selectedItemId ? (
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="question-context">
+        <span className="text-muted-foreground">Asking about</span>
+        {p.selectedWeek ? (
+          <Badge variant="outline">
+            week of <WhenDate iso={p.selectedWeek} />
+          </Badge>
+        ) : null}
+        {p.selectedItemId ? <Badge variant="outline">{p.selectedItemId}</Badge> : null}
+        <Button size="sm" variant="ghost" onClick={p.onClearContext}>
+          Clear
+        </Button>
+      </div>
+    ) : null;
+  const form = (
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!p.disabled) ask();
+      }}
+    >
+      {p.bare ? context : null}
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Your question</span>
         <textarea
           id="question-prompt"
-          className={`${inputClass} h-20`}
+          className={`${inputClass} ${p.bare ? "h-16" : "h-20"}`}
           maxLength={2000}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={submitOnEnter}
           data-testid="question-prompt"
         />
       </label>
-      <Button
-        onClick={() =>
-          send({ prompt, selectedWeek: p.selectedWeek, selectedItemId: p.selectedItemId }, false)
-        }
-        disabled={pending || !prompt.trim() || Boolean(p.disabled)}
-        data-testid="question-ask"
-      >
-        {pending ? "Thinking..." : "Ask"}
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Enter asks · Shift+Enter for a new line</p>
+        <Button
+          type="submit"
+          disabled={pending || !prompt.trim() || Boolean(p.disabled)}
+          data-testid="question-ask"
+        >
+          {pending ? "Thinking..." : "Ask"}
+        </Button>
+      </div>
       {p.disabled ? <p className="text-xs text-muted-foreground">{p.disabled}</p> : null}
+    </form>
+  );
+  const status = (
+    <>
       {error ? (
         <p role="alert" className="text-sm text-destructive" data-testid="question-error">
           {error}
@@ -348,30 +374,61 @@ export function QuestionsPanel(p: QuestionsPanelProps) {
           Earlier questions could not be shown.
         </p>
       ) : null}
-      {all.length ? (
-        <ol className="space-y-3">
-          {all.map((q) => (
-            <Receipt
-              key={q.id}
-              q={q}
-              actions={p.actions}
-              onReask={(r) =>
-                send(
-                  {
-                    prompt: r.prompt,
-                    selectedWeek: r.selectedWeek,
-                    selectedItemId: r.selectedItemId,
-                  },
-                  true,
-                )
-              }
-              onEdit={setPrompt}
-            />
-          ))}
-        </ol>
-      ) : p.questions.state === "ready" ? (
-        <p className="text-xs text-muted-foreground">No questions asked about this scenario yet.</p>
-      ) : null}
+    </>
+  );
+  const list = all.length ? (
+    <ol className="space-y-3">
+      <AnimatePresence initial={false}>
+        {all.map((q) => (
+          <Receipt
+            key={q.id}
+            q={q}
+            actions={p.actions}
+            onReask={(r) =>
+              send(
+                {
+                  prompt: r.prompt,
+                  selectedWeek: r.selectedWeek,
+                  selectedItemId: r.selectedItemId,
+                },
+                true,
+              )
+            }
+            onEdit={setPrompt}
+          />
+        ))}
+      </AnimatePresence>
+    </ol>
+  ) : p.questions.state === "ready" ? (
+    <p className="text-xs text-muted-foreground">No questions asked about this scenario yet.</p>
+  ) : null;
+
+  if (p.bare)
+    return (
+      <section
+        className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11"
+        data-testid="questions"
+      >
+        <ChatScrollFrame
+          label="Questions and answers"
+          followKey={`${all.length}:${all.at(-1)?.status ?? ""}:${pending}`}
+          composer={form}
+        >
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask about this forecast</h3>
+          {intro}
+          {list}
+          {pending ? <TypingDots label="Reading the saved forecast…" /> : null}
+          {status}
+        </ChatScrollFrame>
+      </section>
+    );
+  return (
+    <Panel title="Ask about this forecast" testId="questions">
+      {intro}
+      {context}
+      {form}
+      {status}
+      {list}
     </Panel>
   );
 }

@@ -30,22 +30,8 @@ export function OutcomeBadge({ outcome }: { outcome: Outcome | null }) {
   );
 }
 
-/** One baseline family. Open navigates; Compare only reads a saved curve. */
-export function ScenarioSidebar({
-  run,
-  graph,
-  comparisons,
-  hrefFor,
-  catalogHref,
-}: {
-  run: WorkspaceRun;
-  graph: Read<CatalogEntry[]>;
-  comparisons: ScenarioComparisons;
-  hrefFor: (id: string) => string;
-  catalogHref: string;
-}) {
-  const [search, setSearch] = useState("");
-  const searchId = useId();
+/** Saved scenarios built from the open run's books, always including the open run. */
+export function familyEntries(run: WorkspaceRun, graph: Read<CatalogEntry[]>): CatalogEntry[] {
   const entries =
     graph.state === "ready"
       ? graph.value.filter(
@@ -66,6 +52,26 @@ export function ScenarioSidebar({
       lowPointWeek: run.forecast.lowPoint.weekStart,
       constraintVersion: run.constraintVersion,
     });
+  return entries;
+}
+
+/** One baseline family. Open navigates; Compare only reads a saved curve. */
+export function ScenarioSidebar({
+  run,
+  graph,
+  comparisons,
+  hrefFor,
+  catalogHref,
+}: {
+  run: WorkspaceRun;
+  graph: Read<CatalogEntry[]>;
+  comparisons: ScenarioComparisons;
+  hrefFor: (id: string) => string;
+  catalogHref: string;
+}) {
+  const [search, setSearch] = useState("");
+  const searchId = useId();
+  const entries = familyEntries(run, graph);
   const byId = new Map(entries.map((e) => [e.runId, e]));
   const filtered = entries.filter((entry) =>
     `${entry.label} ${KIND[entry.kind]}`.toLowerCase().includes(search.trim().toLowerCase()),

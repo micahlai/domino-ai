@@ -23,6 +23,7 @@ import {
   formatDelta,
 } from "./RunPanels";
 import { ScenarioComposer } from "./ScenarioComposer";
+import { ScenarioNav } from "./ScenarioNav";
 import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
@@ -167,226 +168,230 @@ export function WorkspaceView({
 
   return (
     <article
-      className="min-w-0 max-w-full space-y-6 [overflow-wrap:anywhere]"
+      className="grid min-w-0 max-w-full grid-cols-1 items-start gap-6 [overflow-wrap:anywhere] lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[13rem_minmax(0,1fr)_25rem]"
       data-testid="workspace"
       data-run-id={run.runId}
     >
-      <PageHeader
-        eyebrow={
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-medium text-foreground">{b.companyName}</span>
-            <Badge variant="secondary">Simulated company</Badge>
-            <span aria-hidden="true" className="max-sm:hidden">
-              ·
-            </span>
-            <span>{run.label || KIND[run.kind]}</span>
-            <span aria-hidden="true" className="max-sm:hidden">
-              ·
-            </span>
-            <span>Books as of {formatFullDate(b.seed.asOf)}</span>
-          </span>
-        }
-        title={<span data-testid="workspace-headline">{runHeadline(run)}</span>}
-        description={
-          <>
-            Lowest usable cash is {formatExactCents(low.usable)} in the week of{" "}
-            <WhenDate iso={low.weekStart} />. {KIND[run.kind]}, saved {formatSavedAt(run.savedAt)}.
-            Saved results never change.
-          </>
-        }
-        actions={
-          <>
-            <Button onClick={() => openAssistant("ask")} data-testid="action-ask">
-              <MessageCircle aria-hidden="true" />
-              Ask a question
-            </Button>
-            <Button variant="outline" onClick={tryEvent} data-testid="action-event">
-              <SquarePlus aria-hidden="true" />
-              Try an event
-            </Button>
-            <Button variant="outline" asChild>
-              <Link
-                href={risksHref ?? analysisHref(run.companyId, run.runId)}
-                data-testid="action-risks"
-              >
-                <ShieldAlert aria-hidden="true" />
-                See saved risks
-              </Link>
-            </Button>
-          </>
-        }
+      <ScenarioNav
+        run={run}
+        graph={graph}
+        hrefFor={actions.hrefFor}
+        catalogHref={actions.catalogHref}
       />
-      {notice}
-      {parent && parent.state !== "ready" ? (
-        <p className="text-xs text-muted-foreground" data-testid="parent-unavailable">
-          {parent.state === "loading"
-            ? "Reading the scenario it started from..."
-            : "The scenario it started from could not be shown, so it is not drawn."}
-        </p>
-      ) : null}
-
-      <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
-        <div className="min-w-0 max-w-full space-y-6">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatTile
-              label="Lowest point"
-              value={formatExactCents(low.usable)}
-              delta={`Week of ${formatFullDate(low.weekStart)}`}
-              data-testid="tile-low"
-            />
-            {floor ? (
-              <StatTile
-                label={floor.label}
-                value={formatExactCents(floor.limit)}
-                tone={
-                  floor.status === "breached"
-                    ? "negative"
-                    : floor.status === "clear"
-                      ? "positive"
-                      : "neutral"
-                }
-                delta={
-                  floor.status === "breached"
-                    ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatExactCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
-                    : floor.status === "clear"
-                      ? "Stays above in every week"
-                      : "Could not be checked"
-                }
-                data-testid="tile-minimum"
-              />
-            ) : (
-              <StatTile
-                label="Cash minimum"
-                value="None set"
-                delta="Add one under Change the cash rules"
-                data-testid="tile-minimum"
-              />
-            )}
-            {run.comparison ? (
-              <StatTile
-                label="Lowest point vs. where it started"
-                value={formatDelta(run.comparison.lowPointDelta)}
-                delta={
-                  run.ownChanges.length === 0
-                    ? "Only the rules changed"
-                    : `${run.ownChanges.length} ${run.ownChanges.length === 1 ? "change" : "changes"} in this scenario`
-                }
-              />
-            ) : (
-              <StatTile
-                className="max-sm:hidden"
-                label="Forecast"
-                value={`${run.forecast.weeks.length} weeks`}
-                delta={`${formatFullDate(firstWeek)} to ${formatFullDate(lastWeek)}`}
-              />
-            )}
-          </div>
-
-          <section className="min-w-0 space-y-4 rounded-lg border bg-card p-4 shadow-xs sm:p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Usable cash by week</h2>
-              <p className="text-xs text-muted-foreground">
-                Hover a week for details, click one to pick it
-              </p>
-            </div>
-            <WorkspaceChart
-              history={b.history}
-              forecast={run.forecast}
-              comparisons={curves}
-              items={b.seed.scheduledItems}
-              limits={limits}
-              breachedWeeks={breaches.map((n) => n.weekStart)}
-              breachNotes={breaches}
-              selectedWeek={selectedWeek}
-              onSelectWeek={(w) => {
-                setSelectedWeek(w);
-                setSelectedItemId(null);
-              }}
-            />
-          </section>
-
-          <ScenarioComposer
-            selectedWeek={selectedWeek}
-            firstWeek={firstWeek}
-            invoices={options.invoices}
-            bills={options.bills}
-            suggestion={suggestion}
-            onRun={actions.simulate}
-            disabled={disabled}
-            open={composerOpen}
-            onOpenChange={setComposerOpen}
-          />
-
-          <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
-            <WeekDetail
-              run={run}
-              weekStart={selectedWeek}
-              selectedItemId={selectedItemId}
-              onSelectItem={setSelectedItemId}
-            />
-            <ReceiptsPanel run={run} />
-          </div>
-
-          <ScenarioSidebar
-            run={run}
-            graph={graph}
-            comparisons={{ ...selection, ids: selectedIds }}
-            hrefFor={actions.hrefFor}
-            catalogHref={actions.catalogHref}
-          />
-
-          <details className="group min-w-0">
-            <summary className={SUMMARY}>
-              <ChevronRight aria-hidden="true" className={CHEVRON} />
-              What changed and how it was built
-            </summary>
-            <div className="mt-2 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
-              <ChangesPanel run={run} />
-              <ComparisonPanel run={run} />
-              <ImpactPanel dominoes={run.dominoes} />
-              <AncestryPanel graph={graph} runId={run.runId} hrefFor={actions.hrefFor} />
-            </div>
-          </details>
-          <details className="group min-w-0">
-            <summary className={SUMMARY}>
-              <ChevronRight aria-hidden="true" className={CHEVRON} />
-              Change the cash rules
-            </summary>
-            <div className="mt-2">
-              <RuleEditor
-                constraints={run.constraints}
-                bills={options.bills}
-                onSave={actions.reviseRules}
-                disabled={disabled}
-              />
-            </div>
-          </details>
-          <Provenance run={run} resultRef={resultRef} />
-        </div>
-
-        <Assistant
-          tab={assistantTab}
-          onTab={setAssistantTab}
-          open={assistantOpen}
-          onOpenChange={setAssistantOpen}
-          focusKey={focusKey}
-          chat={chatNode}
-          ask={
-            <QuestionsPanel
-              bare
-              questions={questions}
-              selectedWeek={selectedWeek}
-              selectedItemId={selectedItemId}
-              onClearContext={() => {
-                setSelectedWeek(null);
-                setSelectedItemId(null);
-              }}
-              actions={actions}
-              disabled={disabled}
-            />
+      <div className="min-w-0 max-w-full space-y-6">
+        <PageHeader
+          eyebrow={
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium text-foreground">{b.companyName}</span>
+              <Badge variant="secondary">Simulated company</Badge>
+              <span aria-hidden="true" className="max-sm:hidden">
+                ·
+              </span>
+              <span>{run.label || KIND[run.kind]}</span>
+              <span aria-hidden="true" className="max-sm:hidden">
+                ·
+              </span>
+              <span>Books as of {formatFullDate(b.seed.asOf)}</span>
+            </span>
+          }
+          title={<span data-testid="workspace-headline">{runHeadline(run)}</span>}
+          description={
+            <>
+              Lowest usable cash is {formatExactCents(low.usable)} in the week of{" "}
+              <WhenDate iso={low.weekStart} />. {KIND[run.kind]}, saved {formatSavedAt(run.savedAt)}
+              . Saved results never change.
+            </>
+          }
+          actions={
+            <>
+              <Button onClick={() => openAssistant("ask")} data-testid="action-ask">
+                <MessageCircle aria-hidden="true" />
+                Ask a question
+              </Button>
+              <Button variant="outline" onClick={tryEvent} data-testid="action-event">
+                <SquarePlus aria-hidden="true" />
+                Try an event
+              </Button>
+              <Button variant="outline" asChild>
+                <Link
+                  href={risksHref ?? analysisHref(run.companyId, run.runId)}
+                  data-testid="action-risks"
+                >
+                  <ShieldAlert aria-hidden="true" />
+                  See saved risks
+                </Link>
+              </Button>
+            </>
           }
         />
+        {notice}
+        {parent && parent.state !== "ready" ? (
+          <p className="text-xs text-muted-foreground" data-testid="parent-unavailable">
+            {parent.state === "loading"
+              ? "Reading the scenario it started from..."
+              : "The scenario it started from could not be shown, so it is not drawn."}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Lowest point"
+            value={formatExactCents(low.usable)}
+            delta={`Week of ${formatFullDate(low.weekStart)}`}
+            data-testid="tile-low"
+          />
+          {floor ? (
+            <StatTile
+              label={floor.label}
+              value={formatExactCents(floor.limit)}
+              tone={
+                floor.status === "breached"
+                  ? "negative"
+                  : floor.status === "clear"
+                    ? "positive"
+                    : "neutral"
+              }
+              delta={
+                floor.status === "breached"
+                  ? `${floor.shortfall !== null && Number.isSafeInteger(floor.shortfall) ? `Short ${formatExactCents(floor.shortfall)}` : "Below it"}${floor.weekStart ? `, week of ${formatFullDate(floor.weekStart)}` : ""}`
+                  : floor.status === "clear"
+                    ? "Stays above in every week"
+                    : "Could not be checked"
+              }
+              data-testid="tile-minimum"
+            />
+          ) : (
+            <StatTile
+              label="Cash minimum"
+              value="None set"
+              delta="Add one under Change the cash rules"
+              data-testid="tile-minimum"
+            />
+          )}
+          {run.comparison ? (
+            <StatTile
+              label="Lowest point vs. where it started"
+              value={formatDelta(run.comparison.lowPointDelta)}
+              delta={
+                run.ownChanges.length === 0
+                  ? "Only the rules changed"
+                  : `${run.ownChanges.length} ${run.ownChanges.length === 1 ? "change" : "changes"} in this scenario`
+              }
+            />
+          ) : (
+            <StatTile
+              className="max-sm:hidden"
+              label="Forecast"
+              value={`${run.forecast.weeks.length} weeks`}
+              delta={`${formatFullDate(firstWeek)} to ${formatFullDate(lastWeek)}`}
+            />
+          )}
+        </div>
+
+        <section className="min-w-0 space-y-4 rounded-lg border bg-card p-4 shadow-xs sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Usable cash by week</h2>
+            <p className="text-xs text-muted-foreground">
+              Hover a week for details, click one to pick it
+            </p>
+          </div>
+          <WorkspaceChart
+            history={b.history}
+            forecast={run.forecast}
+            comparisons={curves}
+            items={b.seed.scheduledItems}
+            limits={limits}
+            breachedWeeks={breaches.map((n) => n.weekStart)}
+            breachNotes={breaches}
+            selectedWeek={selectedWeek}
+            onSelectWeek={(w) => {
+              setSelectedWeek(w);
+              setSelectedItemId(null);
+            }}
+          />
+        </section>
+
+        <ScenarioComposer
+          selectedWeek={selectedWeek}
+          firstWeek={firstWeek}
+          invoices={options.invoices}
+          bills={options.bills}
+          suggestion={suggestion}
+          onRun={actions.simulate}
+          disabled={disabled}
+          open={composerOpen}
+          onOpenChange={setComposerOpen}
+        />
+
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
+          <WeekDetail
+            run={run}
+            weekStart={selectedWeek}
+            selectedItemId={selectedItemId}
+            onSelectItem={setSelectedItemId}
+          />
+          <ReceiptsPanel run={run} />
+        </div>
+
+        <ScenarioSidebar
+          run={run}
+          graph={graph}
+          comparisons={{ ...selection, ids: selectedIds }}
+          hrefFor={actions.hrefFor}
+          catalogHref={actions.catalogHref}
+        />
+
+        <details className="group min-w-0">
+          <summary className={SUMMARY}>
+            <ChevronRight aria-hidden="true" className={CHEVRON} />
+            What changed and how it was built
+          </summary>
+          <div className="mt-2 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+            <ChangesPanel run={run} />
+            <ComparisonPanel run={run} />
+            <ImpactPanel dominoes={run.dominoes} />
+            <AncestryPanel graph={graph} runId={run.runId} hrefFor={actions.hrefFor} />
+          </div>
+        </details>
+        <details className="group min-w-0">
+          <summary className={SUMMARY}>
+            <ChevronRight aria-hidden="true" className={CHEVRON} />
+            Change the cash rules
+          </summary>
+          <div className="mt-2">
+            <RuleEditor
+              constraints={run.constraints}
+              bills={options.bills}
+              onSave={actions.reviseRules}
+              disabled={disabled}
+            />
+          </div>
+        </details>
+        <Provenance run={run} resultRef={resultRef} />
       </div>
+
+      <Assistant
+        tab={assistantTab}
+        onTab={setAssistantTab}
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        focusKey={focusKey}
+        chat={chatNode}
+        ask={
+          <QuestionsPanel
+            bare
+            questions={questions}
+            selectedWeek={selectedWeek}
+            selectedItemId={selectedItemId}
+            onClearContext={() => {
+              setSelectedWeek(null);
+              setSelectedItemId(null);
+            }}
+            actions={actions}
+            disabled={disabled}
+          />
+        }
+      />
     </article>
   );
 }
