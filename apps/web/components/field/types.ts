@@ -101,6 +101,8 @@ export type FieldFinding = Finding & {
   /** Live only: Claude's plain-language explanation of the flag and a check to run. */
   explanation?: string;
   suggestedCheck?: string;
+  /** Live only: a learned rule changed this flag (hidden or raised), with its receipt. */
+  learned?: { effect: string; text: string; ruleId: string; version: number; undoneAt?: string };
   /** Live only: CRS sandbox identity and fraud check on the vendor's account owner. */
   crs?: FieldCrs;
 };

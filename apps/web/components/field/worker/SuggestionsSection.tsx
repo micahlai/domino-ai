@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { ArrowRight, Check, Lightbulb, X } from "lucide-react";
+import { ArrowRight, Check, Lightbulb, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { fieldTraceHref } from "../../../lib/trace-links";
@@ -263,6 +263,12 @@ function SuggestionCard({
         />
       </dl>
 
+      {s.learnedNote ? (
+        <p className="mt-3 flex items-center gap-1.5 text-[13px] leading-5 text-muted-foreground">
+          <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
+          {s.learnedNote}
+        </p>
+      ) : null}
       {s.recommendation ? (
         <p className="mt-3 text-[13px] leading-5 text-muted-foreground">
           <span className="font-medium text-foreground">Why: </span>

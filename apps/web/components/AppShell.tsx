@@ -28,8 +28,13 @@ const primaryLinks = (profile: string) => [
   {
     href: "/field",
     label: "Worker",
-    on: (p: string) => under(p, "/field") && !under(p, "/field/map") && !under(p, "/field/connect"),
+    on: (p: string) =>
+      under(p, "/field") &&
+      !under(p, "/field/map") &&
+      !under(p, "/field/connect") &&
+      !under(p, "/field/customers"),
   },
+  { href: "/field/customers", label: "Customers", on: (p: string) => under(p, "/field/customers") },
   { href: "/field/map", label: "Brain map", on: (p: string) => under(p, "/field/map") },
   {
     href: "/field/connect",

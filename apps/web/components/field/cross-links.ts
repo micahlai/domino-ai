@@ -55,5 +55,7 @@ export function nodeResults(node: { id: string; role?: string }): ResultLink[] {
       { label: "See risks", href: "/field#risks-title" },
     ];
   if (key.startsWith("ingestion")) return [{ label: "See dashboard", href: "/" }];
+  if (key.startsWith("learning"))
+    return [{ label: "See what Domino learned", href: "/field#learned" }];
   return [];
 }

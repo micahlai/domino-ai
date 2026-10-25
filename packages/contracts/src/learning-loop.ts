@@ -382,6 +382,29 @@ export const RuleActionSchema = z.discriminatedUnion("kind", [
   z
     .object({ kind: z.literal("method_selection"), methodId: IdSchema, version: SemverSchema })
     .strict(),
+  /** Weekly audit: a person said this flag pattern (kind + counterparty) is normal or a problem. */
+  z
+    .object({
+      kind: z.literal("flag_expectation"),
+      flagKind: z.enum([
+        "duplicate",
+        "conflict",
+        "unusual_amount",
+        "unusual_timing",
+        "missing_expected",
+      ]),
+      counterparty: NonBlank,
+      expect: z.enum(["normal", "problem"]),
+    })
+    .strict(),
+  /** Weekly advisor: rank this fix type higher or lower. Ordering only; never money. */
+  z
+    .object({
+      kind: z.literal("fix_preference"),
+      fixKind: NonBlank,
+      prefer: z.enum(["higher", "lower"]),
+    })
+    .strict(),
 ]);
 export type RuleAction = z.infer<typeof RuleActionSchema>;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, ClipboardCheck, Link2, X } from "lucide-react";
+import { Check, ChevronRight, ClipboardCheck, Link2, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { cn } from "../../../lib/utils";
@@ -75,7 +75,11 @@ export function FlagsSection({
               >
                 <div>
                   <Badge variant={f.status === "approved" ? "success" : "secondary"}>
-                    {f.status === "approved" ? "Confirmed" : "Dismissed"}
+                    {f.status === "approved"
+                      ? "Confirmed"
+                      : f.learned?.effect === "suppressed" && !f.learned.undoneAt
+                        ? "Not flagged"
+                        : "Dismissed"}
                   </Badge>
                 </div>
                 <div className="min-w-0">
@@ -187,6 +191,14 @@ function FindingCard({
       </div>
 
       <p className="mt-2 text-sm leading-6">{view.headline}</p>
+      {finding.learned ? (
+        <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
+          {finding.learned.undoneAt
+            ? `Back in review: you undid learned rule v${finding.learned.version}`
+            : finding.learned.text}
+        </p>
+      ) : null}
       {!primary && rest.length > 0 ? (
         <p className="mt-1 text-[13px] tabular-nums text-muted-foreground">
           {rest.map((f) => `${f.label} ${f.value}`).join(" · ")}
@@ -264,7 +276,7 @@ function FindingCard({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder="Why you decided this"
+            placeholder="Why? A reason teaches Domino, e.g. this vendor always bills twice a month"
             className="h-11 sm:h-9 sm:flex-1"
           />
           <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">

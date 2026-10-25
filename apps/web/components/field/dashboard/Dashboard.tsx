@@ -21,6 +21,7 @@ import {
 } from "../agents";
 import { useSelectedCompany, useSelectedCompanyName } from "../company";
 import { EmptyRow, Panel } from "../panel";
+import { LearnedSummary } from "./LearnedSummary";
 import {
   TimelineActions,
   TimelineCashLineSection,
@@ -173,6 +174,7 @@ function Sections({
         <Risks feed={risks} secondary={Boolean(run)} />
       ) : null}
       <Attention header={header} />
+      <LearnedSummary />
     </>
   );
 }
