@@ -12,3 +12,5 @@ export const simulator: Simulator = {
   advanceWeek,
   answerKey: notBuilt("answerKey"),
 };
+
+export * from "./drivers/index.ts";

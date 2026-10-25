@@ -206,6 +206,9 @@ importers:
         specifier: 3.23.8
         version: 3.23.8
     devDependencies:
+      '@domino/engine':
+        specifier: workspace:*
+        version: link:../engine
       typescript:
         specifier: 5.6.3
         version: 5.6.3

@@ -12,5 +12,5 @@
     "print": "node --experimental-strip-types src/print.ts"
   },
   "dependencies": { "@domino/contracts": "workspace:*", "zod": "3.23.8" },
-  "devDependencies": { "typescript": "5.6.3", "vitest": "2.1.4" }
+  "devDependencies": { "@domino/engine": "workspace:*", "typescript": "5.6.3", "vitest": "2.1.4" }
 }
