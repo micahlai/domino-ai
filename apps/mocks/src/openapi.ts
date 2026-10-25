@@ -2,7 +2,7 @@
  * OpenAPI 3.1 documents the mapping agent reads. Every field lists its unit (x-unit) and
  * whether it can be null or omitted. Describes this mock contract, not the real providers.
  */
-export type SourceName = "stripe" | "crm" | "cards" | "books" | "payroll" | "docs";
+export type SourceName = "stripe" | "crm" | "cards" | "books" | "payroll" | "bank" | "docs";
 
 type Schema = Record<string, unknown>;
 type Unit = "cents" | "dollars" | "unix_seconds" | "iso_date" | "iso_datetime" | "days" | "months";
@@ -263,6 +263,23 @@ const SPECS: Record<SourceName, { title: string; paths: Record<string, unknown> 
             }),
           ),
           page: obj({ next: nullable(str("Cursor for the next page, or null")) }),
+        }),
+      ),
+    },
+  },
+  bank: {
+    title: "Bank (Capital One Nessie-style subset)",
+    paths: {
+      "/v1/transactions": keyedList(
+        "Bank account transactions",
+        "transactions",
+        obj({
+          id: str("Transaction id"),
+          type: strEnum(["deposit", "withdrawal"], "Direction: deposit is money in"),
+          amount: num("Unsigned amount, exact decimal with up to 2 places", "dollars"),
+          transaction_date: str("Posting date", "iso_date"),
+          description: str("Bank description"),
+          payee: nullable(str("Counterparty, or null when unknown")),
         }),
       ),
     },

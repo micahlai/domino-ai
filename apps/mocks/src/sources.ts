@@ -34,7 +34,8 @@ export const HUBSPOT_STAGE: Record<Deal["stage"], string> = {
 };
 
 /** Bank deposits from Stripe are the only observed payout evidence. */
-const isStripePayout = (txn: BankTxn) => txn.counterparty === "Stripe";
+// A Stripe debit is not a payout: only positive deposits count.
+const isStripePayout = (txn: BankTxn) => txn.counterparty === "Stripe" && txn.amount > 0;
 
 export function stripeCustomers(s: Snapshot) {
   return s.customers.map((c) => ({
@@ -199,5 +200,17 @@ export function payrolls(s: Snapshot) {
     payroll_uuid: p.id,
     check_date: p.date,
     totals: { company_debit: dollars(p.amount), net_pay: null, employer_taxes: null },
+  }));
+}
+
+/** Bank ledger (Capital One Nessie-style subset): unsigned dollars, direction in `type`. */
+export function bankTransactions(s: Snapshot) {
+  return s.bankTxns.map((t) => ({
+    id: t.id,
+    type: t.amount < 0 ? "withdrawal" : "deposit",
+    amount: dollarNumber(Math.abs(t.amount)),
+    transaction_date: t.date,
+    description: t.description,
+    payee: t.counterparty ?? null,
   }));
 }

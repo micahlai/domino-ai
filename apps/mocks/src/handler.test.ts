@@ -212,6 +212,7 @@ const ROUTES = [
   "/books/v1/bills",
   "/books/v1/accounts",
   "/payroll/v1/companies/kestrel/payrolls",
+  "/bank/v1/transactions",
   "/docs/documents",
 ];
 
@@ -365,6 +366,20 @@ describe("decoded sources match the observable snapshot", () => {
     const text = await res.text();
     expect(text).toContain("Unrestricted Cash of not less than $3,000,000");
     expect(text).toContain("SYNTHETIC");
+  });
+});
+
+describe("bank", () => {
+  it("serves every bank transaction with unsigned dollars and a direction", async () => {
+    const txns = await all("/bank/v1/transactions");
+    const decoded = txns.map((t) => ({
+      id: t.id,
+      date: t.transaction_date,
+      amount: (t.type === "withdrawal" ? -1 : 1) * numCents(t.amount as number),
+      description: t.description,
+      ...(t.payee !== null && { counterparty: t.payee }),
+    }));
+    expect(decoded).toEqual(byId(strip(snapshot.bankTxns)));
   });
 });
 

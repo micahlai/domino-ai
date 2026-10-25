@@ -100,6 +100,14 @@ const COLLECTIONS: Record<string, Collection> = {
     limitParam: "limit",
     envelope: keyed("Account"),
   },
+  "/bank/v1/transactions": {
+    source: "bank",
+    items: src.bankTransactions,
+    idKey: "id",
+    cursorParam: "cursor",
+    limitParam: "limit",
+    envelope: keyed("transactions"),
+  },
   "/docs/documents": {
     source: "docs",
     items: () =>
@@ -130,7 +138,7 @@ const PAYROLL: Omit<Collection, "items"> = {
   },
 };
 
-const SOURCES: SourceName[] = ["stripe", "crm", "cards", "books", "payroll", "docs"];
+const SOURCES: SourceName[] = ["stripe", "crm", "cards", "books", "payroll", "bank", "docs"];
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 class HttpError extends Error {
