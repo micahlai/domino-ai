@@ -1,5 +1,11 @@
 # Timeline handoff
 
+## 2026-10-25: TL10 Claude chat, scenario branches and timeline controls
+
+- Done: Claude-backed "Ask Domino" chat (questions with sources and what-ifs in one thread, choices), color-coded scenario branches with start dates and a parent-first visibility rule, branch tree rail, time and cash scrollers, branch confirmation flash. Branch `claude-timeline-chat` pushed at `bae9a8e`; main untouched.
+- Checks: `pnpm check` (1,209 web tests); live API checks. No browser check yet.
+- Next: [TL10 handoff](TL10-claude-chat-handoff.md): browser pass, Phase 3 solution scenarios, task cards/decisions/spec, then PR.
+
 ## 2026-10-25: TL9 sidebar ready for push
 
 - Done: durable typed clarification chat beside the timeline; exact reviewed scenario/rule save, transcript/history, source-pinned context and legacy link redirect. Phone remains on the timeline page. Independent review accepted final UI/backend; live initialization and repeated-payment issues repaired.
