@@ -6,3 +6,4 @@ export type * from "./modules";
 export * from "./historical";
 export * from "./historical-specialist";
 export * from "./historical-scenario";
+export * from "./learning-loop";

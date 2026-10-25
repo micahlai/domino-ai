@@ -4,7 +4,10 @@ import { IdSchema } from "./core";
 import {
   CurrencySchema,
   HistoricalAssumptionSchema,
+  HistoricalFactSchema,
   HistoricalPredictionSchema,
+  HistoricalSourceSchema,
+  Sha256Schema,
   TimestampSchema,
 } from "./historical";
 
@@ -380,3 +383,148 @@ export const HistoricalScenarioResultSchema = z
     if (seen < nodeIds.size) issue(["impact", "edges"], "impact graph has a cycle");
   });
 export type HistoricalScenarioResult = z.infer<typeof HistoricalScenarioResultSchema>;
+
+// ---------- S4 stored scenario envelope (scenario-persistence-v1) ----------
+
+/** Frozen disclosure taint. Flags only elevate result.postHoc; they never clear it. */
+export const HistoricalScenarioTaintSchema = z
+  .object({
+    eventSelectedAfterReveal: z.boolean(),
+    responseSelectedAfterReveal: z.boolean(),
+    protocolResponsePostHoc: z.boolean(),
+    assumptionPostHoc: z.boolean(),
+    /** Required when any flag is set. */
+    reason: NonBlank.optional(),
+  })
+  .strict()
+  .refine(
+    (t) =>
+      t.reason !== undefined ||
+      !(
+        t.eventSelectedAfterReveal ||
+        t.responseSelectedAfterReveal ||
+        t.protocolResponsePostHoc ||
+        t.assumptionPostHoc
+      ),
+    { message: "a set taint flag needs a reason", path: ["reason"] },
+  );
+export type HistoricalScenarioTaint = z.infer<typeof HistoricalScenarioTaintSchema>;
+
+/**
+ * historicalRuns.run for kind=scenario. NOT a HistoricalRun; HistoricalRun.branch is
+ * unchanged. Event parent is the baseline; response parent is an event-only scenario.
+ * Hash values and parent ownership are verified by persistence, not here.
+ */
+export const StoredHistoricalScenarioSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    id: IdSchema,
+    caseId: IdSchema,
+    createdAt: TimestampSchema,
+    baselineRunId: IdSchema,
+    parentRunId: IdSchema,
+    baselineRowHash: Sha256Schema,
+    baselineInputHash: Sha256Schema,
+    scenarioInputHash: Sha256Schema,
+    scenarioInput: HistoricalScenarioInputSchema,
+    result: HistoricalScenarioResultSchema,
+    taint: HistoricalScenarioTaintSchema,
+  })
+  .strict()
+  .superRefine((s, ctx) => {
+    const issue = (path: Path, message: string) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+    const t = s.taint;
+    if (JSON.stringify(s.result.input) !== JSON.stringify(s.scenarioInput))
+      issue(["result", "input"], "result input differs from the stored scenario input");
+    if (s.scenarioInput.baselineRunId !== s.baselineRunId)
+      issue(["scenarioInput", "baselineRunId"], "scenario input names another baseline");
+    if (s.id === s.parentRunId || s.id === s.baselineRunId)
+      issue(["id"], "a scenario cannot be its own parent");
+    const isResponse = s.scenarioInput.responseAssumptionId !== undefined;
+    if (isResponse === (s.parentRunId === s.baselineRunId))
+      issue(
+        ["parentRunId"],
+        "an event's parent is the baseline; a response's parent is its event scenario",
+      );
+    if (t.eventSelectedAfterReveal && !s.result.event.postHoc)
+      issue(["result", "event", "postHoc"], "event taint must mark the event post-hoc");
+    const responseTaint =
+      t.responseSelectedAfterReveal || t.protocolResponsePostHoc || t.assumptionPostHoc;
+    if (!s.result.response) {
+      if (responseTaint) issue(["taint"], "an event-only scenario has no response taint");
+    } else if (responseTaint && !s.result.response.postHoc)
+      issue(["result", "response", "postHoc"], "response taint must mark the response post-hoc");
+  });
+export type StoredHistoricalScenario = z.infer<typeof StoredHistoricalScenarioSchema>;
+
+/**
+ * A1 and its dependency closure from a version-pinned package, cutoff-eligible basis only.
+ * Closure is checked here; cutoff eligibility and package hashes are persistence checks.
+ */
+export const ScenarioResponseExtensionSchema = z
+  .object({
+    sources: z.array(HistoricalSourceSchema),
+    facts: z.array(HistoricalFactSchema),
+    assumptions: z.array(HistoricalAssumptionSchema).min(1),
+    selectedAssumptionId: IdSchema,
+    contentHash: Sha256Schema,
+  })
+  .strict()
+  .superRefine((x, ctx) => {
+    const issue = (path: Path, message: string) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+    const sources = new Set(x.sources.map((s) => s.id));
+    const facts = new Set(x.facts.map((f) => f.id));
+    const assumptions = new Set(x.assumptions.map((a) => a.id));
+    if (!assumptions.has(x.selectedAssumptionId))
+      issue(["selectedAssumptionId"], "selected assumption is not in the extension");
+    for (const [i, f] of x.facts.entries()) {
+      if (f.kind === "reported" && !sources.has(f.sourceId))
+        issue(["facts", i, "sourceId"], "fact source missing from closure");
+      if (f.kind === "derived")
+        for (const id of f.derivedFrom)
+          if (!facts.has(id))
+            issue(["facts", i, "derivedFrom"], "derived input missing from closure");
+    }
+    for (const [i, a] of x.assumptions.entries()) {
+      for (const id of a.basisFactIds)
+        if (!facts.has(id))
+          issue(["assumptions", i, "basisFactIds"], "basis fact missing from closure");
+      for (const id of a.dependsOn)
+        if (!assumptions.has(id))
+          issue(["assumptions", i, "dependsOn"], "dependency missing from closure");
+    }
+  });
+export type ScenarioResponseExtension = z.infer<typeof ScenarioResponseExtensionSchema>;
+
+/** historicalRuns.snapshot for kind=scenario. */
+export const StoredScenarioSnapshotSchema = z
+  .object({
+    /** Copied byte-for-byte from the verified baseline row; its shape is owned there. */
+    baselineSnapshot: z.unknown().refine((v) => v !== undefined, "baseline snapshot is required"),
+    baselineSnapshotHash: Sha256Schema,
+    responseExtension: ScenarioResponseExtensionSchema.optional(),
+    protocolSnapshot: z
+      .object({
+        protocolId: IdSchema,
+        protocolHash: Sha256Schema,
+        responsePostHoc: z.boolean(),
+        responsePostHocReason: NonBlank.optional(),
+        caveats: z.object({ method: NonBlank, cost: NonBlank, unknownDownside: NonBlank }).strict(),
+      })
+      .strict()
+      .refine((p) => p.responsePostHoc === (p.responsePostHocReason !== undefined), {
+        message: "a post-hoc protocol response needs a reason, and only it has one",
+        path: ["responsePostHocReason"],
+      }),
+    /** Pinned mapping/resolution/rule versions. Empty only for legacy curated baselines. */
+    knowledgeVersionIds: z.array(IdSchema),
+    legacyKnowledge: z.boolean(),
+  })
+  .strict()
+  .refine((s) => s.legacyKnowledge === (s.knowledgeVersionIds.length === 0), {
+    message: "knowledge versions are empty exactly when tagged legacy",
+    path: ["knowledgeVersionIds"],
+  });
+export type StoredScenarioSnapshot = z.infer<typeof StoredScenarioSnapshotSchema>;
