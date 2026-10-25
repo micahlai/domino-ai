@@ -20,6 +20,7 @@ const LANES = {
     "historicalReveals",
     "historicalRevealReceipts",
     "historicalActivity",
+    "timelineBaselines",
   ],
   field: [
     "companies",
@@ -64,6 +65,12 @@ const INDEXES: Record<string, Array<[string, string[]]>> = {
   ],
   historicalRevealReceipts: [["by_requestId", ["requestId"]]],
   historicalActivity: [["by_feed", ["baselineRunId", "sequence"]]],
+  // TL1: additive Timeline table; every legacy entry above is unchanged.
+  timelineBaselines: [
+    ["by_company_and_runId", ["companyId", "runId"]],
+    ["by_company_and_requestId", ["companyId", "requestId"]],
+    ["by_company_and_seedId", ["companyId", "seedId"]],
+  ],
   investigationRequests: [["by_requestId", ["requestId"]]],
   investigationConversations: [
     ["by_conversationId", ["conversationId"]],
@@ -82,7 +89,7 @@ describe("schema composition", () => {
     expect(Object.keys(timelineTables).sort()).toEqual([...LANES.timeline].sort());
     expect(Object.keys(fieldTables).sort()).toEqual([...LANES.field].sort());
     const all = [...LANES.timeline, ...LANES.field];
-    expect(new Set(all).size).toBe(22);
+    expect(new Set(all).size).toBe(23);
     expect(Object.keys(schema.tables).sort()).toEqual(all.sort());
   });
 
