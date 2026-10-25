@@ -27,6 +27,10 @@ export const ANOMALY_OPTIONS = [
   { value: "unusual_timing", label: "Late bank entry" },
   { value: "conflict", label: "Invoice amount changed" },
   { value: "missing_expected", label: "Missing payroll run" },
+  // Persistent events: they change every later record, so the forecast line bends.
+  { value: "customer_cancels", label: "Customer cancels" },
+  { value: "vendor_price_rise", label: "Vendor raises prices" },
+  { value: "new_hires", label: "New hires" },
 ] as const;
 export type Anomaly = (typeof ANOMALY_OPTIONS)[number]["value"];
 
