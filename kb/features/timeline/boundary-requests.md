@@ -1,3 +1,7 @@
+# Latest boundary checkpoint, 2026-10-24
+
+S2 is now implemented/reviewed/pushed at `S2-simulation-catalog@bd7e880`. Its reviewed additive `investigationConversations.by_case_createdAt(caseId,createdAt)` index is ready for P0-S incorporation. The implementation worker is finished. Earlier missing-S2/index-reservation notes below are historical and superseded by this checkpoint. Shared P0-C/P0-S/P0-H acceptance remains open; no common-base readiness claimed. See HANDOFF.md and S2 task Result on the pushed branch.
+
 # Timeline boundary requests
 
 ## P0 acceptance and exact base (open)

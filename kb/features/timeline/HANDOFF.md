@@ -1,3 +1,12 @@
+# S2 complete and pushed, 2026-10-24
+
+- Reviewed implementation is pushed on `S2-simulation-catalog` at `bd7e880` (fetch that branch for its exact SHA). Dedicated worktree remains `/Users/micahlai/.codex/worktrees/s2-simulation-catalog/domino-ai`; clean after commit. No main/preview merge.
+- Public read-only `investigationCatalog.list`, bounded case-scoped pagination/status/output proof, one additive conversation index, generated API registration, 30 new tests. Exact behavior/limits/checks are in the Result of `kb/tasks/S2-simulation-catalog.md` on that branch.
+- Codex independent review found and cleared native endCursor overflow through a regression-tested repair. All 22 original schema validators/prior indexes unchanged; one reviewed index added. Final pnpm check passes1,158 tests (web408 fresh, other four packages reused the prior uncached run), five typechecks, lint246 files.
+- Actual isolated local backend3230/3231 saves/reveals/alternatives through existing public2U engine/persistence and lists them as partial with the unverified provider gate. Zero provider operations dispatched. Three read-only repeats and own backend restart preserve saved identity/state/baseline. Main, shared backends/data, credentials and protected evaluation packages untouched.
+- S2 implementation process is finished. P0-S can now incorporate the reviewed S2 commit/index, then compose schema fragments; no competing index writer remains on this machine. This supersedes the pending S2/index-reservation entries below.
+- Scope limit: catalog backend is complete; Simulations UI list wiring/full Timeline/P0 acceptance are separate. Do not label the full feature complete. Partner pickup is this pushed S2 branch; no reset/rebase/force push needed.
+
 # Latest S2 assignment, 2026-10-24
 
 - User explicitly requested implementation in a separate worktree after the readiness/status discussion. One S2 implementation slot is now assigned; two remote repair slots are conservatively reserved from the latest published P0-C/L2 record. No other helper permitted.
