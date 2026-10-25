@@ -14,26 +14,28 @@ import {
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("style registry", () => {
-  it("accepts every registered id and defaults to Original", () => {
+  it("accepts every registered id and defaults to the light Ramp-style theme", () => {
     for (const { id } of STYLES) expect(parseStyle(id)).toBe(id);
-    expect(DEFAULT_STYLE).toBe("original");
+    expect(DEFAULT_STYLE).toBe("ramp");
+    expect(STYLES[0].id).toBe(DEFAULT_STYLE);
   });
 
-  it("falls back to Original for invalid values", () => {
+  it("falls back to the default for invalid values", () => {
     for (const bad of [null, undefined, "", "RAMP", " ramp", "ramp;x", "<script>", 3, {}])
-      expect(parseStyle(bad)).toBe("original");
+      expect(parseStyle(bad)).toBe(DEFAULT_STYLE);
   });
 
   it("lets a valid URL value override storage, and ignores an invalid one", () => {
     expect(resolveStyle("ramp", "hyphenate")).toBe("ramp");
-    expect(resolveStyle(null, "bogus")).toBe("original");
-    expect(resolveStyle(null, null)).toBe("original");
+    expect(resolveStyle("original", "hyphenate")).toBe("original");
+    expect(resolveStyle(null, "bogus")).toBe(DEFAULT_STYLE);
+    expect(resolveStyle(null, null)).toBe(DEFAULT_STYLE);
   });
 
-  it("treats a present but invalid URL override as Original, whatever is stored", () => {
-    expect(resolveStyle("bogus", "hyphenate")).toBe("original");
-    expect(resolveStyle("", "hyphenate")).toBe("original");
-    expect(resolveStyle("RAMP", "ramp")).toBe("original");
+  it("treats a present but invalid URL override as the default, whatever is stored", () => {
+    expect(resolveStyle("bogus", "hyphenate")).toBe(DEFAULT_STYLE);
+    expect(resolveStyle("", "hyphenate")).toBe(DEFAULT_STYLE);
+    expect(resolveStyle("ORIGINAL", "original")).toBe(DEFAULT_STYLE);
   });
 
   it("keeps server code free of the client store", () => {
@@ -58,12 +60,12 @@ describe("style registry", () => {
       return root.dataset.style;
     };
     expect(run("?style=ramp", "hyphenate")).toBe("ramp");
-    expect(run("?style=x", "hyphenate")).toBe("original");
-    expect(run("?style=", "hyphenate")).toBe("original");
-    expect(run("?style=ramp", "throws")).toBe("ramp");
-    expect(run("", "throws")).toBe("original");
+    expect(run("?style=x", "hyphenate")).toBe(DEFAULT_STYLE);
+    expect(run("?style=", "hyphenate")).toBe(DEFAULT_STYLE);
+    expect(run("?style=original", "throws")).toBe("original");
+    expect(run("", "throws")).toBe(DEFAULT_STYLE);
     expect(run("?other=1", "hyphenate")).toBe("hyphenate");
-    expect(run("", "<b>")).toBe("original");
+    expect(run("", "<b>")).toBe(DEFAULT_STYLE);
     expect(run("?style=shadcn", null)).toBe("shadcn");
   });
 });
@@ -108,17 +110,17 @@ describe("setStyle", () => {
         throw new Error("blocked");
       },
     });
-    setStyle("ramp");
-    expect(root.dataset.style).toBe("ramp");
+    setStyle("original");
+    expect(root.dataset.style).toBe("original");
   });
 
   it("re-derives the style after client navigation, including a removed override", () => {
     const { root, store } = stubPage("http://x/");
     store.set(STYLE_STORAGE_KEY, "hyphenate");
-    syncStyleFromSearch("style=ramp");
-    expect(root.dataset.style).toBe("ramp");
-    syncStyleFromSearch("style=bogus");
+    syncStyleFromSearch("style=original");
     expect(root.dataset.style).toBe("original");
+    syncStyleFromSearch("style=bogus");
+    expect(root.dataset.style).toBe(DEFAULT_STYLE);
     syncStyleFromSearch("");
     expect(root.dataset.style).toBe("hyphenate");
     expect(store.get(STYLE_STORAGE_KEY)).toBe("hyphenate");
@@ -154,11 +156,11 @@ describe("setStyle", () => {
     expect(root.dataset.style).toBe("shadcn");
   });
 
-  it("renders the selector as Original on the server, matching the first client render", async () => {
+  it("renders the selector as the default on the server, matching the first client render", async () => {
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { StyleSelector } = await import("../components/StyleSelector");
     const html = renderToStaticMarkup(createElement(StyleSelector));
     expect(html.match(/<input[^>]*checked=""[^>]*>/g)).toHaveLength(1);
-    expect(html).toMatch(/checked=""[^>]*value="original"/);
+    expect(html).toMatch(new RegExp(`checked=""[^>]*value="${DEFAULT_STYLE}"`));
   });
 });
