@@ -7,7 +7,6 @@ import { Badge } from "../../ui/badge";
 import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { AncestryPanel } from "./CatalogPanel";
-import { EventForm } from "./EventForm";
 import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
 import {
@@ -18,6 +17,7 @@ import {
   WeekDetail,
   WhenDate,
 } from "./RunPanels";
+import { ScenarioComposer } from "./ScenarioComposer";
 import { ScenarioSidebar } from "./ScenarioSidebar";
 import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
@@ -171,6 +171,15 @@ export function WorkspaceView({
               setSelectedItemId(null);
             }}
           />
+          <ScenarioComposer
+            selectedWeek={selectedWeek}
+            firstWeek={firstWeek}
+            invoices={options.invoices}
+            bills={options.bills}
+            suggestion={suggestion}
+            onRun={actions.simulate}
+            disabled={disabled}
+          />
           <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
             <WeekDetail
               run={run}
@@ -185,7 +194,7 @@ export function WorkspaceView({
             <AncestryPanel graph={graph} runId={run.runId} hrefFor={actions.hrefFor} />
           </div>
           <Provenance run={run} resultRef={resultRef} />
-          <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
             <QuestionsPanel
               questions={questions}
               selectedWeek={selectedWeek}
@@ -195,14 +204,6 @@ export function WorkspaceView({
                 setSelectedItemId(null);
               }}
               actions={actions}
-              disabled={disabled}
-            />
-            <EventForm
-              firstWeek={firstWeek}
-              invoices={options.invoices}
-              bills={options.bills}
-              suggestion={suggestion}
-              onRun={actions.simulate}
               disabled={disabled}
             />
             <RuleEditor

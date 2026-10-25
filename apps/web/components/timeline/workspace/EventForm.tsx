@@ -1,11 +1,11 @@
 "use client";
 
 import type { Change } from "@domino/contracts";
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { Button } from "../../ui/button";
 import { formatExactCents } from "../baseline/format";
 import { inputClass } from "./RuleEditor";
-import { Panel } from "./RunPanels";
+import { composerPayload, composerReducer, newComposer } from "./composer";
 import {
   EVENT_KINDS,
   type EventDraft,
@@ -13,15 +13,16 @@ import {
   type Option,
   buildChange,
   changeText,
-  emptyEvent,
 } from "./drafts";
 import { type Outcome, isConfirmed } from "./requests";
 
 export type EventFormProps = {
   firstWeek: string;
+  /** Date for newly created cash events only; never changes an entered draft. */
+  defaultDate: string;
   invoices: Option[];
   bills: Option[];
-  /** A draft suggested by the chosen scheduled item; replaces the form when it changes. */
+  /** Explicitly offered to the person; selecting a chart item never replaces a draft. */
   suggestion?: EventDraft;
   onRun: (label: string, changes: Change[]) => Promise<Outcome>;
   disabled?: string;
@@ -29,41 +30,33 @@ export type EventFormProps = {
 
 /** Explicit future events, run together as one new scenario after the person confirms them. */
 export function EventForm(p: EventFormProps) {
-  const [draft, setDraft] = useState<EventDraft>(() => p.suggestion ?? emptyEvent());
-  const [seenSuggestion, setSeenSuggestion] = useState(p.suggestion);
-  const [changes, setChanges] = useState<Change[]>([]);
-  const [label, setLabel] = useState("");
-  const [confirmedFor, setConfirmedFor] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(composerReducer, undefined, newComposer);
+  const { draft, changes, label, confirmedFor, tried } = state;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [tried, setTried] = useState(false);
-
-  // Adopt a newly chosen item without an effect (render-time state sync).
-  if (p.suggestion !== seenSuggestion) {
-    setSeenSuggestion(p.suggestion);
-    if (p.suggestion) setDraft(p.suggestion);
-  }
-
   const built = buildChange(draft, p.firstWeek);
-  const payload = changes.length && label.trim() ? JSON.stringify([label.trim(), changes]) : null;
+  const payload = composerPayload(state);
   const confirmed = isConfirmed(confirmedFor, payload);
-  const set = (patch: Partial<EventDraft>) => setDraft((d) => ({ ...d, ...patch }));
+  const set = (patch: Partial<EventDraft>) => dispatch({ type: "edit", patch });
 
   function add() {
-    setTried(true);
-    if (!built.ok) return;
-    setChanges((cs) => [...cs, built.value]);
-    setDraft(emptyEvent(draft.kind));
-    setTried(false);
+    dispatch({ type: "add", firstWeek: p.firstWeek, defaultDate: p.defaultDate });
   }
 
   async function run() {
     if (!payload || !confirmed || pending) return;
     setPending(true);
     setError(undefined);
-    const out = await p.onRun(label.trim(), changes);
-    setPending(false);
-    if (!out.ok) setError(out.message);
+    try {
+      const out = await p.onRun(label.trim(), changes);
+      if (!out.ok) setError(out.message);
+    } catch {
+      setError(
+        "Could not confirm whether the scenario was saved. Your draft is kept; retry to check it.",
+      );
+    } finally {
+      setPending(false);
+    }
   }
 
   const needsInvoice = draft.kind === "delay_invoice" || draft.kind === "lose_invoice";
@@ -71,98 +64,128 @@ export function EventForm(p: EventFormProps) {
   const needsMoney = draft.kind === "add_cash" || draft.kind === "remove_cash";
 
   return (
-    <Panel title="Add an event" testId="event-form">
-      <label className="block space-y-1 text-xs">
-        <span>What happens</span>
-        <select
-          className={inputClass}
-          value={draft.kind}
-          onChange={(e) => setDraft(emptyEvent(e.target.value as EventKind))}
-          data-testid="event-kind"
-        >
-          {EVENT_KINDS.map((k) => (
-            <option key={k.kind} value={k.kind}>
-              {k.title}
-            </option>
-          ))}
-        </select>
-      </label>
-      {needsInvoice ? (
+    <div className="space-y-4" data-testid="event-form">
+      {p.suggestion ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>Use the selected scheduled item for this event. Queued events stay unchanged.</span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => {
+              if (p.suggestion) dispatch({ type: "suggestion", draft: p.suggestion });
+            }}
+          >
+            Replace current event with selected{" "}
+            {p.suggestion.kind === "delay_bill" ? "bill" : "invoice"}
+          </Button>
+        </div>
+      ) : null}
+      <fieldset disabled={pending} className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="sr-only">Describe the event</legend>
         <label className="block space-y-1 text-xs">
-          <span>Invoice</span>
+          <span>What happens</span>
           <select
             className={inputClass}
-            value={draft.invoiceId}
-            onChange={(e) => set({ invoiceId: e.target.value })}
+            value={draft.kind}
+            onChange={(e) =>
+              dispatch({
+                type: "kind",
+                kind: e.target.value as EventKind,
+                defaultDate: p.defaultDate,
+              })
+            }
+            data-testid="event-kind"
           >
-            <option value="">Choose an open invoice</option>
-            {p.invoices.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
+            {EVENT_KINDS.map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.title}
               </option>
             ))}
           </select>
         </label>
-      ) : null}
-      {draft.kind === "delay_bill" ? (
-        <label className="block space-y-1 text-xs">
-          <span>Bill</span>
-          <select
-            className={inputClass}
-            value={draft.billId}
-            onChange={(e) => set({ billId: e.target.value })}
-          >
-            <option value="">Choose an unpaid bill</option>
-            {p.bills.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {needsDays ? (
-        <label className="block space-y-1 text-xs">
-          <span>Days late</span>
-          <input
-            className={`${inputClass} font-mono`}
-            inputMode="numeric"
-            value={draft.days}
-            onChange={(e) => set({ days: e.target.value })}
-          />
-        </label>
-      ) : null}
-      {needsMoney ? (
-        <>
+        {needsInvoice ? (
           <label className="block space-y-1 text-xs">
-            <span>Date (on or after the week of {p.firstWeek})</span>
-            <input
-              type="date"
+            <span>Invoice</span>
+            <select
               className={inputClass}
-              min={p.firstWeek}
-              value={draft.date}
-              onChange={(e) => set({ date: e.target.value })}
-            />
+              value={draft.invoiceId}
+              onChange={(e) => set({ invoiceId: e.target.value })}
+            >
+              <option value="">Choose an open invoice</option>
+              {p.invoices.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
+        ) : null}
+        {draft.kind === "delay_bill" ? (
           <label className="block space-y-1 text-xs">
-            <span>Amount, in dollars</span>
+            <span>Bill</span>
+            <select
+              className={inputClass}
+              value={draft.billId}
+              onChange={(e) => set({ billId: e.target.value })}
+            >
+              <option value="">Choose an unpaid bill</option>
+              {p.bills.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {needsDays ? (
+          <label className="block space-y-1 text-xs">
+            <span>Days late</span>
             <input
               className={`${inputClass} font-mono`}
-              inputMode="decimal"
-              value={draft.amount}
-              onChange={(e) => set({ amount: e.target.value })}
+              inputMode="numeric"
+              value={draft.days}
+              onChange={(e) => set({ days: e.target.value })}
             />
           </label>
-          <label className="block space-y-1 text-xs">
-            <span>What it is</span>
-            <input
-              className={inputClass}
-              value={draft.label}
-              onChange={(e) => set({ label: e.target.value })}
-            />
-          </label>
-        </>
-      ) : null}
+        ) : null}
+        {!needsMoney ? (
+          <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+            Timing follows the selected invoice or bill and its delay, rather than the chart week.
+          </p>
+        ) : null}
+        {needsMoney ? (
+          <>
+            <label className="block space-y-1 text-xs">
+              <span>Date (on or after the week of {p.firstWeek})</span>
+              <input
+                type="date"
+                className={inputClass}
+                min={p.firstWeek}
+                value={draft.date}
+                onChange={(e) => set({ date: e.target.value })}
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span>Amount, in dollars</span>
+              <input
+                className={`${inputClass} font-mono`}
+                inputMode="decimal"
+                value={draft.amount}
+                onChange={(e) => set({ amount: e.target.value })}
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span>What it is</span>
+              <input
+                className={inputClass}
+                value={draft.label}
+                onChange={(e) => set({ label: e.target.value })}
+              />
+            </label>
+          </>
+        ) : null}
+      </fieldset>
       {tried && !built.ok ? (
         <ul className="space-y-0.5 text-xs text-[#E6A5B9]" data-testid="event-errors">
           {built.errors.map((e) => (
@@ -170,8 +193,14 @@ export function EventForm(p: EventFormProps) {
           ))}
         </ul>
       ) : null}
-      <Button size="sm" variant="secondary" onClick={add} data-testid="event-add">
-        Add to this scenario
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={pending}
+        onClick={add}
+        data-testid="event-add"
+      >
+        Queue this event
       </Button>
 
       {changes.length ? (
@@ -183,7 +212,8 @@ export function EventForm(p: EventFormProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setChanges((cs) => cs.filter((_, j) => j !== i))}
+                disabled={pending}
+                onClick={() => dispatch({ type: "remove", index: i })}
               >
                 Remove
               </Button>
@@ -191,14 +221,15 @@ export function EventForm(p: EventFormProps) {
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">No events added yet.</p>
+        <p className="text-xs text-muted-foreground">No events queued yet.</p>
       )}
       <label className="block space-y-1 text-xs">
         <span>Scenario name</span>
         <input
           className={inputClass}
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          disabled={pending}
+          onChange={(e) => dispatch({ type: "label", label: e.target.value })}
           data-testid="event-label"
         />
       </label>
@@ -207,25 +238,37 @@ export function EventForm(p: EventFormProps) {
           type="checkbox"
           className="mt-1"
           checked={confirmed}
-          disabled={payload === null}
-          onChange={(e) => setConfirmedFor(e.target.checked ? payload : null)}
+          disabled={payload === null || pending}
+          onChange={(e) => dispatch({ type: "review", checked: e.target.checked })}
           data-testid="event-confirm"
         />
-        <span>I reviewed these events. Run the forecast with exactly these.</span>
+        <span>I reviewed the queued events. Run the forecast with exactly these.</span>
       </label>
-      <Button
-        onClick={run}
-        disabled={!confirmed || pending || Boolean(p.disabled)}
-        data-testid="event-run"
-      >
-        {pending ? "Running..." : "Run as a new scenario"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={run}
+          disabled={!confirmed || pending || Boolean(p.disabled)}
+          data-testid="event-run"
+        >
+          {pending ? "Running..." : "Run as a new scenario"}
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={pending}
+          onClick={() => {
+            dispatch({ type: "discard" });
+            setError(undefined);
+          }}
+        >
+          Discard draft
+        </Button>
+      </div>
       {p.disabled ? <p className="text-xs text-muted-foreground">{p.disabled}</p> : null}
       {error ? (
         <p role="alert" className="text-sm text-[#E6A5B9]">
           {error}
         </p>
       ) : null}
-    </Panel>
+    </div>
   );
 }
