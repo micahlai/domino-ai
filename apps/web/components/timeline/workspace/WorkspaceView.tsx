@@ -14,6 +14,7 @@ import { type ReactNode, useId, useMemo, useState } from "react";
 import { friendlyLabel } from "../../../convex/timeline/recordNames";
 import { scenarioStart } from "../../../convex/timeline/scenarioStart";
 import { formatCents } from "../../../lib/format";
+import { openedTimelineHref } from "../../../lib/timeline-entry";
 import { timelineCalculationHref } from "../../../lib/trace-links";
 import { DominoEffects } from "../../field/DominoEffects";
 import { Button } from "../../ui/button";
@@ -604,7 +605,7 @@ export function WorkspaceView({
                       <DominoEffects
                         companyId={run.companyId}
                         runId={run.runId}
-                        hrefFor={actions.hrefFor}
+                        hrefFor={(id) => openedTimelineHref(run.companyId, id)}
                       />
                     ) : null}
                     <details className="group min-w-0">
