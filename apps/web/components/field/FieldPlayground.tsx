@@ -1,6 +1,6 @@
 "use client";
 
-import { operatingProvenance } from "@domino/sim";
+import { operatingDemoCatalog, operatingProvenance } from "@domino/sim";
 import { useState } from "react";
 import { IconGallery } from "../icons/IconGallery";
 import { BrainMap } from "./BrainMap";
@@ -22,6 +22,8 @@ import { DemoFieldData } from "./data";
  */
 export function FieldPlayground() {
   const [selection, setSelection] = useState<OperatingSelection>(DEFAULT_OPERATING_SELECTION);
+  const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
+  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
   return (
     <DemoFieldData note="Playground fixture">
       <div className="space-y-16">
@@ -31,7 +33,10 @@ export function FieldPlayground() {
           <p className="text-xs text-muted-foreground">
             {selection.company === "2u"
               ? OPERATING_DEMO_LABEL
-              : "Fictional company inspired by public filings."}{" "}
+              : `Fictional company based on ${catalog?.referenceCompany ?? "public company"} filings.`}{" "}
+            {catalog
+              ? `Period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}; reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical cutoff)" : ""}.`
+              : ""}{" "}
             Scenario: {selection.scenario}. This playground selector changes no backend feed.
           </p>
           <details>

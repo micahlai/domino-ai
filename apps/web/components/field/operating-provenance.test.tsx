@@ -27,4 +27,26 @@ describe("operating source panel", () => {
     expect(html).toContain("Synthetic opening and closing receivables");
     expect(html).not.toContain("2U payables and accruals bridge");
   });
+
+  it.each([
+    ["asana-current", "Asana, Inc.", "2026-09-03", null],
+    ["gitlab-current", "GitLab Inc.", "2026-09-01", "2026-09-02"],
+  ] as const)(
+    "separates %s reported cash from current reconstructed books",
+    (company, issuer, published, filed) => {
+      const context = operatingProvenance({ company, scenario: "baseline" });
+      const html = renderToStaticMarkup(<SourceContents context={context} />);
+      expect(html).toContain(issuer);
+      expect(html).toContain("2026-07-31");
+      expect(html).toContain(published);
+      if (filed) expect(html).toContain(filed);
+      expect(html).toContain("2026-10-25");
+      expect(html).toContain("Reported-period cash bridge from backend");
+      expect(html).toContain("Reconstructed current books roll-forward");
+      expect(html).toContain("Reported ending combined cash");
+      expect(html).toContain("Current restricted cash, shown separately");
+      expect(html).toContain("combined cash including restricted");
+      expect(context.currentLedger?.basis).toBe("reconstructed");
+    },
+  );
 });

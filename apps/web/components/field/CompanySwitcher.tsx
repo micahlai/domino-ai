@@ -8,6 +8,7 @@ import {
   type OperatingCompanyId,
   type OperatingScenarioId,
   type OperatingSelection,
+  isLegacyOperatingTimelinePath,
   operatingWorldId,
   selectOperating,
   useOperatingSelection,
@@ -34,6 +35,12 @@ export function CompanySwitcher() {
     return (
       <Link href="/" className="rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent">
         Sandbox · Open operating demos
+      </Link>
+    );
+  if (isLegacyOperatingTimelinePath(pathname))
+    return (
+      <Link href="/" className="rounded-md border bg-card px-3 py-2 text-sm hover:bg-accent">
+        Legacy operating demo · Open current demos
       </Link>
     );
   return CONVEX_URL ? <LivePicker /> : <Picker />;

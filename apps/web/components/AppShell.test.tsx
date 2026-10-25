@@ -70,6 +70,17 @@ describe("AppShell navigation", () => {
     expect(current(render("/c/kestrel-crunch/timeline/analysis"))).toEqual(["Timeline"]);
   });
 
+  it("keeps legacy operating Timeline books out of the current picker and source banner", () => {
+    const html = render("/c/operating%2Fasana-inspired%2Fbaseline/timeline");
+    expect(current(html)).toEqual(["Timeline"]);
+    expect(html).toContain("Legacy operating demo");
+    expect(html).not.toContain('aria-label="Company"');
+    expect(html).not.toContain("Based on 2U public filings, with reconstructed operating data.");
+    const currentHtml = render("/c/operating%2Fasana-current%2Fbaseline/timeline");
+    expect(currentHtml).toContain('aria-label="Company"');
+    expect(currentHtml).toContain("Based on 2U public filings, with reconstructed operating data.");
+  });
+
   it("keeps the Timeline sub-navigation inside the company routes", () => {
     const html = render("/c/kestrel/record");
     expect(current(html)).toEqual(["Timeline", "Decision record"]);

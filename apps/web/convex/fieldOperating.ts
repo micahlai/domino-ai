@@ -8,6 +8,8 @@ const companyArg = v.union(
   v.literal(OPERATING_COMPANY_IDS[0]),
   v.literal(OPERATING_COMPANY_IDS[1]),
   v.literal(OPERATING_COMPANY_IDS[2]),
+  v.literal(OPERATING_COMPANY_IDS[3]),
+  v.literal(OPERATING_COMPANY_IDS[4]),
 );
 const scenarioArg = v.union(
   v.literal(OPERATING_SCENARIO_IDS[0]),

@@ -17,15 +17,18 @@ const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export function OperatingProvenanceStrip() {
   const selection = useOperatingSelection();
-  const label =
-    operatingDemoCatalog.find((item) => item.id === selection.company)?.label ??
-    "Filing-backed reconstruction";
+  const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
+  const label = catalog?.label ?? "Filing-backed reconstruction";
+  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
   return (
     <div className="relative border-t bg-muted/35 px-4 py-2 text-xs md:px-6">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-1">
         <span className="font-medium">{label}</span>
         <span className="text-muted-foreground">
-          Records reconstructed. Future scenarios and forecasts illustrative.
+          {catalog
+            ? `${catalog.referenceCompany} period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}. Reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical cutoff)" : ""}.`
+            : "Records reconstructed."}{" "}
+          Future scenarios and forecasts illustrative.
         </span>
         {CONVEX_URL ? (
           <LiveSources />
@@ -71,8 +74,9 @@ function LiveSources() {
 
 export function SourceContents({ context }: { context: OperatingProvenance }) {
   const r = context.reconciliation;
-  const cashLabel =
-    context.company === "2u" ? "combined cash including restricted" : "cash and equivalents";
+  const catalog = operatingDemoCatalog.find((item) => item.id === context.company);
+  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
+  const cashLabel = "combined cash including restricted";
   const terms = [
     [`Opening ${cashLabel}`, r.openingCashCents],
     ["Operating cash flow", r.operatingCashFlowCents],
@@ -89,8 +93,12 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
       <div>
         <p className="font-semibold">Reported anchors and reconstructed books</p>
         <p className="mt-1 text-muted-foreground">
-          Ledger period {context.periodStart} to {context.periodEnd}. Filing published{" "}
-          {context.reportedAt}. The ledger date and publication date are separate.
+          {catalog?.referenceCompany ?? "Public company"} reported period {context.periodStart} to{" "}
+          {context.periodEnd}. Published {context.reportedAt}
+          {filedAt && filedAt !== context.reportedAt ? `; filed ${filedAt}` : ""}. Reconstructed
+          books as of {catalog?.simulationAsOf ?? context.periodEnd}
+          {context.company === "2u" ? " (historical cutoff)" : ""}. The report publication and
+          reconstructed books carry separate dates.
         </p>
       </div>
       <details>
@@ -129,7 +137,10 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
         </ul>
       </details>
       <div>
-        <p className="font-medium">Cash bridge from backend</p>
+        <p className="font-medium">Reported-period cash bridge from backend</p>
+        <p className="mt-1 text-muted-foreground">
+          These cash flows belong to {context.periodStart} through {context.periodEnd}.
+        </p>
         <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">
           {terms.map(([name, cents]) => (
             <div key={name} className="col-span-2 grid grid-cols-subgrid">
@@ -143,6 +154,37 @@ export function SourceContents({ context }: { context: OperatingProvenance }) {
           {context.aggregateBasis.cash} Usable cash is shown on the dashboard.
         </p>
       </div>
+      {context.currentLedger ? (
+        <div>
+          <p className="font-medium">Reconstructed current books roll-forward</p>
+          <p className="mt-1 text-muted-foreground">
+            From the reported {context.currentLedger.reportedPeriodEnd} cash balance to simulated
+            books as of {context.currentLedger.asOf}. This is a reconstruction, not a reported
+            current balance.
+          </p>
+          <dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 tabular-nums">
+            {(
+              [
+                ["Reported ending combined cash", context.currentLedger.reportedEndingCashCents],
+                [
+                  "Reconstructed change after report date",
+                  context.currentLedger.reconstructedCashChangeCents,
+                ],
+                ["Current cash on hand", context.currentLedger.cashOnHandCents],
+                [
+                  "Current restricted cash, shown separately",
+                  context.currentLedger.restrictedCashCents,
+                ],
+              ] as const
+            ).map(([name, cents]) => (
+              <div key={name} className="col-span-2 grid grid-cols-subgrid">
+                <dt>{name}</dt>
+                <dd>{formatCents(cents)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
       {context.payablesBridge ? (
         <div>
           <p className="font-medium">2U payables and accruals bridge</p>

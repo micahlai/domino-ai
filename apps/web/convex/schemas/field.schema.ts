@@ -51,6 +51,8 @@ export const fieldTables = {
           v.literal("2u"),
           v.literal("asana-inspired"),
           v.literal("gitlab-inspired"),
+          v.literal("asana-current"),
+          v.literal("gitlab-current"),
         ),
         scenario: v.union(
           v.literal("baseline"),
