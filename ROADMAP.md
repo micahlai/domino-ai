@@ -27,8 +27,8 @@ Slots: 3 of 3 counted (friend S2 reserved + L0 + E0). Lead coordinates only, no 
 
 | ID | Owner | Branch / worktree | Next action | Acceptance evidence |
 | --- | --- | --- | --- | --- |
-| L0 contracts | Claude worker, repair running | L0-learning-contracts / ../domino-L0 | Codex REJECTED 10b500c ([audit](kb/reviews/L0-10b500c-codex-audit.md)): 3 P1 (incomplete cohort can pass, unpaired observations, lost response taint), 4 P2. Repair then re-audit | Additive-only and exact money checks passed |
-| E0 data custody | Claude worker, repair running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED b441a2a ([audit](kb/reviews/E0-b441a2a-codex-audit.md)): original-accession pinning, acceptance instants, read logging, Freshworks package, strict boundary. Repair then re-audit | 16 pairs claimed eligible before the fix; recount after it |
+| L0 contracts | Repair 9f6f677 done; Codex re-audit running | L0-learning-contracts / ../domino-L0 | Await re-audit | 335 contracts tests, typecheck, biome pass (worker-reported) |
+| E0 data custody | Claude worker, repair round 2 running | E0-evaluation-custody / ../domino-E0 | Codex REJECTED 217bd44 too ([re-audit](kb/reviews/E0-217bd44-codex-reaudit.md)): missing-acceptance substitution, incomplete historical read log, thin self-check. Last round before escalation | Accession pinning, instants, strict boundary fixed; 16/16 still claimed |
 
 ## Review
 
