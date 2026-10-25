@@ -3,7 +3,7 @@
 import { type CompanyModel, CompanyModelSchema } from "@domino/contracts";
 import { fixtures } from "@domino/contracts/fixtures";
 import { auditSnapshot } from "@domino/engine";
-import { simulator } from "@domino/sim";
+import { type ProfileId, createProfileCompany } from "@domino/sim";
 import { useConvex, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import {
@@ -14,11 +14,13 @@ import {
   useEffect,
   useState,
 } from "react";
+import { DEFAULT_FIELD_COMPANY, fieldCompany } from "../../../convex/lib/fieldCompanies";
+import { useSelectedCompany, useSelectedProfile } from "../company";
 import { type DashboardResult, deriveDashboard } from "./derive";
 
 // The one switch between the fieldDashboard.summary Convex query and labelled demo data.
-// Demo data is the sim Kestrel company run through the same engine derivation as the backend,
-// so every number on screen is internally consistent either way.
+// Demo data is the selected picker company (sim v2 driver profile, seed 1, as field.setupAll
+// creates it) run through the same engine derivation as the backend, so demo numbers match live.
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -29,7 +31,8 @@ export type DashboardHeader = {
   asOf: string | null;
   /** ISO timestamp of the latest ingested snapshot. */
   updatedAt: string | null;
-  tools: { connected: number; total: number };
+  /** `off`: names of disconnected tools, whose data is as of their last read. */
+  tools: { connected: number; total: number; off: string[] };
   agent: { state: AgentState; intervalMs: number | null; lastError: string | null };
   openFindings: number;
   openEscalations: number;
@@ -54,14 +57,14 @@ export type SummaryResponse = {
   lastError: string | null;
   auto: boolean;
   autoIntervalMs: number;
-  sources: { total: number; connected: number };
+  sources: { total: number; connected: number; off?: string[] };
   openFindings: number;
   openEscalations: number;
   result: DashboardResult | null;
 } | null;
 
 export const DASHBOARD_API = {
-  summary: makeFunctionReference<"query", Record<string, never>, SummaryResponse>(
+  summary: makeFunctionReference<"query", { companyId?: string }, SummaryResponse>(
     "fieldDashboard:summary",
   ),
 };
@@ -75,12 +78,12 @@ const DEMO_MODEL: CompanyModel = CompanyModelSchema.parse({
 });
 const DEMO_TOOLS = 6;
 
-/** Demo dashboard: sim Kestrel (seed 1, as field.setup uses) through the real engine. Pure. */
-export function buildDemo(): {
+/** Demo dashboard: a picker company (seed 1, as field.setupAll uses) through the real engine. */
+export function buildDemo(profile: ProfileId = DEFAULT_FIELD_COMPANY): {
   header: Omit<DashboardHeader, "updatedAt">;
   result: DashboardResult;
 } {
-  const snapshot = simulator.createCompany("kestrel", 1).snapshot;
+  const snapshot = createProfileCompany(profile, 1).snapshot;
   const findings = auditSnapshot({
     snapshot,
     previous: null,
@@ -88,9 +91,9 @@ export function buildDemo(): {
   });
   return {
     header: {
-      name: "Kestrel Data",
+      name: fieldCompany(profile).name,
       asOf: snapshot.asOf,
-      tools: { connected: DEMO_TOOLS, total: DEMO_TOOLS },
+      tools: { connected: DEMO_TOOLS, total: DEMO_TOOLS, off: [] },
       agent: { state: "demo", intervalMs: null, lastError: null },
       openFindings: findings.length,
       openEscalations: findings.filter((f) => f.severity === "high").length,
@@ -99,10 +102,11 @@ export function buildDemo(): {
   };
 }
 
-let demoCache: ReturnType<typeof buildDemo> | undefined;
-const demo = () => {
-  demoCache ??= buildDemo();
-  return demoCache;
+const demoCache = new Map<ProfileId, ReturnType<typeof buildDemo>>();
+const demo = (profile: ProfileId) => {
+  const hit = demoCache.get(profile) ?? buildDemo(profile);
+  demoCache.set(profile, hit);
+  return hit;
 };
 
 export function liveHeader(r: NonNullable<SummaryResponse>): DashboardHeader {
@@ -111,7 +115,7 @@ export function liveHeader(r: NonNullable<SummaryResponse>): DashboardHeader {
     name: r.name.replace(/\s*\(live feed\)\s*$/i, "") || "Your company",
     asOf: r.result?.ok ? r.result.view.asOf : r.asOf,
     updatedAt: r.lastSnapshotAt,
-    tools: { connected: r.sources.connected, total: r.sources.total },
+    tools: { connected: r.sources.connected, total: r.sources.total, off: r.sources.off ?? [] },
     agent: { state, intervalMs: r.autoIntervalMs, lastError: r.lastError },
     openFindings: r.openFindings,
     openEscalations: r.openEscalations,
@@ -149,7 +153,12 @@ function ProbedData({ children }: { children: ReactNode }) {
 }
 
 function LiveData({ children }: { children: ReactNode }) {
-  const r = useQuery(DASHBOARD_API.summary, {});
+  // Follows the company picked in the top bar (newest feed until the picker list loads).
+  const { companyId } = useSelectedCompany();
+  const r = useQuery(
+    DASHBOARD_API.summary,
+    companyId === undefined ? "skip" : companyId ? { companyId } : {},
+  );
   const value: DashboardData =
     r === undefined
       ? LOADING
@@ -163,7 +172,7 @@ function DemoData({ note, children }: { note: string; children: ReactNode }) {
   // "Updated 3 h ago" must use the viewer's clock, not the build machine's, so it is set after mount.
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   useEffect(() => setUpdatedAt(new Date(Date.now() - 3 * 3_600_000).toISOString()), []);
-  const { header, result } = demo();
+  const { header, result } = demo(useSelectedProfile());
   const value: DashboardData = { source: "demo", note, header: { ...header, updatedAt }, result };
   return createElement(DashboardContext.Provider, { value }, children);
 }

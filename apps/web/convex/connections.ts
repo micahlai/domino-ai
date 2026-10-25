@@ -11,8 +11,8 @@
  *   connections.disconnect({ companyId?, tool })  stop reading the tool; counts are cleared.
  *   connections.syncNow({ companyId? })  read every connected tool again.
  *
- * The sync here previews what each tool provides (counts, receipts, tie-outs). Snapshots are
- * still written by the field ingestion; it switches to connectors.pullAll in a later step.
+ * field.setup connects all six tools. The field ingestion reads only connected tools through
+ * connectors.pullAll and updates these rows; the sync here re-reads them for the Connect page.
  */
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
@@ -31,8 +31,9 @@ import { inProcessFetcher } from "./connectors/inProcess";
 import { pullAll } from "./connectors/pullAll";
 import { TOOL_IDS, type ToolId } from "./connectors/types";
 import { writeLog } from "./fieldJobs";
+import { storeToolResults, toolArg, toolResult } from "./lib/connectionRows";
 
-const tool = v.union(...TOOL_IDS.map((t) => v.literal(t)));
+const tool = toolArg;
 const AGENT = "field.connectors";
 
 async function companyFor(ctx: QueryCtx, companyId: Id<"companies"> | undefined) {
@@ -85,6 +86,23 @@ function view(t: ToolId, row: Doc<"connections"> | null) {
     checksTotal: row?.checksTotal ?? 0,
     lastError: row?.lastError ?? null,
   };
+}
+
+/** Setup: every tool starts connected (demo consent), so the first ingest reads all six. */
+export async function connectAll(ctx: MutationCtx, companyId: Id<"companies">, name: string) {
+  const by = await personName(ctx);
+  const at = new Date().toISOString();
+  for (const t of TOOLS)
+    await ctx.db.insert("connections", {
+      companyId,
+      tool: t.id,
+      status: "connected",
+      account: `${name} (sandbox)`,
+      scopes: t.reads,
+      connectedAt: at,
+      connectedBy: by,
+      ...cleared,
+    });
 }
 
 export const list = query({
@@ -171,38 +189,15 @@ export const connected = internalQuery({
   },
 });
 
-const result = v.object({
-  tool,
-  error: v.union(v.string(), v.null()),
-  cursor: v.union(v.string(), v.null()),
-  counts: v.record(v.string(), v.number()),
-  recordsIn: v.number(),
-  recordsOut: v.number(),
-  skipped: v.number(),
-  checksOk: v.number(),
-  checksTotal: v.number(),
-});
-
 export const recordSync = internalMutation({
   args: {
     companyId: v.id("companies"),
     at: v.string(),
-    results: v.array(result),
+    results: v.array(toolResult),
     summary: v.string(),
   },
   handler: async (ctx: MutationCtx, { companyId, at, results, summary }) => {
-    for (const r of results) {
-      const row = await rowFor(ctx, companyId, r.tool);
-      // A tool disconnected while the sync ran stays disconnected.
-      if (!row || row.status === "disconnected") continue;
-      const { tool: _t, error, ...rest } = r;
-      await ctx.db.patch("connections", row._id, {
-        ...rest,
-        status: error ? "error" : "connected",
-        lastSyncAt: at,
-        lastError: error,
-      });
-    }
+    await storeToolResults(ctx, companyId, at, results);
     await writeLog(ctx, companyId, undefined, {
       actor: "connector",
       action: "connections.synced",

@@ -1,12 +1,12 @@
 "use client";
 
-import { ChevronsUpDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
+import { CompanySwitcher } from "./field/CompanySwitcher";
 
 // Top-level pages of the weekly product, in reading order.
 const SIMULATIONS = /^\/(simulations|c\/[^/]+\/simulations)(\/|$)/;
@@ -34,10 +34,6 @@ const demoLinks = [
   { href: "/c/kestrel/record", label: "Decision record" },
 ];
 
-// Until companies are real records, the switcher names the demo company (or the id in view).
-const companyLabel = (id: string) =>
-  !id || id === "kestrel" ? "Kestrel Data" : `${id.charAt(0).toUpperCase()}${id.slice(1)}`;
-
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
@@ -45,7 +41,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inDemo = pathname.startsWith("/c/");
   const companyId = inDemo ? (pathname.split("/")[2] ?? "") : "";
-  const companyName = companyLabel(companyId);
   // The agent canvas and the case workspace own the whole window and pin Original tokens, so they skip the shared header.
   if (pathname.startsWith("/investigate") || pathname.startsWith("/case/")) {
     return (
@@ -124,26 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               2U case study
             </Link>
             <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
-            {/* Placeholder until companies can be switched; it names the company in view. */}
-            <button
-              type="button"
-              aria-disabled="true"
-              title="Switching companies is not available yet"
-              className={cn(
-                "flex h-9 cursor-default items-center gap-2 rounded-md border bg-card pl-1.5 pr-2 text-[13px] font-medium shadow-xs",
-                focusRing,
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className="flex size-6 items-center justify-center rounded bg-primary text-[11px] font-semibold text-primary-foreground"
-              >
-                {companyName.charAt(0)}
-              </span>
-              <span className="hidden sm:inline">{companyName}</span>
-              <span className="sr-only sm:hidden">Company: {companyName}</span>
-              <ChevronsUpDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            </button>
+            <CompanySwitcher />
           </div>
         </div>
       </header>

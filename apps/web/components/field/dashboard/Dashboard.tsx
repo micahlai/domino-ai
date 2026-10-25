@@ -128,6 +128,9 @@ function Header({ data }: { data: DashboardData }) {
             <Dot />
             <span>
               {h.tools.connected} of {h.tools.total} tools connected
+              {h.tools.off.length > 0
+                ? ` (${h.tools.off.join(", ")} not read since disconnected)`
+                : ""}
             </span>
           </span>
         ) : (

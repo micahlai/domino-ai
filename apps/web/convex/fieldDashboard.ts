@@ -5,13 +5,14 @@
  *
  *   fieldDashboard.summary({ companyId? })   latest feed when omitted. null when no feed.
  *     { companyId, name, asOf, lastSnapshotAt, lastIngestStatus, lastError, auto,
- *       autoIntervalMs, sources: { total, connected }, openFindings, openEscalations,
+ *       autoIntervalMs, sources: { total, connected, off: tool names }, openFindings, openEscalations,
  *       result: DashboardResult | null }   result is null before the first ingest.
  */
 import { CompanyModelSchema, ConstraintSchema, SnapshotSchema } from "@domino/contracts";
 import { v } from "convex/values";
 import { type DashboardResult, deriveDashboard } from "../components/field/dashboard/derive";
 import { query } from "./_generated/server";
+import { TOOLS } from "./connectors/catalog";
 import { AUTO_INTERVAL_MS } from "./fieldJobs";
 
 const EMPTY_MODEL = { version: 0, customerDelayDays: {}, recurringSpend: [], rules: [] };
@@ -28,10 +29,11 @@ export const summary = query({
     if (!feed) return null;
     const { companyId } = feed;
     const company = await ctx.db.get("companies", companyId);
-    const sources = await ctx.db
-      .query("sources")
-      .withIndex("by_company", (q) => q.eq("companyId", companyId))
+    const connections = await ctx.db
+      .query("connections")
+      .withIndex("by_companyId_and_tool", (q) => q.eq("companyId", companyId))
       .take(20);
+    const on = new Set(connections.filter((c) => c.status !== "disconnected").map((c) => c.tool));
     const open = await ctx.db
       .query("findings")
       .withIndex("by_companyId_and_status", (q) =>
@@ -67,9 +69,11 @@ export const summary = query({
       lastError: feed.lastError,
       auto: feed.auto,
       autoIntervalMs: AUTO_INTERVAL_MS,
+      // Tools the ingestion reads; a disconnected tool's data stays as of its last read.
       sources: {
-        total: sources.length,
-        connected: sources.filter((s) => s.lastPull !== null).length,
+        total: TOOLS.length,
+        connected: on.size,
+        off: TOOLS.filter((t) => !on.has(t.id)).map((t) => t.name),
       },
       openFindings: open.length,
       openEscalations: open.filter((f) => f.escalated).length,

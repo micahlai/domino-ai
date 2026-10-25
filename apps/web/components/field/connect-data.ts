@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 import type { ToolId } from "../../convex/connectors/types";
+import { useSelectedCompany } from "./company";
 import demo from "./connect-demo.json";
 
 // The connect page's one switch between the real connections.* backend and labelled demo
@@ -50,12 +51,15 @@ export type ConnectData = {
 };
 
 export const CONNECT_API = {
-  list: makeFunctionReference<"query", Record<string, never>, ListResult>("connections:list"),
-  connect: makeFunctionReference<"mutation", { tool: ToolId; consent: boolean }>(
-    "connections:connect",
+  list: makeFunctionReference<"query", { companyId?: string }, ListResult>("connections:list"),
+  connect: makeFunctionReference<
+    "mutation",
+    { companyId?: string; tool: ToolId; consent: boolean }
+  >("connections:connect"),
+  disconnect: makeFunctionReference<"mutation", { companyId?: string; tool: ToolId }>(
+    "connections:disconnect",
   ),
-  disconnect: makeFunctionReference<"mutation", { tool: ToolId }>("connections:disconnect"),
-  syncNow: makeFunctionReference<"mutation", Record<string, never>>("connections:syncNow"),
+  syncNow: makeFunctionReference<"mutation", { companyId?: string }>("connections:syncNow"),
 };
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -102,7 +106,13 @@ function Probed({ children }: { children: ReactNode }) {
 }
 
 function Live({ children }: { children: ReactNode }) {
-  const list = useQuery(CONNECT_API.list, {});
+  // Follows the company picked in the top bar (newest feed until the picker list loads).
+  const { companyId: picked } = useSelectedCompany();
+  const list = useQuery(
+    CONNECT_API.list,
+    picked === undefined ? "skip" : picked ? { companyId: picked } : {},
+  );
+  const companyId = list?.companyId;
   const connect = useMutation(CONNECT_API.connect);
   const disconnect = useMutation(CONNECT_API.disconnect);
   const syncNow = useMutation(CONNECT_API.syncNow);
@@ -114,16 +124,16 @@ function Live({ children }: { children: ReactNode }) {
       asOf: list?.asOf ?? null,
       tools: list === undefined ? undefined : (list?.tools ?? null),
       connect: async (tool) => {
-        await connect({ tool, consent: true });
+        await connect({ companyId, tool, consent: true });
       },
       disconnect: async (tool) => {
-        await disconnect({ tool });
+        await disconnect({ companyId, tool });
       },
       syncNow: async () => {
-        await syncNow({});
+        await syncNow({ companyId });
       },
     }),
-    [list, connect, disconnect, syncNow],
+    [list, companyId, connect, disconnect, syncNow],
   );
   return createElement(Context.Provider, { value }, children);
 }

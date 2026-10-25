@@ -259,10 +259,12 @@ function tieOut(out: Map<ToolId, AnyTranslated>, records: Lists): Check[] {
   if (!plaid) return checks;
   const full = !plaid.notes.some((n) => n.startsWith("incremental"));
   const bank = new Map(records.bankTxns.map((t) => [t.id, t]));
-  const byRef = new Map<string, BankTxn>();
+  // A run or payment can leave the bank as several debits (net pay and taxes, for example)
+  // that carry the same reference; the tie-out compares their sum.
+  const byRef = new Map<string, Pick<BankTxn, "amount">>();
   for (const [id, ref] of plaid.links.references) {
     const t = bank.get(id);
-    if (t) byRef.set(ref, t);
+    if (t) byRef.set(ref, { amount: (byRef.get(ref)?.amount ?? 0) + t.amount });
   }
   const add = (name: string, ref: string, ok: boolean, detail: string) =>
     checks.push({ name, ref, ok, detail });

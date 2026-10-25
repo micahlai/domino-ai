@@ -47,7 +47,7 @@ describe("buildBrainGraph", () => {
       "ramp",
       "qbo",
       "gusto",
-      "capitalone",
+      "plaid",
     ]);
     expect(graph.nodes.filter((n) => n.kind === "output")).toHaveLength(4);
     expect(graph.nodes.every((n) => n.status === "idle")).toBe(true);
