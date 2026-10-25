@@ -525,6 +525,29 @@ describe("questions panel", () => {
     expect(html).not.toContain("proposal-confirm-q2");
   });
 
+  it("shows the stored reading method and current backend failure codes", () => {
+    const codes = [
+      ["PROVIDER_UNAVAILABLE", "no language reader is set up"],
+      ["PROVIDER_TIMEOUT", "language reader took too long"],
+      ["PROVIDER_ERROR", "language reader could not be reached"],
+      ["PROVIDER_REFUSED", "language reader declined"],
+      ["PROVIDER_TRUNCATED", "reply was cut off"],
+      ["PROVIDER_MALFORMED", "reply was not usable"],
+      ["LEASE_EXPIRED", "stopped before it finished"],
+      ["INTERNAL", "could not be finished"],
+    ];
+    for (const [errorCode, message] of codes) {
+      const q = clone(fixtureQuestions[3]!);
+      q.errorCode = errorCode!;
+      q.operation.title = "Read with the bounded Timeline grammar";
+      const html = render({ state: "ready", value: [q] });
+      expect(html).toContain(message);
+      expect(html).toContain("Read with the bounded Timeline grammar");
+      expect(html).toContain("How this was read");
+      expect(html).not.toContain(`(${errorCode})`);
+    }
+  });
+
   it("keeps a failed list read visible", () => {
     expect(render({ state: "error" })).toContain("Earlier questions could not be shown");
   });

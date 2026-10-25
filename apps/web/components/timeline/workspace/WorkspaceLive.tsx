@@ -10,7 +10,7 @@ import { Button } from "../../ui/button";
 import { Skeleton } from "../../ui/skeleton";
 import { baselineHref } from "../baseline/api";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
-import type { AskInput, AskOutcome, ProposalOutcome } from "./QuestionsPanel";
+import type { AskInput, AskOutcome } from "./QuestionsPanel";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
   LinkResultSchema,
@@ -36,6 +36,7 @@ import {
   workspaceHref,
   workspaceLinkFromSearch,
 } from "./api";
+import { confirmQuestionProposal } from "./proposals";
 import { type Outcome, RequestLedger, UNUSABLE_ANSWER, describeWriteError } from "./requests";
 
 export const CATALOG_PAGE_SIZE = 20;
@@ -302,14 +303,12 @@ function RunReady({
         };
       }
     },
-    confirmProposal: async (q: QuestionReceipt): Promise<ProposalOutcome> => {
-      const p = q.proposal;
-      if (!p) return { ok: false, message: "This answer has no suggestion to run." };
-      const out = await runScenario(p.label, p.changes, p.constraints, p.constraintNote, false);
-      if (!out.ok) return out;
-      const linked = await relink(q.id, out.runId);
-      return linked.ok ? out : { ...out, linkError: linked.message };
-    },
+    confirmProposal: (q: QuestionReceipt) =>
+      confirmQuestionProposal(q, runKey, runs, {
+        revise: (args) => write(() => revise(args), false),
+        simulate: (args) => write(() => simulate(args), false),
+        relink,
+      }),
     relink,
   };
 

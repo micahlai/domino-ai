@@ -30,6 +30,20 @@ export type QuestionActions = {
 };
 
 const FAILURES: Record<string, string> = {
+  PROVIDER_UNAVAILABLE:
+    "The question did not match the supported wording, and no language reader is set up. Try plainer wording. Nothing was calculated.",
+  PROVIDER_TIMEOUT:
+    "The language reader took too long. Nothing was calculated. Ask again to retry.",
+  PROVIDER_ERROR:
+    "The language reader could not be reached. Nothing was calculated. Ask again to retry.",
+  PROVIDER_REFUSED: "The language reader declined this question. Nothing was calculated.",
+  PROVIDER_TRUNCATED:
+    "The language reader’s reply was cut off. Nothing was calculated. Ask again to retry.",
+  PROVIDER_MALFORMED:
+    "The language reader’s reply was not usable, so it was discarded. Nothing was calculated.",
+  LEASE_EXPIRED:
+    "This question stopped before it finished. Nothing was calculated. Ask again to retry.",
+  INTERNAL: "This question could not be finished. Nothing was calculated. Ask again to retry.",
   no_provider:
     "No question service is set up here, so the question was not answered. Nothing was calculated.",
   timeout: "The question took too long and was stopped. Nothing was calculated.",
@@ -197,6 +211,10 @@ function Receipt({
         {q.selectedItemId ? <span>item {q.selectedItemId}</span> : null}
       </div>
       <p className="text-sm font-medium">{q.prompt}</p>
+      <details className="text-xs" data-testid={`question-method-${q.id}`}>
+        <summary className="cursor-pointer text-muted-foreground">How this was read</summary>
+        <p className="mt-1">{q.operation.title}</p>
+      </details>
       {q.status === "running" ? (
         <output className="block text-sm text-muted-foreground" aria-busy="true">
           Reading the saved scenario...
