@@ -2,10 +2,10 @@ import { canonicalJson } from "@domino/contracts";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { fixtureRoot, fixtureRules, fixtureScenario } from "../workspace/fixtures";
+import { fixtureRoot, fixtureScenario } from "../workspace/fixtures";
 import { type AnalysisActions, AnalysisView } from "./AnalysisView";
 import { analysisHref, canAnalyze, canRetry, readAnalyses, readAnalysis, readOutput } from "./api";
-import { fixtureAnalysis, fixtureAttempt } from "./fixtures";
+import { fixtureAnalysis, fixtureAttempt, fixtureAnalysisRun as fixtureRules } from "./fixtures";
 import { type FinancialOutput, healthFor } from "./output";
 
 const key = {
@@ -359,5 +359,60 @@ describe("strict financial export", () => {
     const wrong = structuredClone(output);
     wrong.resultRef.branchIds = ["timeline:workspace/elsewhere"];
     expect(readOutput(canonicalJson(wrong), outputKey)).toBeUndefined();
+  });
+});
+
+describe("per-rule proof identity", () => {
+  it("accepts separate set and individual rule versions for both risks and responses", () => {
+    expect(fixtureAnalysis.constraintVersion).not.toBe(fixtureRules.receipts[0]!.constraintVersion);
+    expect(readAnalysis(fixtureAnalysis, key, fixtureRules).state).toBe("ready");
+    expect(readAnalyses([fixtureAnalysis], key, fixtureRules).state).toBe("ready");
+  });
+  it("rejects changed versions, ids, kinds and limits against source proof", () => {
+    for (const field of ["constraintVersion", "constraintId", "kind", "limit"] as const) {
+      for (const kind of ["risks", "responses"] as const) {
+        const raw = mutate((r) => {
+          const proof = r[kind][0]!.receipts[0]!;
+          if (field === "limit") proof.limit++;
+          else if (field === "kind") proof.kind = "pay_by_date";
+          else proof[field] = "wrong";
+        });
+        expect(readAnalysis(raw, key, fixtureRules).state).toBe("unusable");
+        expect(readAnalyses([raw], key, fixtureRules).state).toBe("unusable");
+      }
+    }
+  });
+  it("rejects missing or extra rule proof rather than implying full compliance", () => {
+    for (const kind of ["risks", "responses"] as const) {
+      const missing = mutate((r) => {
+        r[kind][0]!.receipts = [];
+      });
+      unreadable(missing);
+      expect(readAnalyses([missing], key, fixtureRules).state).toBe("unusable");
+      const extra = mutate((r) => {
+        r[kind][0]!.receipts.push({ ...r[kind][0]!.receipts[0]!, constraintId: "extra" });
+      });
+      unreadable(extra);
+    }
+  });
+  it("accepts the backend evidence cap of100 and rejects101", () => {
+    const hundred = mutate((r) => {
+      for (const x of [...r.risks, ...r.responses])
+        x.evidence = Array.from({ length: 100 }, (_, i) => ({
+          source: "document",
+          ref: `record-${i}`,
+          note: "Bounded record evidence.",
+        }));
+    });
+    expect(readAnalysis(hundred, key, fixtureRules).state).toBe("ready");
+    unreadable(
+      mutate((r) => {
+        r.risks[0]!.evidence = Array.from({ length: 101 }, (_, i) => ({
+          source: "document",
+          ref: `record-${i}`,
+          note: "Bounded record evidence.",
+        }));
+      }),
+    );
   });
 });

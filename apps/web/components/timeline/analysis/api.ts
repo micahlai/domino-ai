@@ -10,7 +10,7 @@ import type { Read, RunKey, WorkspaceRun } from "../workspace/api";
 
 import { FinancialOutputSchema, ReceiptsSchema, SafeForecastSchema } from "./output";
 
-const Text = z.string().min(1).max(4096);
+const Text = z.string().min(1).max(2000);
 const Cents = z.number().int().safe();
 const Stamp = z.string().datetime({ offset: true });
 const Risk = z
@@ -19,8 +19,8 @@ const Risk = z
     label: Text,
     probability: z.number().finite().min(0).max(1),
     probabilityBasis: Text,
-    evidence: z.array(EvidenceSchema).max(64),
-    changes: z.array(ChangeSchema).max(64),
+    evidence: z.array(EvidenceSchema).max(100),
+    changes: z.array(ChangeSchema).min(1).max(8),
     runId: Text.nullable(),
     forecast: SafeForecastSchema,
     receipts: ReceiptsSchema,
@@ -34,8 +34,8 @@ const Response = z
     label: Text,
     costNote: Text,
     risk: z.enum(["low", "medium", "high"]),
-    evidence: z.array(EvidenceSchema).max(64),
-    changes: z.array(ChangeSchema).max(64),
+    evidence: z.array(EvidenceSchema).max(100),
+    changes: z.array(ChangeSchema).min(1).max(8),
     runId: Text.nullable(),
     forecast: SafeForecastSchema,
     receipts: ReceiptsSchema,
@@ -61,13 +61,13 @@ const Receipt = z
     resilience: z
       .object({
         weightedScenarioIndex: z.number().finite().min(0).max(1),
-        survivedCount: z.number().int().nonnegative(),
-        scenarioCount: z.number().int().nonnegative(),
+        survivedCount: z.number().int().min(0).max(8),
+        scenarioCount: z.number().int().min(1).max(8),
         scope: Text,
       })
       .strict()
       .nullable(),
-    warnings: z.array(z.string()).max(64),
+    warnings: z.array(Text).max(30),
     errorCode: z.string().nullable(),
   })
   .strict();
@@ -104,7 +104,6 @@ export const AnalysisReceiptSchema = Receipt.superRefine((r, ctx) => {
         bad("unsafe hiring cost");
     }
     for (const receipt of x.receipts) {
-      if (receipt.constraintVersion !== r.constraintVersion) bad("rule version mismatch");
       if (receipt.unit === "cents")
         for (const n of [receipt.limit, receipt.value, receipt.shortfall])
           if (n !== null && !Number.isSafeInteger(n)) bad("unsafe rule money");
@@ -128,6 +127,31 @@ function early(raw: unknown): Read<never> | undefined {
       ? { state: "error" }
       : undefined;
 }
+/** Set versions identify the full rule collection; each rule has its own independent version. */
+function matchesSource(receipt: AnalysisReceipt, run: WorkspaceRun): boolean {
+  if (
+    receipt.companyId !== run.companyId ||
+    receipt.runId !== run.runId ||
+    receipt.inputHash !== run.inputHash ||
+    receipt.constraintVersion !== run.constraintVersion
+  )
+    return false;
+  const rules = new Map(run.receipts.map((proof) => [proof.constraintId, proof]));
+  if (rules.size !== run.receipts.length) return false;
+  return [...receipt.risks, ...receipt.responses].every(
+    (scenario) =>
+      scenario.receipts.length === rules.size &&
+      scenario.receipts.every((proof) => {
+        const source = rules.get(proof.constraintId);
+        return (
+          source !== undefined &&
+          proof.constraintVersion === source.constraintVersion &&
+          proof.kind === source.kind &&
+          proof.limit === source.limit
+        );
+      }),
+  );
+}
 export function readAnalysis(
   raw: unknown,
   key: RunKey & { analysisId: string },
@@ -142,7 +166,7 @@ export function readAnalysis(
     r.companyId !== key.companyId ||
     r.runId !== key.runId ||
     r.analysisId !== key.analysisId ||
-    (run && (r.inputHash !== run.inputHash || r.constraintVersion !== run.constraintVersion))
+    (run && !matchesSource(r, run))
   )
     return { state: "unusable" };
   return { state: "ready", value: r };
@@ -162,7 +186,7 @@ export function readAnalyses(
       !r ||
       r.companyId !== key.companyId ||
       r.runId !== key.runId ||
-      (run && (r.inputHash !== run.inputHash || r.constraintVersion !== run.constraintVersion))
+      (run && !matchesSource(r, run))
     )
       return { state: "unusable" };
     out.push(r);

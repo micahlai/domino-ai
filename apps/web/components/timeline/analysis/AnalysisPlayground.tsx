@@ -2,15 +2,15 @@
 import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
-import { fixtureRules, fixtureScenario } from "../workspace/fixtures";
+import { fixtureScenario } from "../workspace/fixtures";
 import { AnalysisView } from "./AnalysisView";
 import type { AnalysisReceipt } from "./api";
-import { fixtureAttempt } from "./fixtures";
+import { fixtureAnalysisRun, fixtureAttempt } from "./fixtures";
 export function AnalysisPlayground() {
   const [status, setStatus] = useState<AnalysisReceipt["status"]>("succeeded");
   const [scenario, setScenario] = useState(false);
   const receipt = fixtureAttempt(status);
-  const run = scenario ? fixtureScenario : fixtureRules;
+  const run = scenario ? fixtureScenario : fixtureAnalysisRun;
   const refuse = async () => ({
     ok: false as const,
     message: "Fixture only: no job started, output generated or data saved.",

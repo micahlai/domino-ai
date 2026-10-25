@@ -1,7 +1,17 @@
 import type { OperationSummaryV1 } from "@domino/contracts";
+import type { WorkspaceRun } from "../workspace/api";
 import { fixtureRules, fixtureScenario } from "../workspace/fixtures";
 import type { AnalysisReceipt } from "./api";
 
+// Real saved data uses a set-level rules hash and a separate version for each rule.
+export const fixtureAnalysisRun: WorkspaceRun = {
+  ...fixtureRules,
+  constraintVersion: `rules_${"a".repeat(64)}`,
+  receipts: fixtureRules.receipts.map((proof) => ({
+    ...proof,
+    constraintVersion: `rule_${"b".repeat(64)}`,
+  })),
+};
 const at = "2026-10-24T16:00:00.000Z";
 export const fixtureAnalysis: AnalysisReceipt = {
   schemaVersion: 1,
@@ -9,7 +19,7 @@ export const fixtureAnalysis: AnalysisReceipt = {
   analysisId: "timeline:analysis/fixture-complete",
   runId: fixtureRules.runId,
   inputHash: fixtureRules.inputHash,
-  constraintVersion: fixtureRules.constraintVersion,
+  constraintVersion: fixtureAnalysisRun.constraintVersion,
   status: "succeeded",
   methodVersion: "timeline-analysis-fixture-v1",
   savedAt: at,
@@ -45,7 +55,10 @@ export const fixtureAnalysis: AnalysisReceipt = {
       changes: fixtureScenario.ownChanges,
       runId: fixtureScenario.runId,
       forecast: fixtureScenario.forecast,
-      receipts: fixtureScenario.receipts,
+      receipts: fixtureScenario.receipts.map((proof) => ({
+        ...proof,
+        constraintVersion: fixtureAnalysisRun.receipts[0]!.constraintVersion,
+      })),
       failureReason: null,
     },
   ],
@@ -69,7 +82,7 @@ export const fixtureAnalysis: AnalysisReceipt = {
       ],
       runId: null,
       forecast: fixtureRules.forecast,
-      receipts: fixtureRules.receipts,
+      receipts: fixtureAnalysisRun.receipts,
       gainCents: 11_000_000,
       clearsAllRules: true,
     },
