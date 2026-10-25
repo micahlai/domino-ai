@@ -59,6 +59,24 @@ const runs = (t: T) => t.run((ctx) => ctx.db.query("timelineRuns").collect());
 afterEach(() => vi.restoreAllMocks());
 
 describe("durable Timeline clarification chat", () => {
+  it("models percentage spend cuts, hires and price changes from the saved schedule", async () => {
+    const t = setup();
+    let r = await start(t);
+    r = await send(t, r, "what if we cut marketing 20%");
+    expect(r.status).toBe("ready");
+    expect(r.turns.at(-1)?.text).toMatch(/20% cut to marketing spend \(Northlight Marketing\)/);
+    expect(r.proposal?.changes.every((c) => c.kind === "add_cash" && c.amount > 0)).toBe(true);
+    r = await start(t);
+    r = await send(t, r, "hire 3 engineers at $150K from Dec 1");
+    expect(r.status).toBe("ready");
+    expect(
+      r.proposal?.changes.every((c) => c.kind === "remove_cash" && c.date >= "2026-12-01"),
+    ).toBe(true);
+    r = await start(t);
+    r = await send(t, r, "cut snacks 20%");
+    expect(r.proposal).toBeNull();
+    expect(r.turns.at(-1)?.text).toMatch(/Which vendor should I cut: Cloud provider/);
+  });
   it("answers why/how questions as questions instead of a modeling refusal", async () => {
     const t = setup();
     let r = await start(t);

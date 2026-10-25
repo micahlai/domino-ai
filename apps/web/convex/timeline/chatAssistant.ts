@@ -6,6 +6,7 @@ import { assistantConfig, runStructured } from "./assistant/claude";
 import { companyContext } from "./assistant/context";
 import { groundingIssue } from "./assistant/grounding";
 import { type Draft, evaluateIntents, isQuestion } from "./chat/draft";
+import { planRequest } from "./chat/planChanges";
 import type { ChatReceipt } from "./chat/receipt";
 import type { WorkspaceRun } from "./questions/context";
 import { INTENTS_JSON_SCHEMA, type Intent, IntentSchema } from "./questions/intent";
@@ -127,6 +128,8 @@ export const send = action({
         assistantConfig() &&
         !claim.draft.intents.length &&
         // Questions still reach the reader (it sees Worker context); answers stay deterministic.
+        // Spend cuts, hires and price changes are computed directly, with no model call.
+        !planRequest(claim.run, args.text, claim.floor) &&
         (isQuestion(args.text) || !groundingIssue(args.text, []))
           ? await readIntents(claim.run, claim.receipt, args.text, claim.floor)
           : null;
