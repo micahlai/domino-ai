@@ -55,6 +55,8 @@ export type Suggestion = {
     lenderMinimum?: number;
   };
   recommendation: string;
+  /** Receipt when a learned fix preference moved this suggestion. */
+  learnedNote?: string;
   status: SuggestionStatus;
   note?: string;
   /** Who suggested it; the CREAO advisor unless the backend says otherwise. */
@@ -154,6 +156,7 @@ export function toSuggestion(raw: unknown): Suggestion | null {
       ? str(raw.recommendation.text)
       : str(raw.recommendation),
     status,
+    ...(isRecord(raw.learned) && str(raw.learned.text) && { learnedNote: str(raw.learned.text) }),
     ...(str(raw.note) && { note: str(raw.note) }),
     by:
       str(raw.by) ||

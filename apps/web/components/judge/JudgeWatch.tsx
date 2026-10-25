@@ -94,10 +94,10 @@ function SidePanel({ state, onLeave }: { state: JudgeState; onLeave: () => void 
       {state.snapshotVersion > 0 ? (
         <div className="space-y-2 rounded-lg border bg-card p-4 shadow-xs">
           <p className="text-[13px] text-muted-foreground">
-            Try your own events and questions on the forecast.
+            Add your own events and questions to the forecast.
           </p>
           <FieldCompanyOverride companyId={state.companyId} name={state.name}>
-            <OpenInTimeline variant="outline" label="Open in Timeline" />
+            <OpenInTimeline variant="outline" label="Open in forecast" />
           </FieldCompanyOverride>
         </div>
       ) : null}

@@ -47,6 +47,7 @@ import {
   shouldWait,
 } from "./fieldAi";
 import { ANALYST } from "./fieldAnalyst";
+import { rankEffects } from "./fieldLearning";
 import { pinnedInputs, runCandidates } from "./fieldTrace";
 import type { AgentRow } from "./lib/agentLog";
 import { type Inputs, usd } from "./lib/analystScenarios";
@@ -381,7 +382,12 @@ export const store = internalMutation({
       return [];
     const at = nowIso();
     const ids: string[] = [];
-    for (const [rank, item] of a.items.entries()) {
+    // Learned fix preferences reorder the engine's ranking; effects (money) are untouched.
+    const learned = await rankEffects(ctx, { companyId: a.companyId, cutoff: at, items: a.items });
+    for (const [rank, index] of learned.order.entries()) {
+      const item = a.items[index];
+      if (!item) continue;
+      const effect = learned.effects[index];
       const suggestionId = `${a.scenarioId}:${item.kind}`;
       const doc = {
         companyId: a.companyId,
@@ -397,6 +403,16 @@ export const store = internalMutation({
         recommended: false,
         status: "open" as const,
         updatedAt: at,
+        ...(effect && {
+          learned: {
+            effect: effect.effect,
+            text: effect.text,
+            ruleId: effect.ruleId,
+            recordId: effect.recordId,
+            version: effect.version,
+            engineRank: effect.engineRank,
+          },
+        }),
       };
       const existing = await ctx.db
         .query("suggestions")
@@ -412,6 +428,7 @@ export const store = internalMutation({
         });
       ids.push(suggestionId);
     }
+    await learned.commit();
     return ids;
   },
 });

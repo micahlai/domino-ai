@@ -201,3 +201,21 @@ export {
   quarterFlowMiss,
   quarterSuggestions,
 } from "./period-backtest";
+export {
+  FIELD_RULE_CIK,
+  type FlagEffect,
+  type LearnedPaymentDelay,
+  type RankEffect,
+  applyFlagRules,
+  fieldRuleTask,
+  fieldSourceSignature,
+  fixRuleId,
+  flagCounterparty,
+  flagRuleId,
+  learnFromFlagDecision,
+  learnFromSuggestionDecision,
+  learnedPaymentDelays,
+  rankWithPreferences,
+  shortDate,
+  undoLearnedRule,
+} from "./field-learning";

@@ -103,12 +103,17 @@ function freeze<T>(v: T): T {
 export function ruleSlot(a: RuleAction): string {
   if (a.kind === "mapping_override") return `mapping_override:${JSON.stringify([a.tag, a.unit])}`;
   if (a.kind === "authority_preference") return `authority_preference:${a.metric}`;
+  if (a.kind === "flag_expectation")
+    return `flag_expectation:${JSON.stringify([a.flagKind, a.counterparty])}`;
+  if (a.kind === "fix_preference") return `fix_preference:${a.fixKind}`;
   return QUARTER_METHOD_SLOT;
 }
 /** Fields a change of this action can affect, in plain dotted names. */
 function slotFields(a: RuleAction): string[] {
   if (a.kind === "mapping_override") return [`mapping.${a.tag}.${a.unit}`];
   if (a.kind === "authority_preference") return [`reconciliation.${a.metric}.conflict_selection`];
+  if (a.kind === "flag_expectation") return [`audit.${a.flagKind}.${a.counterparty}`];
+  if (a.kind === "fix_preference") return [`advisor.rank.${a.fixKind}`];
   return ["forecast.method", "forecast.target_total", "forecast.target_usable"];
 }
 const actionKey = (a: RuleAction): string =>
@@ -117,7 +122,11 @@ const actionKey = (a: RuleAction): string =>
       ? [a.kind, a.tag, a.unit, a.metric, a.definition]
       : a.kind === "authority_preference"
         ? [a.kind, a.metric, a.prefer]
-        : [a.kind, a.methodId, a.version],
+        : a.kind === "flag_expectation"
+          ? [a.kind, a.flagKind, a.counterparty, a.expect]
+          : a.kind === "fix_preference"
+            ? [a.kind, a.fixKind, a.prefer]
+            : [a.kind, a.methodId, a.version],
   );
 const scopeKey = (s: Scope): string =>
   JSON.stringify(

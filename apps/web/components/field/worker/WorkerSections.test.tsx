@@ -57,13 +57,15 @@ describe("worker page sections", () => {
     );
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html.indexOf("Suggestions")).toBeLessThan(html.indexOf("Risks we&#x27;re watching"));
+    expect(html.indexOf("Recommended fixes")).toBeLessThan(
+      html.indexOf("Risks we&#x27;re watching"),
+    );
     expect(html.indexOf("Risks we&#x27;re watching")).toBeLessThan(html.indexOf("Flags to review"));
   });
 
   it("says what will appear, and when, in each empty section", () => {
     const html = render({});
-    expect(html).toContain("No suggestions waiting.");
+    expect(html).toContain("No fixes waiting.");
     expect(html).toContain("No risk scenarios yet.");
     expect(html).toContain("appears here when the analysis finishes");
     expect(html).toContain("No flags to review.");
@@ -71,8 +73,8 @@ describe("worker page sections", () => {
 
   it("explains that suggestions are not switched on before the backend exists", () => {
     const html = render({ suggestions: { kind: "off" } });
-    expect(html).toContain("Suggestions are not switched on yet.");
-    expect(html).not.toContain("No suggestions waiting.");
+    expect(html).toContain("Recommended fixes are not switched on yet.");
+    expect(html).not.toContain("No fixes waiting.");
   });
 
   it("shows loading states instead of empty claims", () => {
@@ -98,14 +100,14 @@ describe("worker page sections", () => {
     expect(html).toContain("$1.8M"); // lowest cash now
     expect(html).toContain("$3M"); // with the fix, and the lender's minimum
     expect(html).toContain("Fixes it");
-    expect(html).toContain("Try this fix</button>");
+    expect(html).toContain("Open in forecast</button>");
     expect(html).toContain("Dismiss</button>");
-    expect(html).toContain("Simulated only. Nothing is paid or moved.");
+    expect(html).toContain("Approving adds the fix to the plan. Domino never moves money.");
     expect(html).toContain(
       "/field/analysis?companyId=company123&amp;runId=run%2Fold&amp;scenarioId=risk%2Fold&amp;fixKind=credit_line_draw",
     );
     // The accepted one sits in the collapsed Decided list.
-    expect(html).toMatch(/<details[^>]*>.*Decided.*1 suggestion.*Accepted/s);
+    expect(html).toMatch(/<details[^>]*>.*Decided.*1 suggestion.*Approved/s);
     expect(html).toContain("1 open");
   });
 

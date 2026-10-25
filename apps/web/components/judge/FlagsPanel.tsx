@@ -34,8 +34,8 @@ export function FlagsPanel({ companyId }: { companyId: Id<"companies"> }) {
         <p className="p-[var(--card-pad)] text-sm text-muted-foreground">Loading flags</p>
       ) : flags.length === 0 ? (
         <p className="p-[var(--card-pad)] text-sm text-muted-foreground">
-          No open flags. Try "Bank and Stripe disagree": the audit agent should flag it within a few
-          seconds.
+          No open flags. Add the "Bank and Stripe disagree" event; the audit agent flags it within a
+          few seconds.
         </p>
       ) : (
         <ul className="divide-y">

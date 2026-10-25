@@ -428,6 +428,24 @@ export const fieldTables = {
         at: v.string(),
       }),
     ),
+    // Learned rule applied at this audit (fieldLearning.ts): hidden or raised, with a receipt.
+    learned: v.optional(
+      v.object({
+        effect: v.union(
+          v.literal("suppressed"),
+          v.literal("raised"),
+          v.literal("ranked_higher"),
+          v.literal("ranked_lower"),
+        ),
+        text: v.string(),
+        ruleId: v.string(),
+        recordId: v.string(),
+        version: v.number(),
+        severityBefore: v.optional(v.string()),
+        engineRank: v.optional(v.number()),
+        undoneAt: v.optional(v.string()),
+      }),
+    ),
     crs: v.optional(crsResult),
   })
     .index("by_companyId_and_findingId", ["companyId", "findingId"])
@@ -522,6 +540,24 @@ export const fieldTables = {
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.string()),
     note: v.optional(v.string()),
+    // Learned fix preference that moved this row from its engine rank (fieldLearning.ts).
+    learned: v.optional(
+      v.object({
+        effect: v.union(
+          v.literal("suppressed"),
+          v.literal("raised"),
+          v.literal("ranked_higher"),
+          v.literal("ranked_lower"),
+        ),
+        text: v.string(),
+        ruleId: v.string(),
+        recordId: v.string(),
+        version: v.number(),
+        severityBefore: v.optional(v.string()),
+        engineRank: v.optional(v.number()),
+        undoneAt: v.optional(v.string()),
+      }),
+    ),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
@@ -530,6 +566,37 @@ export const fieldTables = {
     .index("by_companyId_and_updatedAt", ["companyId", "updatedAt"])
     .index("by_companyId_and_status_and_updatedAt", ["companyId", "status", "updatedAt"])
     .index("by_companyId_and_runId", ["companyId", "runId"]),
+  // Learned rules (fieldLearning.ts): append-only LearnedRuleVersion records from a person's
+  // flag and suggestion decisions, stamped by the server. `record` is never edited; undo is a
+  // new revoked record. applied/lastEffect are usage counters for the worker page only.
+  learnedRules: defineTable({
+    companyId,
+    ruleId: v.string(),
+    recordId: v.string(),
+    version: v.number(),
+    status: v.union(v.literal("accepted"), v.literal("rejected"), v.literal("revoked")),
+    record: v.any(),
+    source: v.object({
+      decision: v.union(
+        v.literal("dismissed_flag"),
+        v.literal("confirmed_flag"),
+        v.literal("accepted_fix"),
+        v.literal("declined_fix"),
+        v.literal("undo"),
+      ),
+      ref: v.string(),
+      summary: v.string(),
+      by: v.string(),
+    }),
+    scope: v.string(),
+    recordedAt: v.string(),
+    applied: v.number(),
+    lastEffect: v.optional(v.string()),
+    lastAppliedAt: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_ruleId", ["companyId", "ruleId"])
+    .index("by_companyId_and_recordId", ["companyId", "recordId"]),
   // Connected tools (connections.ts): mock sign-in per tool, sync position and last counts.
   // No credentials are stored: the vendor APIs are in-process mocks.
   connections: defineTable({

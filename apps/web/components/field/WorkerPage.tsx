@@ -42,6 +42,7 @@ import {
   useNow,
 } from "./parts";
 import type { Anomaly, FieldFinding, FieldOperation } from "./types";
+import { LearnedSection } from "./worker/LearnedSection";
 import type {
   DecideSuggestion,
   SimulateSuggestion,
@@ -276,6 +277,7 @@ function WorkerBody({
         findings={data.findings}
         now={now}
       />
+      {companyId ? <LearnedSection companyId={companyId} /> : null}
 
       <ActivityFeed
         operations={data.operations}
