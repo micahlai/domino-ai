@@ -1,0 +1,98 @@
+[
+  {
+    "path": "/vendor/hubspot/crm/v3/objects/deals?limit=100&associations=companies",
+    "status": 200,
+    "link": null,
+    "body": {
+      "results": [
+        {
+          "id": "deal_acme_renewal",
+          "properties": {
+            "dealname": "deal_acme_renewal",
+            "amount": "240000.00",
+            "dealstage": "closedwon",
+            "pipeline": "default",
+            "closedate": "2026-10-20T00:00:00.000Z",
+            "dealtype": "existingbusiness",
+            "contract_signed": "true",
+            "domino_deal_kind": "renewal",
+            "invoice_link_status": "invoiced",
+            "stripe_invoice_id": "inv_acme_2027",
+            "hs_object_id": "deal_acme_renewal"
+          },
+          "createdAt": "2026-10-20T00:00:00Z",
+          "updatedAt": "2026-10-30T00:00:00Z",
+          "archived": false,
+          "associations": {
+            "companies": {
+              "results": [
+                {
+                  "id": "cus_acme",
+                  "type": "deal_to_company"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "deal_cobalt_open",
+          "properties": {
+            "dealname": "deal_cobalt_open",
+            "amount": "7000.01",
+            "dealstage": "qualifiedtobuy",
+            "pipeline": "default",
+            "closedate": "2026-12-01T00:00:00.000Z",
+            "dealtype": null,
+            "contract_signed": "false",
+            "domino_deal_kind": null,
+            "invoice_link_status": "unknown",
+            "stripe_invoice_id": null,
+            "hs_object_id": "deal_cobalt_open"
+          },
+          "createdAt": "2026-12-01T00:00:00Z",
+          "updatedAt": "2026-10-30T00:00:00Z",
+          "archived": false,
+          "associations": {
+            "companies": {
+              "results": [
+                {
+                  "id": "cus_cobalt",
+                  "type": "deal_to_company"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "deal_nw_expansion",
+          "properties": {
+            "dealname": "deal_nw_expansion",
+            "amount": "120000.00",
+            "dealstage": "closedwon",
+            "pipeline": "default",
+            "closedate": "2026-11-10T00:00:00.000Z",
+            "dealtype": "existingbusiness",
+            "contract_signed": "false",
+            "domino_deal_kind": "expansion",
+            "invoice_link_status": "not_invoiced",
+            "stripe_invoice_id": null,
+            "hs_object_id": "deal_nw_expansion"
+          },
+          "createdAt": "2026-11-10T00:00:00Z",
+          "updatedAt": "2026-10-30T00:00:00Z",
+          "archived": false,
+          "associations": {
+            "companies": {
+              "results": [
+                {
+                  "id": "cus_northwind",
+                  "type": "deal_to_company"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+]

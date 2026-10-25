@@ -1,0 +1,140 @@
+[
+  {
+    "path": "/vendor/ramp/developer/v1/transactions?page_size=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "data": [
+        {
+          "id": "card_001",
+          "amount": 4200,
+          "currency_code": "USD",
+          "merchant_name": "FIGMA",
+          "sk_category_name": "Software",
+          "user_transaction_time": "2026-10-28T00:00:00Z",
+          "state": "CLEARED",
+          "card_holder": {
+            "first_name": "Kestrel",
+            "last_name": "Ops",
+            "department_name": "Operations"
+          }
+        },
+        {
+          "id": "card_002",
+          "amount": 11800,
+          "currency_code": "USD",
+          "merchant_name": "DATADOG INC",
+          "sk_category_name": "Software",
+          "user_transaction_time": "2026-10-29T00:00:00Z",
+          "state": "CLEARED",
+          "card_holder": {
+            "first_name": "Kestrel",
+            "last_name": "Ops",
+            "department_name": "Operations"
+          }
+        },
+        {
+          "id": "card_003",
+          "amount": 19.99,
+          "currency_code": "USD",
+          "merchant_name": "UBER",
+          "sk_category_name": "Travel",
+          "user_transaction_time": "2026-10-29T00:00:00Z",
+          "state": "CLEARED",
+          "card_holder": {
+            "first_name": "Kestrel",
+            "last_name": "Ops",
+            "department_name": "Operations"
+          }
+        },
+        {
+          "id": "card_004",
+          "amount": -5.05,
+          "currency_code": "USD",
+          "merchant_name": "UBER",
+          "sk_category_name": "Travel",
+          "user_transaction_time": "2026-10-29T00:00:00Z",
+          "state": "CLEARED",
+          "card_holder": {
+            "first_name": "Kestrel",
+            "last_name": "Ops",
+            "department_name": "Operations"
+          }
+        }
+      ],
+      "page": {
+        "next": null
+      }
+    }
+  },
+  {
+    "path": "/vendor/ramp/developer/v1/bills?page_size=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "data": [
+        {
+          "id": "rb_bill_agency_nov",
+          "invoice_number": "bill_agency_nov",
+          "vendor": {
+            "name": "Northlight Marketing"
+          },
+          "amount": {
+            "amount": 4500000,
+            "currency_code": "USD",
+            "minor_unit_conversion_rate": 100
+          },
+          "due_at": "2026-11-15T00:00:00Z",
+          "status": "SCHEDULED",
+          "payment": {
+            "status": "SCHEDULED",
+            "scheduled_date": "2026-11-29T00:00:00Z",
+            "amount": {
+              "amount": 4500000,
+              "currency_code": "USD",
+              "minor_unit_conversion_rate": 100
+            }
+          }
+        },
+        {
+          "id": "rb_bill_paid_oct",
+          "invoice_number": "bill_paid_oct",
+          "vendor": {
+            "name": "Law firm"
+          },
+          "amount": {
+            "amount": 12345,
+            "currency_code": "USD",
+            "minor_unit_conversion_rate": 100
+          },
+          "due_at": "2026-10-12T00:00:00Z",
+          "status": "PAID",
+          "payment": {
+            "status": "PAID",
+            "effective_date": "2026-10-10T00:00:00Z",
+            "amount": {
+              "amount": 12345,
+              "currency_code": "USD",
+              "minor_unit_conversion_rate": 100
+            },
+            "method": "ACH"
+          }
+        }
+      ],
+      "page": {
+        "next": null
+      }
+    }
+  },
+  {
+    "path": "/vendor/ramp/developer/v1/reimbursements?page_size=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "data": [],
+      "page": {
+        "next": null
+      }
+    }
+  }
+]

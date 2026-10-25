@@ -1,0 +1,381 @@
+[
+  {
+    "path": "/vendor/stripe/v1/customers?limit=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "object": "list",
+      "url": "/v1/customers",
+      "has_more": false,
+      "data": [
+        {
+          "id": "cus_acme",
+          "object": "customer",
+          "name": "Acme Logistics",
+          "currency": "usd",
+          "invoice_settings": {
+            "days_until_due": 30
+          },
+          "metadata": {}
+        },
+        {
+          "id": "cus_brightpath",
+          "object": "customer",
+          "name": "Brightpath Retail",
+          "currency": "usd",
+          "invoice_settings": {
+            "days_until_due": 30
+          },
+          "metadata": {}
+        },
+        {
+          "id": "cus_cobalt",
+          "object": "customer",
+          "name": "Cobalt Labs",
+          "currency": "usd",
+          "invoice_settings": {
+            "days_until_due": 30
+          },
+          "metadata": {}
+        },
+        {
+          "id": "cus_northwind",
+          "object": "customer",
+          "name": "Northwind Health",
+          "currency": "usd",
+          "invoice_settings": {
+            "days_until_due": 60
+          },
+          "metadata": {}
+        }
+      ]
+    }
+  },
+  {
+    "path": "/vendor/stripe/v1/invoices?limit=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "object": "list",
+      "url": "/v1/invoices",
+      "has_more": false,
+      "data": [
+        {
+          "id": "inv_acme_2027",
+          "object": "invoice",
+          "customer": "cus_acme",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 24000000,
+          "amount_paid": 0,
+          "amount_remaining": 24000000,
+          "created": 1792972800,
+          "due_date": 1795564800,
+          "status": "open",
+          "status_transitions": {
+            "finalized_at": 1792972800,
+            "paid_at": null,
+            "marked_uncollectible_at": null
+          },
+          "subscription": null,
+          "metadata": {}
+        },
+        {
+          "id": "inv_acme_sep",
+          "object": "invoice",
+          "customer": "cus_acme",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 1234567,
+          "amount_paid": 1234567,
+          "amount_remaining": 0,
+          "created": 1788220800,
+          "due_date": 1790812800,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1788220800,
+            "paid_at": 1793232000,
+            "marked_uncollectible_at": null
+          },
+          "subscription": null,
+          "metadata": {}
+        },
+        {
+          "id": "inv_bp_nov",
+          "object": "invoice",
+          "customer": "cus_brightpath",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 3600000,
+          "amount_paid": 0,
+          "amount_remaining": 3600000,
+          "created": 1793491200,
+          "due_date": 1796083200,
+          "status": "open",
+          "status_transitions": {
+            "finalized_at": 1793491200,
+            "paid_at": null,
+            "marked_uncollectible_at": null
+          },
+          "subscription": null,
+          "metadata": {}
+        },
+        {
+          "id": "inv_bp_oct",
+          "object": "invoice",
+          "customer": "cus_brightpath",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 3600000,
+          "amount_paid": 3600000,
+          "amount_remaining": 0,
+          "created": 1790812800,
+          "due_date": 1793404800,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1790812800,
+            "paid_at": 1792454400,
+            "marked_uncollectible_at": null
+          },
+          "subscription": "plan_bp",
+          "metadata": {}
+        },
+        {
+          "id": "inv_cobalt_2027",
+          "object": "invoice",
+          "customer": "cus_cobalt",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 9600000,
+          "amount_paid": 0,
+          "amount_remaining": 9600000,
+          "created": 1792022400,
+          "due_date": 1794614400,
+          "status": "open",
+          "status_transitions": {
+            "finalized_at": 1792022400,
+            "paid_at": null,
+            "marked_uncollectible_at": null
+          },
+          "subscription": null,
+          "metadata": {}
+        },
+        {
+          "id": "inv_cobalt_old",
+          "object": "invoice",
+          "customer": "cus_cobalt",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 50001,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "created": 1780272000,
+          "due_date": 1782864000,
+          "status": "uncollectible",
+          "status_transitions": {
+            "finalized_at": 1780272000,
+            "paid_at": null,
+            "marked_uncollectible_at": 1790812800
+          },
+          "subscription": null,
+          "metadata": {}
+        },
+        {
+          "id": "inv_nw_q4",
+          "object": "invoice",
+          "customer": "cus_northwind",
+          "currency": "usd",
+          "collection_method": "send_invoice",
+          "amount_due": 25000000,
+          "amount_paid": 0,
+          "amount_remaining": 25000000,
+          "created": 1790812800,
+          "due_date": 1795996800,
+          "status": "open",
+          "status_transitions": {
+            "finalized_at": 1790812800,
+            "paid_at": null,
+            "marked_uncollectible_at": null
+          },
+          "subscription": null,
+          "metadata": {
+            "promised_pay_on": "2026-12-15",
+            "promised_amount": "25000000"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "path": "/vendor/stripe/v1/charges?limit=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "object": "list",
+      "url": "/v1/charges",
+      "has_more": false,
+      "data": [
+        {
+          "id": "ch_inv_acme_sep",
+          "object": "charge",
+          "amount": 1234567,
+          "amount_captured": 1234567,
+          "currency": "usd",
+          "customer": "cus_acme",
+          "invoice": "inv_acme_sep",
+          "paid": true,
+          "captured": true,
+          "status": "succeeded",
+          "created": 1793232000
+        },
+        {
+          "id": "ch_inv_bp_oct",
+          "object": "charge",
+          "amount": 3600000,
+          "amount_captured": 3600000,
+          "currency": "usd",
+          "customer": "cus_brightpath",
+          "invoice": "inv_bp_oct",
+          "paid": true,
+          "captured": true,
+          "status": "succeeded",
+          "created": 1792454400
+        }
+      ]
+    }
+  },
+  {
+    "path": "/vendor/stripe/v1/payouts?limit=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "object": "list",
+      "url": "/v1/payouts",
+      "has_more": false,
+      "data": [
+        {
+          "id": "po_bank_po_inv_bp_oct",
+          "object": "payout",
+          "amount": 3495600,
+          "currency": "usd",
+          "arrival_date": 1792627200,
+          "created": 1792627200,
+          "method": "standard",
+          "type": "bank_account",
+          "destination": "ba_mock_operating",
+          "status": "paid",
+          "statement_descriptor": "STRIPE PAYOUT inv_bp_oct NET FEES",
+          "trace_id": {
+            "status": "supported",
+            "value": "bank_po_inv_bp_oct"
+          },
+          "metadata": {}
+        },
+        {
+          "id": "po_inv_acme_sep",
+          "object": "payout",
+          "amount": 1197530,
+          "currency": "usd",
+          "arrival_date": 1793577600,
+          "created": 1793318400,
+          "method": "standard",
+          "type": "bank_account",
+          "destination": "ba_mock_operating",
+          "status": "in_transit",
+          "statement_descriptor": "STRIPE PAYOUT",
+          "trace_id": {
+            "status": "pending",
+            "value": null
+          },
+          "metadata": {
+            "invoice_ids": "[\"inv_acme_sep\"]"
+          }
+        },
+        {
+          "id": "po_txn_001",
+          "object": "payout",
+          "amount": 12000000,
+          "currency": "usd",
+          "arrival_date": 1793059200,
+          "created": 1793059200,
+          "method": "standard",
+          "type": "bank_account",
+          "destination": "ba_mock_operating",
+          "status": "paid",
+          "statement_descriptor": "STRIPE PAYOUT",
+          "trace_id": {
+            "status": "supported",
+            "value": "txn_001"
+          },
+          "metadata": {}
+        }
+      ]
+    }
+  },
+  {
+    "path": "/vendor/stripe/v1/subscriptions?limit=100",
+    "status": 200,
+    "link": null,
+    "body": {
+      "object": "list",
+      "url": "/v1/subscriptions",
+      "has_more": false,
+      "data": [
+        {
+          "id": "plan_acme_yearly",
+          "object": "subscription",
+          "customer": "cus_acme",
+          "status": "active",
+          "collection_method": "send_invoice",
+          "days_until_due": 30,
+          "billing_cycle_anchor": 1792972800,
+          "current_period_end": 1824508800,
+          "cancel_at": 1856131200,
+          "items": {
+            "object": "list",
+            "data": [
+              {
+                "id": "si_plan_acme_yearly",
+                "price": {
+                  "unit_amount": 24000000,
+                  "currency": "usd",
+                  "recurring": {
+                    "interval": "year",
+                    "interval_count": 1
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "plan_bp",
+          "object": "subscription",
+          "customer": "cus_brightpath",
+          "status": "active",
+          "collection_method": "send_invoice",
+          "days_until_due": 30,
+          "billing_cycle_anchor": 1790812800,
+          "current_period_end": 1796083200,
+          "cancel_at": null,
+          "items": {
+            "object": "list",
+            "data": [
+              {
+                "id": "si_plan_bp",
+                "price": {
+                  "unit_amount": 3600000,
+                  "currency": "usd",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+]
