@@ -118,6 +118,8 @@ export const simulate = action({
       label: `With fix: ${savedInputs.fixLabel}`.slice(0, 200),
       changesJson: savedInputs.fixChangesJson,
       reviewed: true,
+      // The saved fix is an automated response; it may act before the risk it answers starts.
+      allowEarlierStart: true,
     });
     const [riskSaved, fixSaved] = await Promise.all([
       ctx.runQuery(api.timeline.workspace.get, {

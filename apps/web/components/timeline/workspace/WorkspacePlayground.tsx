@@ -22,7 +22,6 @@ export function WorkspacePlayground() {
     hrefFor: (id) => `#${encodeURIComponent(id)}`,
     simulate: refuse,
     reviseRules: refuse,
-    ask: refuse,
     confirmProposal: refuse,
     relink: refuse,
   };

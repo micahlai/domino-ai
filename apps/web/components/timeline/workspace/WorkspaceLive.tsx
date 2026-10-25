@@ -1,8 +1,7 @@
 "use client";
 
 import type { Change, Constraint } from "@domino/contracts";
-import { useAction, useMutation, useQueries } from "convex/react";
-import { ConvexError } from "convex/values";
+import { useMutation, useQueries } from "convex/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -16,7 +15,6 @@ import { analysisHref } from "../analysis/links";
 import { baselineHref } from "../baseline/api";
 import { ChatSidebarLive } from "../chat/ChatLive";
 import { CatalogList, ReadNotice } from "./CatalogPanel";
-import type { AskInput, AskOutcome } from "./QuestionsPanel";
 import { familyEntries } from "./ScenarioSidebar";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
@@ -25,7 +23,6 @@ import {
   type Read,
   RunResultSchema,
   allScenariosHref,
-  askRef,
   catalogRef,
   getRunRef,
   graphRef,
@@ -34,7 +31,6 @@ import {
   openRef,
   readCatalogPage,
   readGraph,
-  readQuestion,
   readQuestions,
   readResultRef,
   readRun,
@@ -246,10 +242,8 @@ function RunReady({
 
   const simulate = useMutation(simulateRef);
   const revise = useMutation(reviseConstraintsRef);
-  const ask = useAction(askRef);
   const link = useMutation(linkQuestionRef);
   const runs = useLedger();
-  const asks = useLedger();
 
   async function write(
     call: () => Promise<unknown>,
@@ -349,40 +343,6 @@ function RunReady({
           }),
         true,
       );
-    },
-    ask: async (input: AskInput, fresh: boolean): Promise<AskOutcome> => {
-      const payload = JSON.stringify([
-        run.runId,
-        input.prompt,
-        input.selectedWeek,
-        input.selectedItemId,
-      ]);
-      const requestId = fresh ? asks.renew(payload) : asks.idFor(payload);
-      try {
-        const receipt = readQuestion(
-          await ask({
-            ...runKey,
-            requestId,
-            prompt: input.prompt,
-            ...(input.selectedWeek ? { selectedWeek: input.selectedWeek } : {}),
-            ...(input.selectedItemId ? { selectedItemId: input.selectedItemId } : {}),
-          }),
-          runKey,
-        );
-        return receipt
-          ? { ok: true, receipt }
-          : {
-              ok: false,
-              message: "The answer came back in an unexpected shape, so it is not shown.",
-            };
-      } catch (e) {
-        if (e instanceof ConvexError) return { ok: false, message: describeWriteError(e) };
-        return {
-          ok: false,
-          message:
-            "Could not confirm the question was received. Ask again: it repeats the same request, so it is not asked twice.",
-        };
-      }
     },
     confirmProposal: (q: QuestionReceipt) =>
       confirmQuestionProposal(q, runKey, runs, {

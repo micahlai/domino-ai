@@ -82,7 +82,6 @@ function Ready({
       actions={{ write, beginNavigates: true }}
       selectedWeek={selectedWeek}
       selectedItemId={selectedItemId}
-      sidebar
     />
   );
 }

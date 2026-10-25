@@ -8,8 +8,7 @@ import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
 import { ReadNotice } from "../workspace/CatalogPanel";
 import { inputClass } from "../workspace/RuleEditor";
-import { Panel, WhenDate } from "../workspace/RunPanels";
-import { WorkspaceChart } from "../workspace/WorkspaceChart";
+import { WhenDate } from "../workspace/RunPanels";
 import { type Read, type WorkspaceRun, workspaceHref } from "../workspace/api";
 import { BranchNote } from "../workspace/branchPreview";
 import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "../workspace/chatFrame";
@@ -28,7 +27,6 @@ export type ChatViewProps = {
   actions: ChatActions;
   selectedWeek?: string;
   selectedItemId?: string;
-  sidebar?: boolean;
 };
 export function ReviewProposal({
   receipt,
@@ -154,11 +152,9 @@ export function ChatView({
   actions,
   selectedWeek,
   selectedItemId,
-  sidebar = false,
 }: ChatViewProps) {
   const [writeGuard] = useState(() => new ChatWriteGuard());
   const blocked = writeGuard.pending !== null;
-  const [previewWeek, setPreviewWeek] = useState<string | null>(null);
   const [latest, setLatest] = useState<ChatReceipt | null>(null);
   const [text, setText] = useState("");
   const [writing, setPending] = useState(false);
@@ -211,7 +207,7 @@ export function ChatView({
     }
     return outcome;
   }
-  /** Send a message; in the sidebar the first message also starts the conversation. */
+  /** Send a message; the first message also starts the conversation. */
   async function sendText(value: string) {
     if (!value || turns >= 20) return;
     if (receipt) {
@@ -229,44 +225,17 @@ export function ChatView({
 
   const intro = (
     <p className="text-sm text-muted-foreground">
-      {sidebar
-        ? "Ask about the forecast, a week, a bill or the rules, or describe a what-if in plain words: a payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for anything missing."
-        : "Add a cash inflow or expense, delay an invoice, or set a minimum cash, runway or bill deadline rule. I’ll ask for missing details one at a time. This chat uses supported wording; other requests may need Start over."}
+      Ask about the forecast, a week, a bill or the rules, or describe a what-if in plain words: a
+      payment in or out, a late invoice, or a cash minimum, runway or bill deadline rule. I ask for
+      anything missing.
     </p>
   );
   const start =
-    !receipt && !selected && sidebar ? (
-      selectedWeek ? (
-        <p className="text-xs text-muted-foreground">
-          Asking about the week of <WhenDate iso={selectedWeek} />
-          {selectedItemId ? ` · item ${selectedItemId}` : ""}.
-        </p>
-      ) : null
-    ) : !receipt && !selected ? (
-      <div className="space-y-3">
-        <p className="text-sm">
-          Nothing is calculated until you review and save. The timeline stays as it is until you
-          open the saved result.
-        </p>
-        {selectedWeek ? (
-          <p className="text-xs text-muted-foreground">
-            Chosen week: <WhenDate iso={selectedWeek} />
-            {selectedItemId ? ` · selected item ${selectedItemId}` : ""}.
-          </p>
-        ) : null}
-        <Button
-          disabled={pending || blocked}
-          onClick={() =>
-            write({
-              kind: "begin",
-              ...(selectedWeek ? { selectedWeek } : {}),
-              ...(selectedItemId ? { selectedItemId } : {}),
-            })
-          }
-        >
-          Start new chat
-        </Button>
-      </div>
+    !receipt && !selected && selectedWeek ? (
+      <p className="text-xs text-muted-foreground">
+        Asking about the week of <WhenDate iso={selectedWeek} />
+        {selectedItemId ? ` · item ${selectedItemId}` : ""}.
+      </p>
     ) : null;
   const notice =
     !receipt && selected && selected.state !== "ready" ? (
@@ -353,8 +322,8 @@ export function ChatView({
         onPick={(value) => void sendText(value)}
       />
     ) : null;
-  // The sidebar always offers the composer: the first message starts the conversation.
-  const canCompose = receipt ? receipt.status !== "saved" : sidebar && !selected;
+  // The composer is always offered: the first message starts the conversation.
+  const canCompose = receipt ? receipt.status !== "saved" : !selected;
   const composer = canCompose ? (
     <form
       className="space-y-2"
@@ -368,19 +337,17 @@ export function ChatView({
           ? `Your reply · ${receipt.pendingField}`
           : receipt?.status === "ready"
             ? "Correct your draft or ask a question"
-            : sidebar
-              ? "Ask or describe a what-if"
-              : "Describe your change"}
+            : "Ask or describe a what-if"}
       </label>
       <textarea
         id="chat-reply"
-        rows={sidebar ? 2 : 3}
+        rows={2}
         maxLength={1000}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={submitOnEnter}
         disabled={pending || blocked || turns >= 20}
-        className={`${inputClass} ${sidebar ? "min-h-16" : "min-h-24"} w-full resize-y`}
+        className={`${inputClass} min-h-16 w-full resize-y`}
         placeholder={
           receipt?.pendingField
             ? "Type your answer…"
@@ -470,15 +437,7 @@ export function ChatView({
       </Link>
     </div>
   ) : null;
-  const working = pending ? (
-    sidebar ? (
-      <TypingDots />
-    ) : (
-      <output className="block text-sm text-muted-foreground" aria-live="polite">
-        Thinking…
-      </output>
-    )
-  ) : null;
+  const working = pending ? <TypingDots /> : null;
   const status2 = (
     <>
       {opening && latest ? (
@@ -570,101 +529,30 @@ export function ChatView({
     </details>
   );
 
-  if (sidebar)
-    return (
-      <article
-        className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere]"
-        data-testid="timeline-chat"
-      >
-        <ChatScrollFrame
-          label="What-if conversation"
-          followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
-          composer={composer}
-        >
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask Domino</h3>
-          {intro}
-          {notice}
-          {start}
-          {status}
-          {transcript}
-          {working}
-          {choices}
-          {review}
-          {saved}
-          {restart}
-          {status2}
-          {recent}
-        </ChatScrollFrame>
-      </article>
-    );
   return (
     <article
-      className="min-w-0 max-w-full space-y-4 [overflow-wrap:anywhere]"
+      className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere]"
       data-testid="timeline-chat"
     >
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Link
-          className="text-primary hover:underline"
-          href={workspaceHref(run.companyId, { runId: run.runId })}
-        >
-          Back to source timeline
-        </Link>
-        <Badge variant="outline">Saved source · read only</Badge>
-        <span className="text-xs text-muted-foreground">
-          {run.label || "Baseline"} · saved {formatSavedAt(run.savedAt)}
-        </span>
-      </div>
-      <details className="rounded-lg border p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          View source timeline and rules
-        </summary>
-        <div className="mt-4 space-y-3">
-          <WorkspaceChart
-            history={run.baseline.history}
-            forecast={run.forecast}
-            items={run.baseline.seed.scheduledItems}
-            limits={run.constraints
-              .filter((c) => c.kind === "min_cash")
-              .map((c) => ({ id: c.id, label: c.label, cents: c.limit }))}
-            selectedWeek={previewWeek}
-            onSelectWeek={setPreviewWeek}
-          />
-          <p className="text-sm">
-            Lowest usable cash: {formatExactCents(run.forecast.lowPoint.usable)}, week of{" "}
-            <WhenDate iso={run.forecast.lowPoint.weekStart} />.
-          </p>
-          <ul className="list-disc pl-5 text-sm">
-            {run.constraints.map((c) => (
-              <li key={c.id}>
-                {c.label}:{" "}
-                {c.kind === "min_cash"
-                  ? formatExactCents(c.limit)
-                  : `${c.limit} ${c.kind === "min_runway_months" ? "months" : "days late"}`}
-              </li>
-            ))}
-          </ul>
-          {run.constraints.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No source rules.</p>
-          ) : null}
-        </div>
-      </details>
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <Panel title="Describe a rule or a possible event">
-          {intro}
-          {notice}
-          {start}
-          {status}
-          {transcript}
-          {choices}
-          {composer}
-          {review}
-          {saved}
-          {restart}
-          {working}
-          {status2}
-        </Panel>
+      <ChatScrollFrame
+        label="What-if conversation"
+        followKey={`${lastTurn?.id ?? ""}:${pending}:${receipt?.status ?? ""}`}
+        composer={composer}
+      >
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Ask Domino</h3>
+        {intro}
+        {notice}
+        {start}
+        {status}
+        {transcript}
+        {working}
+        {choices}
+        {review}
+        {saved}
+        {restart}
+        {status2}
         {recent}
-      </div>
+      </ChatScrollFrame>
     </article>
   );
 }

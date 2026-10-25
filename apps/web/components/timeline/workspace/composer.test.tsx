@@ -112,7 +112,6 @@ describe("timeline scenario composition", () => {
     const actions: WorkspaceActions = {
       simulate: onRun,
       reviseRules: onRun,
-      ask: onRun,
       confirmProposal: onRun,
       relink: onRun,
       hrefFor: (id) => `#${id}`,

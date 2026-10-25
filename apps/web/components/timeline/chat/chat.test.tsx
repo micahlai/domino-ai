@@ -237,7 +237,6 @@ describe("chat review rendering", () => {
         selected: null,
         history: { state: "ready", value: [] },
         actions: { write: vi.fn(), beginNavigates: true },
-        sidebar: true,
       }),
     );
     expect(empty).toContain("Ask Domino");
@@ -259,7 +258,6 @@ describe("chat review rendering", () => {
         selected: { state: "ready", value: answered },
         history: { state: "ready", value: [answered] },
         actions: { write: vi.fn() },
-        sidebar: true,
       }),
     );
     expect(shown).toContain("Where this comes from (1)");
@@ -277,15 +275,24 @@ describe("chat review rendering", () => {
     );
   }
   it("never starts a conversation from a render", () => {
-    const markup = html(null);
-    expect(markup).toContain("Start new chat");
+    const write = vi.fn();
+    const markup = renderToStaticMarkup(
+      createElement(ChatView, {
+        run,
+        selected: null,
+        history: { state: "ready", value: [fixtureChat] },
+        actions: { write },
+      }),
+    );
+    expect(markup).toContain("Ask or describe a what-if");
     expect(markup).not.toContain("Calculate and save scenario");
+    expect(write).not.toHaveBeenCalled();
   });
-  it("shows the pending field, safe short reply hint and source context", () => {
+  it("shows the pending field and safe short reply hint", () => {
     const markup = html(fixtureChat);
     expect(markup).toContain("Expense amount");
     expect(markup).toContain("Short answers are welcome");
-    expect(markup).toContain("Saved source");
+    expect(markup).toContain("Ask Domino");
     expect(markup).not.toContain("revision 1");
   });
   it("renders exact amounts/date and the full rule set before disabled confirmation", () => {

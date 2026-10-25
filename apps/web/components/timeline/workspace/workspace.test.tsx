@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { timelineCalculationHref } from "../../../lib/trace-links";
 import { AncestryPanel, CatalogList } from "./CatalogPanel";
-import { QuestionsPanel, mergeReceipts } from "./QuestionsPanel";
+import { QuestionsPanel } from "./QuestionsPanel";
 import { ReceiptsPanel, WeekDetail } from "./RunPanels";
 import { type WorkspaceActions, WorkspaceView } from "./WorkspaceView";
 import {
@@ -408,7 +408,6 @@ const actions: WorkspaceActions = {
   hrefFor: (id) => workspaceHref("kestrel", { runId: id }),
   simulate: refuse,
   reviseRules: refuse,
-  ask: refuse,
   confirmProposal: refuse,
   relink: refuse,
 };
@@ -553,17 +552,9 @@ describe("workspace view", () => {
   });
 });
 
-describe("questions panel", () => {
+describe("earlier questions panel", () => {
   const render = (questions: Parameters<typeof QuestionsPanel>[0]["questions"]) =>
-    renderToStaticMarkup(
-      <QuestionsPanel
-        questions={questions}
-        selectedWeek="2026-11-23"
-        selectedItemId="sched_inv_acme_2027"
-        onClearContext={() => undefined}
-        actions={actions}
-      />,
-    );
+    renderToStaticMarkup(<QuestionsPanel questions={questions} actions={actions} />);
 
   it("renders every receipt state honestly", () => {
     const html = render({ state: "ready", value: fixtureQuestions });
@@ -573,9 +564,9 @@ describe("questions panel", () => {
     expect(html).toContain("Nothing has been calculated yet");
     expect(html).toContain("Which customer, and how many days late?");
     expect(html).toContain("No question service is set up here");
-    expect(html).toContain('data-testid="reask-q4"');
     expect(html).toContain("Reading the saved scenario...");
-    expect(html).toContain('data-testid="question-context"');
+    expect(html).toContain("Earlier questions");
+    expect(html).not.toContain("<textarea");
   });
 
   it("shows a linked proposal as saved instead of offering to run it again", () => {
@@ -612,12 +603,6 @@ describe("questions panel", () => {
 
   it("keeps a failed list read visible", () => {
     expect(render({ state: "error" })).toContain("Earlier questions could not be shown");
-  });
-
-  it("merges the latest answer without duplicating saved ones", () => {
-    const [a, b] = fixtureQuestions;
-    if (!a || !b) return;
-    expect(mergeReceipts([a], [a, b]).map((q) => q.id)).toEqual([a.id, b.id]);
   });
 });
 

@@ -6,27 +6,18 @@ import { useState } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { formatExactCents, formatSavedAt } from "../baseline/format";
-import { inputClass } from "./RuleEditor";
-import { Panel, WhenDate } from "./RunPanels";
+import { WhenDate } from "./RunPanels";
 import type { QuestionReceipt, Read } from "./api";
 import { BranchNote } from "./branchPreview";
-import { ChatScrollFrame, TypingDots, submitOnEnter, useEnter } from "./chatFrame";
+import { ChatScrollFrame, useEnter } from "./chatFrame";
 import { changeText } from "./drafts";
 import { type Outcome, isConfirmed } from "./requests";
 
-export type AskInput = {
-  prompt: string;
-  selectedWeek: string | null;
-  selectedItemId: string | null;
-};
-export type AskOutcome = { ok: true; receipt: QuestionReceipt } | { ok: false; message: string };
 export type ProposalOutcome =
   | { ok: true; runId: string; linkError?: string }
   | { ok: false; message: string };
 
 export type QuestionActions = {
-  /** fresh: a new request after a definite failed answer; otherwise the same request is reused. */
-  ask: (input: AskInput, fresh: boolean) => Promise<AskOutcome>;
   confirmProposal: (q: QuestionReceipt) => Promise<ProposalOutcome>;
   relink: (questionId: string, resultRunId: string) => Promise<Outcome>;
   hrefFor: (runId: string) => string;
@@ -58,12 +49,6 @@ const FAILURES: Record<string, string> = {
 function failureText(code: string | null): string {
   if (code && FAILURES[code]) return FAILURES[code];
   return `The question could not be answered${code ? ` (${code})` : ""}. Nothing was calculated.`;
-}
-
-/** Merge the latest ask answer into the saved list until the list catches up. */
-export function mergeReceipts(saved: QuestionReceipt[], latest: QuestionReceipt[]) {
-  const ids = new Set(saved.map((q) => q.id));
-  return [...saved, ...latest.filter((q) => !ids.has(q.id))];
 }
 
 function ProposalCard({ q, actions }: { q: QuestionReceipt; actions: QuestionActions }) {
@@ -191,17 +176,7 @@ const STATUS_TEXT: Record<QuestionReceipt["status"], string> = {
   failed: "Not answered",
 };
 
-function Receipt({
-  q,
-  actions,
-  onReask,
-  onEdit,
-}: {
-  q: QuestionReceipt;
-  actions: QuestionActions;
-  onReask: (q: QuestionReceipt) => void;
-  onEdit: (prompt: string) => void;
-}) {
+function Receipt({ q, actions }: { q: QuestionReceipt; actions: QuestionActions }) {
   const enter = useEnter();
   return (
     <motion.li
@@ -231,25 +206,12 @@ function Receipt({
         </output>
       ) : null}
       {q.status === "failed" ? (
-        <div role="alert" className="space-y-1 text-sm">
-          <p>{failureText(q.errorCode)}</p>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onReask(q)}
-            data-testid={`reask-${q.id}`}
-          >
-            Ask again
-          </Button>
-        </div>
+        <p role="alert" className="text-sm">
+          {failureText(q.errorCode)}
+        </p>
       ) : null}
       {q.answer && q.status !== "failed" ? (
         <p className="whitespace-pre-wrap text-sm">{q.answer}</p>
-      ) : null}
-      {q.status === "clarification" ? (
-        <Button size="sm" variant="secondary" onClick={() => onEdit(q.prompt)}>
-          Add detail and ask again
-        </Button>
       ) : null}
       {q.citations.length ? (
         <details className="text-xs">
@@ -272,176 +234,51 @@ function Receipt({
 
 export type QuestionsPanelProps = {
   questions: Read<QuestionReceipt[]>;
-  selectedWeek: string | null;
-  selectedItemId: string | null;
-  onClearContext: () => void;
   actions: QuestionActions;
-  disabled?: string;
-  /** Inside the assistant panel: no card border of its own. */
-  bare?: boolean;
-  /** Earlier questions only: new questions go to the chat, saved suggestions stay confirmable. */
-  historyOnly?: boolean;
 };
 
-/** One-shot questions about the saved scenario. Suggestions run only after confirmation. */
+/**
+ * Earlier one-off questions about the saved scenario, behind the Ask Domino chat. New questions
+ * go to the chat; saved suggestions stay confirmable and run only after confirmation.
+ */
 export function QuestionsPanel(p: QuestionsPanelProps) {
-  const [prompt, setPrompt] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string>();
-  const [latest, setLatest] = useState<QuestionReceipt[]>([]);
-
-  async function send(input: AskInput, fresh: boolean) {
-    if (pending || !input.prompt.trim()) return;
-    setPending(true);
-    setError(undefined);
-    const out = await p.actions.ask({ ...input, prompt: input.prompt.trim() }, fresh);
-    setPending(false);
-    if (out.ok) {
-      setLatest((ls) => [...ls.filter((q) => q.id !== out.receipt.id), out.receipt]);
-      if (!fresh) setPrompt("");
-    } else setError(out.message);
-  }
-
-  const saved = p.questions.state === "ready" ? p.questions.value : [];
-  const all = mergeReceipts(saved, latest);
-
-  const ask = () =>
-    send({ prompt, selectedWeek: p.selectedWeek, selectedItemId: p.selectedItemId }, false);
-  const intro = (
-    <p className="text-sm text-muted-foreground">
-      For example: &ldquo;Why did cash drop this week?&rdquo; or &ldquo;What if Acme pays 30 days
-      late?&rdquo; Answers come from the saved forecast. A what-if runs only after you confirm it.
-    </p>
-  );
-  const context =
-    p.selectedWeek || p.selectedItemId ? (
-      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="question-context">
-        <span className="text-muted-foreground">Asking about</span>
-        {p.selectedWeek ? (
-          <Badge variant="outline">
-            week of <WhenDate iso={p.selectedWeek} />
-          </Badge>
-        ) : null}
-        {p.selectedItemId ? <Badge variant="outline">{p.selectedItemId}</Badge> : null}
-        <Button size="sm" variant="ghost" onClick={p.onClearContext}>
-          Clear
-        </Button>
-      </div>
-    ) : null;
-  const form = (
-    <form
-      className="space-y-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!p.disabled) ask();
-      }}
-    >
-      {p.bare ? context : null}
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium">Your question</span>
-        <textarea
-          id="question-prompt"
-          className={`${inputClass} ${p.bare ? "h-16" : "h-20"}`}
-          maxLength={2000}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={submitOnEnter}
-          data-testid="question-prompt"
-        />
-      </label>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Enter asks · Shift+Enter for a new line</p>
-        <Button
-          type="submit"
-          disabled={pending || !prompt.trim() || Boolean(p.disabled)}
-          data-testid="question-ask"
-        >
-          {pending ? "Thinking..." : "Ask"}
-        </Button>
-      </div>
-      {p.disabled ? <p className="text-xs text-muted-foreground">{p.disabled}</p> : null}
-    </form>
-  );
-  const status = (
-    <>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive" data-testid="question-error">
-          {error}
-        </p>
-      ) : null}
-      {p.questions.state === "loading" ? (
-        <output className="block text-xs text-muted-foreground">
-          Reading earlier questions...
-        </output>
-      ) : p.questions.state !== "ready" ? (
-        <p role="alert" className="text-xs text-muted-foreground">
-          Earlier questions could not be shown.
-        </p>
-      ) : null}
-    </>
-  );
-  const list = all.length ? (
-    <ol className="space-y-3">
-      <AnimatePresence initial={false}>
-        {all.map((q) => (
-          <Receipt
-            key={q.id}
-            q={q}
-            actions={p.actions}
-            onReask={(r) =>
-              send(
-                {
-                  prompt: r.prompt,
-                  selectedWeek: r.selectedWeek,
-                  selectedItemId: r.selectedItemId,
-                },
-                true,
-              )
-            }
-            onEdit={setPrompt}
-          />
-        ))}
-      </AnimatePresence>
-    </ol>
-  ) : p.questions.state === "ready" ? (
-    <p className="text-xs text-muted-foreground">No questions asked about this scenario yet.</p>
-  ) : null;
-
-  if (p.bare)
-    return (
-      <section
-        className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11"
-        data-testid="questions"
-      >
-        <ChatScrollFrame
-          label="Questions and answers"
-          followKey={`${all.length}:${all.at(-1)?.status ?? ""}:${pending}`}
-          composer={p.historyOnly ? undefined : form}
-        >
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em]">
-            {p.historyOnly ? "Earlier questions" : "Ask about this forecast"}
-          </h3>
-          {p.historyOnly ? (
-            <p className="text-sm text-muted-foreground">
-              One-off questions asked before the chat could answer them. Ask new questions in the
-              chat.
-            </p>
-          ) : (
-            intro
-          )}
-          {list}
-          {pending ? <TypingDots label="Reading the saved forecast…" /> : null}
-          {status}
-        </ChatScrollFrame>
-      </section>
-    );
+  const all = p.questions.state === "ready" ? p.questions.value : [];
   return (
-    <Panel title="Ask about this forecast" testId="questions">
-      {intro}
-      {context}
-      {form}
-      {status}
-      {list}
-    </Panel>
+    <section
+      className="flex h-full min-h-0 min-w-0 max-w-full flex-col [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11"
+      data-testid="questions"
+    >
+      <ChatScrollFrame
+        label="Questions and answers"
+        followKey={`${all.length}:${all.at(-1)?.status ?? ""}`}
+      >
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em]">Earlier questions</h3>
+        <p className="text-sm text-muted-foreground">
+          One-off questions asked before the chat could answer them. Ask new questions in the chat.
+        </p>
+        {all.length ? (
+          <ol className="space-y-3">
+            <AnimatePresence initial={false}>
+              {all.map((q) => (
+                <Receipt key={q.id} q={q} actions={p.actions} />
+              ))}
+            </AnimatePresence>
+          </ol>
+        ) : p.questions.state === "ready" ? (
+          <p className="text-xs text-muted-foreground">
+            No questions asked about this scenario yet.
+          </p>
+        ) : null}
+        {p.questions.state === "loading" ? (
+          <output className="block text-xs text-muted-foreground">
+            Reading earlier questions...
+          </output>
+        ) : p.questions.state !== "ready" ? (
+          <p role="alert" className="text-xs text-muted-foreground">
+            Earlier questions could not be shown.
+          </p>
+        ) : null}
+      </ChatScrollFrame>
+    </section>
   );
 }

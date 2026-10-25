@@ -533,21 +533,7 @@ export function WorkspaceView({
           onOpenChange={setAssistantOpen}
           focusKey={focusKey}
           chat={chatNode}
-          ask={
-            <QuestionsPanel
-              bare
-              historyOnly={Boolean(chat)}
-              questions={questions}
-              selectedWeek={selectedWeek}
-              selectedItemId={selectedItemId}
-              onClearContext={() => {
-                setSelectedWeek(null);
-                setSelectedItemId(null);
-              }}
-              actions={actions}
-              disabled={disabled}
-            />
-          }
+          ask={<QuestionsPanel questions={questions} actions={actions} />}
         />
       </article>
     </BranchContext.Provider>

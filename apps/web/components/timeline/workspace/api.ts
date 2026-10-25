@@ -44,14 +44,6 @@ export type SimulateArgs = {
 };
 export type CatalogArgs = { companyId: string; paginationOpts: PaginationOptions };
 export type GraphArgs = { companyId: string; baselineRunId: string };
-export type AskArgs = {
-  companyId: string;
-  runId: string;
-  requestId: string;
-  prompt: string;
-  selectedWeek?: string;
-  selectedItemId?: string;
-};
 export type LinkArgs = { companyId: string; questionId: string; resultRunId: string };
 
 export const openRef = makeFunctionReference<"mutation", OpenArgs, RunResult>(
@@ -73,7 +65,6 @@ export const graphRef = makeFunctionReference<"query", GraphArgs, unknown>(
 export const resultRefRef = makeFunctionReference<"query", RunKey, unknown>(
   "timeline/workspace:resultRef",
 );
-export const askRef = makeFunctionReference<"action", AskArgs, unknown>("timeline/questions:ask");
 export const listQuestionsRef = makeFunctionReference<"query", RunKey, unknown>(
   "timeline/questions:list",
 );

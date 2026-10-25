@@ -48,13 +48,11 @@ export function ChatPlayground() {
           hrefFor: (runId) => workspaceHref(fixtureChatRun.companyId, { runId }),
           simulate: async () => ({ ok: false, message: "Fixture only: nothing was calculated." }),
           reviseRules: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
-          ask: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
           confirmProposal: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
           relink: async () => ({ ok: false, message: "Fixture only: nothing was saved." }),
         }}
         chat={(context) => (
           <ChatView
-            sidebar
             {...context}
             run={fixtureChatRun}
             selected={
