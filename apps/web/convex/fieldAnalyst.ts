@@ -1405,6 +1405,11 @@ export const finish = internalMutation({
       summary: `Analyst done: ${summary}`,
     });
     await freezeTrace(ctx, run._id);
+    // The brain deploys its own forecast runs: top risks and fix saved to Timeline, with effects.
+    await ctx.scheduler.runAfter(0, internal.fieldForecastRuns.afterAnalyst, {
+      companyId: run.companyId,
+      runId,
+    });
     // Every meaningful new snapshot version gets a run (and so a coordinator plan): a version
     // ingested while this run was busy was skipped by startRun, so pick up the newest one now.
     // The simulated clock's routine days and its own queued run are left to the clock.

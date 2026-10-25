@@ -30,6 +30,7 @@ import { WorkspaceChart } from "./WorkspaceChart";
 import type { CatalogEntry, QuestionReceipt, Read, WorkspaceRun } from "./api";
 import { BranchContext, type BranchPreview } from "./branchPreview";
 import { eventFromItem, eventOptions } from "./drafts";
+import { effectNote, outOfCashWeek } from "./effectNote";
 import { fieldOriginHref } from "./fieldOrigin";
 import type { Outcome } from "./requests";
 import {
@@ -205,7 +206,8 @@ export function WorkspaceView({
         fromIndex: diverges < 0 ? null : diverges - 1,
         forkCents: diverges < 0 ? null : (anchor.weeks[diverges]?.usable ?? null),
         startsOn: entries.find((e) => e.runId === id)?.startsOn ?? null,
-        note: catchUpNote(read.value, anchor, diverges),
+        note: effectNote(read.value, anchor, diverges),
+        outOfCash: outOfCashWeek(read.value.forecast),
         breaches: breachesOf(read.value),
         ancestors: ancestorsOf(id, entries, baseRunId ?? ""),
       },
@@ -740,36 +742,4 @@ function Provenance({ run, resultRef }: { run: WorkspaceRun; resultRef: Read<Wee
       </dl>
     </details>
   );
-}
-
-/**
- * A late payment only moves timing, so its line rejoins the line it left once the money
- * arrives. Say so on the focus line instead of leaving the snap-back unexplained. Cash changes
- * (discounts, fees, lost customers, cut costs) stay offset and get no note.
- */
-export function catchUpNote(
-  run: WorkspaceRun,
-  anchor: WorkspaceRun["forecast"],
-  diverges: number,
-): string | null {
-  if (diverges < 0) return null;
-  const last = run.forecast.weeks.length - 1;
-  if (run.forecast.weeks[last]?.usable !== anchor.weeks[last]?.usable) return null;
-  const timing = run.ownChanges.filter(
-    (c) => c.kind === "delay_invoice" || c.kind === "delay_bill",
-  );
-  if (!timing.length || timing.length !== run.ownChanges.length) return null;
-  // The week the late money lands: from there on the two saved lines match again.
-  let back = last;
-  while (back > diverges && run.forecast.weeks[back - 1]?.usable === anchor.weeks[back - 1]?.usable)
-    back--;
-  const week = run.forecast.weeks[back]?.weekStart;
-  if (!week || back <= diverges) return null;
-  const what =
-    timing.length > 1
-      ? "the late payments land"
-      : timing[0]?.kind === "delay_bill"
-        ? "the bill is paid"
-        : "the invoice is paid";
-  return `Cash catches up in the week of ${formatFullDate(week)}, when ${what}`;
 }

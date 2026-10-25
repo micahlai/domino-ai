@@ -65,17 +65,36 @@ describe("durable Timeline clarification chat", () => {
     r = await send(t, r, "what if we cut marketing 20%");
     expect(r.status).toBe("ready");
     expect(r.turns.at(-1)?.text).toMatch(/20% cut to marketing spend \(Northlight Marketing\)/);
-    expect(r.proposal?.changes.every((c) => c.kind === "add_cash" && c.amount > 0)).toBe(true);
+    expect(r.proposal?.changes).toEqual([
+      expect.objectContaining({ kind: "scale_recurring", flows: "spend", percent: -20 }),
+    ]);
     r = await start(t);
     r = await send(t, r, "hire 3 engineers at $150K from Dec 1");
     expect(r.status).toBe("ready");
     expect(
-      r.proposal?.changes.every((c) => c.kind === "remove_cash" && c.date >= "2026-12-01"),
+      r.proposal?.changes.every(
+        (c) => c.kind === "recurring_cash" && c.direction === "out" && c.fromDate >= "2026-12-01",
+      ),
     ).toBe(true);
     r = await start(t);
     r = await send(t, r, "cut snacks 20%");
     expect(r.proposal).toBeNull();
     expect(r.turns.at(-1)?.text).toMatch(/Which vendor should I cut: Cloud provider/);
+  });
+  it("models a lost customer as churn and a late payer's later invoices as slipping", async () => {
+    const t = setup();
+    let r = await start(t);
+    r = await send(t, r, "what if we lose Northwind");
+    expect(r.status).toBe("ready");
+    expect(r.proposal?.changes).toEqual([expect.objectContaining({ kind: "churn" })]);
+    expect(r.turns.at(-1)?.text).toMatch(/every later invoice and recurring bill from them stops/);
+    r = await start(t);
+    r = await send(t, r, "Northwind pays its invoice 30 days late");
+    expect(r.status).toBe("ready");
+    const kinds = r.proposal?.changes.map((c) => c.kind);
+    expect(kinds?.at(-1)).toBe("delay_invoice");
+    if (kinds?.includes("delay_customer"))
+      expect(r.turns.at(-1)?.text).toMatch(/later invoices slip too \((Learned|Assumption)/);
   });
   it("answers why/how questions as questions instead of a modeling refusal", async () => {
     const t = setup();

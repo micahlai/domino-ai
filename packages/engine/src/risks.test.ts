@@ -77,7 +77,16 @@ describe("scanRisks late payments", () => {
     expect(risk?.id).toBe("risk_late_open1");
     expect(risk?.probability).toBe(0.5); // 2 of 4
     // additional delay = round(p90) - round(mean) = 21 - 4 = 17, not mean + p90
-    expect(risk?.changes).toEqual([{ kind: "delay_invoice", invoiceId: "open1", days: 17 }]);
+    expect(risk?.changes).toEqual([
+      {
+        kind: "delay_customer",
+        customerId: "c1",
+        days: 17,
+        fromDate: "2026-11-15",
+        basis: "Learned p90 lateness 20.6 days minus the 4 already forecast",
+      },
+      { kind: "delay_invoice", invoiceId: "open1", days: 17 },
+    ]);
     expect(risk?.evidence.map((e) => e.ref)).toEqual(
       expect.arrayContaining(["p1", "p2", "p3", "p4", "open1"]),
     );
@@ -139,7 +148,16 @@ describe("scanRisks late payments", () => {
       expect(risks.map((r) => [r.id, r.impactLowPoint, r.probability])).toEqual([
         ["risk_late_i", 0, 0.1],
       ]);
-      expect(risks[0]?.changes).toEqual([{ kind: "delay_invoice", invoiceId: "i", days: 2 }]);
+      expect(risks[0]?.changes).toEqual([
+        {
+          kind: "delay_customer",
+          customerId: "c1",
+          days: 2,
+          fromDate: "2026-11-03",
+          basis: "Learned p90 lateness 2 days minus the 0 already forecast",
+        },
+        { kind: "delay_invoice", invoiceId: "i", days: 2 },
+      ]);
       for (const r of risks) expect(RiskEventSchema.parse(r)).toEqual(r);
     });
 
@@ -219,7 +237,9 @@ describe("scanRisks renewals", () => {
     const risks = scan(base, model(), []);
     expect(risks.map((r) => r.id)).toEqual(["risk_nonrenewal_d_r"]);
     expect(risks[0]).toMatchObject({ probability: 0.25, impactLowPoint: 500_000 });
-    expect(risks[0]?.changes).toEqual([{ kind: "lose_invoice", invoiceId: "inv_r" }]);
+    expect(risks[0]?.changes).toEqual([
+      { kind: "churn", customerId: "c1", fromDate: "2026-11-20" },
+    ]);
   });
 
   it("uses 0.5 for a won but unsigned renewal", () => {
@@ -277,9 +297,18 @@ describe("scanRisks spend spikes", () => {
       card("x0", "2026-08-30", 50_000), // before both windows
     ]);
     const [risk] = scan(s, model(), []);
-    expect(risk).toMatchObject({ id: "risk_spend_spike", probability: 0.3, impactLowPoint: 201 });
+    expect(risk).toMatchObject({ id: "risk_spend_spike", probability: 0.3 });
+    // The spike once, then half its weekly excess every later week: floor(201 * 50% / 4) = 25.
     expect(risk?.changes).toEqual([
       { kind: "remove_cash", date: "2026-11-02", amount: 201, label: "Card spend spike" },
+      {
+        kind: "recurring_cash",
+        label: "Card spend new level",
+        direction: "out",
+        amount: 25,
+        fromDate: "2026-11-09",
+        everyDays: 7,
+      },
     ]);
     expect(risk?.evidence.filter((e) => e.source === "ramp").map((e) => e.ref)).toEqual([
       "e1",
@@ -409,13 +438,17 @@ describe("scanRisks record-based kinds", () => {
     expect(risk).toMatchObject({ id: "risk_vendor_v4", probability: 2 / 5 }); // (1+1)/(3+2)
     expect(risk?.changes).toEqual([
       {
-        kind: "remove_cash",
-        date: "2026-11-01",
-        amount: 13_440,
-        label: "Acme Cloud price rise on v4",
+        kind: "scale_recurring",
+        label: "Acme Cloud prices up 12%",
+        flows: "spend",
+        names: ["Acme Cloud"],
+        percent: 12,
+        fromDate: "2026-11-01",
       },
     ]);
-    expect(risk?.label).toBe("Acme Cloud raises prices 12% (+$134 over 1 bills from Nov 1)");
+    expect(risk?.label).toBe(
+      "Acme Cloud raises prices 12% from Nov 1: every later bill costs more (+$134 across 1 booked bill)",
+    );
     expect(risk?.impactLowPoint).toBe(13_440);
   });
 
@@ -429,8 +462,16 @@ describe("scanRisks record-based kinds", () => {
     const s: Snapshot = { ...base, payroll: [...runs, ...future] };
     const [risk] = only(s, "risk_payroll_");
     // Last three average 113,333, prior three 100,000: step floor(40,000 / 3) = 13,333.
+    // Monthly runs, so the new pay repeats every 31 days (the median gap, capped at 31).
     expect(risk?.changes).toEqual([
-      { kind: "remove_cash", date: "2026-11-13", amount: 13_333, label: "Payroll growth on pf" },
+      {
+        kind: "recurring_cash",
+        label: "New hires from 2026-11-13",
+        direction: "out",
+        amount: 13_333,
+        fromDate: "2026-11-13",
+        everyDays: 31,
+      },
     ]);
     expect(risk?.probability).toBe(2 / 5);
     const flat = { ...s, payroll: [...runs.map((p) => ({ ...p, amount: 100_000 })), ...future] };
@@ -479,7 +520,15 @@ describe("scanRisks record-based kinds", () => {
     };
     const [risk] = only(s, "risk_concentration_", model({ c1: { mean: 4, p90: 5, samples: 3 } }));
     expect(risk).toMatchObject({ id: "risk_concentration_c1", probability: 1 / 3 });
-    expect(risk?.changes).toEqual([{ kind: "delay_invoice", invoiceId: "open1", days: 16 }]);
+    expect(risk?.changes).toEqual([
+      {
+        kind: "delay_customer",
+        customerId: "c1",
+        days: 16,
+        fromDate: "2026-11-14",
+        basis: "Worst observed lateness 20 days (p1) minus the 4 days already forecast",
+      },
+    ]);
     expect(risk?.label).toContain("One Co");
   });
 

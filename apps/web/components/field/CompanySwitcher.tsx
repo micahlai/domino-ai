@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "../../lib/utils";
+import { DemoStateToggle } from "./DemoStateToggle";
 import {
   OPERATING_COMPANIES,
   type OperatingSelection,
@@ -65,7 +66,12 @@ function LivePicker() {
     ? (next: OperatingSelection): OperatingStatus =>
         selectedOperatingRecord(companies, next, replayChoice(next))?.started ? "ready" : "idle"
     : undefined;
-  return <Picker selectedName={selected?.name} error={error} statusOf={statusOf} />;
+  return (
+    <>
+      <DemoStateToggle />
+      <Picker selectedName={selected?.name} error={error} statusOf={statusOf} />
+    </>
+  );
 }
 
 export type OperatingStatus = "ready" | "idle";

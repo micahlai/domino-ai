@@ -153,6 +153,12 @@ function changeSummary(c: Change, run: WorkspaceRun): string {
       return `${customerName(s, c.customerId)} leaves from ${day(c.fromDate)}`;
     case "shift_hire":
       return `${c.label} moves from ${day(c.fromDate)} to ${day(c.toDate)}`;
+    case "delay_customer":
+      return `later payments from ${customerName(s, c.customerId)} slip ${c.days} days from ${day(c.fromDate)} (${c.basis})`;
+    case "recurring_cash":
+      return `${money(c.amount)} ${c.direction === "in" ? "comes in" : "goes out"} every ${c.everyDays} days from ${day(c.fromDate)} (${c.label})`;
+    case "scale_recurring":
+      return `${c.label} from ${day(c.fromDate)}`;
   }
 }
 
@@ -171,7 +177,7 @@ export function explainQuestion(run: WorkspaceRun, raw: string): string {
   if (/\bhow much cash\b|\bcash (now|today|on hand)\b|\bbalance\b/i.test(text))
     return cashNowAnswer(run);
   if (/\b(converge|catch|snap|rejoin|merge|back to|same as|join)/i.test(text))
-    return "A late payment only moves timing: once the invoice is paid, cash catches up and the line rejoins the one it left. Discounts, fees, lost customers and cost changes stay offset in every later week, so those lines do not rejoin.";
+    return "A late payment only moves timing: once the invoice is paid, cash catches up and the line rejoins the one it left. Lost customers, hires, cost cuts and price changes act on every later bill or payroll run, so those lines keep bending away instead of rejoining.";
   if (/\b(start|starts|starting|begin|before|earlier|fork|diverge)\b/i.test(text)) {
     const start = scenarioStart(run.ownChanges, snapshot);
     return `Each scenario's line starts the week its own change first moves cash, and a scenario added on top of another never starts before the one under it.${start ? ` ${friendlyLabel(run.label, snapshot)} starts ${day(start)}.` : ""}`;

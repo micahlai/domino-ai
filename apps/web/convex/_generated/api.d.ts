@@ -50,6 +50,7 @@ import type * as fieldCrs from "../fieldCrs.js";
 import type * as fieldCustomers from "../fieldCustomers.js";
 import type * as fieldDashboard from "../fieldDashboard.js";
 import type * as fieldFeed from "../fieldFeed.js";
+import type * as fieldForecastRuns from "../fieldForecastRuns.js";
 import type * as fieldJobs from "../fieldJobs.js";
 import type * as fieldJudge from "../fieldJudge.js";
 import type * as fieldLearning from "../fieldLearning.js";
@@ -109,6 +110,7 @@ import type * as timeline_assistant_questions from "../timeline/assistant/questi
 import type * as timeline_baselines from "../timeline/baselines.js";
 import type * as timeline_chat from "../timeline/chat.js";
 import type * as timeline_chat_brain from "../timeline/chat/brain.js";
+import type * as timeline_chat_brainLog from "../timeline/chat/brainLog.js";
 import type * as timeline_chat_conversation from "../timeline/chat/conversation.js";
 import type * as timeline_chat_draft from "../timeline/chat/draft.js";
 import type * as timeline_chat_explain from "../timeline/chat/explain.js";
@@ -188,6 +190,7 @@ declare const fullApi: ApiFromModules<{
   fieldCustomers: typeof fieldCustomers;
   fieldDashboard: typeof fieldDashboard;
   fieldFeed: typeof fieldFeed;
+  fieldForecastRuns: typeof fieldForecastRuns;
   fieldJobs: typeof fieldJobs;
   fieldJudge: typeof fieldJudge;
   fieldLearning: typeof fieldLearning;
@@ -247,6 +250,7 @@ declare const fullApi: ApiFromModules<{
   "timeline/baselines": typeof timeline_baselines;
   "timeline/chat": typeof timeline_chat;
   "timeline/chat/brain": typeof timeline_chat_brain;
+  "timeline/chat/brainLog": typeof timeline_chat_brainLog;
   "timeline/chat/conversation": typeof timeline_chat_conversation;
   "timeline/chat/draft": typeof timeline_chat_draft;
   "timeline/chat/explain": typeof timeline_chat_explain;

@@ -82,7 +82,7 @@ async function clockOf(ctx: Pick<QueryCtx, "db">, companyId: Id<"companies">) {
 }
 
 /** The clock row, created paused on first use with day 0 = the world's current date. */
-async function ensureClock(ctx: MutationCtx, companyId: Id<"companies">) {
+export async function ensureClock(ctx: MutationCtx, companyId: Id<"companies">) {
   const existing = await clockOf(ctx, companyId);
   if (existing) return existing;
   await requireFeed(ctx, companyId);

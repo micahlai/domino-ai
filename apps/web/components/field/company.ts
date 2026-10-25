@@ -247,7 +247,48 @@ export type OperatingRecord = {
   replayOf?: Id<"companies"> | null;
   /** Agents have run (pressed Start, or the company already has saved books). */
   started?: boolean;
+  /** Set on a header demo-state copy (fieldOperating.openDemoState) and on replays. */
+  demoState?: DemoStateInfo | null;
 };
+
+export type DemoKind = "fresh" | "upToDate";
+export type DemoStateInfo = {
+  kind: DemoKind;
+  status: "building" | "ready" | "failed";
+  week: number;
+  weeks: number;
+  updatedAt: string;
+  error?: string;
+};
+
+// Demo-state copies this browser opened, per company and state, so toggling back shows the
+// same copy (a fresh start this browser already started stays as it is).
+const DEMO_STATE_KEY = "domino.field.operating.demoStates";
+type DemoCopies = Record<string, Partial<Record<DemoKind, string>>>;
+const memoryDemoCopies: DemoCopies = {};
+function readDemoCopies(): DemoCopies {
+  try {
+    const raw = window.localStorage.getItem(DEMO_STATE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? (parsed as DemoCopies) : {};
+  } catch {
+    return {};
+  }
+}
+export function demoCopyChoice(company: OperatingCompanyId, kind: DemoKind): string | null {
+  if (typeof window === "undefined") return null;
+  return readDemoCopies()[company]?.[kind] ?? memoryDemoCopies[company]?.[kind] ?? null;
+}
+export function rememberDemoCopy(company: OperatingCompanyId, kind: DemoKind, companyId: string) {
+  const next = readDemoCopies();
+  next[company] = { ...next[company], [kind]: companyId };
+  memoryDemoCopies[company] = { ...memoryDemoCopies[company], [kind]: companyId };
+  try {
+    window.localStorage.setItem(DEMO_STATE_KEY, JSON.stringify(next));
+  } catch {
+    // Kept in memory for this page.
+  }
+}
 
 // Replay choice (this browser only): which replay copy, if any, a selection shows instead of
 // the original company. The original and its data are never changed.
@@ -331,6 +372,16 @@ export const FIELD_OPERATING_API = {
       scenario: OperatingScenarioId;
     }
   >("fieldOperating:resetDemo"),
+  openDemoState: makeFunctionReference<
+    "mutation",
+    { companyId: Id<"companies">; kind: DemoKind; rebuild?: boolean },
+    {
+      companyId: Id<"companies">;
+      name: string;
+      scenario: OperatingScenarioId;
+      created: boolean;
+    }
+  >("fieldOperating:openDemoState"),
 };
 const pending = new Map<string, Promise<unknown>>();
 

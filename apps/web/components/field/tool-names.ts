@@ -78,6 +78,14 @@ const KNOWN: Record<string, { label: string; category: ToolCategory }> = {
   "claude.explainflags": { label: "Claude: explain flags", category: "audit" },
   "claude.summarizescenarios": { label: "Claude: summarize scenarios", category: "other" },
   "creao.counterpartyrisk": { label: "CREAO: counterparty risk notes", category: "other" },
+  // Ask Domino, the Timeline chat (convex/timeline/chat/brainLog.ts).
+  "claude.askdomino": { label: "Claude: Ask Domino reply", category: "other" },
+  lookup_forecast: { label: "Read saved forecast", category: "read" },
+  explain_saved: { label: "Explain saved books", category: "read" },
+  lookup_records: { label: "Find records", category: "read" },
+  update_draft: { label: "Check a what-if draft", category: "other" },
+  preview_plan: { label: "Preview a plan", category: "other" },
+  "timeline.savescenario": { label: "Save Timeline scenario", category: "forecast" },
   // CRS sandbox identity and fraud checks (convex/fieldCrs.ts).
   "crs.truvalidate": { label: "CRS: verify identity (TruValidate)", category: "audit" },
   "crs.fraudfinder": { label: "CRS: fraud signals (Fraud Finder)", category: "audit" },

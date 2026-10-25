@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { cn } from "../lib/utils";
 import { StyleSync } from "./StyleSync";
+import { ThemeToggle } from "./ThemeToggle";
 import { CompanySwitcher } from "./field/CompanySwitcher";
 import { NotificationToasts } from "./field/NotificationToasts";
 import { OperatingProvenanceStrip } from "./field/OperatingProvenanceStrip";
@@ -167,7 +168,7 @@ function PageContext({ pathname }: { pathname: string }) {
 }
 
 /** Logo, page links, then the company switcher. On small screens the page links drop to their
- * own scrollable row under the logo. Always the light style, even above the dark pages. */
+ * own scrollable row under the logo. The theme toggle sits at the far right. */
 function TopBar({ pathname }: { pathname: string }) {
   if (isRecordedPath(pathname)) {
     const timelineCompany = TIMELINE.test(pathname)
@@ -255,6 +256,7 @@ function TopBarContent({
                 {isOperatingProduct(pathname) ? <OperatingProvenanceStrip /> : null}
               </>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </header>

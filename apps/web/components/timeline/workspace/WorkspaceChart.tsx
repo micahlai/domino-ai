@@ -53,6 +53,8 @@ export type ChartProps = {
     startsOn?: string | null;
     /** Plain note for the focus line, e.g. why a timing-only line rejoins its parent. */
     note?: string | null;
+    /** Week the line runs out of cash (terminal); drawn as a marker and a red dash after it. */
+    outOfCash?: string | null;
     /** This scenario's own saved breach notes, marked on its line. */
     breaches?: { weekStart: string; text: string; short?: string }[];
     /** Scenarios this one builds on, so hovering it in the key lights up its whole path. */
@@ -886,6 +888,15 @@ export function WorkspaceChart(p: ChartProps) {
                         data-testid="fork-point"
                       />
                     ) : null}
+                    <OutOfCashMark
+                      points={points}
+                      slot={
+                        entry.outOfCash
+                          ? off + weeks.findIndex((w) => w.weekStart === entry.outOfCash)
+                          : null
+                      }
+                      draw={draw}
+                    />
                   </g>
                 );
               })}
@@ -1219,6 +1230,47 @@ export function WorkspaceChart(p: ChartProps) {
         </p>
       ) : null}
     </figure>
+  );
+}
+
+/**
+ * Terminal outcome on a scenario line: a marker in the first week with no cash left, and the
+ * rest of the line redrawn as a red dash, because past that week the forecast only assumes
+ * nothing else changes.
+ */
+function OutOfCashMark({
+  points,
+  slot,
+  draw,
+}: {
+  points: Point[];
+  slot: number | null;
+  draw: (points: Point[]) => string | null;
+}) {
+  const at = slot === null ? -1 : points.findIndex((pt) => pt.slot === slot);
+  const mark = points[at];
+  if (!mark) return null;
+  return (
+    <g data-testid="out-of-cash">
+      <path
+        d={draw(points.slice(at)) ?? ""}
+        fill="none"
+        stroke="hsl(var(--destructive))"
+        strokeWidth={2.5}
+        strokeDasharray="5 4"
+      />
+      <circle
+        cx={mark.x}
+        cy={mark.y}
+        r={5}
+        fill="hsl(var(--destructive))"
+        className="stroke-card"
+        strokeWidth={2}
+      />
+      <text x={mark.x + 8} y={mark.y + 14} className="fill-destructive text-[10px] font-medium">
+        Out of cash
+      </text>
+    </g>
   );
 }
 

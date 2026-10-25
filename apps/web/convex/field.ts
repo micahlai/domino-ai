@@ -28,7 +28,8 @@
  *     = driver-based company whose mock sources report that profile id as companyId.
  *   field.advanceFeed({ companyId, advance?, anomaly? })  advance the mock world one week
  *     (default) and/or plant one anomaly: duplicate | unusual_amount | unusual_timing |
- *     conflict | missing_expected. Returns { asOf, week, planted: string[] }.
+ *     conflict | missing_expected, or a persistent event: customer_cancels | vendor_price_rise |
+ *     new_hires. Returns { asOf, week, planted: string[] }.
  *   field.ingestNow({ companyId })    queue one ingest run now (AGENTS_IDLE before Start agents).
  *   field.setAutoIngest({ companyId, enabled })  every 45 s, at most 120 runs per enable.
  *   field.decide({ companyId, findingId, decision: "approved"|"rejected", note? })
@@ -505,7 +506,7 @@ export const advanceFeed = mutation({
         refs: [kind, ...planted],
         agent: "mock.feed",
         tool: "mock.plant",
-        summary: `Planted a synthetic ${kind.replace("_", " ")}: ${result.summary}`,
+        summary: `Planted a synthetic ${kind.replaceAll("_", " ")}: ${result.summary}`,
       });
     }
     await ctx.db.replace("feedWorlds", row._id, { companyId, world, overlay });

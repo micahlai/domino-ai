@@ -8,6 +8,7 @@ import type {
   Snapshot,
 } from "@domino/contracts";
 import { addDays, daysBetween, weekStarts } from "./dates";
+import type { CashSchedule } from "./forecast";
 import { compareIds } from "./funding";
 import { isOpenInvoice } from "./schedule";
 
@@ -29,6 +30,10 @@ const MAX_RISE_PCT = 25;
 /** Demo assumption: a processor payout lands a week after its estimated arrival. */
 const PAYOUT_LATE_DAYS = 7;
 const PAYOUT_LATE_CHANCE = 0.15;
+/** Assumption: a customer that stopped paying slips its later invoices at most this long. */
+const MAX_OVERDUE_SLIP = 60;
+/** Approximate days per billing cadence, for a recurring flow on a known plan. */
+const CADENCE_DAYS: Record<1 | 3, number> = { 1: 30, 3: 91 };
 /** Demo assumption: an early payer pays this many days before due when history has none. */
 const DEFAULT_EARLY_DAYS = 14;
 /** Payroll runs above this multiple of the median are bonus runs, not the base run-rate. */
@@ -95,6 +100,28 @@ const daysLate = (i: Invoice) => daysBetween(i.due, i.paid ?? i.due);
 const expectedDelay = (model: CompanyModel, customerId: string) =>
   Math.round(model.customerDelayDays[customerId]?.mean ?? 0);
 
+const isReceipt = (kind: string) => kind === "invoice" || kind === "deal" || kind === "plan";
+
+/** The base forecast's cash date for one invoice, if it is still expected. */
+export const receiptDate = (base: CashSchedule, invoiceId: string): string | undefined =>
+  base.items.find((i) => i.kind === "invoice" && i.id === invoiceId)?.date;
+
+/**
+ * Earliest expected receipt (invoice, deal or projected plan bill) from a customer in the base
+ * forecast, skipping one invoice. A persistent change from this date reaches all of them.
+ */
+export function firstReceipt(
+  base: CashSchedule,
+  customerId: string,
+  skipInvoiceId?: string,
+): string | undefined {
+  let first: string | undefined;
+  for (const i of base.items)
+    if (isReceipt(i.kind) && i.customerId === customerId && i.id !== skipInvoiceId)
+      if (first === undefined || i.date < first) first = i.date;
+  return first;
+}
+
 // ---------- Vendor price rise ----------
 
 /**
@@ -127,14 +154,18 @@ export function vendorPriceRises(snapshot: Snapshot): Candidate[] {
         }
       }
       const risePct = maxRise > 0 ? Math.min(maxRise, MAX_RISE_PCT) : DEFAULT_RISE_PCT;
-      const targets = [...bills].sort(byDate((b) => b.due)).slice(0, MAX_CHANGES);
-      const changes: Change[] = targets.map((b) => ({
-        kind: "remove_cash",
-        date: b.due,
-        amount: pct(b.amount, risePct),
-        label: `${vendor} price rise on ${b.id}`,
-      }));
-      const extra = changes.reduce((n, c) => n + (c.kind === "remove_cash" ? c.amount : 0), 0);
+      const sorted = [...bills].sort(byDate((b) => b.due));
+      const from = sorted[0]!.due;
+      // A price rise is persistent: every later bill from this vendor costs more, not one bill.
+      const change: Change = {
+        kind: "scale_recurring",
+        label: `${vendor} prices up ${risePct}%`,
+        flows: "spend",
+        names: [vendor],
+        percent: risePct,
+        fromDate: from,
+      };
+      const extra = sorted.reduce((n, b) => n + pct(b.amount, risePct), 0);
       const probability = (rises + 1) / (steps + 2);
       const sizeNote =
         maxRise > 0
@@ -144,23 +175,25 @@ export function vendorPriceRises(snapshot: Snapshot): Candidate[] {
         {
           source: "books",
           ref: `vendor:${vendor}`,
-          note: `${rises} of ${steps} consecutive bills rose; chance (${rises}+1)/(${steps}+2) by the Laplace rule. ${sizeNote}`,
+          note: `${rises} of ${steps} consecutive bills rose; chance (${rises}+1)/(${steps}+2) by the Laplace rule. ${sizeNote}. The rise applies to every ${vendor} bill and recurring charge from ${from} on.`,
         },
-        ...targets.map((b) => ({
+        ...sorted.slice(0, MAX_CHANGES).map((b) => ({
           source: "books" as const,
           ref: b.id,
           note: `Unpaid ${short(b.amount)} bill due ${b.due}`,
         })),
       ];
       return {
-        id: `risk_vendor_${targets[0]!.id}`,
-        label: `${vendor} raises prices ${risePct}% (+${short(extra)} over ${targets.length} bills from ${day(targets[0]!.due, snapshot.asOf)})`,
+        id: `risk_vendor_${sorted[0]!.id}`,
+        label: `${vendor} raises prices ${risePct}% from ${day(from, snapshot.asOf)}: every later bill costs more (+${short(extra)} across ${sorted.length} booked bill${sorted.length === 1 ? "" : "s"})`,
         probability,
-        changes: changes.filter((c) => c.kind !== "remove_cash" || c.amount > 0),
+        changes: [change],
         evidence,
+        extra,
       };
     })
-    .filter((c) => c.changes.length > 0);
+    .filter((c) => c.extra > 0)
+    .map(({ extra: _, ...c }) => c);
 }
 
 // ---------- Payroll growth ----------
@@ -187,24 +220,31 @@ export function payrollGrowth(snapshot: Snapshot): Candidate[] {
     .sort(byDate((p) => p.date))
     .slice(0, MAX_CHANGES);
   if (!future.length || probability === 0) return [];
-  const changes: Change[] = future.map((p, i) => ({
-    kind: "remove_cash",
-    date: p.date,
-    amount: step * (i + 1),
-    label: `Payroll growth on ${p.id}`,
+  const gaps = base
+    .slice(-6)
+    .flatMap((p, i, xs) => (i ? [daysBetween(xs[i - 1]!.date, p.date)] : []));
+  const everyDays = Math.min(31, Math.max(7, Math.round(median(gaps))));
+  // Each run adds one more hire's pay, and every hire stays on payroll for every later run.
+  const changes: Change[] = future.map((p) => ({
+    kind: "recurring_cash",
+    label: `New hires from ${p.date}`,
+    direction: "out",
+    amount: step,
+    fromDate: p.date,
+    everyDays,
   }));
   const extra = (step * future.length * (future.length + 1)) / 2;
   return [
     {
       id: "risk_payroll_growth",
-      label: `Hiring keeps its pace: payroll grows ${short(step)} a run (+${short(extra)} over ${future.length} runs from ${day(future[0]!.date, snapshot.asOf)})`,
+      label: `Hiring keeps its pace: each pay run from ${day(future[0]!.date, snapshot.asOf)} adds ${short(step)} that stays on payroll (about +${short(extra)} in 13 weeks)`,
       probability,
       changes,
       evidence: [
         {
           source: "payroll",
           ref: "payroll:base-runs",
-          note: `Last three base runs average ${short(sum(last3) / 3)}, the three before ${short(sum(prev3) / 3)}. ${ups} of ${base.length - 1} run-to-run steps rose, which is the chance. Runs above ${BONUS_RATIO}x the median are treated as bonuses and excluded.`,
+          note: `Last three base runs average ${short(sum(last3) / 3)}, the three before ${short(sum(prev3) / 3)}. ${ups} of ${base.length - 1} run-to-run steps rose, which is the chance. Runs above ${BONUS_RATIO}x the median are treated as bonuses and excluded. New pay repeats every ${everyDays} days, the median gap between recent base runs.`,
         },
         ...last3.map((p) => ({
           source: "payroll" as const,
@@ -277,12 +317,16 @@ export function scheduledPayments(snapshot: Snapshot): Candidate[] {
 
 /**
  * Among customers with payment history, the one with the most open receivables in the horizon
- * pays all of them (up to eight,
- * largest first) at its own worst observed lateness. The forecast already adds its rounded mean
- * delay, so the extra is worst - round(mean). Chance: share of its observable paid invoices more
- * than 14 days late, or the documented 0.1 default with fewer than three.
+ * pays everything at its own worst observed lateness: its open invoices and every later one, since
+ * a customer that slips keeps slipping. The forecast already adds its rounded mean delay, so the
+ * extra is worst - round(mean). Chance: share of its observable paid invoices more than 14 days
+ * late, or the documented 0.1 default with fewer than three.
  */
-export function concentration(snapshot: Snapshot, model: CompanyModel): Candidate[] {
+export function concentration(
+  snapshot: Snapshot,
+  model: CompanyModel,
+  base: CashSchedule,
+): Candidate[] {
   // Overdue invoices count: they are still expected cash and are the likeliest to slip.
   const open = snapshot.invoices.filter(
     (i) => isOpenInvoice(i) && i.amount > 0 && i.due <= horizonEnd(snapshot),
@@ -302,18 +346,27 @@ export function concentration(snapshot: Snapshot, model: CompanyModel): Candidat
   const enough = history.length >= MIN_SAMPLES;
   const probability = enough ? late / history.length : DEFAULT_CHANCE;
   if (probability === 0) return [];
+  const fromDate = firstReceipt(base, customerId);
+  if (fromDate === undefined) return [];
   const targets = open
     .filter((i) => i.customerId === customerId)
     .sort((a, b) => b.amount - a.amount || compareIds(a.id, b.id))
     .slice(0, MAX_CHANGES);
   const name = customerName(snapshot, customerId);
   const worstInv = history.find((i) => daysLate(i) === worst)!;
+  const change: Change = {
+    kind: "delay_customer",
+    customerId,
+    days: extra,
+    fromDate,
+    basis: `Worst observed lateness ${worst} days (${worstInv.id}) minus the ${expectedDelay(model, customerId)} days already forecast`,
+  };
   return [
     {
       id: `risk_concentration_${customerId}`,
-      label: `Top customer ${name} pays all ${short(total)} open at its worst (${worst} days late, as on ${day(worstInv.due, snapshot.asOf)})`,
+      label: `Top customer ${name} pays everything at its worst, ${worst} days late as on ${day(worstInv.due, snapshot.asOf)}: the ${short(total)} open and all later invoices`,
       probability,
-      changes: targets.map((i) => ({ kind: "delay_invoice", invoiceId: i.id, days: extra })),
+      changes: [change],
       evidence: [
         {
           source: "stripe",
@@ -334,10 +387,12 @@ export function concentration(snapshot: Snapshot, model: CompanyModel): Candidat
 
 /**
  * The largest open invoice already past due (not one a renewal deal carries; nonrenewal covers
- * those) is never collected. Chance: demo assumption of days overdue / 120, capped at 0.5, so
- * older debts are likelier to be lost. Not an estimated write-off rate.
+ * those) is never collected, and the customer keeps paying late: its other receipts slip by as
+ * long as this one is overdue, capped at 60 days (assumption). Chance: demo assumption of days
+ * overdue / 120, capped at 0.5, so older debts are likelier to be lost. Not an estimated
+ * write-off rate.
  */
-export function overdueUncollected(snapshot: Snapshot): Candidate[] {
+export function overdueUncollected(snapshot: Snapshot, base: CashSchedule): Candidate[] {
   const renewal = new Set(
     snapshot.deals.filter((d) => d.kind === "renewal" && d.invoiceId).map((d) => d.invoiceId),
   );
@@ -347,17 +402,29 @@ export function overdueUncollected(snapshot: Snapshot): Candidate[] {
   if (!inv) return [];
   const overdue = daysBetween(inv.due, snapshot.asOf);
   const probability = Math.min(0.5, overdue / 120);
+  const slip = Math.min(overdue, MAX_OVERDUE_SLIP);
+  const later = firstReceipt(base, inv.customerId, inv.id);
+  const name = customerName(snapshot, inv.customerId);
+  const changes: Change[] = [{ kind: "lose_invoice", invoiceId: inv.id }];
+  if (later !== undefined && slip > 0)
+    changes.push({
+      kind: "delay_customer",
+      customerId: inv.customerId,
+      days: slip,
+      fromDate: later,
+      basis: `Assumption: a customer that stopped paying keeps paying late, by as long as ${inv.id} is overdue (${overdue} days, capped at ${MAX_OVERDUE_SLIP})`,
+    });
   return [
     {
       id: `risk_overdue_${inv.id}`,
-      label: `${customerName(snapshot, inv.customerId)} never pays its ${short(inv.amount)} invoice, ${overdue} days overdue since ${day(inv.due, snapshot.asOf)}`,
+      label: `${name} never pays its ${short(inv.amount)} invoice, ${overdue} days overdue since ${day(inv.due, snapshot.asOf)}${changes.length > 1 ? `, and pays later invoices ${slip} days late` : ""}`,
       probability,
-      changes: [{ kind: "lose_invoice", invoiceId: inv.id }],
+      changes,
       evidence: [
         {
           source: "stripe",
           ref: inv.id,
-          note: `Open ${short(inv.amount)} invoice due ${inv.due}, ${overdue} days overdue at ${snapshot.asOf}. Demo assumption: chance = days overdue / 120, capped at 0.5.`,
+          note: `Open ${short(inv.amount)} invoice due ${inv.due}, ${overdue} days overdue at ${snapshot.asOf}. Demo assumption: chance = days overdue / 120, capped at 0.5.${changes.length > 1 ? ` Assumption: its later invoices slip ${slip} days.` : ""}`,
         },
       ],
     },
@@ -454,8 +521,10 @@ export function earlyCollection(snapshot: Snapshot, model: CompanyModel): Candid
 
 /**
  * Upside: the largest open new-business or expansion deal closes on its expected date and pays
- * on the customer's terms plus usual delay. Renewals are left out (billing plans already carry
- * them). Chance: won / (won + lost) over that kind's closed deals; skipped with fewer than three.
+ * on the customer's terms plus usual delay. When the customer already bills monthly or quarterly
+ * on a plan, the deal is assumed to bill on that cadence too, so the amount repeats. Renewals are
+ * left out (billing plans already carry them). Chance: won / (won + lost) over that kind's closed
+ * deals; skipped with fewer than three.
  */
 export function pipelineClose(snapshot: Snapshot, model: CompanyModel): Candidate[] {
   const deal = snapshot.deals
@@ -479,18 +548,49 @@ export function pipelineClose(snapshot: Snapshot, model: CompanyModel): Candidat
   );
   if (probability === 0 || !inHorizon(snapshot, pays)) return [];
   const name = customerName(snapshot, deal.customerId);
+  const plan = (snapshot.billingPlans ?? [])
+    .filter(
+      (p) =>
+        p.customerId === deal.customerId &&
+        p.everyMonths !== 12 &&
+        (p.endDate === undefined || p.endDate > snapshot.asOf),
+    )
+    .sort((a, b) => compareIds(a.id, b.id))[0];
+  const everyDays = plan && plan.everyMonths !== 12 ? CADENCE_DAYS[plan.everyMonths] : undefined;
+  const changes: Change[] = [
+    { kind: "add_cash", date: pays, amount: deal.amount, label: `Deal ${deal.id}` },
+  ];
+  if (everyDays !== undefined)
+    changes.push({
+      kind: "recurring_cash",
+      label: `Deal ${deal.id} billing`,
+      direction: "in",
+      amount: deal.amount,
+      fromDate: addDays(pays, everyDays),
+      everyDays,
+    });
+  const cadence = plan?.everyMonths === 1 ? "month" : "quarter";
   return [
     {
       id: `risk_upside_deal_${deal.id}`,
-      label: `Upside: ${name} ${deal.kind === "expansion" ? "expansion" : "deal"} closes, ${short(deal.amount)} paid ${day(pays, snapshot.asOf)}`,
+      label: `Upside: ${name} ${deal.kind === "expansion" ? "expansion" : "deal"} closes, ${short(deal.amount)} paid ${day(pays, snapshot.asOf)}${everyDays !== undefined ? ` and every ${cadence} after` : ""}`,
       probability,
-      changes: [{ kind: "add_cash", date: pays, amount: deal.amount, label: `Deal ${deal.id}` }],
+      changes,
       evidence: [
         {
           source: "crm",
           ref: deal.id,
           note: `Open ${deal.kind} deal of ${short(deal.amount)}, expected close ${deal.expectedClose}. ${won} of ${closed.length} closed ${deal.kind} deals were won, which is the chance.`,
         },
+        ...(plan && everyDays !== undefined
+          ? [
+              {
+                source: "stripe" as const,
+                ref: plan.id,
+                note: `Assumption: the deal bills like ${name}'s current plan, every ${plan.everyMonths === 1 ? "month" : "quarter"} (${everyDays} days), at the deal amount`,
+              },
+            ]
+          : []),
       ],
     },
   ];

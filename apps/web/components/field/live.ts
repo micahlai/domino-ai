@@ -72,6 +72,8 @@ const AGENT_NAME: Record<string, string> = {
   forecaster: "Forecaster",
   research: "Research agent",
   "analyst.loop": "Auto-run loop",
+  // Timeline chat (convex/timeline/chat/brainLog.ts): "chat#1" lands on one Ask Domino node.
+  chat: "Ask Domino",
   // Audit swarm (convex/fieldAudit.ts): checkers under the Audit agent ("field.audit").
   "audit.duplicates": "Duplicates check",
   "audit.crossToolTieOut": "Tie-out check",

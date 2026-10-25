@@ -10,6 +10,7 @@ import type {
 import { addDays, daysBetween, horizonEnd } from "./dates";
 import { money } from "./dominoes";
 import { type CashSchedule, cashSchedule, forecastFromSchedule } from "./forecast";
+import { type OutOfCash, outOfCash } from "./out-of-cash";
 import { evaluateOnSchedule, weeklyBreach } from "./rules";
 import { bucketOf } from "./schedule";
 
@@ -21,7 +22,7 @@ import { bucketOf } from "./schedule";
  * through forecast() on the complete change list, so every number comes from the engine.
  * Likelihoods are stated labels, not probabilities. Nothing here moves money.
  */
-export const CASCADE_VERSION = "cascade@1.0.0";
+export const CASCADE_VERSION = "cascade@1.1.0";
 
 export type CascadeLikelihood = "Expected" | "Likely" | "Possible";
 export type TriggerKind =
@@ -64,6 +65,10 @@ export type CascadeNode = {
   lowPoint: Forecast["lowPoint"];
   /** Earliest date the node's own changes act */
   startsOn: ISODate;
+  /** Terminal: this branch runs out of cash; only survival responses may follow it. */
+  outOfCash: OutOfCash | null;
+  /** Who picked this reaction: a model's estimate, or the fixed rules */
+  estimate: CascadeEstimate;
 };
 
 export type CascadeInput = {
@@ -81,6 +86,8 @@ export type CascadeResult = {
   version: string;
   event: string;
   forecast: Forecast;
+  /** The scenario itself runs out of cash (before any follow-on) */
+  outOfCash: OutOfCash | null;
   nodes: CascadeNode[];
 };
 
@@ -91,7 +98,7 @@ export const CASCADE_LIMITS: CascadeLimits = { maxDepth: 3, maxBranches: 2, maxN
 const WAIVER_FEE_BPS = 25n; // amendment/waiver fee ~0.25% of the covenant level
 const MIN_WAIVER_FEE = 1_000_000; // $10K floor for lender legal costs
 const DEFAULT_RATE_BPS = 200n; // default interest step-up +2%/yr
-const REVOLVER_RATE_BPS = 800n; // drawn revolver ~8%/yr (SOFR + ~3.5%)
+export const REVOLVER_RATE_BPS = 800n; // drawn revolver ~8%/yr (SOFR + ~3.5%)
 const LATE_FEE_BPS = 150n; // 1.5% per month late fee on net-30 invoices
 const STRETCH_DAYS = 30;
 const PEER_DELAY_DAYS = 7;
@@ -99,7 +106,7 @@ const HIRE_PAUSE_BPS = 500n; // planned hires ~5% of monthly payroll
 const HIRE_PULL_BPS = 1_000n; // pulled-forward hiring ~10% of the windfall per month
 const DRAW_ROUND = 5_000_000; // draws in $50K steps
 const MAX_BILLS = 8;
-const DRAW_LABEL = /credit line|revolver|line draw/i;
+export const DRAW_LABEL = /credit line|revolver|line draw/i;
 
 type Ctx = {
   input: CascadeInput;
@@ -127,7 +134,118 @@ type Option = {
 };
 type Found = { key: string; trigger: CascadeTrigger; options: Option[] };
 
+/** Synchronous, rule-based cascade: every trigger uses its catalog's rule options in order. */
 export function cascade(input: CascadeInput, limits = CASCADE_LIMITS): CascadeResult {
+  const steps = cascadeSteps(input, limits);
+  let step = steps.next();
+  while (!step.done) step = steps.next(null);
+  return step.value;
+}
+
+/**
+ * Same cascade, but each trigger's reactions may be chosen by `decide` (for example a model's
+ * estimate). The engine still builds every Change and computes every forecast; `decide` only
+ * picks catalog entries and bounded parameters, and returning null keeps the fixed rules.
+ */
+export async function cascadeWith(
+  input: CascadeInput,
+  decide: (request: ReactionRequest) => Promise<unknown | null>,
+  limits = CASCADE_LIMITS,
+): Promise<CascadeResult> {
+  const steps = cascadeSteps(input, limits);
+  let step = steps.next();
+  while (!step.done) {
+    let raw: unknown | null = null;
+    try {
+      raw = await decide(step.value);
+    } catch {
+      raw = null;
+    }
+    step = steps.next(raw === null ? null : resolveReactions(step.value.catalog, raw));
+  }
+  return step.value;
+}
+
+/** One trigger awaiting a choice of reactions from its catalog. */
+export type ReactionRequest = {
+  /** Cache key parts: the branch it fires on and the trigger */
+  levelId: string | null;
+  depth: number;
+  key: string;
+  trigger: CascadeTrigger;
+  event: string;
+  lowPoint: Forecast["lowPoint"];
+  catalog: ReactionCatalogEntry[];
+};
+export type ReactionCatalogEntry = {
+  kindId: string;
+  label: string;
+  event: string;
+  reason: string;
+  /** Outside the fixed rules: market and reputation effects, offered to an estimator only */
+  external: boolean;
+  param: { name: "days" | "percent"; min: number; max: number; default: number } | null;
+};
+export type ReactionChoice = {
+  kindId: string;
+  probability: number;
+  reason: string;
+  param: number | null;
+};
+export type CascadeEstimate =
+  | { source: "ai"; probability: number; reason: string }
+  | { source: "rule" };
+
+/**
+ * Keep only catalog kinds, at most two distinct ones, clamp parameters to their bounds and
+ * renormalize probabilities to sum to 1. Anything unusable yields null (fixed rules).
+ */
+export function resolveReactions(
+  catalog: ReactionCatalogEntry[],
+  raw: unknown,
+): ReactionChoice[] | null {
+  const list =
+    raw && typeof raw === "object" && Array.isArray((raw as { reactions?: unknown }).reactions)
+      ? ((raw as { reactions: unknown[] }).reactions ?? [])
+      : [];
+  const out: ReactionChoice[] = [];
+  for (const r of list) {
+    if (!r || typeof r !== "object" || out.length >= 2) continue;
+    const row = r as Record<string, unknown>;
+    const entry = catalog.find((c) => c.kindId === row.kindId);
+    if (!entry || out.some((o) => o.kindId === entry.kindId)) continue;
+    const p =
+      typeof row.probability === "number" && Number.isFinite(row.probability) ? row.probability : 0;
+    if (p <= 0) continue;
+    const value = typeof row.param === "number" && Number.isFinite(row.param) ? row.param : null;
+    const param = entry.param
+      ? Math.round(
+          Math.min(entry.param.max, Math.max(entry.param.min, value ?? entry.param.default)),
+        )
+      : null;
+    const reason = typeof row.reason === "string" ? row.reason.trim().slice(0, 160) : "";
+    out.push({
+      kindId: entry.kindId,
+      probability: Math.min(1, p),
+      reason: reason || entry.reason,
+      param,
+    });
+  }
+  if (!out.length) return null;
+  const total = out.reduce((a, o) => a + o.probability, 0);
+  return out.map((o) => ({ ...o, probability: Math.round((o.probability / total) * 100) / 100 }));
+}
+
+const kindIdOf = (label: string) =>
+  label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+
+function* cascadeSteps(
+  input: CascadeInput,
+  limits: CascadeLimits,
+): Generator<ReactionRequest, CascadeResult, ReactionChoice[] | null> {
   const { snapshot, model } = input;
   const all = [...input.baseChanges, ...input.eventChanges];
   const schedule = cashSchedule(snapshot, model, all);
@@ -151,51 +269,200 @@ export function cascade(input: CascadeInput, limits = CASCADE_LIMITS): CascadeRe
   while (queue.length > 0 && nodes.length < limits.maxNodes) {
     const level = queue.shift() as Level;
     if (level.depth >= limits.maxDepth) continue;
-    const picks = triggers(ctx, level)
-      .filter((f) => !level.fired.has(f.key))
-      .flatMap((f) => f.options.map((option) => ({ f, option })));
+    // Out of cash is terminal: only the survival responses to the gap (stretch vendors, an
+    // emergency credit draw) can follow it; ordinary knock-on effects stop there.
+    const terminal = outOfCash(level.forecast) !== null;
+    const found = triggers(ctx, level).filter(
+      (f) => !level.fired.has(f.key) && (!terminal || f.key === "cash_gap"),
+    );
     let n = 0;
-    for (const { f, option } of picks) {
+    for (const f of found) {
       if (n >= limits.maxBranches || nodes.length >= limits.maxNodes) break;
-      const childAll = [...level.all, ...option.changes];
-      let childSchedule: CashSchedule;
-      try {
-        childSchedule = cashSchedule(snapshot, model, childAll);
-      } catch {
-        continue; // a follow-on the engine cannot apply is left out, never guessed
-      }
-      const childForecast = forecastFromSchedule(snapshot, childSchedule);
-      if (sameCash(childForecast, level.forecast)) continue;
-      n += 1;
-      const id = level.id === null ? String(n) : `${level.id}.${n}`;
-      nodes.push({
-        id,
-        parentId: level.id,
-        depth: level.depth + 1,
+      const external = terminal ? [] : externalReactions(ctx, level, f);
+      const kinds = [
+        ...f.options.map((o) => ({ option: o, external: false, param: null })),
+        ...external,
+      ];
+      const catalog: ReactionCatalogEntry[] = kinds.map((k) => ({
+        kindId: kindIdOf(k.option.branchLabel),
+        label: k.option.branchLabel,
+        event: k.option.event,
+        reason: k.option.reason,
+        external: k.external,
+        param: k.param ? { ...k.param.bounds } : null,
+      }));
+      const choices: ReactionChoice[] | null = yield {
+        levelId: level.id,
+        depth: level.depth,
+        key: f.key,
         trigger: f.trigger,
-        event: option.event,
-        branchLabel: option.branchLabel,
-        reason: option.reason,
-        likelihood: option.likelihood,
-        changes: option.changes,
-        allChanges: childAll,
-        forecast: childForecast,
-        lowPoint: childForecast.lowPoint,
-        startsOn: startOf(option.changes, snapshot) ?? f.trigger.date,
-      });
-      queue.push({
-        id,
-        depth: level.depth + 1,
-        prior: level.all,
-        own: option.changes,
-        all: childAll,
-        schedule: childSchedule,
-        forecast: childForecast,
-        fired: new Set([...level.fired, f.key]),
-      });
+        event: input.eventLabel,
+        lowPoint: level.forecast.lowPoint,
+        catalog,
+      };
+      // Rule-based: the trigger's own options, in order. AI: the chosen kinds with parameters.
+      const picks: { option: Option; estimate: CascadeEstimate }[] = choices
+        ? choices.flatMap((c) => {
+            const i = catalog.findIndex((e) => e.kindId === c.kindId);
+            const k = kinds[i];
+            if (!k) return [];
+            const option = k.param ? k.param.build(c.param ?? k.param.bounds.default) : k.option;
+            return [
+              {
+                option,
+                estimate: { source: "ai" as const, probability: c.probability, reason: c.reason },
+              },
+            ];
+          })
+        : f.options.map((option) => ({ option, estimate: { source: "rule" as const } }));
+      for (const { option, estimate } of picks) {
+        if (n >= limits.maxBranches || nodes.length >= limits.maxNodes) break;
+        const childAll = [...level.all, ...option.changes];
+        let childSchedule: CashSchedule;
+        try {
+          childSchedule = cashSchedule(snapshot, model, childAll);
+        } catch {
+          continue; // a follow-on the engine cannot apply is left out, never guessed
+        }
+        const childForecast = forecastFromSchedule(snapshot, childSchedule);
+        if (sameCash(childForecast, level.forecast)) continue;
+        n += 1;
+        const id = level.id === null ? String(n) : `${level.id}.${n}`;
+        nodes.push({
+          id,
+          parentId: level.id,
+          depth: level.depth + 1,
+          trigger: f.trigger,
+          event: option.event,
+          branchLabel: option.branchLabel,
+          reason: option.reason,
+          likelihood: option.likelihood,
+          changes: option.changes,
+          allChanges: childAll,
+          forecast: childForecast,
+          lowPoint: childForecast.lowPoint,
+          startsOn: startOf(option.changes, snapshot) ?? f.trigger.date,
+          outOfCash: outOfCash(childForecast),
+          estimate,
+        });
+        queue.push({
+          id,
+          depth: level.depth + 1,
+          prior: level.all,
+          own: option.changes,
+          all: childAll,
+          schedule: childSchedule,
+          forecast: childForecast,
+          fired: new Set([...level.fired, f.key]),
+        });
+      }
     }
   }
-  return { version: CASCADE_VERSION, event: input.eventLabel, forecast, nodes };
+  return {
+    version: CASCADE_VERSION,
+    event: input.eventLabel,
+    forecast,
+    outOfCash: outOfCash(forecast),
+    nodes,
+  };
+}
+
+type External = {
+  option: Option;
+  external: true;
+  param: {
+    bounds: { name: "days" | "percent"; min: number; max: number; default: number };
+    build: (value: number) => Option;
+  };
+};
+
+/**
+ * Reactions outside the fixed rules, offered only to an estimator: a market downturn slows
+ * collections, a reputation hit after a cash squeeze shrinks renewals, and good news grows
+ * billing. Each is an ordinary bounded Change list the engine evaluates like any other.
+ */
+function externalReactions(ctx: Ctx, level: Level, f: Found): External[] {
+  const { snapshot } = ctx.input;
+  const from = maxDate(addDays(snapshot.asOf, 1), f.trigger.date);
+  if (from > ctx.end) return [];
+  const out: External[] = [];
+  const hasPlans = level.schedule.items.some((i) => i.kind === "plan" && i.date >= from);
+  if (f.key === "cash_gap" || f.key === "lender_minimum" || f.key === "customer_shock") {
+    const byCustomer = new Map<string, number>();
+    for (const i of level.schedule.items)
+      if (i.customerId && i.amount > 0 && i.date >= from && i.date <= ctx.end)
+        byCustomer.set(i.customerId, (byCustomer.get(i.customerId) ?? 0) + i.amount);
+    const payers = [...byCustomer.entries()]
+      .sort((a, b) => b[1] - a[1] || cmp(a[0], b[0]))
+      .slice(0, MAX_BILLS)
+      .map(([id]) => id);
+    const build = (days: number): Option => ({
+      event: `Market downturn: customers pay ${days} days later`,
+      branchLabel: "Market downturn",
+      reason: `Estimated outside effect: in a downturn customers stretch their own payables, so receipts from the ${payers.length} largest payers slip ${days} days.`,
+      likelihood: "Possible",
+      changes: payers.map((customerId) => ({
+        kind: "delay_customer" as const,
+        customerId,
+        days,
+        fromDate: from,
+        basis: `Estimated market downturn: ${days} days slower`,
+      })),
+    });
+    if (payers.length)
+      out.push({
+        option: build(14),
+        external: true,
+        param: { bounds: { name: "days", min: 7, max: 45, default: 14 }, build },
+      });
+  }
+  if ((f.key === "cash_gap" || f.key === "lender_minimum") && hasPlans) {
+    const build = (pct: number): Option => ({
+      event: `Word of the cash squeeze gets out: renewals shrink ${pct}%`,
+      branchLabel: "Reputation hit",
+      reason: `Estimated outside effect: customers who hear about a cash squeeze renew smaller or later, so recurring billing falls ${pct}% from ${from}.`,
+      likelihood: "Possible",
+      changes: [
+        {
+          kind: "scale_recurring" as const,
+          label: unique(level.all, `Reputation hit, billing down ${pct}%`),
+          flows: "billing" as const,
+          names: [],
+          percent: -pct,
+          fromDate: from,
+        },
+      ],
+    });
+    out.push({
+      option: build(10),
+      external: true,
+      param: { bounds: { name: "percent", min: 5, max: 30, default: 10 }, build },
+    });
+  }
+  if (f.key === "windfall" && hasPlans) {
+    const build = (pct: number): Option => ({
+      event: `Positive press: new business grows billing ${pct}%`,
+      branchLabel: "Positive press",
+      reason: `Estimated outside effect: a visible win speeds up the pipeline, so recurring billing grows ${pct}% from ${from}.`,
+      likelihood: "Possible",
+      changes: [
+        {
+          kind: "scale_recurring" as const,
+          label: unique(level.all, `Positive press, billing up ${pct}%`),
+          flows: "billing" as const,
+          names: [],
+          percent: pct,
+          fromDate: from,
+        },
+      ],
+    });
+    out.push({
+      option: build(5),
+      external: true,
+      param: { bounds: { name: "percent", min: 2, max: 20, default: 5 }, build },
+    });
+  }
+  return out;
 }
 
 // ---------- Triggers, in priority order ----------
@@ -760,7 +1027,10 @@ export function startOf(changes: Change[], snapshot: Snapshot): ISODate | null {
           ? c.fromDate
           : c.kind === "discount_early_pay"
             ? c.payOn
-            : c.kind === "shift_hire"
+            : c.kind === "shift_hire" ||
+                c.kind === "delay_customer" ||
+                c.kind === "recurring_cash" ||
+                c.kind === "scale_recurring"
               ? c.fromDate
               : c.kind === "delay_bill"
                 ? snapshot.bills.find((b) => b.id === c.billId)?.due
@@ -771,7 +1041,7 @@ export function startOf(changes: Change[], snapshot: Snapshot): ISODate | null {
 }
 
 /** A label no change in `changes` uses yet (the engine keys added cash by label). */
-function unique(changes: Change[], label: string): string {
+export function unique(changes: Change[], label: string): string {
   const used = new Set(changes.flatMap((c) => ("label" in c ? [c.label] : [])));
   let out = label;
   for (let n = 2; used.has(out); n++) out = `${label} (${n})`;
@@ -779,7 +1049,7 @@ function unique(changes: Change[], label: string): string {
 }
 
 /** amount * bps/10000 * days/365, in whole cents. */
-function interest(amount: Cents, bps: bigint, days: number): Cents {
+export function interest(amount: Cents, bps: bigint, days: number): Cents {
   if (amount <= 0 || days <= 0) return 0;
   return Number((BigInt(amount) * bps * BigInt(days) + 1_825_000n) / 3_650_000n);
 }

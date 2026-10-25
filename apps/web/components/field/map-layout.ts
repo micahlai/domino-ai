@@ -132,6 +132,8 @@ const HOMES: Record<string, { column: number; above?: boolean }> = {
   "agent:sim-clock": { column: 1, above: true },
 };
 const HOME_COLUMNS = 2;
+/** Ask Domino (the Timeline chat) agent, from convex/timeline/chat/brainLog.ts. */
+export const ASK_ID = "agent:ask-domino";
 
 /** Port height on a card: the middle of its header row. */
 export const PORT_Y = 28;
@@ -150,6 +152,12 @@ export const toolboxHeight = (items: number) =>
 
 /** Satellite columns hold clusters this far above and below the center before a new column. */
 const COLUMN_HALF = 240;
+/**
+ * Ask Domino's fixed home: first column right of the coordinator, just below where satellites
+ * search, beside the outputs and the Claude toolbox. Its room is reserved whether or not it has
+ * run, so it never pushes a satellite and nothing moves when the first chat arrives.
+ */
+const ASK_HOME_Y = COLUMN_HALF + ROOT_RESERVED_H + CLUSTER_GAP;
 
 const late = (n: BrainNode) =>
   n.agentKind === "system" || n.agentKind === "simulator" || n.agentKind === "person" ? 1 : 0;
@@ -456,6 +464,14 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     x1: at.x + b.x1,
     y1: at.y + b.y1,
   });
+  const askAt = { x: core.x1 + CLUSTER_GAP + ROOT_W / 2, y: ASK_HOME_Y };
+  const askRoom = {
+    x0: -ROOT_W / 2,
+    y0: -ROOT_RESERVED_H / 2,
+    x1: ROOT_W / 2,
+    y1: ROOT_RESERVED_H / 2,
+  };
+  placedRects.push(rectAt(askRoom, askAt));
   // Each home column is as wide as its widest cluster (a lone card until helpers arrive), and
   // always reserved, so the sources lane does not move when the pipeline first shows up.
   const homeWidth = Array.from({ length: HOME_COLUMNS }, (_, column) =>
@@ -475,7 +491,7 @@ export function layoutMap(graph: BrainGraph, options: LayoutOptions = {}): MapLa
     const side = home ? -1 : 1;
     memory.side.set(id, side);
     const before = home ? undefined : mem?.at.get(id);
-    let at: Point | undefined;
+    let at: Point | undefined = id === ASK_ID ? askAt : undefined;
     if (home) {
       // Row 0 lines up with the coordinator; feeds stack upward from above it. Helpers grow
       // downward, so neither ever pushes the other.

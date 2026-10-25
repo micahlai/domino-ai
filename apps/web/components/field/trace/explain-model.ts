@@ -197,6 +197,21 @@ function describe(change: Change, lookup: RecordLookup): Fact {
         text: `${change.label} moves from ${fullDay(change.fromDate)} to ${fullDay(change.toDate)}`,
         money: moneyOf(change.monthlyCost),
       };
+    case "delay_customer": {
+      const name = lookup.customer?.(change.customerId) ?? "A customer";
+      return {
+        text: `Later payments from ${name} slip ${days(change.days)} from ${fullDay(change.fromDate)}`,
+      };
+    }
+    case "recurring_cash":
+      return {
+        text: `${change.label}: cash ${change.direction} every ${change.everyDays} days from ${fullDay(change.fromDate)}`,
+        money: moneyOf(change.amount),
+      };
+    case "scale_recurring":
+      return {
+        text: `${change.label}: recurring ${change.flows} ${change.percent < 0 ? "down" : "up"} ${Math.abs(change.percent)}% from ${fullDay(change.fromDate)}`,
+      };
   }
 }
 
