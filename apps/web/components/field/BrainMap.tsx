@@ -131,7 +131,7 @@ function BrainNodeView({ data, selected }: NodeProps<MapNode>) {
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{node.brief}</p>
           <p className="mt-2 text-xs">
             {node.operations.length
-              ? `${node.operations.length} recorded ${node.operations.length === 1 ? "operation" : "operations"} · last ${timeAgo(node.lastAt, now)}`
+              ? `${node.operations.length} recorded ${node.operations.length === 1 ? "operation" : "operations"}, most recent ${timeAgo(node.lastAt, now)}`
               : "No recorded work yet"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">Click for details</p>

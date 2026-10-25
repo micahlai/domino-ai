@@ -125,16 +125,16 @@ function LiveData({ children }: { children: ReactNode }) {
 }
 
 export function DemoFieldData({ note, children }: { note: string; children: ReactNode }) {
-  const [state, setState] = useState<DemoState>(() =>
-    // Whole minutes so the server and browser render the same history timestamps.
-    initialDemoState(
-      new Date(Math.floor(Date.now() / 60_000) * 60_000 - 3 * 3_600_000).toISOString(),
-    ),
-  );
+  // Built after mount: the pages are prerendered, and history stamped "3 h ago" must use the
+  // viewer's clock, not the build machine's.
+  const [state, setState] = useState<DemoState | null>(null);
+  useEffect(() => {
+    setState(initialDemoState(new Date(Date.now() - 3 * 3_600_000).toISOString()));
+  }, []);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const apply = useCallback((change: (s: DemoState, now: string) => DemoState) => {
-    setState((s) => change(s, new Date().toISOString()));
+    setState((s) => (s ? change(s, new Date().toISOString()) : s));
   }, []);
   const actions = useMemo<FieldActions>(
     () => ({
@@ -156,9 +156,9 @@ export function DemoFieldData({ note, children }: { note: string; children: Reac
   const value: FieldData = {
     source: "demo",
     sourceNote: note,
-    status: state.status,
-    operations: state.operations,
-    findings: state.findings,
+    status: state?.status,
+    operations: state?.operations,
+    findings: state?.findings,
     canLoadMore: false,
     loadMore: () => {},
     actions,
