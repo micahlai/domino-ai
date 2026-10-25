@@ -1,5 +1,6 @@
 import { WorkspaceLive } from "@/components/timeline/workspace/WorkspaceLive";
 import { SyncCompany } from "@/components/timeline/workspace/books";
+import { decodeTimelineCompanyId } from "@/lib/timeline-route";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Timeline" };
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Timeline" };
  * ?baselineRunId= starts from a saved baseline.
  */
 export default async function Page({ params }: { params: Promise<{ companyId: string }> }) {
-  const { companyId } = await params;
+  const companyId = decodeTimelineCompanyId((await params).companyId);
   return (
     <div className="min-w-0">
       <SyncCompany companyId={companyId} />
