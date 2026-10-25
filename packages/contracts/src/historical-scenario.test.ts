@@ -6,6 +6,10 @@ import {
   HistoricalScenarioInputSchema,
   type HistoricalScenarioResult,
   HistoricalScenarioResultSchema,
+  type StoredHistoricalScenario,
+  StoredHistoricalScenarioSchema,
+  type StoredScenarioSnapshot,
+  StoredScenarioSnapshotSchema,
 } from "./index";
 
 // Invented numbers for schema tests only; not reported data and not a claim about any company.
@@ -691,5 +695,199 @@ describe("existing contracts stay closed to scenarios", () => {
     const run = { ...clone(fx.baselineRun), branch: { kind: "event" } };
     expect(HistoricalRunSchema.safeParse(run).success).toBe(false);
     expect(HistoricalRunSchema.safeParse(fx.baselineRun).success).toBe(true);
+  });
+});
+
+describe("stored scenario envelope", () => {
+  const sha = (c: string) => c.repeat(64);
+  const stored = (): StoredHistoricalScenario => ({
+    schemaVersion: 1,
+    id: "scn_resp",
+    caseId: "case1",
+    createdAt: "2026-10-24T12:00:00-07:00",
+    baselineRunId: "base_run",
+    parentRunId: "scn_event",
+    baselineRowHash: sha("a"),
+    baselineInputHash: sha("b"),
+    scenarioInputHash: sha("c"),
+    scenarioInput: clone(input),
+    result: result(),
+    taint: {
+      eventSelectedAfterReveal: false,
+      responseSelectedAfterReveal: false,
+      protocolResponsePostHoc: false,
+      assumptionPostHoc: false,
+    },
+  });
+  const badStored = (mutate: (s: StoredHistoricalScenario) => void): string[] => {
+    const s = stored();
+    mutate(s);
+    return messages(StoredHistoricalScenarioSchema.safeParse(s));
+  };
+
+  it("accepts a response envelope and an event-only envelope", () => {
+    expect(StoredHistoricalScenarioSchema.safeParse(stored()).success).toBe(true);
+    expect(
+      badStored((s) => {
+        s.scenarioInput.responseAssumptionId = undefined;
+        s.result = { ...s.result, input: clone(s.scenarioInput) };
+        s.result.response = undefined;
+        s.result.impact.nodes = s.result.impact.nodes.slice(0, 3);
+        s.result.impact.edges = s.result.impact.edges.slice(0, 2);
+        s.parentRunId = "base_run";
+        s.id = "scn_event";
+      }),
+    ).toEqual([]);
+  });
+
+  it("pins lineage: input, baseline and parent", () => {
+    expect(
+      badStored((s) => {
+        s.result.input.targetDate = "2023-12-30";
+      }),
+    ).toContain("result input differs from the stored scenario input");
+    expect(
+      badStored((s) => {
+        s.baselineRunId = "other";
+      }),
+    ).toContain("scenario input names another baseline");
+    expect(
+      badStored((s) => {
+        s.parentRunId = "base_run";
+      }),
+    ).toContain("an event's parent is the baseline; a response's parent is its event scenario");
+    expect(
+      badStored((s) => {
+        s.baselineRowHash = "x";
+      }),
+    ).toContain("expected a lowercase sha256 hex digest");
+  });
+
+  it("taint elevates post-hoc and needs a reason", () => {
+    expect(
+      badStored((s) => {
+        s.taint.protocolResponsePostHoc = true;
+        s.taint.reason = "A1 is post-hoc by protocol.";
+      }),
+    ).toContain("response taint must mark the response post-hoc");
+    expect(
+      badStored((s) => {
+        s.taint.eventSelectedAfterReveal = true;
+        s.taint.reason = "Chosen after reveal.";
+      }),
+    ).toContain("event taint must mark the event post-hoc");
+    expect(
+      badStored((s) => {
+        s.taint.assumptionPostHoc = true;
+      }),
+    ).toContain("a set taint flag needs a reason");
+    expect(
+      badStored((s) => {
+        s.taint.protocolResponsePostHoc = true;
+        s.taint.reason = "A1 is post-hoc by protocol.";
+        resp(s.result).postHoc = true;
+        s.result.postHoc = true;
+      }),
+    ).toEqual([]);
+  });
+
+  it("a response inherits the parent event taint", () => {
+    expect(
+      badStored((s) => {
+        s.taint.eventSelectedAfterReveal = true;
+        s.taint.reason = "Event chosen after reveal.";
+        s.result.event.postHoc = true;
+        s.result.postHoc = true;
+      }),
+    ).toContain("event taint must mark the response post-hoc");
+  });
+
+  it("does not parse as a legacy run", () => {
+    expect(HistoricalRunSchema.safeParse(stored()).success).toBe(false);
+  });
+
+  const snap = (): StoredScenarioSnapshot => ({
+    baselineSnapshot: { any: "baseline bytes" },
+    baselineSnapshotHash: sha("d"),
+    responseExtension: {
+      sources: clone(fx.historicalCase.sources),
+      facts: clone(fx.historicalCase.facts),
+      assumptions: clone(fx.historicalCase.assumptions),
+      selectedAssumptionId: at(fx.historicalCase.assumptions, 0).id,
+      contentHash: sha("e"),
+    },
+    protocolSnapshot: {
+      protocolId: "p1",
+      protocolHash: sha("f"),
+      responsePostHoc: true,
+      responsePostHocReason: "Response chosen with hindsight.",
+      caveats: {
+        method: "Uniform daily flow.",
+        cost: "Cost is a range.",
+        unknownDownside: "Downside unknown.",
+      },
+    },
+    knowledgeVersionIds: [],
+    legacyKnowledge: true,
+  });
+  const badSnap = (mutate: (s: StoredScenarioSnapshot) => void): string[] => {
+    const s = snap();
+    mutate(s);
+    return messages(StoredScenarioSnapshotSchema.safeParse(s));
+  };
+
+  it("rejects cyclic or self-dependent extension assumptions", () => {
+    const a0 = at(fx.historicalCase.assumptions, 0).id;
+    expect(
+      badSnap((s) => {
+        at(s.responseExtension!.assumptions, 0).dependsOn = [a0];
+      }),
+    ).toContain("an assumption may depend only on assumptions listed before it");
+  });
+
+  it("rejects duplicate assumption ids before checking dependencies", () => {
+    // Audit round 2, finding 2.
+    const base = at(fx.historicalCase.assumptions, 0);
+    const A = (dependsOn: string[] = []) => ({ ...clone(base), id: "A", dependsOn });
+    const B = (dependsOn: string[] = []) => ({ ...clone(base), id: "B", dependsOn });
+    for (const list of [
+      [A(), A(["A"])],
+      [A(), B(["A"]), A(["B"])],
+    ])
+      expect(
+        badSnap((s) => {
+          s.responseExtension!.assumptions = list;
+          s.responseExtension!.selectedAssumptionId = "A";
+        }),
+      ).toContain("duplicate assumption id");
+  });
+
+  it("accepts a pinned snapshot and rejects broken closure or untagged empty knowledge", () => {
+    expect(badSnap(() => {})).toEqual([]);
+    expect(
+      badSnap((s) => {
+        s.legacyKnowledge = false;
+      }),
+    ).toContain("knowledge versions are empty exactly when tagged legacy");
+    expect(
+      badSnap((s) => {
+        s.responseExtension!.sources = [];
+      }),
+    ).toContain("fact source missing from closure");
+    expect(
+      badSnap((s) => {
+        s.responseExtension!.selectedAssumptionId = "nope";
+      }),
+    ).toContain("selected assumption is not in the extension");
+    expect(
+      badSnap((s) => {
+        s.protocolSnapshot.responsePostHocReason = undefined;
+      }),
+    ).toContain("a post-hoc protocol response needs a reason, and only it has one");
+    expect(
+      badSnap((s) => {
+        (s as Partial<StoredScenarioSnapshot>).baselineSnapshot = undefined;
+      }).length,
+    ).toBeGreaterThan(0);
   });
 });
