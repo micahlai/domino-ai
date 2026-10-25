@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type CameraEvent, INITIAL_CAMERA, cameraStep, fitViewport } from "./BrainMapCamera";
+import {
+  type CameraEvent,
+  INITIAL_CAMERA,
+  cameraStep,
+  fitViewport,
+  grownViewport,
+} from "./BrainMapCamera";
 import { EDGE_SECONDS, type GrowNode, growthPlan } from "./BrainMapGrowth";
 import { demoAdvanceFeed, demoIngest, initialDemoState } from "./fixture";
 import {
@@ -135,8 +141,9 @@ describe("brain map layout", () => {
     ];
     for (const [name, layout] of cases) {
       const vp = fitViewport(layout.bounds, CANVAS.w, CANVAS.h);
-      // Readable: text stays at least 80% of its size.
-      expect(vp.zoom, name).toBeGreaterThanOrEqual(0.8);
+      // Readable: text stays at least 75% of its size (the pipeline's two left columns, ingestion
+      // then audit, cost a little zoom).
+      expect(vp.zoom, name).toBeGreaterThanOrEqual(0.75);
       const rects = [...layout.boxes.values(), ...layout.stacks.map((s) => s.box)];
       for (const b of rects) {
         const x = b.x * vp.zoom + vp.x;
@@ -300,7 +307,31 @@ describe("map camera", () => {
 
   it("does not touch the view on data updates even before the first fit", () => {
     const step = cameraStep(INITIAL_CAMERA, "data");
-    expect(step).toEqual({ state: INITIAL_CAMERA, fit: false });
+    expect(step).toEqual({ state: INITIAL_CAMERA, fit: false, grow: false });
+  });
+
+  it("may ease out on data updates only after the fit and before the person moves", () => {
+    const grows = (events: CameraEvent[]) => {
+      let state = INITIAL_CAMERA;
+      let grow: boolean | undefined;
+      for (const e of events) ({ state, grow } = cameraStep(state, e));
+      return grow;
+    };
+    expect(grows(["ready", "data"])).toBe(true);
+    expect(grows(["ready", "user-move", "data"])).toBe(false);
+    expect(grows(["ready", "user-move", "fit", "data"])).toBe(true);
+  });
+
+  it("eases out only when the map outgrew the view, and never zooms in", () => {
+    const view = { x: 500, y: 300, zoom: 1 };
+    // Still inside a 1000 x 600 canvas: no move.
+    expect(grownViewport(view, { x: -400, y: -250, w: 800, h: 500 }, 1000, 600)).toBeUndefined();
+    // Grew past the right edge: zoom out to fit, never above the current zoom.
+    const out = grownViewport(view, { x: -400, y: -250, w: 1400, h: 500 }, 1000, 600);
+    expect(out?.zoom).toBeLessThan(1);
+    const zoomedOut = { x: 500, y: 300, zoom: 0.6 };
+    const pan = grownViewport(zoomedOut, { x: 0, y: 0, w: 1200, h: 100 }, 1000, 600);
+    expect(pan?.zoom).toBeLessThanOrEqual(0.6);
   });
 
   it("never refits on a resize, moved or not", () => {
