@@ -20,6 +20,7 @@ const LANES = {
     /^app\/playground\/field-seam\//,
     /^components\/investigate\//,
     /^components\/case-workspace\/CompanyView\.tsx$/,
+    /^app\/field\//,
     /^components\/field\//,
     /^convex\/investigation\.ts$/,
     /^convex\/tests\/investigation\.test\.ts$/,
@@ -37,13 +38,17 @@ const LANES = {
     /^components\/historical\//,
     /^components\/case-workspace\/(SimulationList|SimulationDetail|Saved)\.tsx$/,
     /^components\/case-workspace\/(summary\.ts|case-workspace\.test\.tsx)$/,
+    // Includes components/timeline/dashboard/, which app/page.tsx (shared shell) renders.
     /^components\/timeline\//,
+    /^app\/simulations\//,
     /^convex\/(historical|investigationCatalog)(\.test)?\.ts$/,
     /^convex\/tests\/historical\.test\.ts$/,
     /^convex\/timeline\//,
     /^convex\/schemas\/timeline\.schema\.ts$/,
   ],
 };
+// Unlisted files are shared: the shell (components/AppShell.tsx, app/layout.tsx, app/page.tsx,
+// app/case/page.tsx), ui primitives and lib. Shared files may import from either lane.
 const HARNESS = /^(app\/playground\/(field|timeline)-seam|components\/(field|timeline)\/seam)\//;
 
 const laneOf = (p) =>
