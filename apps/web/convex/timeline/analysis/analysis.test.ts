@@ -98,6 +98,11 @@ const execute = async (t: T, key: { companyId: string; analysisId: string }) => 
   if (!out) throw new Error("Missing receipt");
   return out;
 };
+/** These failure tests assume one risk: a single corrupted step must fail the whole stage. */
+function singleRisk() {
+  const scan = engine.scanRisks;
+  vi.spyOn(engine, "scanRisks").mockImplementation((...args) => scan(...args).slice(0, 1));
+}
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -315,6 +320,8 @@ describe("TL7 saved automatic analysis", () => {
     const neutral = structuredClone(run);
     neutral.baseline.seed.snapshot.deals = [];
     neutral.baseline.seed.snapshot.cardTxns = [];
+    // scanRisks now also reads bills, payroll and overdue invoices; force the no-risk path.
+    vi.spyOn(engine, "scanRisks").mockReturnValue([]);
     const before = structuredClone(neutral.baseline.model);
     const generated = candidates(neutral);
     expect(generated.risks).toHaveLength(1);
@@ -414,6 +421,7 @@ describe("TL7 saved automatic analysis", () => {
     vi.useFakeTimers();
     const t = setup();
     const run = await root(t, [min(270_000_000)]);
+    singleRisk();
     const key = await launch(t, run.runId);
     const score = engine.scoreFix;
     vi.spyOn(engine, "scoreFix").mockImplementationOnce((...args) => {
@@ -433,6 +441,7 @@ describe("TL7 saved automatic analysis", () => {
     vi.useFakeTimers();
     const t = setup();
     const run = await root(t);
+    singleRisk();
     const key = await launch(t, run.runId);
     const f = structuredClone(run.forecast);
     f.weeks[0]!.usable += 1;
