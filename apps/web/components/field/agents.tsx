@@ -3,7 +3,8 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
-import { Play, RotateCcw, Undo2 } from "lucide-react";
+import { Play, Plug, RotateCcw, Undo2 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { api } from "../../convex/_generated/api";
@@ -310,7 +311,18 @@ export function BrainMapIdle({
  * everything live. The prepared company and its data are kept; a replay offers the way back.
  */
 export function ReplayAction() {
-  return CONVEX_URL ? <LiveReplayAction /> : null;
+  return (
+    <span className="flex flex-wrap items-start justify-end gap-2">
+      {/* Connected tools is no longer a top-level tab; it opens from the Brain map. */}
+      <Button asChild variant="ghost" size="sm">
+        <Link href="/field/connect">
+          <Plug aria-hidden="true" className="size-3.5" />
+          Connected tools
+        </Link>
+      </Button>
+      {CONVEX_URL ? <LiveReplayAction /> : null}
+    </span>
+  );
 }
 
 function LiveReplayAction() {

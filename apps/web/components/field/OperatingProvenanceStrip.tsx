@@ -5,7 +5,6 @@ import { useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import {
   Sheet,
   SheetContent,
@@ -30,49 +29,44 @@ const CONTEXT = makeFunctionReference<
 >("fieldOperating:context");
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
-/** One quiet line: what the books are and their date. Full filing dates sit behind "Sources". */
+/** One small badge next to the company name. The basis, dates and anchors open as "Sources". */
 export function OperatingProvenanceStrip() {
   const selection = useOperatingSelection();
   const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
   const summary = provenanceSummary(catalog);
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5">
-      <Badge variant="secondary">{summary.badge}</Badge>
-      {/* Phones: badge and Sources share the first row, the line takes the second. */}
-      <span className="text-muted-foreground max-sm:order-last max-sm:basis-full">
-        {summary.line}
-      </span>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            variant="link"
-            size="sm"
-            aria-label="Sources and cash bridge"
-            className="px-1 text-[13px] max-sm:-my-2 max-sm:ml-auto"
-          >
-            Sources
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="w-full overflow-y-auto text-sm sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>Sources</SheetTitle>
-            <SheetDescription>
-              {catalog
-                ? `Where ${companyDisplay(catalog).name}'s simulated books come from.`
-                : "Where the simulated books come from."}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-5 space-y-5">
-            {catalog ? <ProvenanceDates catalog={catalog} /> : null}
-            {CONVEX_URL ? (
-              <LiveSources />
-            ) : (
-              <p className="text-muted-foreground">Source anchors need the backend.</p>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+    <Sheet>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          aria-label="Sources and cash bridge"
+          title={`${summary.badge}: ${summary.line}. Open Sources.`}
+          className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <Badge variant="secondary" className="cursor-pointer whitespace-nowrap hover:bg-accent">
+            {summary.badge}
+          </Badge>
+        </button>
+      </SheetTrigger>
+      <SheetContent className="w-full overflow-y-auto text-sm sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Sources</SheetTitle>
+          <SheetDescription>
+            {catalog
+              ? `Where ${companyDisplay(catalog).name}'s books come from (${summary.line}).`
+              : "Where the simulated books come from."}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-5 space-y-5">
+          {catalog ? <ProvenanceDates catalog={catalog} /> : null}
+          {CONVEX_URL ? (
+            <LiveSources />
+          ) : (
+            <p className="text-muted-foreground">Source anchors need the backend.</p>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

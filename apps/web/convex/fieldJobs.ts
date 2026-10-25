@@ -1,6 +1,6 @@
 import { type Snapshot, SnapshotSchema, WorldStateSchema, canonicalJson } from "@domino/contracts";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   type ActionCtx,
@@ -338,6 +338,18 @@ export const finishPendingAudit = internalMutation({
       lastIngestStatus: "ok",
       lastError: null,
     });
+    // A replay or fresh-demo copy gets its own Timeline baseline from its first finished books,
+    // through the same import the prepared companies used (scripts/data-setup.mjs).
+    const company = await ctx.db.get("companies", companyId);
+    const linked = await ctx.db
+      .query("timelineLinks")
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+      .first();
+    if (company?.replayOf && company.operatingDemo && !linked)
+      await ctx.scheduler.runAfter(0, api.fieldTimeline.openInTimeline, {
+        companyId,
+        reviewed: true,
+      });
     return true;
   },
 });

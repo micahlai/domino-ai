@@ -226,44 +226,24 @@ function WorkerBody({
           eyebrow={<DataLabel />}
           title={company}
           description={introLine({ ...counts, suggestions: counts.fixes })}
-          actions={
-            <>
-              <Button
-                disabled={disabled}
-                onClick={() =>
-                  runner.run(
-                    "ingest",
-                    data.actions.ingestNow,
-                    data.source === "live"
-                      ? "Checking every tool now. New flags appear below as they land."
-                      : "Checked every tool.",
-                  )
-                }
-              >
-                <RefreshCw
-                  aria-hidden="true"
-                  className={cn(
-                    runner.busy === "ingest" && "animate-spin motion-reduce:animate-none",
-                  )}
-                />
-                Check latest data
-              </Button>
-              <Button
-                variant="outline"
-                disabled={disabled}
-                onClick={() =>
-                  runner.run(
-                    "export",
-                    async () => setSeed(await data.actions.exportSeed()),
-                    "Seed exported for a simulation.",
-                  )
-                }
-              >
-                <FileOutput aria-hidden="true" />
-                Export seed
-              </Button>
-            </>
-          }
+          actions=<Button
+            disabled={disabled}
+            onClick={() =>
+              runner.run(
+                "ingest",
+                data.actions.ingestNow,
+                data.source === "live"
+                  ? "Checking every tool now. New flags appear below as they land."
+                  : "Checked every tool.",
+              )
+            }
+          >
+            <RefreshCw
+              aria-hidden="true"
+              className={cn(runner.busy === "ingest" && "animate-spin motion-reduce:animate-none")}
+            />
+            Check latest data
+          </Button>
         />
         <SummaryStrip
           companyId={companyId}
@@ -307,6 +287,29 @@ function WorkerBody({
           </Link>
         }
       />
+      <details className="text-sm text-muted-foreground">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+          Technical details
+        </summary>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() =>
+              runner.run(
+                "export",
+                async () => setSeed(await data.actions.exportSeed()),
+                "Seed exported for a simulation.",
+              )
+            }
+          >
+            <FileOutput aria-hidden="true" />
+            Export seed
+          </Button>
+          <span>The weekly books as the JSON text the timeline reads.</span>
+        </div>
+      </details>
       <SeedDialog text={seed} demo={data.source === "demo"} onClose={() => setSeed(null)} />
     </div>
   );
