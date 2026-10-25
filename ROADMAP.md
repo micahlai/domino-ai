@@ -26,7 +26,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
-| P0-C / P0-S shared setup | Current Claude lead assigns scoped workers | Actual L1/S2 ownership/checkpoint and available slots | [Contracts](kb/tasks/P0-C-feature-boundary.md), [schema](kb/tasks/P0-S-schema-ownership.md). Prepared cards only; independent audit required |
+| P0-C contracts / P0-S schema | P0-C: Opus worker, P0-C-feature-boundary / ../domino-P0C from 507fbe1, IN PROGRESS. P0-S: BLOCKED | P0-S needs friend S2 index reviewed in shared base; origin S2 still 1154972, no implementation | [Contracts](kb/tasks/P0-C-feature-boundary.md), [schema](kb/tasks/P0-S-schema-ownership.md). Slots: P0-C + L2 + friend = 3/3 |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
@@ -40,7 +40,7 @@ L0/E0 are accepted and integrated. No implementation worker launched by this pla
 
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
-| L1 normalization a72f143 | Codex integration onto preview | Rounds 1-2 REJECT, round 3 ACCEPT | [Final audit](kb/reviews/L1-a72f143-codex-final.md): 243 engine tests, 155 independent probes, 14 source rows hand-verified. [R1](kb/reviews/L1-57a1581-codex-audit.md), [R2](kb/reviews/L1-4d68acd-codex-reaudit.md). Done after integrated combined check |
+| L1 normalization | DONE: integrated 507fbe1 | Round 3 ACCEPT | [Final audit](kb/reviews/L1-a72f143-codex-final.md); [integration](kb/reviews/L1-integration-507fbe1.md) 1,293 uncached tests, 5 typechecks, lint 267 files. Build/browser not run (engine-only) |
 
 ## Blocked
 
@@ -48,7 +48,7 @@ L0/E0 are accepted and integrated. No implementation worker launched by this pla
 | --- | --- | --- | --- |
 | P0-H + independent branch release | Current Claude lead; Codex acceptance | Accepted P0-C/P0-S, reviewed S2 index, combined checks | [Harness card](kb/tasks/P0-H-independent-harnesses.md); record exact common base/fixture hashes/namespace ownership before long forks |
 | C2 credential/input setup | Jayden enters APP_ID + API_KEY privately; then verifier | Config separated from verification (Jayden, Oct 24) | Adapter sends `inputs.prompt` (creao.ts:299). Keep DOMINO_CREAO_VERIFIED_PROFILES UNSET until verified: (1) names set + app id MATCH, (2) key scoped to this app only, (3) instructions frozen-input + `<<<DOMINO_RESULT>>>`, hash as profileVersion, (4) remote field `prompt`, (5) offline parser compatibility, (6) memory isolation (account/team inheritance needs docs or one approved canary), then (7) set gate |
-| L2 reconciliation | Lead-assigned engine worker | Accepted L1 | [Card](kb/tasks/L2-source-reconciliation.md): true conflicts block affected roles; duplicates/timing/definitions and totals handled honestly |
+| L2 reconciliation | Opus worker (lead 78153) | L2-source-reconciliation / ../domino-L2 from 507fbe1 | [Card](kb/tasks/L2-source-reconciliation.md). IN PROGRESS. Codex audit on return |
 | L3 scoped feedback | Lead-assigned engine worker | Accepted L2 | [Card](kb/tasks/L3-scoped-rules.md): later eligible behavior changes, unrelated-company isolation, rejection/reversal/rollback |
 | L5 knowledge runtime | Lead-assigned backend worker | Accepted L0-L3; S2 schema release; exact schema audit | [Card](kb/tasks/L5-knowledge-runtime.md): same database, durable versioned knowledge, concurrent idempotence and old-row compatibility |
 | E1 evaluator | Lead-assigned evaluator worker | Accepted L0/L3 + E0 development interface | [Card](kb/tasks/E1-quarter-evaluator.md): exact paired metrics/failures on development/synthetic data; no sealed labels |
