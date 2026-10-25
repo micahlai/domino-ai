@@ -4,8 +4,10 @@
  * plus a research agent ("research#1"). Each child is its own chain of scheduled internal
  * actions (engine work) that write through one internal mutation (`record`), all in parallel;
  * the analyst aggregates when every child reported. Every log row comes from the operation it
- * describes. Forecasters and all money math are deterministic engine code; the Apify actors are
- * demos with canned results. Real model steps are budgeted (fieldAi.ts) and logged with the
+ * describes. Forecasters and all money math are deterministic engine code. The research agent
+ * searches public news on the top customers and vendors with real Apify actor runs
+ * (fieldApify.ts: capped per ingest and per day, cached 24 h, skipped with a log line when
+ * APIFY_TOKEN is missing) and those signals become facts in the CREAO job. Real model steps are budgeted (fieldAi.ts) and logged with the
  * agentKind that actually ran: the research agent starts "counterparty-research#1" (one CREAO
  * app run) when CREAO is configured and its profile is verified; after aggregation the CREAO
  * coordinator ("coordinator#1", fieldCoordinator.ts) returns a validated plan that Domino
@@ -27,7 +29,8 @@
  *   status         "spawned" | "working" | "done" | "failed"       (event "status")
  *   currentTask    e.g. "Scenario 4: Halcyon Freight leaves, week 8 of 13"
  *   fromAgentId, toAgentId                                          (event "message")
- *   tool, toolCategory ("engine" | "apify" | "convex"), toolLabel ("demo actor" for apify)
+ *   tool, toolCategory ("engine" | "apify" | "convex" | "creao"), toolLabel (actor name for
+ *                  apify; refs = [Apify run id, counterparty])
  *   step, steps    progress of a forecaster (1..6 of 6)
  *
  * Queries
@@ -37,7 +40,9 @@
  *     scenarios: [{ index, agentId, id, title, basis, status, survives, breaksWeek,
  *       breaksAt, brokenConstraintId, low, lowWeek, cashImpact (worst weekly usable delta vs
  *       base, cents <= 0), cashImpactWeek, lowPointImpact, bestFix, fixes, error }],
- *     research: [{ actor, name, input, items, provider?: "creao", remoteRunId? }],
+ *     research: [{ actor, name, input, items, provider?: "creao" | "apify", remoteRunId?,
+ *       apify only: cached, fetchedAt, role?, itemCount, resultCount, usageUsd?,
+ *       signals: [{ title, url, source, date?, snippet, kinds }] }],
  *     aiSummary: null | { status: "done"|"unavailable"|"skipped", reason?, recommendation?,
  *       rationale?, citedScenarios?, model?, provider?: "creao"|"claude", remoteRunId?,
  *       inputTokens?, outputTokens?, at, runId },
@@ -85,6 +90,13 @@ import {
   runAiStep,
   shouldWait,
 } from "./fieldAi";
+import {
+  NOT_CONFIGURED,
+  apifyConfigured,
+  cachedSignals,
+  searchReport,
+  searchSignals,
+} from "./fieldApify";
 import { coordinate } from "./fieldCoordinator";
 import { requireFeed } from "./fieldJobs";
 import { type AgentRow, agentLog, agentRowArg } from "./lib/agentLog";
@@ -101,7 +113,7 @@ import {
   scoreFixes,
   usd,
 } from "./lib/analystScenarios";
-import { APIFY_LABEL, checkCustomerNews, lookUpCompanyFunding } from "./lib/apifyDemo";
+import { APIFY_ACTOR, searchOrder, signalFacts } from "./lib/apify";
 import { type CoordinatorRecord, coordinatorRecordArg } from "./lib/coordinatorRecord";
 import { counterpartyJob } from "./lib/counterparties";
 import { parse } from "./lib/parse";
@@ -443,7 +455,7 @@ export const spawn = internalMutation({
       parentAgentId: ANALYST,
       event: "status",
       status: "spawned",
-      currentTask: "Research: customer news, company funding and counterparty risk",
+      currentTask: "Research: public signals on top counterparties and counterparty risk",
       summary: `Analyst spawned ${RESEARCH} for outside context`,
     });
     await log({
@@ -453,7 +465,7 @@ export const spawn = internalMutation({
       fromAgentId: ANALYST,
       toAgentId: RESEARCH,
       summary:
-        "Check news on the top customer, look up company funding and get counterparty risk notes",
+        "Search public news on the top customers and vendors (Apify) and get counterparty risk notes",
     });
     await ctx.scheduler.runAfter(paceMs, internal.fieldAnalyst.researchStep, {
       runId,
@@ -615,46 +627,63 @@ export const researchStep = internalAction({
       ctx.runMutation(internal.fieldAnalyst.record, { runId, ...r });
     try {
       const inputs: Inputs = await ctx.runQuery(internal.fieldAnalyst.inputs, { runId });
-      const s = inputs.snapshot;
-      if (step < 2) {
-        const customer =
-          c.leadScenarioId === "top_customer_leaves" && c.leadScenario
-            ? c.leadScenario.replace(/ leaves$/, "")
-            : s.companyId;
-        const result = step === 0 ? checkCustomerNews(s, customer) : lookUpCompanyFunding(s);
+      const targets = searchOrder(counterpartyJob(inputs.snapshot, "").counterparties);
+      const configured = apifyConfigured();
+      const target = configured ? targets[step] : undefined;
+      if (target) {
+        const { name, role } = target;
+        const report = searchReport(
+          await searchSignals(ctx, {
+            counterparty: name,
+            role,
+            companyId: c.companyId,
+            analystRunId: runId,
+            onStart: () =>
+              write({
+                rows: [
+                  as({
+                    action: "agent.working",
+                    event: "status",
+                    status: "working",
+                    currentTask: `Research: public signals for ${name} (${role} ${target.rank})`,
+                    summary: `Searching public news on ${name} with the Apify ${APIFY_ACTOR.name}`,
+                  }),
+                ],
+              }),
+          }),
+        );
         await write({
-          rows: [
-            as({
-              action: step === 0 ? "agent.working" : "agent.progress",
-              event: "status",
-              status: "working",
-              currentTask: `Research: ${result.name} (${result.input})`,
-              summary: `Calling the ${result.name} ${APIFY_LABEL}`,
-            }),
-            as({
-              action: "agent.tool",
-              event: "tool",
-              tool: result.actor,
-              toolCategory: "apify",
-              toolLabel: APIFY_LABEL,
-              source: "apify",
-              refs: [result.input],
-              summary: `${result.name}: ${result.items.join("; ")}`,
-            }),
-          ],
-          research: result,
+          rows: report.rows.map(as),
+          ...(report.research && { research: report.research }),
           next: { fn: "research" as const, step: step + 1 },
         });
         return null;
       }
+      const found = (c.research as { provider?: string; signals?: unknown[] }[]).filter(
+        (r) => r.provider === "apify",
+      );
+      const flagged = found.filter((r) => (r.signals?.length ?? 0) > 0).length;
       await write({
         rows: [
+          ...(configured
+            ? []
+            : [
+                as({
+                  action: "research.apifySkipped",
+                  event: "status",
+                  status: "working",
+                  currentTask: "Research: public signals",
+                  summary: NOT_CONFIGURED,
+                }),
+              ]),
           as({
             action: "agent.message",
             event: "message",
             fromAgentId: RESEARCH,
             toAgentId: ANALYST,
-            summary: `Research: ${c.research.length} demo actor results (canned, not live Apify); counterparty risk (CREAO) follows the summary, one CREAO run at a time`,
+            summary: configured
+              ? `Research: public web search on ${found.length} of ${targets.length} top counterparties, ${flagged} with signals; counterparty risk (CREAO) follows the summary`
+              : `Research: ${NOT_CONFIGURED}; counterparty risk (CREAO) follows the summary`,
           }),
           as({
             action: "agent.done",
@@ -1022,7 +1051,19 @@ async function counterpartyResearch(
   const company: string = await ctx.runQuery(internal.fieldAnalyst.companyName, {
     companyId: c.companyId,
   });
-  const base = counterpartyJob(s, company);
+  const plain = counterpartyJob(s, company);
+  // Public signals the research agent already fetched (Apify, cached 24 h) ride along as facts.
+  const signals = await cachedSignals(
+    ctx,
+    plain.counterparties.map((p) => p.name),
+  );
+  const base = {
+    ...plain,
+    counterparties: plain.counterparties.map((p) => ({
+      ...p,
+      facts: [...p.facts, ...signalFacts(signals[p.name])],
+    })),
+  };
   if (base.counterparties.length === 0)
     return note("CREAO skipped: no customers or vendors in the snapshot");
   const picked = base.counterparties.filter((p) => p.name === first);

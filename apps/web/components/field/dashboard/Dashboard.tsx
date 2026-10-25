@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { formatDate } from "../../../lib/format";
 import { cn } from "../../../lib/utils";
+import { ToolLogo } from "../../icons/ToolLogo";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { PageHeader, Section, StatTile } from "../../ui/page";
@@ -770,7 +771,60 @@ function Risks({ feed }: { feed: RiskFeed }) {
           ))}
         </ul>
       )}
+      {feed.signals ? <PublicSignals signals={feed.signals} /> : null}
     </Section>
+  );
+}
+
+/** Real Apify search results the research agent found; an empty search is shown as empty. */
+function PublicSignals({ signals }: { signals: NonNullable<RiskFeed["signals"]> }) {
+  return (
+    <div className="rounded-lg border bg-card shadow-xs">
+      <div className="flex items-center gap-2 border-b px-4 py-3">
+        <ToolLogo vendor="apify" size={16} />
+        <p className="text-sm font-medium">Public news on top customers and vendors</p>
+      </div>
+      <ul className="divide-y text-[13px]">
+        {signals.map((s) => (
+          <li key={s.counterparty} className="space-y-1 px-4 py-3">
+            <p>
+              <span className="font-medium">{s.counterparty}</span>
+              {s.role ? <span className="text-muted-foreground"> · {s.role}</span> : null}
+            </p>
+            {s.headlines.length === 0 ? (
+              <p className="text-muted-foreground">No public signals found.</p>
+            ) : (
+              <ul className="space-y-0.5">
+                {s.headlines.slice(0, 3).map((h) => (
+                  <li key={h.url} className="min-w-0 truncate">
+                    <a
+                      href={h.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {h.title}
+                    </a>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {[h.source, h.date, ...h.kinds].filter(Boolean).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Apify run {s.runId}
+              {s.fetchedAt ? `, ${formatDate(s.fetchedAt.slice(0, 10))}` : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+        Google results that mention the name. A business with the same name may be a different
+        company.
+      </p>
+    </div>
   );
 }
 

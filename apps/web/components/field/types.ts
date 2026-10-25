@@ -87,6 +87,8 @@ export type FieldOperation = {
   progress?: number;
   /** Tool category as the log records it ("apify" for Apify actors). */
   toolCategory?: string;
+  /** Tool label as the log records it (an Apify run's actor name, or "demo actor"). */
+  toolLabel?: string;
   /** Instructions the agent was started with, when the log records them. */
   instructions?: string;
 };
