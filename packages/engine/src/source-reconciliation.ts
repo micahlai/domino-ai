@@ -1,5 +1,4 @@
 import {
-  AccessionSchema,
   type CompanyKnowledgeSnapshot,
   IdSchema,
   type LearnedRuleVersion,
@@ -20,16 +19,18 @@ import { type MappedSource, type Result, mapSecRecords } from "./source-normaliz
 
 /**
  * L2 source evidence reconciliation. Pure and synchronous: no network, clock, AI or
- * randomness, and every caller-owned input is copied once at entry.
+ * randomness. Every caller-owned input is structured-cloned once at entry, before any
+ * validation, and only that private snapshot is read afterwards.
  *
  * Candidates are L1 normalized observations, re-derived here from validated packages with
  * mapSecRecords, never taken from the caller. Values are compared only inside one
  * ObservationKey. The evidence origin of a candidate is its filing accession: the same
  * accession seen through several packages or URLs (for example byte-identical payloads) is
  * one origin, never several votes. Agreement across distinct accessions is corroboration.
- * Disagreement is a rounding difference only inside an explicitly disclosed rounding bound;
- * otherwise it is a conflict that blocks the key unless exactly one applicable, dated
- * authority rule or accepted user resolution selects one value. Nothing is averaged,
+ * Values must match in exact cents: companyfacts carries no XBRL decimals, so no rounding
+ * precision can be authenticated. Any difference is a conflict that blocks the key unless
+ * exactly one applicable, dated authority rule or accepted user resolution selects one
+ * value. Nothing is averaged,
  * majority-voted or preferred for being retrieved later. Every result is sorted by content,
  * so input order cannot change it.
  */
@@ -52,7 +53,6 @@ const nonBlank = (s: unknown): s is string => typeof s === "string" && s.trim().
 const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sortedUnique = (xs: Iterable<string>): string[] => [...new Set(xs)].sort(byText);
 const big = (n: number): bigint => BigInt(n);
-const abs = (n: bigint): bigint => (n < 0n ? -n : n);
 const safe = (n: bigint): boolean =>
   n >= big(Number.MIN_SAFE_INTEGER) && n <= big(Number.MAX_SAFE_INTEGER);
 /** The instant with the latest time; equal instants tie-break on text, so order is irrelevant. */
@@ -60,21 +60,19 @@ const latestOf = (ts: readonly string[]): string =>
   [...ts].sort((a, b) => ms(b) - ms(a) || byText(a, b))[0] as string;
 const periodLabel = (p: ObservationKey["period"]): string =>
   p.kind === "instant" ? p.date : `${p.start}..${p.end}`;
+/**
+ * One private plain-data copy of caller input, taken before any validation. Each accessor is
+ * read exactly once here; nothing caller-owned is read again.
+ */
+function snapshot<T>(input: T): Result<T> {
+  try {
+    return ok(structuredClone(input));
+  } catch (e) {
+    return err(`input is not plain data: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
 
 // ---------- Inputs ----------
-
-/**
- * A rounding precision the filing itself discloses (for example "in thousands"). companyfacts
- * JSON carries no XBRL decimals, so this is explicit input naming its source locator.
- */
-export type RoundingDisclosure = {
-  /** Filing whose values are rounded. */
-  accession: string;
-  /** Values are rounded to the nearest multiple of this many cents (100000 = $1,000). */
-  unitCents: number;
-  /** Where the filing states the rounding. */
-  locator: string;
-};
 
 /** A person's choice between conflicting candidates of one key. Only accepted ones apply. */
 export type ConflictResolution = {
@@ -99,7 +97,6 @@ export type ReconcileArgs = {
   /** Source signature used to scope authority rules. */
   sourceSignature: string;
   packages: readonly SourcePackage[];
-  roundings?: readonly RoundingDisclosure[];
   /** Learned rule versions; only applicable authority_preference rules are used. */
   rules?: readonly LearnedRuleVersion[];
   resolutions?: readonly ConflictResolution[];
@@ -123,8 +120,6 @@ export type Candidate = {
   rawValue: string;
   cents: number;
   availableAt: string;
-  /** Disclosed rounding unit applied to this value; 0 means exact cents. */
-  roundingUnitCents: number;
 };
 
 /** A candidate kept for lineage but not compared, with the reason. */
@@ -139,13 +134,12 @@ export type ExcludedCandidate = {
 };
 
 /**
- * A usable value. |true value - cents| <= maxErrorHalfCents / 2 cents; 0 means exact.
- * availableAt is the latest source availability; eligibleAt adds any decision's times.
+ * A usable value in exact cents. availableAt is the latest source availability; eligibleAt
+ * adds any decision's times, so it is never earlier than availableAt.
  */
 export type ReconciledValue = {
   key: ObservationKey;
   cents: number;
-  maxErrorHalfCents: number;
   availableAt: string;
   eligibleAt: string;
   receiptIds: string[];
@@ -180,29 +174,6 @@ const filingSignature = (cik: string, f: Filing): string =>
     periodLabel(f.reportPeriod),
     f.amends ?? null,
   ]);
-
-function readRoundings(input: unknown, filings: Map<string, Filing>): Result<Map<string, number>> {
-  if (input === undefined) return ok(new Map());
-  if (!Array.isArray(input)) return err("roundings must be an array");
-  const out = new Map<string, number>();
-  const errors: string[] = [];
-  for (const [i, d] of [...input].entries()) {
-    const accession = d?.accession;
-    const unitCents = d?.unitCents;
-    const locator = d?.locator;
-    if (!AccessionSchema.safeParse(accession).success)
-      errors.push(`roundings ${i}: accession is malformed`);
-    else if (!Number.isSafeInteger(unitCents) || unitCents <= 0)
-      errors.push(`roundings ${i}: unitCents must be a positive safe integer`);
-    else if (!nonBlank(locator)) errors.push(`roundings ${i}: locator is required`);
-    else if (!filings.has(accession))
-      errors.push(`roundings ${i}: ${accession} is not a filing in any package`);
-    else if (out.has(accession))
-      errors.push(`roundings: more than one disclosure for ${accession}`);
-    else out.set(accession, unitCents);
-  }
-  return errors.length ? err(...errors) : ok(out);
-}
 
 function readRules(input: unknown): Result<LearnedRuleVersion[]> {
   if (input === undefined) return ok([]);
@@ -294,23 +265,6 @@ const describe = (cs: readonly Candidate[]): string =>
     })
     .join(", ");
 const DETERMINISTIC: Authority = { kind: "deterministic_method", ...SOURCE_RECONCILER };
-
-/**
- * Selection under disclosed rounding. Each value v rounded to unit u means the true value lies
- * in [v - u/2, v + u/2] (in half-cents: [2v - u, 2v + u]). The difference is rounding only if
- * every interval shares a point and the most precise candidates agree; they are selected.
- */
-function roundingSelection(cs: readonly Candidate[]): Candidate[] | undefined {
-  if (!cs.some((c) => c.roundingUnitCents > 0)) return undefined;
-  const lows = cs.map((c) => 2n * big(c.cents) - big(c.roundingUnitCents));
-  const highs = cs.map((c) => 2n * big(c.cents) + big(c.roundingUnitCents));
-  const lo = lows.reduce((a, b) => (b > a ? b : a));
-  const hi = highs.reduce((a, b) => (b < a ? b : a));
-  if (lo > hi) return undefined;
-  const finest = Math.min(...cs.map((c) => c.roundingUnitCents));
-  const best = cs.filter((c) => c.roundingUnitCents === finest);
-  return distinctCents(best).length === 1 ? best : undefined;
-}
 
 type Ctx = {
   cutoff: string;
@@ -432,17 +386,6 @@ function decide(keyId: string, g: Group, ctx: Ctx): Decision {
           : `${origins.length} distinct origins agree (${describe(cs)})`;
     return { kind: "selected", classification, selected: cs, authority: DETERMINISTIC, note };
   }
-  const rounded = roundingSelection(cs);
-  if (rounded)
-    return {
-      kind: "selected",
-      classification: "rounding_difference",
-      selected: rounded,
-      authority: DETERMINISTIC,
-      note: `differences are within disclosed rounding (${cs
-        .map((c) => `${c.observationId}: unit ${c.roundingUnitCents}`)
-        .join(", ")}); the most precise value is selected (${describe(rounded)})`,
-    };
   return resolveConflict(keyId, g.key, cs, ctx);
 }
 
@@ -506,7 +449,6 @@ function buildKey(
     out.value = {
       key: g.key,
       cents: first.cents,
-      maxErrorHalfCents: Math.min(...d.selected.map((c) => c.roundingUnitCents)),
       availableAt: sourceAvailableAt,
       eligibleAt: parsed.data.eligibleAt,
       receiptIds: [parsed.data.id],
@@ -521,14 +463,16 @@ function buildKey(
 /**
  * Reconcile every ObservationKey found in the packages at a knowledge cutoff. Errors only for
  * malformed or mutually inconsistent inputs; a conflict is a blocked receipt, not an error.
+ * Packages must come from L1's authenticated intake (readSecSource); L2 adds no authentication.
  */
 export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
-  // Copy-once: every caller-owned field is read here and never again.
-  const { id, cutoff, computedAt, sourceSignature } = args;
-  const packagesIn: unknown = args.packages;
-  const roundingsIn: unknown = args.roundings;
-  const rulesIn: unknown = args.rules;
-  const resolutionsIn: unknown = args.resolutions;
+  const snap = snapshot(args);
+  if (!snap.ok) return snap;
+  const own: Record<string, unknown> = snap.value ?? {};
+  const { id, cutoff, computedAt, sourceSignature } = own;
+  const packagesIn = own.packages;
+  if (own.roundings !== undefined)
+    return err("rounding disclosures are not supported: values must match in exact cents");
   if (!IdSchema.safeParse(id).success || !nonBlank(id)) return err("id is required");
   if (!isTimestamp(cutoff) || !isTimestamp(computedAt))
     return err("cutoff and computedAt must be timestamps with explicit offsets");
@@ -538,8 +482,7 @@ export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
 
   const errors: string[] = [];
   const packages: SourcePackage[] = [];
-  for (const [i, p] of [...packagesIn].entries()) {
-    // zod returns a fresh deep copy, so later caller edits cannot reach it.
+  for (const [i, p] of packagesIn.entries()) {
     const parsed = SourcePackageSchema.safeParse(p);
     if (!parsed.success)
       errors.push(
@@ -565,11 +508,10 @@ export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
     }
   if (errors.length) return err(...sortedUnique(errors));
 
-  const roundings = readRoundings(roundingsIn, filings);
-  const rules = readRules(rulesIn);
-  const resolutions = readResolutions(resolutionsIn);
-  if (!roundings.ok || !rules.ok || !resolutions.ok)
-    return err(...[roundings, rules, resolutions].flatMap((r) => (r.ok ? [] : r.errors)));
+  const rules = readRules(own.rules);
+  const resolutions = readResolutions(own.resolutions);
+  if (!rules.ok || !resolutions.ok)
+    return err(...[rules, resolutions].flatMap((r) => (r.ok ? [] : r.errors)));
 
   const cut = ms(cutoff);
   const groups = new Map<string, Group>();
@@ -604,7 +546,6 @@ export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
       const g = group(receipt.key);
       const late = ms(filing.acceptedAt) > cut;
       if (obs && !late) {
-        const unit = roundings.value.get(obs.accession);
         g.candidates.push({
           observationId: obs.id,
           sourcePackageId: pkg.id,
@@ -619,8 +560,6 @@ export function reconcileSources(args: ReconcileArgs): Result<Reconciliation> {
           rawValue: obs.rawValue,
           cents: obs.cents,
           availableAt: obs.availableAt,
-          // A disclosure applies only to values it could have produced; otherwise exact.
-          roundingUnitCents: unit !== undefined && obs.cents % unit === 0 ? unit : 0,
         });
       } else g.excluded.push(exclusion(pkg.id, receipt, filing, obs, late));
     }
@@ -702,15 +641,16 @@ export function valueFor(rec: Reconciliation, key: ObservationKey): KeyOutcome {
   };
 }
 
+/** Validates one value from an already private snapshot and rebuilds it field by field. */
 function readValue(v: unknown, name: string): Result<ReconciledValue> {
   const x = v as ReconciledValue | undefined;
   const key = ObservationKeySchema.safeParse(x?.key);
   if (!key.success) return err(`${name}: key is not a valid ObservationKey`);
   if (!Number.isSafeInteger(x?.cents)) return err(`${name}: cents must be safe integer cents`);
-  if (!Number.isSafeInteger(x?.maxErrorHalfCents) || (x?.maxErrorHalfCents as number) < 0)
-    return err(`${name}: maxErrorHalfCents must be a nonnegative safe integer`);
   if (!isTimestamp(x?.availableAt) || !isTimestamp(x?.eligibleAt))
     return err(`${name}: availableAt and eligibleAt must be timestamps`);
+  if (ms(x.eligibleAt) < ms(x.availableAt))
+    return err(`${name}: eligibleAt is before availableAt; eligibility cannot precede the source`);
   const ids = (a: unknown): a is string[] =>
     Array.isArray(a) && a.length > 0 && a.every((s) => nonBlank(s));
   if (!ids(x?.receiptIds) || !ids(x?.observationIds))
@@ -719,7 +659,6 @@ function readValue(v: unknown, name: string): Result<ReconciledValue> {
   return ok({
     key: key.data,
     cents: value.cents,
-    maxErrorHalfCents: value.maxErrorHalfCents,
     availableAt: value.availableAt,
     eligibleAt: value.eligibleAt,
     receiptIds: [...value.receiptIds],
@@ -733,14 +672,22 @@ const nextDay = (date: string): string => {
   return d.toISOString().slice(0, 10);
 };
 
+/** Latest of every input's availability and eligibility: a derived value waits for all. */
+const gate = (vs: readonly ReconciledValue[]) => ({
+  availableAt: latestOf(vs.map((v) => v.availableAt)),
+  eligibleAt: latestOf(vs.flatMap((v) => [v.availableAt, v.eligibleAt])),
+});
+
 /**
- * Quarter (or any later sub-period) flow from two cumulative flows: ytd minus prior. Both
- * must share company, scope, currency, metric, definition and start, and prior must end
- * first. The result keeps both lineages and the latest availability; errors add.
+ * Quarter (or any later sub-period) flow from two cumulative flows: ytd minus prior, in exact
+ * cents. Both must share company, scope, currency, metric, definition and start, and prior
+ * must end first. The result keeps both lineages and the latest availability/eligibility.
  */
 export function quarterFlow(ytd: ReconciledValue, prior: ReconciledValue): Result<ReconciledValue> {
-  const a = readValue(ytd, "ytd");
-  const b = readValue(prior, "prior");
+  const snap = snapshot([ytd, prior] as const);
+  if (!snap.ok) return snap;
+  const a = readValue(snap.value[0], "ytd");
+  const b = readValue(snap.value[1], "prior");
   if (!a.ok || !b.ok) return err(...(a.ok ? [] : a.errors), ...(b.ok ? [] : b.errors));
   const x = a.value;
   const y = b.value;
@@ -760,8 +707,7 @@ export function quarterFlow(ytd: ReconciledValue, prior: ReconciledValue): Resul
     problems.push("prior period must end before the ytd period");
   if (problems.length) return err(`incompatible YTD subtraction: ${problems.join("; ")}`);
   const cents = big(x.cents) - big(y.cents);
-  const bound = big(x.maxErrorHalfCents) + big(y.maxErrorHalfCents);
-  if (!safe(cents) || !safe(bound)) return err("YTD difference is outside safe integer cents");
+  if (!safe(cents)) return err("YTD difference is outside safe integer cents");
   const key = ObservationKeySchema.safeParse({
     ...kx,
     period: { kind: "duration", start: nextDay(ky.period.end), end: kx.period.end },
@@ -770,9 +716,7 @@ export function quarterFlow(ytd: ReconciledValue, prior: ReconciledValue): Resul
   return ok({
     key: key.data,
     cents: Number(cents),
-    maxErrorHalfCents: Number(bound),
-    availableAt: latestOf([x.availableAt, y.availableAt]),
-    eligibleAt: latestOf([x.eligibleAt, y.eligibleAt]),
+    ...gate([x, y]),
     receiptIds: [...x.receiptIds, ...y.receiptIds],
     observationIds: [...x.observationIds, ...y.observationIds],
   });
@@ -803,10 +747,8 @@ export type CashIdentity =
       /** beginning + operating + investing + financing + fx, in cents. */
       computedEndingCents: string;
       reportedEndingCents: string;
-      /** computed - reported. */
+      /** computed - reported; ties exactly when 0. */
       differenceCents: string;
-      /** Allowed |difference| in half-cents: the sum of every term's rounding bound. */
-      boundHalfCents: string;
       receiptIds: string[];
       availableAt: string;
       eligibleAt: string;
@@ -815,11 +757,13 @@ export type CashIdentity =
 /**
  * beginning combined cash + OCF + ICF + FCF + FX = ending combined cash, for one company,
  * scope and currency, with every flow covering exactly the day after beginning through
- * ending. Exact cents unless terms carry disclosed rounding; then 2|diff| <= sum of bounds.
- * A blocked or missing term blocks the identity; it is never treated as zero.
+ * ending, in exact cents. A blocked or missing term blocks the identity; it is never zero.
  */
 export function cashIdentity(terms: Readonly<Record<CashTerm, KeyOutcome>>): Result<CashIdentity> {
-  const given = CASH_TERMS.map((t) => [t, terms?.[t]] as const);
+  const snap = snapshot(terms);
+  if (!snap.ok) return snap;
+  const own: Partial<Record<CashTerm, KeyOutcome>> = snap.value ?? {};
+  const given = CASH_TERMS.map((t) => [t, own[t]] as const);
   const missing = given.filter(([, o]) => !o).map(([t]) => t);
   if (missing.length) return err(`missing cash identity terms: ${missing.join(", ")}`);
   const blocked = given.flatMap(([term, o]) =>
@@ -857,16 +801,13 @@ export function cashIdentity(terms: Readonly<Record<CashTerm, KeyOutcome>>): Res
     0n,
   );
   const diff = computed - big(ending.cents);
-  const bound = CASH_TERMS.reduce((s, t) => s + big(values[t].maxErrorHalfCents), 0n);
   return ok({
-    status: 2n * abs(diff) <= bound ? "ties" : "breaks",
+    status: diff === 0n ? "ties" : "breaks",
     computedEndingCents: String(computed),
     reportedEndingCents: String(ending.cents),
     differenceCents: String(diff),
-    boundHalfCents: String(bound),
     receiptIds: sortedUnique(CASH_TERMS.flatMap((t) => values[t].receiptIds)),
-    availableAt: latestOf(CASH_TERMS.map((t) => values[t].availableAt)),
-    eligibleAt: latestOf(CASH_TERMS.map((t) => values[t].eligibleAt)),
+    ...gate(CASH_TERMS.map((t) => values[t])),
   });
 }
 

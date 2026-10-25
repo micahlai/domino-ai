@@ -63,7 +63,6 @@ export {
   type ReconcileArgs,
   type ReconciledValue,
   type Reconciliation,
-  type RoundingDisclosure,
   SOURCE_RECONCILER,
   cashIdentity,
   keyDifference,

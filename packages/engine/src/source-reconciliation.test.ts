@@ -259,57 +259,70 @@ describe("non-comparable keys", () => {
   });
 });
 
-describe("rounding", () => {
-  // SYNTHETIC: ORIG reports exact dollars; LATER presents in thousands (disclosed).
+describe("exact cents (no rounding tolerance)", () => {
+  // SYNTHETIC: ORIG reports exact dollars; LATER may present the comparative in thousands.
   const pair = (orig: string, later: string) => [
     synthetic("p1", [
       { tag: TOTAL, accession: ORIG, raw: orig, period: Q3_END },
       { tag: TOTAL, accession: LATER, raw: later, period: Q3_END },
     ]),
   ];
-  const thousands = [
-    { accession: LATER, unitCents: 100_000, locator: "SYNTHETIC: (in thousands)" },
-  ];
+  const ids = [`p1/obs/us-gaap:${TOTAL}:USD:0`, `p1/obs/us-gaap:${TOTAL}:USD:1`];
 
-  it("SYNTHETIC: a difference within the disclosed half-unit selects the exact value", () => {
-    // |248100123 - 248100000| = $123 <= $500 = half of $1,000.
-    const rec = run(pair("248100123", "248100000"), { roundings: thousands });
+  it("SYNTHETIC: a rounding-sized difference is a conflict that blocks", () => {
+    // $248,100,123 vs $248,100,000: $123 apart. companyfacts has no XBRL decimals, so no
+    // rounding precision is authenticated and the cents must match exactly.
+    const rec = run(pair("248100123", "248100000"));
     const k = entry(rec, keyOf(TOTAL, Q3_END));
-    expect(k?.receipt?.classification).toBe("rounding_difference");
-    expect(k?.value?.cents).toBe(24_810_012_300);
-    expect(k?.value?.maxErrorHalfCents).toBe(0);
-    expect(k?.value?.observationIds).toEqual([`p1/obs/us-gaap:${TOTAL}:USD:0`]);
-  });
-
-  it("SYNTHETIC: exactly the half-unit bound is allowed; one dollar more is a conflict", () => {
-    expect(
-      entry(run(pair("248100500", "248100000"), { roundings: thousands }), keyOf(TOTAL, Q3_END))
-        ?.receipt?.classification,
-    ).toBe("rounding_difference");
-    expect(
-      entry(run(pair("248100501", "248100000"), { roundings: thousands }), keyOf(TOTAL, Q3_END))
-        ?.receipt?.outcome.kind,
-    ).toBe("blocked");
-  });
-
-  it("SYNTHETIC: without a disclosure, or with one the value contradicts, cents must match", () => {
-    expect(valueFor(run(pair("248100123", "248100000")), keyOf(TOTAL, Q3_END)).status).toBe(
+    expect(k?.receipt?.classification).toBe("conflict");
+    expect(valueFor(rec, keyOf(TOTAL, Q3_END))).toMatchObject({
+      status: "blocked",
+      reason: "unresolved_conflict",
+    });
+    // Even a one-cent difference blocks.
+    expect(valueFor(run(pair("248100000.01", "248100000")), keyOf(TOTAL, Q3_END)).status).toBe(
       "blocked",
     );
-    // 248100700 is not a multiple of $1,000, so the disclosure cannot have produced it.
-    expect(
-      valueFor(run(pair("248100123", "248100700"), { roundings: thousands }), keyOf(TOTAL, Q3_END))
-        .status,
-    ).toBe("blocked");
   });
 
-  it("SYNTHETIC: two equally rounded values that differ have no single most precise value", () => {
-    const both = [...thousands, { accession: ORIG, unitCents: 100_000, locator: "SYNTHETIC" }];
-    const o = valueFor(
-      run(pair("248100000", "248101000"), { roundings: both }),
+  it("SYNTHETIC: an accepted dated resolution can still select one of the values", () => {
+    const k = entry(
+      run(pair("248100123", "248100000"), {
+        resolutions: [
+          {
+            id: "res-exact",
+            userId: "user1",
+            status: "accepted",
+            key: keyOf(TOTAL, Q3_END),
+            consideredIds: ids,
+            selectedIds: [ids[0] as string],
+            recordedAt: "2024-01-05T00:00:00Z",
+            effectiveFrom: "2024-01-05T00:00:00Z",
+          },
+        ],
+      }),
       keyOf(TOTAL, Q3_END),
     );
-    expect(o).toMatchObject({ status: "blocked", reason: "unresolved_conflict" });
+    expect(k?.receipt?.outcome).toMatchObject({
+      kind: "selected",
+      authority: { kind: "user_resolution", userId: "user1" },
+    });
+    // Source row "248100123" dollars -> 24810012300 cents.
+    expect(k?.value?.cents).toBe(24_810_012_300);
+    expect(k?.value?.availableAt).toBe("2023-11-07T20:00:00.000Z");
+    expect(k?.value?.eligibleAt).toBe("2024-01-05T00:00:00Z");
+  });
+
+  it("caller-supplied rounding disclosures are refused, not silently applied", () => {
+    // The audit forgery: an unverifiable locator would have turned $1,000 vs $1,001 into a
+    // deterministic selection. It is now an input error.
+    const args = {
+      ...BASE,
+      packages: pair("1000", "1001"),
+      roundings: [{ accession: ORIG, unitCents: 1000, locator: "/does/not/exist" }],
+    } as ReconcileArgs;
+    expect(reconcileSources(args)).toMatchObject({ ok: false });
+    expect(valueFor(run(pair("1000", "1001")), keyOf(TOTAL, Q3_END)).status).toBe("blocked");
   });
 });
 
@@ -551,7 +564,7 @@ describe("YTD subtraction", () => {
 
 describe("cash identity", () => {
   const BEGIN = { kind: "instant", date: "2021-12-31" } as const;
-  const fx = (cents: number, maxErrorHalfCents = 0): KeyOutcome => ({
+  const fx = (cents: number): KeyOutcome => ({
     status: "selected",
     value: {
       // SYNTHETIC FX term: the dictionary has no FX tag, so this is a test input.
@@ -564,7 +577,6 @@ describe("cash identity", () => {
         period: YTD_9M,
       }),
       cents,
-      maxErrorHalfCents,
       availableAt: "2022-11-03T20:00:00.000Z",
       eligibleAt: "2022-11-03T20:00:00.000Z",
       receiptIds: ["SYNTHETIC-fx"],
@@ -596,39 +608,29 @@ describe("cash identity", () => {
       computedEndingCents: "68876469",
       reportedEndingCents: "68876469",
       differenceCents: "0",
-      boundHalfCents: "0",
     });
     if (r.status === "blocked") return;
     expect(r.receiptIds).toHaveLength(6);
     expect(r.availableAt).toBe("2022-11-03T20:00:00.000Z");
   });
 
-  it("SYNTHETIC: one cent off breaks without a rounding disclosure", () => {
+  it("SYNTHETIC: one cent off breaks", () => {
     const r = unwrap(cashIdentity(terms(run([book("688764.70")]), fx(-123_456))));
     expect(r).toMatchObject({ status: "breaks", differenceCents: "-1" });
   });
 
-  it("SYNTHETIC: rounded terms tie only within the summed half-unit bound", () => {
-    // Every term in thousands: bound = 6 terms x $500 = $3,000 = 600000 half-cents.
-    // 1,000,000 - 250,000 - 100,000 + 40,000 - 1,000 = 689,000 computed.
-    const roundings = [
-      { accession: ANNUAL, unitCents: 100_000, locator: "SYNTHETIC: (in thousands)" },
-      { accession: ORIG, unitCents: 100_000, locator: "SYNTHETIC: (in thousands)" },
-    ];
+  it("SYNTHETIC: terms presented in thousands get no tolerance", () => {
+    // 1,000,000 - 250,000 - 100,000 + 40,000 - 1,000 = 689,000 computed vs 692,000 reported:
+    // -3,000 dollars = -300000 cents. Under the removed rounding bound this tied; now it breaks.
     const values = ["1000000", "-250000", "-100000", "40000"];
-    const atEdge = unwrap(
-      cashIdentity(terms(run([book("692000", values)], { roundings }), fx(-100_000, 100_000))),
-    );
-    expect(atEdge).toMatchObject({
-      status: "ties",
+    const r = unwrap(cashIdentity(terms(run([book("692000", values)]), fx(-100_000))));
+    expect(r).toMatchObject({
+      status: "breaks",
       computedEndingCents: "68900000",
       differenceCents: "-300000",
-      boundHalfCents: "600000",
     });
-    const beyond = unwrap(
-      cashIdentity(terms(run([book("693000", values)], { roundings }), fx(-100_000, 100_000))),
-    );
-    expect(beyond).toMatchObject({ status: "breaks", differenceCents: "-400000" });
+    const exact = unwrap(cashIdentity(terms(run([book("689000", values)]), fx(-100_000))));
+    expect(exact).toMatchObject({ status: "ties", differenceCents: "0" });
   });
 
   it("SYNTHETIC: an unresolved used term blocks the identity; it is never zero", () => {
@@ -665,7 +667,7 @@ describe("cash identity", () => {
 });
 
 describe("order independence", () => {
-  it("SYNTHETIC: permuting packages, rows, rules, resolutions and disclosures changes nothing", () => {
+  it("SYNTHETIC: permuting packages, rows and resolutions changes nothing", () => {
     const rows: Row[] = [
       { tag: TOTAL, accession: ORIG, raw: "248100000", period: Q3_END },
       { tag: TOTAL, accession: AMEND, raw: "247900000", period: Q3_END },
@@ -677,10 +679,6 @@ describe("order independence", () => {
     const a = synthetic("pa", rows);
     const b = synthetic("pb", rows.slice(0, 2), { hash: "e".repeat(64) });
     const reversed = { ...a, records: [...a.records].reverse() };
-    const roundings = [
-      { accession: LATER, unitCents: 100_000, locator: "SYNTHETIC" },
-      { accession: ANNUAL, unitCents: 100, locator: "SYNTHETIC" },
-    ];
     const res: ConflictResolution = {
       id: "r1",
       userId: "u1",
@@ -692,14 +690,14 @@ describe("order independence", () => {
       effectiveFrom: "2023-03-01T00:00:00Z",
     };
     const res2 = { ...res, id: "r2", status: "accepted" as const };
-    const one = run([a, b], { roundings, resolutions: [res, res2] });
+    const one = run([a, b], { resolutions: [res, res2] });
     const two = run([b, reversed], {
-      roundings: [...roundings].reverse(),
       resolutions: [res2, res],
     });
     expect(two).toEqual(one);
     expect(JSON.stringify(two)).toBe(JSON.stringify(one));
-    expect(entry(one, keyOf(USABLE, Q3_END))?.receipt?.classification).toBe("rounding_difference");
+    expect(entry(one, keyOf(USABLE, Q3_END))?.receipt?.classification).toBe("conflict");
+    expect(entry(one, keyOf(TOTAL, Q3_END))?.receipt?.classification).toBe("conflict");
   });
 });
 
@@ -718,23 +716,13 @@ describe("input validation", () => {
     expect(reconcileSources({ ...BASE, packages: [p, forged] })).toMatchObject({ ok: false });
   });
 
-  it("rejects disclosures for unknown filings, malformed units and bad times", () => {
+  it("rejects bad times, empty packages and non-plain input", () => {
     const bad = (extra: Partial<ReconcileArgs>) =>
       reconcileSources({ ...BASE, packages: [p], ...extra }).ok;
-    expect(
-      bad({ roundings: [{ accession: "0000000009-22-000001", unitCents: 100, locator: "x" }] }),
-    ).toBe(false);
-    expect(bad({ roundings: [{ accession: ORIG, unitCents: 0, locator: "x" }] })).toBe(false);
-    expect(
-      bad({
-        roundings: [
-          { accession: ORIG, unitCents: 100, locator: "x" },
-          { accession: ORIG, unitCents: 100, locator: "y" },
-        ],
-      }),
-    ).toBe(false);
     expect(bad({ cutoff: "2022-12-15" })).toBe(false);
     expect(bad({ packages: [] })).toBe(false);
+    const withFunction = { ...p, extra: () => 1 } as unknown as SourcePackage;
+    expect(bad({ packages: [withFunction] })).toBe(false);
   });
 
   it("a key with only unvalidated rows has no receipt and reports why", () => {
@@ -761,6 +749,144 @@ describe("input validation", () => {
     ).toMatchObject({
       reason: "after_cutoff",
     });
+  });
+});
+
+describe("eligibility ordering and private input snapshots", () => {
+  const H1 = { kind: "duration", start: "2022-01-01", end: "2022-06-30" } as const;
+  const BEGIN = { kind: "instant", date: "2021-12-31" } as const;
+  // SYNTHETIC hand-built values; cents are the Amplitude-shaped -786000 and 2353000 dollars.
+  const value = (
+    tag: string,
+    period: ObservationKey["period"],
+    cents: number,
+    over: Partial<ReconciledValue> = {},
+  ): ReconciledValue => ({
+    key: keyOf(tag, period),
+    cents,
+    availableAt: "2022-11-03T20:00:00Z",
+    eligibleAt: "2022-11-03T20:00:00Z",
+    receiptIds: [`SYNTHETIC-${tag}`],
+    observationIds: [`SYNTHETIC-${tag}`],
+    ...over,
+  });
+  const ytd = value(OCF, YTD_9M, -78_600_000);
+  const h1 = value(OCF, H1, 235_300_000);
+
+  it("SYNTHETIC: YTD inputs eligible (2020) before their source (2022) are rejected", () => {
+    const back = { eligibleAt: "2020-01-01T00:00:00Z" };
+    const r = quarterFlow({ ...ytd, ...back }, { ...h1, ...back });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join()).toContain("eligibleAt is before availableAt");
+    expect(quarterFlow(ytd, { ...h1, ...back }).ok).toBe(false);
+  });
+
+  it("SYNTHETIC: derived eligibility is the latest input availability or eligibility", () => {
+    const decided = unwrap(quarterFlow({ ...ytd, eligibleAt: "2025-01-01T00:00:00Z" }, h1));
+    expect(decided.eligibleAt).toBe("2025-01-01T00:00:00Z");
+    expect(decided.availableAt).toBe("2022-11-03T20:00:00Z");
+    const laterSource = unwrap(
+      quarterFlow(ytd, {
+        ...h1,
+        availableAt: "2023-01-10T00:00:00Z",
+        eligibleAt: "2023-01-10T00:00:00Z",
+      }),
+    );
+    expect(laterSource).toMatchObject({
+      availableAt: "2023-01-10T00:00:00Z",
+      eligibleAt: "2023-01-10T00:00:00Z",
+    });
+  });
+
+  it("SYNTHETIC: a cash identity with a backdated term is rejected", () => {
+    const sel = (v: ReconciledValue): KeyOutcome => ({ status: "selected", value: v });
+    const fxKey = { ...keyOf(OCF, YTD_9M), metric: "fx_effect_on_cash" as const };
+    // 1,000.00 - 100.00 + 0.00 + 0.00 - 0.01 = 899.99 dollars.
+    const t: Record<CashTerm, KeyOutcome> = {
+      beginning: sel(value(TOTAL, BEGIN, 100_000)),
+      operating: sel(value(OCF, YTD_9M, -10_000)),
+      investing: sel(value(ICF, YTD_9M, 0)),
+      financing: sel(value(FCF, YTD_9M, 0)),
+      fx: sel({ ...value(OCF, YTD_9M, -1), key: fxKey }),
+      ending: sel(value(TOTAL, Q3_END, 89_999)),
+    };
+    expect(unwrap(cashIdentity(t))).toMatchObject({ status: "ties", differenceCents: "0" });
+    const backdated = {
+      ...t,
+      ending: sel(value(TOTAL, Q3_END, 89_999, { eligibleAt: "2020-01-01T00:00:00Z" })),
+    };
+    expect(cashIdentity(backdated).ok).toBe(false);
+    const decided = {
+      ...t,
+      ending: sel(value(TOTAL, Q3_END, 89_999, { eligibleAt: "2024-01-01T00:00:00Z" })),
+    };
+    expect(unwrap(cashIdentity(decided))).toMatchObject({
+      status: "ties",
+      availableAt: "2022-11-03T20:00:00Z",
+      eligibleAt: "2024-01-01T00:00:00Z",
+    });
+  });
+
+  it("SYNTHETIC: an accessor on a value is read once; validation and arithmetic agree", () => {
+    let reads = 0;
+    const tricky = {
+      ...ytd,
+      get cents() {
+        reads += 1;
+        return reads === 1 ? -78_600_000 : 123;
+      },
+    };
+    // -786000 - 2353000 = -3139000 dollars = -313900000 cents.
+    expect(unwrap(quarterFlow(tricky, h1)).cents).toBe(-313_900_000);
+    expect(reads).toBe(1);
+  });
+
+  it("SYNTHETIC: resolution and nested package accessors are read once", () => {
+    const pkg = synthetic("p1", [
+      { tag: TOTAL, accession: ORIG, raw: "1000", period: Q3_END },
+      { tag: TOTAL, accession: LATER, raw: "1001", period: Q3_END },
+    ]);
+    const ids = [`p1/obs/us-gaap:${TOTAL}:USD:0`, `p1/obs/us-gaap:${TOTAL}:USD:1`];
+    let selReads = 0;
+    const res = {
+      id: "res1",
+      userId: "u1",
+      status: "accepted" as const,
+      key: keyOf(TOTAL, Q3_END),
+      consideredIds: ids,
+      get selectedIds() {
+        selReads += 1;
+        return selReads === 1 ? [ids[0] as string] : [ids[1] as string];
+      },
+      recordedAt: "2024-01-01T00:00:00Z",
+      effectiveFrom: "2024-01-01T00:00:00Z",
+    };
+    let rawReads = 0;
+    const first = pkg.records[0] as SourcePackage["records"][0];
+    const records = [
+      {
+        ...first,
+        get rawValue() {
+          rawReads += 1;
+          return rawReads === 1 ? "1000" : "999999";
+        },
+      },
+      ...pkg.records.slice(1),
+    ];
+    const rec = run([{ ...pkg, records }], { resolutions: [res] });
+    // "1000" dollars -> 100000 cents, from the first (and only) read.
+    expect(entry(rec, keyOf(TOTAL, Q3_END))?.value?.cents).toBe(100_000);
+    expect(selReads).toBe(1);
+    expect(rawReads).toBe(1);
+  });
+
+  it("SYNTHETIC: editing caller objects afterwards cannot change a returned result", () => {
+    const pkg = synthetic("p1", [{ tag: TOTAL, accession: ORIG, raw: "1000", period: Q3_END }]);
+    const rec = run([pkg]);
+    const before = JSON.stringify(rec);
+    (pkg.records[0] as { rawValue: string }).rawValue = "5";
+    (pkg.accessions[1] as { acceptedAt: string }).acceptedAt = "2020-01-01T00:00:00Z";
+    expect(JSON.stringify(rec)).toBe(before);
   });
 });
 
