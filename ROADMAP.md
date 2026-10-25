@@ -26,7 +26,7 @@ Required design: [learning loop](kb/spec/learning-loop-design-2026-10-24.md), [e
 | ID | Owner | Dependency | Acceptance |
 | --- | --- | --- | --- |
 | S2 catalog, reserved | Friend exclusively | Continue existing S2 checkout/session; remote activity unknown | [Card](kb/tasks/S2-simulation-catalog.md): bounded read-only list and one index; commit/push and independent audit. Last fetched 1154972 has no implementation |
-| P0-C contracts / P0-S schema | P0-C: Opus worker repairing round 1 (../domino-P0C). P0-S: PRIORITY, blocked on friend S2 checkpoint | [P0-C R1 REJECT](kb/reviews/P0C-189fb0d-codex-audit.md): forecast-ready chronology gap (P1), unsafe integers, unbounded ids; method equality test -> P0-H. S2 checkpoint prompt: prompts/shared/S2-friend-checkpoint.md | PREPARING THE SPLIT. "Split ready" only after independent acceptance, exact common base, two runnable feature branches |
+| P0-C contracts / P0-S schema | P0-C: Jayden decision (third audit REJECT 74f09af). P0-S: blocked on friend S2 checkpoint | [P0-C final audit](kb/reviews/P0C-74f09af-codex-final.md): (P1) safeParse throws on hostile getters/proxies, 123/38,988 fuzz calls; (P2) financing/FX endpoints at 2^53-1 pass but overflow in engine. [R2](kb/reviews/P0C-c671ae1-codex-reaudit.md). No repair round without Jayden | PREPARING THE SPLIT |
 | T1 timeline controls | Optional internal Timeline subtask after P0 | Superseded as the complete friend assignment | Full [Timeline brief](kb/features/timeline/BRIEF.md) replaces the four-file feature split; preserve existing S2 |
 
 ## In progress
