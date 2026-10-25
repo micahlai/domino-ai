@@ -16,7 +16,7 @@ export function ScenarioComposer({
   selectedWeek: string | null;
   /** The scenario new events branch from, and when it starts. */
   buildsOn?: { label: string; startsOn: string | null };
-  /** Optional control from the page actions ("Try an event"). */
+  /** Optional control from the manual-entry fallback. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -33,13 +33,13 @@ export function ScenarioComposer({
   return (
     <section
       id="try-an-event"
-      aria-label="Try an event on this timeline"
+      aria-label="Manual event entry on this timeline"
       className="min-w-0 scroll-mt-24 space-y-4 rounded-lg border bg-card p-4 shadow-xs [&_button]:h-auto [&_button]:min-h-8 [&_button]:max-w-full [&_button]:whitespace-normal max-sm:[&_button]:min-h-11"
       data-testid="timeline-composer"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
-          <p className="text-[15px] font-semibold tracking-[-0.01em]">Try an event</p>
+          <p className="text-[15px] font-semibold tracking-[-0.01em]">Manual event entry</p>
           <p className="text-sm text-muted-foreground">
             {open ? (
               "Dates you enter stay fixed when you pick other weeks."
@@ -75,7 +75,7 @@ export function ScenarioComposer({
           onClick={() => setOpen(!open)}
           data-testid="composer-toggle"
         >
-          {open ? "Hide editor · keep draft" : "Open the event form"}
+          {open ? "Hide editor · keep draft" : "Enter an event manually"}
         </Button>
       </div>
       <div id={editorId} hidden={!open}>

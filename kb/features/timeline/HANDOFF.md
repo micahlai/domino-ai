@@ -1,5 +1,10 @@
 # Timeline handoff
 
+## 2026-10-25: manual-entry follow-up consolidated
+
+- Done: user-requested side-conversation follow-up moves manual event entry to More details, keeping Ask Domino in the header and preserving mounted drafts/review/save. Parent chat explicitly authorized publishing all remaining changes.
+- Checks: 74 focused tests, web TypeScript, scoped Biome and whitespace checks pass. Prior complete TL11 check passed2,520tests.
+
 ## 2026-10-25: TL11 page-filling timeline and branch focus
 
 - Done: all session UI changes are consolidated on `claude-timeline-chat`: full-window chart, collapsible/widenable scenario rail with visible Build on and closed metadata, collapsible draft-preserving chat, collapsed bottom financial tray, vertical top-left chart key, continuous horizontal pan and date-anchored grid, exact-time branch-aware focus. See [layout scope](TL11-layout.md) and [task](../../tasks/TL11-page-filling-timeline.md).

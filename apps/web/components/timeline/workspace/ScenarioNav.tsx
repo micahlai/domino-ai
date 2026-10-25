@@ -221,7 +221,7 @@ function TreeRow({ node, depth, ctx }: { node: Node; depth: number; ctx: RowCont
             {building ? (
               <span
                 className="inline-flex items-center gap-1 font-medium text-foreground"
-                title="New what-ifs from the chat or Try an event branch from here"
+                title="New what-ifs from the chat or manual entry branch from here"
               >
                 <GitBranch aria-hidden="true" className="size-3" />
                 Building here

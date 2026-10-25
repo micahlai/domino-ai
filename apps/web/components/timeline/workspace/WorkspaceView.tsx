@@ -9,7 +9,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   ShieldAlert,
-  SquarePlus,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useId, useMemo, useState } from "react";
@@ -19,7 +18,7 @@ import { Button } from "../../ui/button";
 import { StatTile } from "../../ui/page";
 import { analysisHref } from "../analysis/links";
 import { formatExactCents, formatFullDate, formatSavedAt } from "../baseline/format";
-import { Assistant, type AssistantTab, smoothScroll, useIsDesktop } from "./Assistant";
+import { Assistant, type AssistantTab, useIsDesktop } from "./Assistant";
 import { AncestryPanel } from "./CatalogPanel";
 import { type QuestionActions, QuestionsPanel } from "./QuestionsPanel";
 import { RuleEditor } from "./RuleEditor";
@@ -238,17 +237,6 @@ export function WorkspaceView({
     if (!desktop) setScenariosExpanded(false);
     setFocusKey((k) => k + 1);
   }
-  function tryEvent() {
-    setComposerOpen(true);
-    setBottomPanel("event");
-    requestAnimationFrame(() => {
-      const el = document.getElementById("try-an-event");
-      el?.scrollIntoView({ block: "start", behavior: smoothScroll() });
-      el?.querySelector<HTMLElement>('[data-testid="event-kind"]')?.focus({
-        preventScroll: true,
-      });
-    });
-  }
 
   return (
     <BranchContext.Provider value={branchContext}>
@@ -287,10 +275,6 @@ export function WorkspaceView({
             </div>
           </div>
           <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">
-            <Button size="sm" variant="outline" onClick={tryEvent} data-testid="action-event">
-              <SquarePlus aria-hidden="true" />
-              Try an event
-            </Button>
             <Button size="sm" variant="ghost" asChild>
               <Link
                 href={risksHref ?? analysisHref(run.companyId, run.runId)}
@@ -522,30 +506,32 @@ export function WorkspaceView({
                     <CashFlows run={run} />
                   </div>
                 </div>
-                <div hidden={bottomPanel !== "event" || !composerOpen} className="pb-3">
-                  <ScenarioComposer
-                    selectedWeek={selectedWeek}
-                    firstWeek={firstWeek}
-                    buildsOn={{
-                      label:
-                        run.runId === baseRunId ? "the base forecast" : run.label || KIND[run.kind],
-                      startsOn: buildsOnStart,
-                    }}
-                    invoices={options.invoices}
-                    bills={options.bills}
-                    suggestion={suggestion}
-                    onRun={actions.simulate}
-                    disabled={disabled}
-                    open={composerOpen}
-                    onOpenChange={setComposerOpen}
-                  />
-                </div>
                 <div
                   id={`${trayId}-more`}
                   hidden={bottomPanel !== "more"}
                   data-testid="workspace-more-details"
                 >
                   <div className="space-y-3 pb-3">
+                    <div className="pb-3">
+                      <ScenarioComposer
+                        selectedWeek={selectedWeek}
+                        firstWeek={firstWeek}
+                        buildsOn={{
+                          label:
+                            run.runId === baseRunId
+                              ? "the base forecast"
+                              : run.label || KIND[run.kind],
+                          startsOn: buildsOnStart,
+                        }}
+                        invoices={options.invoices}
+                        bills={options.bills}
+                        suggestion={suggestion}
+                        onRun={actions.simulate}
+                        disabled={disabled}
+                        open={composerOpen}
+                        onOpenChange={setComposerOpen}
+                      />
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {run.label || KIND[run.kind]} · {KIND[run.kind]}, saved{" "}
                       {formatSavedAt(run.savedAt)}. Saved results never change.
