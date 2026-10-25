@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  Info,
   List,
   Maximize,
   Network,
@@ -48,6 +49,7 @@ import type { CanvasStatus } from "../investigate/types";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import {
   type CameraEvent,
   type CameraState,
@@ -95,6 +97,7 @@ import {
   toolboxId,
   withSavedState,
 } from "./graph";
+import { plainStatus, statusLine } from "./header-text";
 import {
   type Box,
   IDLE_CLUSTER,
@@ -1704,8 +1707,11 @@ export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
     ? operations.reduce((a, b) => (byTime(a, b) <= 0 ? b : a))
     : undefined;
   const latestWork = latest
-    ? `Last recorded work ${timeAgo(latest.at, now)}: ${latest.summary.replace(/[.\s]*$/, ".")}`
+    ? statusLine(latest.summary, timeAgo(latest.at, now))
     : "Work appears here as soon as it is recorded.";
+  // The raw summary keeps run ids and status codes; it sits behind the info button.
+  const latestRaw =
+    latest && plainStatus(latest.summary) !== latest.summary ? latest.summary : null;
   const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   const roleName = (n: BrainNode) => (n.role ?? n.title).replace(/[-_]+/g, " ").toLowerCase();
   const headline =
@@ -1781,46 +1787,52 @@ export function BrainMap({ embedded = false }: { embedded?: boolean } = {}) {
           }
           title={headline}
           description={
-            // Activity messages wrap differently; keep the canvas in the same place as they change.
-            <span className="line-clamp-2 h-12" title={latestWork}>
-              {latestWork}
+            // Activity messages wrap differently; fixed heights keep the canvas in place.
+            <span className="flex h-12 items-start gap-1.5 sm:h-6">
+              <span className="line-clamp-2 sm:line-clamp-1" title={latestRaw ?? latestWork}>
+                {latestWork}
+              </span>
+              {latestRaw ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Show run details"
+                      className="relative mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground before:absolute before:-inset-3 before:content-[''] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Info aria-hidden="true" className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="break-all">{latestRaw}</TooltipContent>
+                </Tooltip>
+              ) : null}
             </span>
           }
         />
       )}
-      <div className="space-y-1 text-sm">
-        <p className="flex flex-wrap gap-x-5 gap-y-1">
-          <span>
-            <strong className="font-semibold tabular-nums">{counts.working}</strong>{" "}
-            <span className="text-muted-foreground">working now</span>
-          </span>
-          <span>
-            <strong className="font-semibold tabular-nums">{counts.completedHelpers}</strong>{" "}
-            <span className="text-muted-foreground">completed helpers</span>
-          </span>
-          <span>
-            <strong className="font-semibold tabular-nums">{counts.messages}</strong>{" "}
-            <span className="text-muted-foreground">messages between agents</span>
-          </span>
-          <span className="text-muted-foreground">{scope}</span>
-        </p>
-        <p className="flex flex-wrap gap-x-5 gap-y-1">
-          <span>
-            <strong className="font-semibold tabular-nums">{versions}</strong>{" "}
-            <span className="text-muted-foreground">
-              {versions === 1 ? "books version" : "books versions"} saved
-            </span>
-          </span>
-          {flags ? (
-            <span>
-              <strong className="font-semibold tabular-nums">{flags.length}</strong>{" "}
-              <span className="text-muted-foreground">
-                {flags.length === 1 ? "flag" : "flags"} for review, {openFlags} open
-              </span>
-            </span>
-          ) : null}
-          <span className="text-muted-foreground">all time</span>
-        </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <StatGroup
+          stats={[
+            [counts.working, "working now"],
+            [counts.completedHelpers, "completed helpers"],
+            [counts.messages, "messages between agents"],
+          ]}
+          scope={scope}
+        />
+        <StatGroup
+          stats={[
+            [versions, versions === 1 ? "books version saved" : "books versions saved"],
+            ...(flags
+              ? ([
+                  [
+                    flags.length,
+                    `${flags.length === 1 ? "flag" : "flags"} for review, ${openFlags} open`,
+                  ],
+                ] as const)
+              : []),
+          ]}
+          scope="all time"
+        />
       </div>
       {embedded ? null : <MapActions />}
       {narrow ? (
@@ -2669,5 +2681,29 @@ function SourceDetailPanel({
         )}
       </Section>
     </SourcePanel>
+  );
+}
+
+/** Small count chips with one muted scope label, e.g. "in the latest 40 events". */
+function StatGroup({
+  stats,
+  scope,
+}: {
+  stats: readonly (readonly [number, string])[];
+  scope: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {stats.map(([n, label]) => (
+        <span
+          key={label}
+          className="inline-flex h-7 items-center gap-1 rounded-md border bg-card px-2 shadow-xs"
+        >
+          <strong className="font-semibold tabular-nums text-foreground">{n}</strong>
+          <span className="text-muted-foreground">{label}</span>
+        </span>
+      ))}
+      <span className="px-0.5 text-muted-foreground">{scope}</span>
+    </div>
   );
 }

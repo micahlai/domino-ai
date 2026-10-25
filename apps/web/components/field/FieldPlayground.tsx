@@ -1,18 +1,15 @@
 "use client";
 
-import { operatingDemoCatalog, operatingProvenance } from "@domino/sim";
+import { operatingProvenance } from "@domino/sim";
 import { useState } from "react";
 import { IconGallery } from "../icons/IconGallery";
 import { BrainMap } from "./BrainMap";
 import { OperatingSelectorControls } from "./CompanySwitcher";
 import { ConnectView } from "./ConnectPage";
-import { SourceContents } from "./OperatingProvenanceStrip";
+import { OperatingProvenanceStrip, SourceContents } from "./OperatingProvenanceStrip";
+import { type ClockState, SimClockView } from "./SimClockBar";
 import { WorkerPage } from "./WorkerPage";
-import {
-  DEFAULT_OPERATING_SELECTION,
-  OPERATING_DEMO_LABEL,
-  type OperatingSelection,
-} from "./company";
+import { DEFAULT_OPERATING_SELECTION, type OperatingSelection } from "./company";
 import { DemoConnectData } from "./connect-data";
 import { DemoFieldData } from "./data";
 
@@ -22,21 +19,14 @@ import { DemoFieldData } from "./data";
  */
 export function FieldPlayground() {
   const [selection, setSelection] = useState<OperatingSelection>(DEFAULT_OPERATING_SELECTION);
-  const catalog = operatingDemoCatalog.find((item) => item.id === selection.company);
-  const filedAt = catalog && "filedAt" in catalog ? catalog.filedAt : undefined;
   return (
     <DemoFieldData note="Playground fixture">
       <div className="space-y-16">
         <section id="OperatingSelection" className="space-y-3 rounded-lg border bg-card p-4">
           <h2 className="text-sm font-medium">Filing-backed operating demo controls</h2>
           <OperatingSelectorControls selection={selection} onChange={setSelection} />
+          <PlaygroundContextRow />
           <p className="text-xs text-muted-foreground">
-            {selection.company === "2u"
-              ? OPERATING_DEMO_LABEL
-              : `Fictional company based on ${catalog?.referenceCompany ?? "public company"} filings.`}{" "}
-            {catalog
-              ? `Period ended ${catalog.periodEnd}; published ${catalog.reportedAt}${filedAt && filedAt !== catalog.reportedAt ? `; filed ${filedAt}` : ""}; starting reconstructed books as of ${catalog.simulationAsOf}${selection.company === "2u" ? " (historical ledger date). 2U inputs use public reports released by 2023-11-09; later actuals are in the separate historical case" : ""}.`
-              : ""}{" "}
             Scenario: {selection.scenario}. This playground selector changes no backend feed.
           </p>
           <details>
@@ -70,5 +60,38 @@ export function FieldPlayground() {
         </section>
       </div>
     </DemoFieldData>
+  );
+}
+
+/** The page context row (provenance plus simulated time) on local state only. */
+function PlaygroundContextRow() {
+  const [clock, setClock] = useState<ClockState>({
+    date: "2026-10-27",
+    day: 3,
+    speed: 1,
+    status: "paused",
+    ticking: false,
+    pausedReason: null,
+    nextEvent: { day: 9, inDays: 6, title: "Largest customer pays late" },
+  });
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b pb-3">
+      <OperatingProvenanceStrip />
+      <SimClockView
+        clock={clock}
+        error={null}
+        onToggle={() =>
+          setClock((c) => ({ ...c, status: c.status === "playing" ? "paused" : "playing" }))
+        }
+        onSpeed={(speed) => setClock((c) => ({ ...c, speed }))}
+        onJump={() =>
+          setClock((c) => ({
+            ...c,
+            day: 8,
+            nextEvent: c.nextEvent ? { ...c.nextEvent, inDays: 1 } : null,
+          }))
+        }
+      />
+    </div>
   );
 }
