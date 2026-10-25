@@ -243,14 +243,68 @@ export type OperatingRecord = {
   company: OperatingCompanyId;
   scenario: OperatingScenarioId;
   name: string;
+  /** Set on a fresh replay copy (fieldOperating.replay): the original company. */
+  replayOf?: Id<"companies"> | null;
+  /** Agents have run (pressed Start, or the company already has saved books). */
+  started?: boolean;
 };
+
+// Replay choice (this browser only): which replay copy, if any, a selection shows instead of
+// the original company. The original and its data are never changed.
+const REPLAY_KEY = "domino.field.operating.replay";
+function readReplays(): Record<string, string> {
+  try {
+    const raw = window.localStorage.getItem(REPLAY_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+const memoryReplays: Record<string, string> = {};
+export function replayChoice(selection: OperatingSelection): string | null {
+  if (typeof window === "undefined") return null;
+  const key = operatingWorldId(selection);
+  return readReplays()[key] ?? memoryReplays[key] ?? null;
+}
+/** Show `companyId` (a replay) for this selection, or the original again with null. */
+export function chooseReplay(selection: OperatingSelection, companyId: string | null) {
+  const key = operatingWorldId(selection);
+  const next = readReplays();
+  if (companyId) {
+    next[key] = companyId;
+    memoryReplays[key] = companyId;
+  } else {
+    delete next[key];
+    delete memoryReplays[key];
+  }
+  try {
+    window.localStorage.setItem(REPLAY_KEY, JSON.stringify(next));
+  } catch {
+    // Kept in memory for this page.
+  }
+  window.dispatchEvent(new Event(EVENT));
+}
+const replaySnapshot = () => JSON.stringify({ ...memoryReplays, ...readReplays() });
+/** Re-renders when a replay is chosen or cleared. */
+export const useReplayChoices = () => useSyncExternalStore(subscribe, replaySnapshot, () => "{}");
+
+/** The record a selection shows: its chosen replay when listed, else the original. */
 export function selectedOperatingRecord<
-  T extends { company: OperatingCompanyId; scenario: OperatingScenarioId },
->(records: readonly T[], selection: OperatingSelection): T | null {
+  T extends {
+    company: OperatingCompanyId;
+    scenario: OperatingScenarioId;
+    companyId: string;
+    replayOf?: string | null;
+  },
+>(records: readonly T[], selection: OperatingSelection, replay?: string | null): T | null {
+  const matching = records.filter(
+    (item) => item.company === selection.company && item.scenario === selection.scenario,
+  );
   return (
-    records.find(
-      (item) => item.company === selection.company && item.scenario === selection.scenario,
-    ) ?? null
+    (replay ? matching.find((item) => item.companyId === replay) : undefined) ??
+    matching.find((item) => !item.replayOf) ??
+    null
   );
 }
 export const FIELD_OPERATING_API = {
@@ -262,6 +316,11 @@ export const FIELD_OPERATING_API = {
     { company: OperatingCompanyId; scenario: OperatingScenarioId },
     { companyId: Id<"companies">; name: string; created: boolean }
   >("fieldOperating:ensure"),
+  replay: makeFunctionReference<
+    "mutation",
+    { companyId: Id<"companies"> },
+    { companyId: Id<"companies">; name: string; replayOf: Id<"companies"> }
+  >("fieldOperating:replay"),
 };
 const pending = new Map<string, Promise<unknown>>();
 
@@ -277,7 +336,9 @@ export function useSelectedCompany(): {
   const companies = useQuery(FIELD_OPERATING_API.list, override ? "skip" : {});
   const ensure = useMutation(FIELD_OPERATING_API.ensure);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
-  const selected = companies ? selectedOperatingRecord(companies, selection) : undefined;
+  useReplayChoices();
+  const replay = replayChoice(selection);
+  const selected = companies ? selectedOperatingRecord(companies, selection, replay) : undefined;
   const key = `${selection.company}/${selection.scenario}`;
   const error = !selected && failure?.key === key ? failure.message : null;
   useEffect(() => {

@@ -10,9 +10,11 @@
  *       phase: "idle" | "reading" | "ready" | "failed", analystRunning }
  *     "reading" = started and the first read of the books has not finished yet.
  * Mutations
- *   fieldAgents.start({ companyId })  idempotent: marks started and queues the first ingest
- *     (which cascades to audit, flag explanations and the analyst as before). Calling it again,
- *     or on an already started company, schedules nothing. { started, scheduled, startedAt }
+ *   fieldAgents.start({ companyId, sources? })  idempotent: marks started and queues the first
+ *     ingest (which cascades to audit, flag explanations and the analyst as before). Calling it
+ *     again, or on an already started company, schedules nothing. { started, scheduled, startedAt }
+ *     `sources` (idle companies only): the connected tools to keep; the rest are disconnected
+ *     before the first read. The bank must stay on, and HubSpot needs Stripe.
  */
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
@@ -24,7 +26,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { TOOL_IDS } from "./connectors/types";
+import { TOOL_IDS, type ToolId } from "./connectors/types";
 import { AGENT, requireFeed, writeLog } from "./fieldJobs";
 
 export const AGENTS_IDLE_MESSAGE = "Start agents first: open the Brain map and press Start agents";
@@ -100,7 +102,36 @@ export const state = query({
   },
 });
 
-async function startAgents(ctx: MutationCtx, companyId: Id<"companies">) {
+const BANKS: readonly ToolId[] = ["plaid", "nessie"];
+/** Tools that only make sense with another one on (same rule as the judge sandbox). */
+const NEEDS: Partial<Record<ToolId, ToolId>> = { hubspot: "stripe" };
+
+const refuse = (message: string) => new ConvexError({ code: "BAD_SOURCES", message });
+
+/** Keeps only `keep` of the company's connected tools. Validated before anything is changed. */
+async function applySources(ctx: MutationCtx, companyId: Id<"companies">, keep: string[]) {
+  const rows = await ctx.db
+    .query("connections")
+    .withIndex("by_companyId_and_tool", (q) => q.eq("companyId", companyId))
+    .take(TOOL_IDS.length);
+  const live = rows.filter((r) => r.status !== "disconnected");
+  for (const tool of keep)
+    if (!live.some((r) => r.tool === tool)) throw refuse(`Not a connected tool: ${tool}`);
+  if (live.some((r) => BANKS.includes(r.tool) && !keep.includes(r.tool)))
+    throw refuse("Keep the bank connected: the forecast starts from its cash balance");
+  for (const [tool, needs] of Object.entries(NEEDS))
+    if (keep.includes(tool) && !keep.includes(needs))
+      throw refuse("HubSpot needs Stripe: its deals point at Stripe invoices");
+  for (const row of live)
+    if (!keep.includes(row.tool))
+      await ctx.db.patch("connections", row._id, {
+        status: "disconnected",
+        connectedAt: null,
+        connectedBy: null,
+      });
+}
+
+async function startAgents(ctx: MutationCtx, companyId: Id<"companies">, sources?: string[]) {
   const company = await ctx.db.get("companies", companyId);
   if (!company) throw new ConvexError({ code: "NOT_FOUND", message: "No such company" });
   if (company.judgeArchivedAt)
@@ -108,6 +139,7 @@ async function startAgents(ctx: MutationCtx, companyId: Id<"companies">) {
   await requireFeed(ctx, companyId);
   const status = await agentsStatus(ctx, company);
   if (status.started) return { started: true, scheduled: false, startedAt: status.startedAt };
+  if (sources) await applySources(ctx, companyId, sources);
   const startedAt = new Date().toISOString();
   await ctx.db.patch("companies", companyId, { agentsStartedAt: startedAt });
   await writeLog(ctx, companyId, undefined, {
@@ -122,6 +154,6 @@ async function startAgents(ctx: MutationCtx, companyId: Id<"companies">) {
 }
 
 export const start = mutation({
-  args: { companyId: v.id("companies") },
-  handler: async (ctx, { companyId }) => startAgents(ctx, companyId),
+  args: { companyId: v.id("companies"), sources: v.optional(v.array(v.string())) },
+  handler: async (ctx, { companyId, sources }) => startAgents(ctx, companyId, sources),
 });

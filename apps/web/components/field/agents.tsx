@@ -3,8 +3,8 @@
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
-import { ArrowRight, Play } from "lucide-react";
-import Link from "next/link";
+import { Play, RotateCcw, Undo2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -13,14 +13,22 @@ import { cn } from "../../lib/utils";
 import { AgentIcon } from "../icons/AgentIcon";
 import { ToolLogo } from "../icons/ToolLogo";
 import { VENDORS } from "../icons/vendors";
+import { SourcePicker, toggleSource } from "../judge/SourcePicker";
+import { TOOL_TILE } from "../judge/flow";
+import { errorText } from "../judge/shared";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { VENDOR_OF_TOOL } from "./BrainMapConnections";
-import { useSelectedCompany } from "./company";
+import {
+  FIELD_OPERATING_API,
+  chooseReplay,
+  useOperatingSelection,
+  useSelectedCompany,
+} from "./company";
 
-// Agent start (convex/fieldAgents.ts). A newly selected company starts idle: pages show the
-// company and its connected tools, plus one calm card pointing at the Brain map, where a person
-// presses Start agents. Nothing here invents numbers or activity.
+// Agent start (convex/fieldAgents.ts). A newly selected company starts idle: every page shows the
+// same guided start (connected tools, one Start agents button), then the Brain map fills live.
+// Nothing here invents numbers or activity.
 
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 export const BRAIN_MAP_HREF = "/field/map";
@@ -73,26 +81,92 @@ export function SourceLogos({
   );
 }
 
-/** The one calm card every idle page shows instead of numbers. */
+const BANKS: readonly ToolId[] = ["plaid", "nessie"];
+const NEEDS: Partial<Record<ToolId, { needs: ToolId }>> = { hubspot: { needs: "stripe" } };
+const START_STEPS = ["Choose sources", "Start agents", "Watch the Brain map"] as const;
+
+/**
+ * Guided start, shown on every page of an idle company (the judge sandbox's source step, reused):
+ * the connected tools as toggles, one Start agents button, then the Brain map, where reading,
+ * the audit, the forecast and suggested fixes arrive live.
+ */
 export function AgentsIdleCard({ state, detail }: { state: AgentsState; detail?: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const start = useMutation(api.fieldAgents.start);
+  const tools = state.tools;
+  const required = tools.find((t) => BANKS.includes(t)) ?? null;
+  const needs = Object.fromEntries(
+    Object.entries(NEEDS).filter(([t]) => tools.includes(t as ToolId)),
+  ) as Partial<Record<ToolId, { needs: ToolId }>>;
+  const [on, setOn] = useState<ReadonlySet<ToolId>>(() => new Set(tools));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toggle = (t: ToolId) =>
+    setOn((cur) => (required ? toggleSource(cur, t, required, needs) : cur));
+  const go = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await start({ companyId: state.companyId, sources: tools.filter((t) => on.has(t)) });
+      if (pathname !== BRAIN_MAP_HREF) router.push(BRAIN_MAP_HREF);
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  };
   return (
     <section
-      aria-label="Agents not started"
-      className="rounded-lg border bg-card p-[var(--card-pad,1.25rem)] shadow-xs"
+      aria-label="Start the agents"
+      className="space-y-5 rounded-lg border bg-card p-[var(--card-pad,1.25rem)] shadow-xs"
     >
-      <p className="text-[15px] font-semibold">Your agents haven't run yet</p>
-      <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-        {detail ??
-          `${state.name} is connected, but nothing has been read or forecast. Start the agents on the Brain map and this page fills in as their work arrives.`}
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <Button asChild size="sm">
-          <Link href={BRAIN_MAP_HREF}>
-            Start them on the Brain map
-            <ArrowRight aria-hidden="true" className="size-3.5" />
-          </Link>
+      <div>
+        <p className="text-[15px] font-semibold">Start the agents for {state.name}</p>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+          {detail ??
+            "Nothing has been read or forecast yet. Choose which connected tools the agents may read, then start them. The Brain map shows each step as it happens: reading the books, the audit, the 13-week forecast and suggested fixes."}
+        </p>
+      </div>
+      <ol className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px]" aria-label="Steps">
+        {START_STEPS.map((label, i) => (
+          <li key={label} className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "flex size-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums",
+                i === 0 ? "bg-foreground text-background" : "bg-secondary text-muted-foreground",
+              )}
+            >
+              {i + 1}
+            </span>
+            <span className={i === 0 ? "font-medium" : "text-muted-foreground"}>{label}</span>
+          </li>
+        ))}
+      </ol>
+      <SourcePicker
+        tools={tools}
+        tiles={TOOL_TILE}
+        on={on}
+        required={required}
+        needs={needs}
+        onToggle={toggle}
+        disabled={busy}
+      />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Button onClick={go} disabled={busy}>
+          <Play aria-hidden="true" className="size-4" />
+          {busy ? "Starting…" : "Start agents"}
         </Button>
-        <SourceLogos tools={state.tools} faded size={20} />
+        {error ? (
+          <p role="alert" className="text-[13px] text-destructive">
+            {error}
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted-foreground tabular-nums">
+            Reads {on.size} of {tools.length} connected {tools.length === 1 ? "tool" : "tools"}
+            {pathname === BRAIN_MAP_HREF ? "" : ", then opens the Brain map"}
+          </p>
+        )}
       </div>
     </section>
   );
@@ -174,7 +248,14 @@ export function StartAgentsButton({
  * Brain map before Start agents: only the root CREAO coordinator, the company's connected tools
  * faded around it, and the Start button. No placeholder agents are drawn.
  */
-export function BrainMapIdle({ state }: { state: AgentsState }) {
+export function BrainMapIdle({
+  state,
+  showStart = true,
+}: {
+  state: AgentsState;
+  /** false when the guided start panel above already holds the Start button. */
+  showStart?: boolean;
+}) {
   const tools = state.tools;
   const radius = 150;
   return (
@@ -206,9 +287,65 @@ export function BrainMapIdle({ state }: { state: AgentsState }) {
             <p className="text-sm font-semibold">Coordinator</p>
             <p className="text-xs text-muted-foreground">CREAO · waiting to start</p>
           </div>
-          <StartAgentsButton companyId={state.companyId} />
+          {showStart ? <StartAgentsButton companyId={state.companyId} /> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Brain map header action. A company with data offers "Replay from scratch": a fresh idle copy
+ * of the same company and scenario (fieldOperating.replay), so the agents can be watched building
+ * everything live. The prepared company and its data are kept; a replay offers the way back.
+ */
+export function ReplayAction() {
+  return CONVEX_URL ? <LiveReplayAction /> : null;
+}
+
+function LiveReplayAction() {
+  const { selected } = useSelectedCompany();
+  const selection = useOperatingSelection();
+  const replay = useMutation(FIELD_OPERATING_API.replay);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!selected) return null;
+  if (selected.replayOf)
+    return (
+      <Button variant="ghost" size="sm" onClick={() => chooseReplay(selection, null)}>
+        <Undo2 aria-hidden="true" className="size-3.5" />
+        Back to prepared data
+      </Button>
+    );
+  if (!selected.started) return null;
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        title="Creates a fresh copy of this company and scenario with nothing read yet. The prepared data stays as it is."
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            const next = await replay({ companyId: selected.companyId });
+            chooseReplay(selection, next.companyId);
+          } catch (e) {
+            setError(errorText(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <RotateCcw aria-hidden="true" className="size-3.5" />
+        {busy ? "Preparing…" : "Replay from scratch"}
+      </Button>
+      {error ? (
+        <span role="alert" className="text-xs text-destructive">
+          {error}
+        </span>
+      ) : null}
+    </span>
   );
 }
