@@ -5,9 +5,21 @@
    "fiscalYearEnd": "1231",
    "name": "Amplitude, Inc.",
    "nonUsdRequiredRows": 0,
+   "package": "development",
    "rowsWithoutAcceptance": 0,
    "tickers": [
     "AMPL"
+   ]
+  },
+  "freshworks": {
+   "cik": "0001544522",
+   "fiscalYearEnd": "1231",
+   "name": "Freshworks Inc.",
+   "nonUsdRequiredRows": 0,
+   "package": "withheld",
+   "rowsWithoutAcceptance": 0,
+   "tickers": [
+    "FRSH"
    ]
   },
   "tenable": {
@@ -15,6 +27,7 @@
    "fiscalYearEnd": "1231",
    "name": "Tenable Holdings, Inc.",
    "nonUsdRequiredRows": 0,
+   "package": "sealed",
    "rowsWithoutAcceptance": 0,
    "tickers": [
     "TENB"
@@ -25,6 +38,7 @@
    "fiscalYearEnd": "1231",
    "name": "VARONIS SYSTEMS INC",
    "nonUsdRequiredRows": 0,
+   "package": "sealed",
    "rowsWithoutAcceptance": 0,
    "tickers": [
     "VRNS"
@@ -32,10 +46,11 @@
   }
  },
  "labels": {
-  "development/labels.json": "9233149aa994ff2e13bc77f0c493e54dc717e864b54aad002d17a8263cca4c7f",
-  "sealed/labels.json": "e41452358e8251d5850200804c97a6541665f91a4e66171d16bdfe7c9693b938"
+  "development/labels-amplitude.json": "9233149aa994ff2e13bc77f0c493e54dc717e864b54aad002d17a8263cca4c7f",
+  "sealed/labels.json": "e41452358e8251d5850200804c97a6541665f91a4e66171d16bdfe7c9693b938",
+  "withheld/labels-freshworks.json": "ab96dff34b3ac6ade50778d15e37e8f859634ea04aa7e66a15e1eb1d4af2f3ff"
  },
- "method": "earliest-accepted original 10-Q/10-K per period; visibility = acceptanceDateTime <= origin; USD us-gaap only",
+ "method": "inputs pinned to the first original 10-Q/10-K accession for each period, no substitution; origin acceptance strictly inside target quarter (boundary days excluded); visibility = acceptanceDateTime <= origin; USD us-gaap only",
  "pairs": [
   {
    "company": "tenable",
@@ -48,8 +63,9 @@
    "originSliceSha256": "c17aa8f1ed036fdb158a434cd30e84ecfdf8a8784dd4163b1bcaa9601d11e6d7",
    "role": "test",
    "target": "2024Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-05-07T21:16:53.000Z",
    "targetAccession": "0001660280-24-000073",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-03-31"
   },
   {
@@ -63,8 +79,9 @@
    "originSliceSha256": "85e9ad62c31b311674896ba85d3a898a1d7b88dc1cc1c48eaa5e5608aa5b94ef",
    "role": "test",
    "target": "2024Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-08-06T20:49:30.000Z",
    "targetAccession": "0001660280-24-000127",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-06-30"
   },
   {
@@ -78,8 +95,9 @@
    "originSliceSha256": "a1d9c59d864ce2c91b9dc91164b1363ae7197de0f66428a0d046e8f4264b9d7d",
    "role": "test",
    "target": "2024Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-11-05T21:31:45.000Z",
    "targetAccession": "0001660280-24-000153",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-09-30"
   },
   {
@@ -93,8 +111,9 @@
    "originSliceSha256": "8cfb22a52ab95bbee9467996c7a5c2798d997b9b7392a066256ec52fbea39630",
    "role": "test",
    "target": "2024Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-02-21T23:59:28.000Z",
    "targetAccession": "0001660280-25-000034",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2024-12-31"
   },
   {
@@ -108,8 +127,9 @@
    "originSliceSha256": "94cc28f2858470bc1f49e5a7a16ad400a599d4ac34612117d1ec1a702710abc8",
    "role": "test",
    "target": "2025Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-05-06T20:35:30.000Z",
    "targetAccession": "0001660280-25-000072",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-03-31"
   },
   {
@@ -123,8 +143,9 @@
    "originSliceSha256": "1cda3ce41c80cda9b851aa1822e3c0109a19cd783ef500d5883802b51431570e",
    "role": "test",
    "target": "2025Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-08-08T20:25:27.000Z",
    "targetAccession": "0001660280-25-000090",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-06-30"
   },
   {
@@ -138,8 +159,9 @@
    "originSliceSha256": "5fdaffbb3b21f9819636d81ad000dfa68ba2387c2e5149a717c488d907b299a0",
    "role": "test",
    "target": "2025Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-11-04T22:07:01.000Z",
    "targetAccession": "0001660280-25-000128",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-09-30"
   },
   {
@@ -153,8 +175,9 @@
    "originSliceSha256": "7daff74c85fd715dcc85f66efb57fe4a7e715f215e3bc49868892c80e7f4f547",
    "role": "test",
    "target": "2025Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2026-02-27T21:59:21.000Z",
    "targetAccession": "0001660280-26-000005",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2025-12-31"
   },
   {
@@ -168,8 +191,9 @@
    "originSliceSha256": "b8044e50bb87e0e8847d50241b42b6be308b8a1eefb75aaf6a456f219d79f864",
    "role": "test",
    "target": "2024Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-05-07T20:22:36.000Z",
    "targetAccession": "0001628280-24-021113",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-03-31"
   },
   {
@@ -183,8 +207,9 @@
    "originSliceSha256": "cf06a9817c6726c97073c74fe00bd22f3a9160278662762dec78f7cd8e7f749c",
    "role": "test",
    "target": "2024Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-07-30T20:25:32.000Z",
    "targetAccession": "0001628280-24-033477",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-06-30"
   },
   {
@@ -198,8 +223,9 @@
    "originSliceSha256": "72cfd6ed495b441df1f89a543878488770a8a84a8895ac1ebb82a01102c2be2f",
    "role": "test",
    "target": "2024Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-10-31T20:18:15.000Z",
    "targetAccession": "0001628280-24-044561",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2024-09-30"
   },
   {
@@ -213,8 +239,9 @@
    "originSliceSha256": "3339be3bf66e4662be71eee265736c50695c2cafce253d92bd9221b4ae85a9f6",
    "role": "test",
    "target": "2024Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-02-06T11:42:35.000Z",
    "targetAccession": "0001628280-25-004187",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2024-12-31"
   },
   {
@@ -228,8 +255,9 @@
    "originSliceSha256": "47b200c795b8bd4e52809edb68733519efdfd572351268d2cca860adeaca23e7",
    "role": "test",
    "target": "2025Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-05-07T20:23:57.000Z",
    "targetAccession": "0001628280-25-023196",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-03-31"
   },
   {
@@ -243,8 +271,9 @@
    "originSliceSha256": "3e78e82be321505f94de486e8b9f825ff51bf441b3c67dcf2c5c1c5122104bb3",
    "role": "test",
    "target": "2025Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-07-30T20:21:59.000Z",
    "targetAccession": "0001628280-25-036728",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-06-30"
   },
   {
@@ -258,8 +287,9 @@
    "originSliceSha256": "7729cdbbe96c355575ef88c07a2ef730366e1756724e6c6327e3c7e89f382aea",
    "role": "test",
    "target": "2025Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2025-10-29T20:29:47.000Z",
    "targetAccession": "0001628280-25-047145",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2025-09-30"
   },
   {
@@ -273,8 +303,9 @@
    "originSliceSha256": "66ec3e2ab062c282ac9c488ea232a7869dbc4b0bd4d343e76da780b27dc4781e",
    "role": "test",
    "target": "2025Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2026-02-04T21:18:16.000Z",
    "targetAccession": "0001628280-26-005450",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2025-12-31"
   },
   {
@@ -291,8 +322,9 @@
    "originSliceSha256": null,
    "role": "development",
    "target": "2021Q1",
-   "targetAcceptedAtPresent": false,
+   "targetAcceptedAt": null,
    "targetAccession": null,
+   "targetForm": null,
    "targetQuarterEnd": "2021-03-31"
   },
   {
@@ -309,8 +341,9 @@
    "originSliceSha256": null,
    "role": "development",
    "target": "2021Q2",
-   "targetAcceptedAtPresent": false,
+   "targetAcceptedAt": null,
    "targetAccession": null,
+   "targetForm": null,
    "targetQuarterEnd": "2021-06-30"
   },
   {
@@ -326,16 +359,16 @@
    "originSliceSha256": null,
    "role": "development",
    "target": "2021Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2021-11-09T21:32:22.000Z",
    "targetAccession": "0000950170-21-003770",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2021-09-30"
   },
   {
    "company": "amplitude",
    "eligible": false,
    "missing": [
-    "predecessor_ytd_icf_missing",
-    "predecessor_ytd_ocf_missing"
+    "predecessor_original_filing_unavailable"
    ],
    "originAcceptedAt": "2021-11-09T21:32:22.000Z",
    "originAccession": "0000950170-21-003770",
@@ -344,8 +377,9 @@
    "originSliceSha256": "4340df26e37c3fb3a1cc54e756c81017805eff1d2e636b3fc464b2811e6208e6",
    "role": "development",
    "target": "2021Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2022-02-16T23:32:30.000Z",
    "targetAccession": "0000950170-22-001372",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2021-12-31"
   },
   {
@@ -359,8 +393,9 @@
    "originSliceSha256": "27698777cbe366cebc357f5e3e0491568e100d2fbe67ed505f8d8ebaefa3c89d",
    "role": "development",
    "target": "2022Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2022-05-05T20:46:30.000Z",
    "targetAccession": "0000950170-22-007901",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2022-03-31"
   },
   {
@@ -374,8 +409,9 @@
    "originSliceSha256": "64b9097c752cd2b72ea7d116a87996a49908ee961faf8c79b910feda7bf8fddd",
    "role": "development",
    "target": "2022Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2022-08-04T20:35:56.000Z",
    "targetAccession": "0000950170-22-014805",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2022-06-30"
   },
   {
@@ -389,8 +425,9 @@
    "originSliceSha256": "833b43d3548bf49828b43f96dd5b01dd660ff6d52181ae1b17fca711538298a7",
    "role": "development",
    "target": "2022Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2022-11-03T20:08:14.000Z",
    "targetAccession": "0000950170-22-021850",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2022-09-30"
   },
   {
@@ -404,8 +441,9 @@
    "originSliceSha256": "f5901c3ca32c65a6b286ddf9b011977243f2e9e871ed737d24609404964bca25",
    "role": "development",
    "target": "2022Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2023-02-16T21:06:58.000Z",
    "targetAccession": "0000950170-23-003045",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2022-12-31"
   },
   {
@@ -419,8 +457,9 @@
    "originSliceSha256": "fb0e8dee2c27f683b9c89733d25346d39d603070df1e3d5d6618f1a8b3021f04",
    "role": "validation",
    "target": "2023Q1",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2023-05-10T20:06:41.000Z",
    "targetAccession": "0000950170-23-020495",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2023-03-31"
   },
   {
@@ -434,8 +473,9 @@
    "originSliceSha256": "e08a6f946a72fb29d1d4dba5d4e52aafb365a912d4a78989deb67729b653bfb2",
    "role": "validation",
    "target": "2023Q2",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2023-08-08T20:09:01.000Z",
    "targetAccession": "0000950170-23-039800",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2023-06-30"
   },
   {
@@ -449,8 +489,9 @@
    "originSliceSha256": "054190da9e2b0671c4a8cff09a9b59ff236065b7524fbb551e9639d4aa0b2b82",
    "role": "validation",
    "target": "2023Q3",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2023-11-07T21:08:53.000Z",
    "targetAccession": "0000950170-23-060240",
+   "targetForm": "10-Q",
    "targetQuarterEnd": "2023-09-30"
   },
   {
@@ -464,9 +505,26 @@
    "originSliceSha256": "02a64e27c7cbf14c48c8cb02e9a019d49fa94361cab70727e0bfde9b175a6ac6",
    "role": "validation",
    "target": "2023Q4",
-   "targetAcceptedAtPresent": true,
+   "targetAcceptedAt": "2024-02-20T21:07:43.000Z",
    "targetAccession": "0000950170-24-017102",
+   "targetForm": "10-K",
    "targetQuarterEnd": "2023-12-31"
+  },
+  {
+   "company": "freshworks",
+   "eligible": true,
+   "missing": [],
+   "originAcceptedAt": "2023-08-02T20:04:48.000Z",
+   "originAccession": "0001544522-23-000056",
+   "originForm": "10-Q",
+   "originPeriodEnd": "2023-06-30",
+   "originSliceSha256": "4a6c924de50b73f5cbacaf143a0b1194e28de4456654f56f812d644f4f6ac473",
+   "role": "mapping-acceptance",
+   "target": "2023Q3",
+   "targetAcceptedAt": "2023-10-31T20:11:41.000Z",
+   "targetAccession": "0001544522-23-000064",
+   "targetForm": "10-Q",
+   "targetQuarterEnd": "2023-09-30"
   }
  ],
  "protocol": {
@@ -479,7 +537,9 @@
   "sealed/raw/tenable-companyfacts.json": "25756b942a29567cbb25e024fb51cdee78bbd29e0b31498a50eb533c7e470b11",
   "sealed/raw/tenable-submissions.json": "e1bdf485176b9fb81798d0a6e2b6dab3d0c519fb3c8e1e103f1cbacba75163eb",
   "sealed/raw/varonis-companyfacts.json": "5c7576b0fa53ccb95eac41b4bb2859484614b21a670c8a3b610da2be91cacc8a",
-  "sealed/raw/varonis-submissions.json": "5261f819562cb40ec1a074067b6dbfd26b034ba85fb9b5d2da94d754f6cb77a8"
+  "sealed/raw/varonis-submissions.json": "5261f819562cb40ec1a074067b6dbfd26b034ba85fb9b5d2da94d754f6cb77a8",
+  "withheld/raw/freshworks-companyfacts.json": "80a6039d1f9b5fc9bfc4a234e454477d54804bc176ea38f5b6dc1625220d0e89",
+  "withheld/raw/freshworks-submissions.json": "bc341b24455fd0e4f4d8dd313aa5176e6a6dedb78b0214139209a6e0bc861c83"
  },
  "summary": {
   "testEligible": 16,

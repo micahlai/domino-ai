@@ -9,6 +9,7 @@ Protocol: kb/spec/forecast-evaluation-protocol-v1.md, sha256 41344e7a724a4777b05
 | 2U, Amplitude, PagerDuty, Box, Freshworks, Sprout Social | EXPOSED / development | Used in earlier calibration or seen by the lead (protocol v1). Amplitude 2021-2022 development, 2023 validation. |
 | Tenable (CIK 0001660280, TENB) | proposed test, sealed | No values found in tracked files (search below). |
 | Varonis (CIK 0001361113, VRNS) | proposed test, sealed | No values found in tracked files (search below). |
+| Freshworks 2023Q3 (CIK 0001544522, FRSH) | EXPOSED, mapping acceptance, withheld | Local only under withheld/ (git-ignored, reads logged). Release to L1 only after the Amplitude normalizer/dictionary commit freezes. Not a forecast test. |
 
 ## Tracked-repo search (2026-10-24, branch E0-evaluation-custody at 16a3a56)
 
@@ -22,7 +23,7 @@ Limits: this checks the tracked repo only. It cannot rule out prior human or mod
 
 ## Sealed reads
 
-Every read of data/evaluation/sealed/ is appended to read-ledger.jsonl (time, reader, file, purpose). Through this commit only the E0 custodian read sealed files, to verify identity, filing metadata, coverage and build slices/labels. No test amounts, labels or errors were returned to the lead or any model worker. Isolation is procedural (shared filesystem), not an enforced security boundary.
+Every read of data/evaluation/sealed/ or withheld/ (including hashing) is appended to read-ledger.jsonl (time, reader, file, purpose). Through this commit only the E0 custodian read sealed files, to verify identity, filing metadata, coverage and build slices/labels. No test amounts, labels or errors were returned to the lead or any model worker. Isolation is procedural (shared filesystem), not an enforced security boundary.
 
 ## Network
 

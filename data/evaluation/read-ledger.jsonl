@@ -10,3 +10,29 @@
 {"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
 {"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
 {"at": "2026-10-25T01:05:55+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/labels.json", "purpose": "reuse label salt"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:49+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/labels.json", "purpose": "reuse label salt"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/tenable-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/raw/varonis-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-submissions.json", "purpose": "filing acceptance metadata for origin/label selection"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-companyfacts.json", "purpose": "build origin slices, labels and coverage reasons"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-companyfacts.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "withheld/raw/freshworks-submissions.json", "purpose": "hash for manifest"}
+{"at": "2026-10-25T01:11:50+00:00", "reader": "E0 custodian (Claude Opus 5.5 worker)", "file": "sealed/labels.json", "purpose": "reuse label salt"}

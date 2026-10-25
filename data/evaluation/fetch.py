@@ -1,7 +1,8 @@
 """Bounded public SEC GET fetcher for evaluation custody.
 
-Usage: python3 -I data/evaluation/fetch.py <role:test|development> <name> <url>
-Test bytes go to sealed/raw (git-ignored); development bytes to development/raw.
+Usage: python3 -I data/evaluation/fetch.py <role:test|withheld|development> <name> <url>
+Test bytes go to sealed/raw, withheld acceptance bytes to withheld/raw (both git-ignored);
+development bytes to development/raw.
 Every attempt is appended to request-log.jsonl (URL, status, bytes, sha256; never amounts).
 Hard limits: 80 attempts total (retries included), >=1.1 s apart, at most 2 retries per GET.
 Exit 3 means blocked: stop all network work.
@@ -20,7 +21,7 @@ def attempts():
 
 
 def main(role, name, url):
-    dest = HERE / ("sealed/raw" if role == "test" else "development/raw") / name
+    dest = HERE / {"test": "sealed", "withheld": "withheld"}.get(role, "development") / "raw" / name
     dest.parent.mkdir(parents=True, exist_ok=True)
     for retry in range(RETRIES + 1):
         log = attempts()
